@@ -9,7 +9,7 @@ def kinetic3d_00(a, A, b, B):
     x0 = -a
     x1 = (2 * a + 2 * b) ** (-1.0)
     x2 = (a + b) ** (-1.0)
-    x3 = 2 * a**2
+    x3 = 2 * a ** 2
     x4 = a * b * x2
     x5 = (
         numpy.pi ** (3 / 2)
@@ -20,14 +20,13 @@ def kinetic3d_00(a, A, b, B):
     )
 
     # 1 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x5 * (-x0 - x3 * (x1 + (x2 * (a * A[0] + b * B[0]) - A[0]) ** 2))
             + x5 * (-x0 - x3 * (x1 + (x2 * (a * A[1] + b * B[1]) - A[1]) ** 2))
             + x5 * (-x0 - x3 * (x1 + (x2 * (a * A[2] + b * B[2]) - A[2]) ** 2))
         ]
     )
-    return S
 
 
 def kinetic3d_01(a, A, b, B):
@@ -50,7 +49,7 @@ def kinetic3d_01(a, A, b, B):
     x12 = 2 * a
     x13 = (2 * b + x12) ** (-1.0)
     x14 = -x0 * (a * A[1] + b * B[1])
-    x15 = 2 * a**2
+    x15 = 2 * a ** 2
     x16 = x10 * (-x11 - x15 * (x13 + (-x14 - A[1]) ** 2))
     x17 = x0 * x16 * x9
     x18 = -x0 * (a * A[2] + b * B[2])
@@ -71,7 +70,7 @@ def kinetic3d_01(a, A, b, B):
     x33 = x21 * x31
 
     # 3 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x10 * x25 * (x22 * x23 + x22 * x24) + x17 * x8 + x19 * x20 * x8,
             x19 * x28 + x25 * x4 * (x10 * x23 * x30 + x16 * x30) + x28 * x29,
@@ -80,7 +79,6 @@ def kinetic3d_01(a, A, b, B):
             + numpy.pi * x27 * (x19 * x33 + x23 * x33 * x9),
         ]
     )
-    return S
 
 
 def kinetic3d_02(a, A, b, B):
@@ -94,7 +92,7 @@ def kinetic3d_02(a, A, b, B):
     x3 = (x1 + x2) ** (-1.0)
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
-    x6 = 2 * a**2
+    x6 = 2 * a ** 2
     x7 = -x0 - x6 * (x3 + (-x5 - A[1]) ** 2)
     x8 = a * x4
     x9 = b * x8
@@ -105,7 +103,7 @@ def kinetic3d_02(a, A, b, B):
     x14 = x13 * x3
     x15 = -x4 * (a * A[0] + b * B[0])
     x16 = -x15 - B[0]
-    x17 = x13 * x16**2 + x14
+    x17 = x13 * x16 ** 2 + x14
     x18 = numpy.exp(-x9 * (A[1] - B[1]) ** 2)
     x19 = numpy.exp(-x9 * (A[2] - B[2]) ** 2)
     x20 = numpy.pi * x19 * x4
@@ -134,14 +132,14 @@ def kinetic3d_02(a, A, b, B):
     x43 = numpy.pi * x31
     x44 = x42 * x43
     x45 = x3 * x33
-    x46 = x29**2 * x33 + x45
+    x46 = x29 ** 2 * x33 + x45
     x47 = x36 * x46
     x48 = x3 * x40
-    x49 = x39**2 * x40 + x48
+    x49 = x39 ** 2 * x40 + x48
     x50 = x43 * x49
 
     # 6 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x21 * (x14 * x25 + x16 * x28 + x8 * (-2 * x13 + x17 * x2))
             + x22 * x24
@@ -157,7 +155,6 @@ def kinetic3d_02(a, A, b, B):
             + x50 * x7,
         ]
     )
-    return S
 
 
 def kinetic3d_03(a, A, b, B):
@@ -171,7 +168,7 @@ def kinetic3d_03(a, A, b, B):
     x3 = (x1 + x2) ** (-1.0)
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
-    x6 = 2 * a**2
+    x6 = 2 * a ** 2
     x7 = -x0 - x6 * (x3 + (-x5 - A[1]) ** 2)
     x8 = -x4 * (a * A[0] + b * B[0])
     x9 = -x8 - B[0]
@@ -181,7 +178,7 @@ def kinetic3d_03(a, A, b, B):
     x13 = numpy.sqrt(numpy.pi) * numpy.sqrt(x4)
     x14 = x12 * x13
     x15 = x14 * x3
-    x16 = x14 * x9**2 + x15
+    x16 = x14 * x9 ** 2 + x15
     x17 = 2 * x15 * x9 + x16 * x9
     x18 = numpy.exp(-x11 * (A[1] - B[1]) ** 2)
     x19 = numpy.exp(-x11 * (A[2] - B[2]) ** 2)
@@ -208,7 +205,7 @@ def kinetic3d_03(a, A, b, B):
     x40 = x37 * x39
     x41 = x24 * x40 + x29 * x40
     x42 = x3 * x34
-    x43 = x32**2 * x34 + x42
+    x43 = x32 ** 2 * x34 + x42
     x44 = x12 * x20
     x45 = x44 * x9
     x46 = 2 * x34
@@ -217,7 +214,7 @@ def kinetic3d_03(a, A, b, B):
     x49 = numpy.pi * x12 * x18 * x4
     x50 = x49 * x9
     x51 = x3 * x37
-    x52 = x37 * x39**2 + x51
+    x52 = x37 * x39 ** 2 + x51
     x53 = 2 * x37
     x54 = x10 * (x2 * x52 - x53) + x24 * x51 + x39 * x41
     x55 = x49 * x54
@@ -227,7 +224,7 @@ def kinetic3d_03(a, A, b, B):
     x59 = x49 * x58
 
     # 10 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x21
             * (x10 * (x17 * x2 - 3 * x25) + x3 * (x25 * x26 + x27 * x28 * x9) + x31 * x9)
@@ -256,7 +253,6 @@ def kinetic3d_03(a, A, b, B):
             + x59 * x7,
         ]
     )
-    return S
 
 
 def kinetic3d_04(a, A, b, B):
@@ -270,7 +266,7 @@ def kinetic3d_04(a, A, b, B):
     x3 = (x1 + x2) ** (-1.0)
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
-    x6 = 2 * a**2
+    x6 = 2 * a ** 2
     x7 = -x0 - x6 * (x3 + (-x5 - A[1]) ** 2)
     x8 = a * x4
     x9 = b * x8
@@ -280,7 +276,7 @@ def kinetic3d_04(a, A, b, B):
     x13 = x12 * x3
     x14 = -x4 * (a * A[0] + b * B[0])
     x15 = -x14 - B[0]
-    x16 = x12 * x15**2
+    x16 = x12 * x15 ** 2
     x17 = x13 + x16
     x18 = 2 * x13 * x15 + x15 * x17
     x19 = x15 * x18 + x3 * (3 * x13 + 3 * x16)
@@ -314,7 +310,7 @@ def kinetic3d_04(a, A, b, B):
     x47 = x43 * x46
     x48 = x26 * x47 + x32 * x47
     x49 = x3 * x40
-    x50 = x38**2 * x40
+    x50 = x38 ** 2 * x40
     x51 = x49 + x50
     x52 = x17 * x43
     x53 = x49 * x7
@@ -323,7 +319,7 @@ def kinetic3d_04(a, A, b, B):
     x56 = x38 * x42
     x57 = x53 + x55 + x56
     x58 = x3 * x43
-    x59 = x43 * x46**2
+    x59 = x43 * x46 ** 2
     x60 = x58 + x59
     x61 = x17 * x40
     x62 = x26 * x58
@@ -348,7 +344,7 @@ def kinetic3d_04(a, A, b, B):
     x81 = x72 * x80
 
     # 15 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x23
             * (
@@ -388,7 +384,6 @@ def kinetic3d_04(a, A, b, B):
             ),
         ]
     )
-    return S
 
 
 def kinetic3d_10(a, A, b, B):
@@ -411,16 +406,16 @@ def kinetic3d_10(a, A, b, B):
     x12 = 2 * a
     x13 = (2 * b + x12) ** (-1.0)
     x14 = x0 * (a * A[1] + b * B[1]) - A[1]
-    x15 = 2 * a**2
-    x16 = x10 * (-x11 - x15 * (x13 + x14**2))
+    x15 = 2 * a ** 2
+    x16 = x10 * (-x11 - x15 * (x13 + x14 ** 2))
     x17 = x0 * x16 * x9
     x18 = x0 * (a * A[2] + b * B[2]) - A[2]
-    x19 = x9 * (-x11 - x15 * (x13 + x18**2))
+    x19 = x9 * (-x11 - x15 * (x13 + x18 ** 2))
     x20 = x0 * x10
     x21 = numpy.sqrt(numpy.pi) * x6
     x22 = x21 * x5
     x23 = x12 * x2
-    x24 = -x11 - x15 * (x1**2 + x13)
+    x24 = -x11 - x15 * (x1 ** 2 + x13)
     x25 = numpy.pi * x0 * x9
     x26 = x20 * x4
     x27 = x14 * x26 * x7
@@ -430,7 +425,7 @@ def kinetic3d_10(a, A, b, B):
     x31 = x18 * x21
 
     # 3 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x10 * x25 * (x22 * x23 + x22 * x24) + x17 * x8 + x19 * x20 * x8,
             x19 * x27 + x25 * x4 * (x10 * x23 * x29 + x16 * x29) + x27 * x28,
@@ -439,7 +434,6 @@ def kinetic3d_10(a, A, b, B):
             + numpy.pi * x26 * (x19 * x31 + x23 * x31 * x9),
         ]
     )
-    return S
 
 
 def kinetic3d_11(a, A, b, B):
@@ -453,8 +447,8 @@ def kinetic3d_11(a, A, b, B):
     x3 = (a + b) ** (-1.0)
     x4 = -x3 * (a * A[1] + b * B[1])
     x5 = -x4 - A[1]
-    x6 = 2 * a**2
-    x7 = -x0 - x6 * (x2 + x5**2)
+    x6 = 2 * a ** 2
+    x7 = -x0 - x6 * (x2 + x5 ** 2)
     x8 = b * x3
     x9 = a * x8
     x10 = numpy.exp(-x9 * (A[0] - B[0]) ** 2)
@@ -474,8 +468,8 @@ def kinetic3d_11(a, A, b, B):
     x24 = x19 * x23
     x25 = -x3 * (a * A[2] + b * B[2])
     x26 = -x25 - A[2]
-    x27 = -x0 - x6 * (x2 + x26**2)
-    x28 = -x0 - x6 * (x16**2 + x2)
+    x27 = -x0 - x6 * (x2 + x26 ** 2)
+    x28 = -x0 - x6 * (x16 ** 2 + x2)
     x29 = x1 * x8
     x30 = x18 * x28 + x18 * x29
     x31 = -x4 - B[1]
@@ -516,7 +510,7 @@ def kinetic3d_11(a, A, b, B):
     x66 = x64 * x65
 
     # 9 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x23 * (x14 * x28 + x16 * x30 + x19 * x29) + x24 * x27 + x24 * x7,
             x22 * x34 * x39 + x27 * x33 * x36 + x31 * x41,
@@ -529,7 +523,6 @@ def kinetic3d_11(a, A, b, B):
             x28 * x66 + x65 * (x26 * x48 + x27 * x63 + x29 * x64) + x66 * x7,
         ]
     )
-    return S
 
 
 def kinetic3d_12(a, A, b, B):
@@ -544,8 +537,8 @@ def kinetic3d_12(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = 2 * a**2
-    x8 = -x0 - x7 * (x3 + x6**2)
+    x7 = 2 * a ** 2
+    x8 = -x0 - x7 * (x3 + x6 ** 2)
     x9 = a * x4
     x10 = b * x9
     x11 = numpy.exp(-x10 * (A[2] - B[2]) ** 2)
@@ -556,17 +549,17 @@ def kinetic3d_12(a, A, b, B):
     x16 = x14 * x15
     x17 = x16 * x3
     x18 = -x12 - A[0]
-    x19 = x13**2 * x16 + x17
+    x19 = x13 ** 2 * x16 + x17
     x20 = x4 * (2 * x13 * x17 + x18 * x19)
     x21 = numpy.exp(-x10 * (A[1] - B[1]) ** 2)
     x22 = numpy.pi * x21
     x23 = x11 * x20 * x22
     x24 = -x4 * (a * A[2] + b * B[2])
     x25 = -x24 - A[2]
-    x26 = -x0 - x7 * (x25**2 + x3)
+    x26 = -x0 - x7 * (x25 ** 2 + x3)
     x27 = x13 * x16
     x28 = 4 * x10
-    x29 = -x0 - x7 * (x18**2 + x3)
+    x29 = -x0 - x7 * (x18 ** 2 + x3)
     x30 = 2 * x16
     x31 = b * x1
     x32 = x17 * x29
@@ -589,7 +582,7 @@ def kinetic3d_12(a, A, b, B):
     x49 = x26 * x45
     x50 = x33 * x48 + x47 * x49
     x51 = x3 * x41
-    x52 = x38**2 * x41 + x51
+    x52 = x38 ** 2 * x41 + x51
     x53 = x14 * x36
     x54 = x18 * x53
     x55 = x16 * x18
@@ -602,7 +595,7 @@ def kinetic3d_12(a, A, b, B):
     x62 = x18 * x61
     x63 = x37 * x47
     x64 = x3 * x45
-    x65 = x45 * x47**2 + x64
+    x65 = x45 * x47 ** 2 + x64
     x66 = x26 * x64
     x67 = 2 * x45
     x68 = x47 * x50 + x66 + x9 * (x2 * x65 - x67)
@@ -625,7 +618,7 @@ def kinetic3d_12(a, A, b, B):
     x85 = x61 * x84
 
     # 18 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x23 * x26
             + x23 * x8
@@ -653,7 +646,6 @@ def kinetic3d_12(a, A, b, B):
             + x8 * x85,
         ]
     )
-    return S
 
 
 def kinetic3d_13(a, A, b, B):
@@ -668,8 +660,8 @@ def kinetic3d_13(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = 2 * a**2
-    x8 = -x0 - x7 * (x3 + x6**2)
+    x7 = 2 * a ** 2
+    x8 = -x0 - x7 * (x3 + x6 ** 2)
     x9 = a * x4
     x10 = b * x9
     x11 = numpy.exp(-x10 * (A[2] - B[2]) ** 2)
@@ -679,7 +671,7 @@ def kinetic3d_13(a, A, b, B):
     x15 = x14 * x3
     x16 = -x4 * (a * A[0] + b * B[0])
     x17 = -x16 - B[0]
-    x18 = x14 * x17**2
+    x18 = x14 * x17 ** 2
     x19 = -x16 - A[0]
     x20 = 2 * x15 * x17
     x21 = x15 + x18
@@ -690,9 +682,9 @@ def kinetic3d_13(a, A, b, B):
     x26 = x11 * x23 * x25
     x27 = -x4 * (a * A[2] + b * B[2])
     x28 = -x27 - A[2]
-    x29 = -x0 - x7 * (x28**2 + x3)
+    x29 = -x0 - x7 * (x28 ** 2 + x3)
     x30 = b * x1
-    x31 = -x0 - x7 * (x19**2 + x3)
+    x31 = -x0 - x7 * (x19 ** 2 + x3)
     x32 = x15 * x31
     x33 = 2 * x14
     x34 = x9 * (x2 * x21 - x33)
@@ -721,7 +713,7 @@ def kinetic3d_13(a, A, b, B):
     x57 = x48 * x56
     x58 = x15 + x19 * x35
     x59 = x3 * x48
-    x60 = x45**2 * x48
+    x60 = x45 ** 2 * x48
     x61 = x59 + x60
     x62 = x51 * x61
     x63 = x19 * x37 + x32 + x36 * x58
@@ -732,7 +724,7 @@ def kinetic3d_13(a, A, b, B):
     x68 = x64 + x66 + x67
     x69 = x44 * x54
     x70 = x3 * x51
-    x71 = x51 * x54**2
+    x71 = x51 * x54 ** 2
     x72 = x70 + x71
     x73 = x48 * x72
     x74 = x29 * x70
@@ -783,7 +775,7 @@ def kinetic3d_13(a, A, b, B):
     x119 = x118 * x88
 
     # 30 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x26 * x29
             + x26 * x8
@@ -823,7 +815,6 @@ def kinetic3d_13(a, A, b, B):
             + x88 * (x118 * x36 + x28 * x93 + x3 * (3 * x74 + 3 * x76 + 3 * x77)),
         ]
     )
-    return S
 
 
 def kinetic3d_14(a, A, b, B):
@@ -838,8 +829,8 @@ def kinetic3d_14(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = 2 * a**2
-    x8 = -x0 - x7 * (x3 + x6**2)
+    x7 = 2 * a ** 2
+    x8 = -x0 - x7 * (x3 + x6 ** 2)
     x9 = a * x4
     x10 = b * x9
     x11 = numpy.exp(-x10 * (A[2] - B[2]) ** 2)
@@ -850,7 +841,7 @@ def kinetic3d_14(a, A, b, B):
     x16 = x14 * x15
     x17 = x16 * x3
     x18 = x13 * x17
-    x19 = x13**2 * x16
+    x19 = x13 ** 2 * x16
     x20 = x17 + x19
     x21 = x13 * x20
     x22 = -x12 - A[0]
@@ -864,11 +855,11 @@ def kinetic3d_14(a, A, b, B):
     x30 = x11 * x27 * x29
     x31 = -x4 * (a * A[2] + b * B[2])
     x32 = -x31 - A[2]
-    x33 = -x0 - x7 * (x3 + x32**2)
+    x33 = -x0 - x7 * (x3 + x32 ** 2)
     x34 = b * x1
     x35 = x13 * x16
     x36 = 4 * x10
-    x37 = -x0 - x7 * (x22**2 + x3)
+    x37 = -x0 - x7 * (x22 ** 2 + x3)
     x38 = 2 * x16
     x39 = x3 * (x13 * x37 * x38 + x35 * x36)
     x40 = x9 * (x2 * x25 - 3 * x35)
@@ -898,7 +889,7 @@ def kinetic3d_14(a, A, b, B):
     x64 = x33 * x63 + x43 * x63
     x65 = x56 * x64
     x66 = x3 * x56
-    x67 = x53**2 * x56
+    x67 = x53 ** 2 * x56
     x68 = x66 + x67
     x69 = x20 * x22 + x24
     x70 = x59 * x69
@@ -911,7 +902,7 @@ def kinetic3d_14(a, A, b, B):
     x77 = x59 * x68
     x78 = x52 * x62
     x79 = x3 * x59
-    x80 = x59 * x62**2
+    x80 = x59 * x62 ** 2
     x81 = x79 + x80
     x82 = x56 * x69
     x83 = x33 * x79
@@ -993,7 +984,7 @@ def kinetic3d_14(a, A, b, B):
     x159 = x118 * x158
 
     # 45 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x30 * x33
             + x30 * x8
@@ -1048,7 +1039,6 @@ def kinetic3d_14(a, A, b, B):
             + x159 * x8,
         ]
     )
-    return S
 
 
 def kinetic3d_20(a, A, b, B):
@@ -1061,8 +1051,8 @@ def kinetic3d_20(a, A, b, B):
     x2 = (2 * b + x1) ** (-1.0)
     x3 = (a + b) ** (-1.0)
     x4 = x3 * (a * A[1] + b * B[1]) - A[1]
-    x5 = x4**2
-    x6 = 2 * a**2
+    x5 = x4 ** 2
+    x6 = 2 * a ** 2
     x7 = -x0 - x6 * (x2 + x5)
     x8 = b * x3
     x9 = a * x8
@@ -1072,7 +1062,7 @@ def kinetic3d_20(a, A, b, B):
     x13 = x10 * x12
     x14 = x13 * x2
     x15 = x3 * (a * A[0] + b * B[0]) - A[0]
-    x16 = x15**2
+    x16 = x15 ** 2
     x17 = x13 * x16 + x14
     x18 = numpy.exp(-x9 * (A[1] - B[1]) ** 2)
     x19 = numpy.exp(-x9 * (A[2] - B[2]) ** 2)
@@ -1080,7 +1070,7 @@ def kinetic3d_20(a, A, b, B):
     x21 = x18 * x20
     x22 = x17 * x21
     x23 = x3 * (a * A[2] + b * B[2]) - A[2]
-    x24 = x23**2
+    x24 = x23 ** 2
     x25 = -x0 - x6 * (x2 + x24)
     x26 = -x0 - x6 * (x16 + x2)
     x27 = x13 * x15
@@ -1108,7 +1098,7 @@ def kinetic3d_20(a, A, b, B):
     x49 = x42 * x48
 
     # 6 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x21 * (x14 * x26 + x15 * x29 + x8 * (x1 * x17 - 2 * x13))
             + x22 * x25
@@ -1124,7 +1114,6 @@ def kinetic3d_20(a, A, b, B):
             + x49 * x7,
         ]
     )
-    return S
 
 
 def kinetic3d_21(a, A, b, B):
@@ -1138,8 +1127,8 @@ def kinetic3d_21(a, A, b, B):
     x3 = (a + b) ** (-1.0)
     x4 = -x3 * (a * A[1] + b * B[1])
     x5 = -x4 - A[1]
-    x6 = x5**2
-    x7 = 2 * a**2
+    x6 = x5 ** 2
+    x7 = 2 * a ** 2
     x8 = -x0 - x7 * (x2 + x6)
     x9 = -x3 * (a * A[0] + b * B[0])
     x10 = -x9 - A[0]
@@ -1161,10 +1150,10 @@ def kinetic3d_21(a, A, b, B):
     x26 = x21 * x25
     x27 = -x3 * (a * A[2] + b * B[2])
     x28 = -x27 - A[2]
-    x29 = x28**2
+    x29 = x28 ** 2
     x30 = -x0 - x7 * (x2 + x29)
     x31 = x1 * x11
-    x32 = x10**2
+    x32 = x10 ** 2
     x33 = -x0 - x7 * (x2 + x32)
     x34 = x18 * x31 + x18 * x33
     x35 = x16 * x31 + x16 * x33
@@ -1219,7 +1208,7 @@ def kinetic3d_21(a, A, b, B):
     x84 = x61 * x83
 
     # 18 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x25 * (x10 * x37 + x11 * (x1 * x21 - 2 * x18) + x2 * (x34 + x35))
             + x26 * x30
@@ -1247,7 +1236,6 @@ def kinetic3d_21(a, A, b, B):
             + x8 * x84,
         ]
     )
-    return S
 
 
 def kinetic3d_22(a, A, b, B):
@@ -1262,8 +1250,8 @@ def kinetic3d_22(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = x6**2
-    x8 = 2 * a**2
+    x7 = x6 ** 2
+    x8 = 2 * a ** 2
     x9 = -x0 - x8 * (x3 + x7)
     x10 = a * x4
     x11 = b * x10
@@ -1273,7 +1261,7 @@ def kinetic3d_22(a, A, b, B):
     x15 = x14 * x3
     x16 = -x4 * (a * A[0] + b * B[0])
     x17 = -x16 - B[0]
-    x18 = x14 * x17**2
+    x18 = x14 * x17 ** 2
     x19 = -x16 - A[0]
     x20 = 2 * x14
     x21 = x17 * x20
@@ -1288,12 +1276,12 @@ def kinetic3d_22(a, A, b, B):
     x30 = x25 * x29
     x31 = -x4 * (a * A[2] + b * B[2])
     x32 = -x31 - A[2]
-    x33 = x32**2
+    x33 = x32 ** 2
     x34 = -x0 - x8 * (x3 + x33)
     x35 = b * x4
     x36 = x14 * x17
     x37 = x1 * x35
-    x38 = x19**2
+    x38 = x19 ** 2
     x39 = -x0 - x8 * (x3 + x38)
     x40 = x36 * x37 + x36 * x39
     x41 = x19 * x40
@@ -1319,7 +1307,7 @@ def kinetic3d_22(a, A, b, B):
     x61 = x56 * x60
     x62 = x34 * x61 + x37 * x61
     x63 = x3 * x53
-    x64 = x50**2 * x53
+    x64 = x50 ** 2 * x53
     x65 = x63 + x64
     x66 = x14 * x38 + x15
     x67 = x56 * x66
@@ -1331,7 +1319,7 @@ def kinetic3d_22(a, A, b, B):
     x73 = x19 * x57 + x35 * (x1 * x66 + x46) + x45
     x74 = x29 * x60
     x75 = x3 * x56
-    x76 = x56 * x60**2
+    x76 = x56 * x60 ** 2
     x77 = x75 + x76
     x78 = x53 * x66
     x79 = x34 * x75
@@ -1391,7 +1379,7 @@ def kinetic3d_22(a, A, b, B):
     x133 = x132 * x99
 
     # 36 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x29
             * (
@@ -1452,7 +1440,6 @@ def kinetic3d_22(a, A, b, B):
             ),
         ]
     )
-    return S
 
 
 def kinetic3d_23(a, A, b, B):
@@ -1467,8 +1454,8 @@ def kinetic3d_23(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = x6**2
-    x8 = 2 * a**2
+    x7 = x6 ** 2
+    x8 = 2 * a ** 2
     x9 = -x0 - x8 * (x3 + x7)
     x10 = -x4 * (a * A[0] + b * B[0])
     x11 = -x10 - B[0]
@@ -1479,7 +1466,7 @@ def kinetic3d_23(a, A, b, B):
     x16 = x14 * x15
     x17 = x16 * x3
     x18 = x11 * x17
-    x19 = x11**2 * x16
+    x19 = x11 ** 2 * x16
     x20 = x17 + x19
     x21 = x11 * x20
     x22 = -x10 - A[0]
@@ -1497,10 +1484,10 @@ def kinetic3d_23(a, A, b, B):
     x34 = x29 * x33
     x35 = -x4 * (a * A[2] + b * B[2])
     x36 = -x35 - A[2]
-    x37 = x36**2
+    x37 = x36 ** 2
     x38 = -x0 - x8 * (x3 + x37)
     x39 = b * x4
-    x40 = x22**2
+    x40 = x22 ** 2
     x41 = -x0 - x8 * (x3 + x40)
     x42 = x17 * x41
     x43 = x11 * x16
@@ -1542,7 +1529,7 @@ def kinetic3d_23(a, A, b, B):
     x75 = x68 * x74
     x76 = x38 * x75 + x44 * x75
     x77 = x3 * x65
-    x78 = x62**2 * x65
+    x78 = x62 ** 2 * x65
     x79 = x77 + x78
     x80 = x22 * x71 + x3 * (x43 + x70)
     x81 = x68 * x80
@@ -1558,7 +1545,7 @@ def kinetic3d_23(a, A, b, B):
     x91 = x22 * x90 + x3 * (x45 + x89) + x39 * (x1 * x80 - x54)
     x92 = x33 * x74
     x93 = x3 * x68
-    x94 = x68 * x74**2
+    x94 = x68 * x74 ** 2
     x95 = x93 + x94
     x96 = x65 * x80
     x97 = x38 * x93
@@ -1669,7 +1656,7 @@ def kinetic3d_23(a, A, b, B):
     x194 = x144 * x193
 
     # 60 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x33
             * (
@@ -1754,7 +1741,6 @@ def kinetic3d_23(a, A, b, B):
             + x194 * x9,
         ]
     )
-    return S
 
 
 def kinetic3d_24(a, A, b, B):
@@ -1769,8 +1755,8 @@ def kinetic3d_24(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = x6**2
-    x8 = 2 * a**2
+    x7 = x6 ** 2
+    x8 = 2 * a ** 2
     x9 = -x0 - x8 * (x3 + x7)
     x10 = a * x4
     x11 = b * x10
@@ -1781,7 +1767,7 @@ def kinetic3d_24(a, A, b, B):
     x16 = 3 * x15
     x17 = -x4 * (a * A[0] + b * B[0])
     x18 = -x17 - B[0]
-    x19 = x14 * x18**2
+    x19 = x14 * x18 ** 2
     x20 = x3 * (x16 + 3 * x19)
     x21 = 2 * x15
     x22 = x18 * x21
@@ -1802,12 +1788,12 @@ def kinetic3d_24(a, A, b, B):
     x37 = x32 * x36
     x38 = -x4 * (a * A[2] + b * B[2])
     x39 = -x38 - A[2]
-    x40 = x39**2
+    x40 = x39 ** 2
     x41 = -x0 - x8 * (x3 + x40)
     x42 = b * x4
     x43 = x14 * x18
     x44 = 4 * x11
-    x45 = x27**2
+    x45 = x27 ** 2
     x46 = -x0 - x8 * (x3 + x45)
     x47 = 2 * x14
     x48 = x18 * x47
@@ -1855,7 +1841,7 @@ def kinetic3d_24(a, A, b, B):
     x86 = x79 * x85
     x87 = x41 * x86 + x51 * x86
     x88 = x3 * x76
-    x89 = x72**2 * x76
+    x89 = x72 ** 2 * x76
     x90 = x88 + x89
     x91 = x27 * x81 + x3 * (x16 + x19 + x27 * x48)
     x92 = x79 * x91
@@ -1877,7 +1863,7 @@ def kinetic3d_24(a, A, b, B):
     )
     x105 = x36 * x85
     x106 = x3 * x79
-    x107 = x79 * x85**2
+    x107 = x79 * x85 ** 2
     x108 = x106 + x107
     x109 = x76 * x91
     x110 = x106 * x41
@@ -2041,7 +2027,7 @@ def kinetic3d_24(a, A, b, B):
     x252 = x190 * x251
 
     # 90 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x36
             * (
@@ -2156,7 +2142,6 @@ def kinetic3d_24(a, A, b, B):
             + x252 * x9,
         ]
     )
-    return S
 
 
 def kinetic3d_30(a, A, b, B):
@@ -2169,8 +2154,8 @@ def kinetic3d_30(a, A, b, B):
     x2 = (2 * b + x1) ** (-1.0)
     x3 = (a + b) ** (-1.0)
     x4 = x3 * (a * A[1] + b * B[1]) - A[1]
-    x5 = x4**2
-    x6 = 2 * a**2
+    x5 = x4 ** 2
+    x6 = 2 * a ** 2
     x7 = -x0 - x6 * (x2 + x5)
     x8 = x3 * (a * A[0] + b * B[0]) - A[0]
     x9 = b * x3
@@ -2179,7 +2164,7 @@ def kinetic3d_30(a, A, b, B):
     x12 = numpy.sqrt(numpy.pi) * numpy.sqrt(x3)
     x13 = x11 * x12
     x14 = x13 * x2
-    x15 = x8**2
+    x15 = x8 ** 2
     x16 = x13 * x15 + x14
     x17 = 2 * x14 * x8 + x16 * x8
     x18 = numpy.exp(-x10 * (A[1] - B[1]) ** 2)
@@ -2188,7 +2173,7 @@ def kinetic3d_30(a, A, b, B):
     x21 = x18 * x20
     x22 = x17 * x21
     x23 = x3 * (a * A[2] + b * B[2]) - A[2]
-    x24 = x23**2
+    x24 = x23 ** 2
     x25 = -x0 - x6 * (x2 + x24)
     x26 = x13 * x8
     x27 = 4 * x10
@@ -2225,7 +2210,7 @@ def kinetic3d_30(a, A, b, B):
     x58 = x48 * x57
 
     # 10 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x21
             * (x2 * (x26 * x27 + x28 * x29 * x8) + x32 * x8 + x9 * (x1 * x17 - 3 * x26))
@@ -2248,7 +2233,6 @@ def kinetic3d_30(a, A, b, B):
             + x58 * x7,
         ]
     )
-    return S
 
 
 def kinetic3d_31(a, A, b, B):
@@ -2262,8 +2246,8 @@ def kinetic3d_31(a, A, b, B):
     x3 = (a + b) ** (-1.0)
     x4 = -x3 * (a * A[1] + b * B[1])
     x5 = -x4 - A[1]
-    x6 = x5**2
-    x7 = 2 * a**2
+    x6 = x5 ** 2
+    x7 = 2 * a ** 2
     x8 = -x0 - x7 * (x2 + x6)
     x9 = b * x3
     x10 = a * x9
@@ -2274,7 +2258,7 @@ def kinetic3d_31(a, A, b, B):
     x15 = 3 * x14
     x16 = -x3 * (a * A[0] + b * B[0])
     x17 = -x16 - A[0]
-    x18 = x17**2
+    x18 = x17 ** 2
     x19 = x13 * x18
     x20 = -x16 - B[0]
     x21 = 2 * x13
@@ -2292,7 +2276,7 @@ def kinetic3d_31(a, A, b, B):
     x33 = x28 * x32
     x34 = -x3 * (a * A[2] + b * B[2])
     x35 = -x34 - A[2]
-    x36 = x35**2
+    x36 = x35 ** 2
     x37 = -x0 - x7 * (x2 + x36)
     x38 = x1 * x9
     x39 = -x0 - x7 * (x18 + x2)
@@ -2387,7 +2371,7 @@ def kinetic3d_31(a, A, b, B):
     x122 = x121 * x95
 
     # 30 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x32
             * (
@@ -2442,7 +2426,6 @@ def kinetic3d_31(a, A, b, B):
             ),
         ]
     )
-    return S
 
 
 def kinetic3d_32(a, A, b, B):
@@ -2457,8 +2440,8 @@ def kinetic3d_32(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = x6**2
-    x8 = 2 * a**2
+    x7 = x6 ** 2
+    x8 = 2 * a ** 2
     x9 = -x0 - x8 * (x3 + x7)
     x10 = -x4 * (a * A[0] + b * B[0])
     x11 = -x10 - A[0]
@@ -2468,7 +2451,7 @@ def kinetic3d_32(a, A, b, B):
     x15 = numpy.exp(-x14 * (A[0] - B[0]) ** 2)
     x16 = numpy.sqrt(numpy.pi) * numpy.sqrt(x4)
     x17 = x15 * x16
-    x18 = x12**2 * x17
+    x18 = x12 ** 2 * x17
     x19 = x17 * x3
     x20 = 3 * x19
     x21 = 2 * x17
@@ -2494,11 +2477,11 @@ def kinetic3d_32(a, A, b, B):
     x41 = x36 * x40
     x42 = -x4 * (a * A[2] + b * B[2])
     x43 = -x42 - A[2]
-    x44 = x43**2
+    x44 = x43 ** 2
     x45 = -x0 - x8 * (x3 + x44)
     x46 = b * x4
     x47 = 4 * x14
-    x48 = x11**2
+    x48 = x11 ** 2
     x49 = -x0 - x8 * (x3 + x48)
     x50 = x3 * (x22 * x49 + x31 * x47)
     x51 = x32 + x35
@@ -2535,7 +2518,7 @@ def kinetic3d_32(a, A, b, B):
     x82 = x76 * x81
     x83 = x45 * x82 + x54 * x82
     x84 = x3 * x73
-    x85 = x69**2 * x73
+    x85 = x69 ** 2 * x73
     x86 = x84 + x85
     x87 = x11 * x24 + x11 * x77
     x88 = x76 * x87
@@ -2548,7 +2531,7 @@ def kinetic3d_32(a, A, b, B):
     x95 = x11 * x94 + x3 * (x11 * x21 * x49 + x30 * x47) + x46 * (x1 * x87 - 3 * x30)
     x96 = x40 * x81
     x97 = x3 * x76
-    x98 = x76 * x81**2
+    x98 = x76 * x81 ** 2
     x99 = x97 + x98
     x100 = x73 * x87
     x101 = x45 * x97
@@ -2665,7 +2648,7 @@ def kinetic3d_32(a, A, b, B):
     x206 = x160 * x205
 
     # 60 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x40
             * (
@@ -2752,7 +2735,6 @@ def kinetic3d_32(a, A, b, B):
             + x206 * x9,
         ]
     )
-    return S
 
 
 def kinetic3d_33(a, A, b, B):
@@ -2767,8 +2749,8 @@ def kinetic3d_33(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = x6**2
-    x8 = 2 * a**2
+    x7 = x6 ** 2
+    x8 = 2 * a ** 2
     x9 = -x0 - x8 * (x3 + x7)
     x10 = -x4 * (a * A[0] + b * B[0])
     x11 = -x10 - A[0]
@@ -2780,7 +2762,7 @@ def kinetic3d_33(a, A, b, B):
     x17 = x15 * x16
     x18 = x17 * x3
     x19 = x12 * x18
-    x20 = x12**2 * x17
+    x20 = x12 ** 2 * x17
     x21 = x18 + x20
     x22 = x12 * x21
     x23 = x11 * x21
@@ -2807,11 +2789,11 @@ def kinetic3d_33(a, A, b, B):
     x44 = x39 * x43
     x45 = -x4 * (a * A[2] + b * B[2])
     x46 = -x45 - A[2]
-    x47 = x46**2
+    x47 = x46 ** 2
     x48 = -x0 - x8 * (x3 + x47)
     x49 = b * x4
     x50 = 4 * x14
-    x51 = x11**2
+    x51 = x11 ** 2
     x52 = -x0 - x8 * (x3 + x51)
     x53 = x18 * x52
     x54 = 3 * x53
@@ -2873,7 +2855,7 @@ def kinetic3d_33(a, A, b, B):
     x102 = x101 * x91
     x103 = x102 * x48 + x102 * x58
     x104 = x3 * x88
-    x105 = x83**2 * x88
+    x105 = x83 ** 2 * x88
     x106 = x104 + x105
     x107 = x17 * x51
     x108 = x11 * x92 + x3 * (x107 + x35)
@@ -2891,7 +2873,7 @@ def kinetic3d_33(a, A, b, B):
     x120 = x11 * x119 + x3 * (x118 + x69) + x49 * (2 * a * x108 - x25 - 3 * x67)
     x121 = x101 * x43
     x122 = x3 * x91
-    x123 = x101**2 * x91
+    x123 = x101 ** 2 * x91
     x124 = x122 + x123
     x125 = x108 * x88
     x126 = x122 * x48
@@ -3083,7 +3065,7 @@ def kinetic3d_33(a, A, b, B):
     x294 = x230 * x293
 
     # 100 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x43
             * (
@@ -3208,7 +3190,6 @@ def kinetic3d_33(a, A, b, B):
             + x294 * x9,
         ]
     )
-    return S
 
 
 def kinetic3d_34(a, A, b, B):
@@ -3223,8 +3204,8 @@ def kinetic3d_34(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = x6**2
-    x8 = 2 * a**2
+    x7 = x6 ** 2
+    x8 = 2 * a ** 2
     x9 = -x0 - x8 * (x3 + x7)
     x10 = -x4 * (a * A[0] + b * B[0])
     x11 = -x10 - A[0]
@@ -3236,7 +3217,7 @@ def kinetic3d_34(a, A, b, B):
     x17 = x16 * x3
     x18 = 3 * x17
     x19 = -x10 - B[0]
-    x20 = x16 * x19**2
+    x20 = x16 * x19 ** 2
     x21 = x3 * (x18 + 3 * x20)
     x22 = 2 * x17
     x23 = x19 * x22
@@ -3265,7 +3246,7 @@ def kinetic3d_34(a, A, b, B):
     x46 = x41 * x45
     x47 = -x4 * (a * A[2] + b * B[2])
     x48 = -x47 - A[2]
-    x49 = x48**2
+    x49 = x48 ** 2
     x50 = -x0 - x8 * (x3 + x49)
     x51 = b * x4
     x52 = 4 * x13
@@ -3274,7 +3255,7 @@ def kinetic3d_34(a, A, b, B):
     x55 = x38 + x40
     x56 = x51 * (2 * a * x55 - 2 * x25 - x54)
     x57 = x16 * x19
-    x58 = x11**2
+    x58 = x11 ** 2
     x59 = -x0 - x8 * (x3 + x58)
     x60 = 2 * x16
     x61 = x19 * x60
@@ -3343,7 +3324,7 @@ def kinetic3d_34(a, A, b, B):
     x116 = x102 * x115
     x117 = x116 * x50 + x116 * x66
     x118 = x3 * x99
-    x119 = x93**2 * x99
+    x119 = x93 ** 2 * x99
     x120 = x118 + x119
     x121 = x3 * (x106 + x57)
     x122 = x108 * x11
@@ -3371,7 +3352,7 @@ def kinetic3d_34(a, A, b, B):
     )
     x141 = x115 * x45
     x142 = x102 * x3
-    x143 = x102 * x115**2
+    x143 = x102 * x115 ** 2
     x144 = x142 + x143
     x145 = x123 * x99
     x146 = x142 * x50
@@ -3640,7 +3621,7 @@ def kinetic3d_34(a, A, b, B):
     x383 = x301 * x382
 
     # 150 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x45
             * (
@@ -3815,7 +3796,6 @@ def kinetic3d_34(a, A, b, B):
             + x383 * x9,
         ]
     )
-    return S
 
 
 def kinetic3d_40(a, A, b, B):
@@ -3828,8 +3808,8 @@ def kinetic3d_40(a, A, b, B):
     x2 = (2 * b + x1) ** (-1.0)
     x3 = (a + b) ** (-1.0)
     x4 = x3 * (a * A[1] + b * B[1]) - A[1]
-    x5 = x4**2
-    x6 = 2 * a**2
+    x5 = x4 ** 2
+    x6 = 2 * a ** 2
     x7 = -x0 - x6 * (x2 + x5)
     x8 = b * x3
     x9 = a * x8
@@ -3838,7 +3818,7 @@ def kinetic3d_40(a, A, b, B):
     x12 = x10 * x11
     x13 = x12 * x2
     x14 = x3 * (a * A[0] + b * B[0]) - A[0]
-    x15 = x14**2
+    x15 = x14 ** 2
     x16 = x12 * x15
     x17 = x13 + x16
     x18 = 2 * x13 * x14 + x14 * x17
@@ -3849,7 +3829,7 @@ def kinetic3d_40(a, A, b, B):
     x23 = x20 * x22
     x24 = x19 * x23
     x25 = x3 * (a * A[2] + b * B[2]) - A[2]
-    x26 = x25**2
+    x26 = x25 ** 2
     x27 = -x0 - x6 * (x2 + x26)
     x28 = -x0 - x6 * (x15 + x2)
     x29 = x13 * x28
@@ -3906,7 +3886,7 @@ def kinetic3d_40(a, A, b, B):
     x80 = x71 * x79
 
     # 15 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x23
             * (
@@ -3946,7 +3926,6 @@ def kinetic3d_40(a, A, b, B):
             ),
         ]
     )
-    return S
 
 
 def kinetic3d_41(a, A, b, B):
@@ -3960,8 +3939,8 @@ def kinetic3d_41(a, A, b, B):
     x3 = (a + b) ** (-1.0)
     x4 = -x3 * (a * A[1] + b * B[1])
     x5 = -x4 - A[1]
-    x6 = x5**2
-    x7 = 2 * a**2
+    x6 = x5 ** 2
+    x7 = 2 * a ** 2
     x8 = -x0 - x7 * (x2 + x6)
     x9 = -x3 * (a * A[0] + b * B[0])
     x10 = -x9 - A[0]
@@ -3978,7 +3957,7 @@ def kinetic3d_41(a, A, b, B):
     x21 = x16 * x17
     x22 = x20 + x21
     x23 = x10 * x22
-    x24 = x10**2
+    x24 = x10 ** 2
     x25 = x15 * x24
     x26 = x20 + x25
     x27 = 2 * x10 * x20 + x10 * x26
@@ -3995,7 +3974,7 @@ def kinetic3d_41(a, A, b, B):
     x38 = x33 * x37
     x39 = -x3 * (a * A[2] + b * B[2])
     x40 = -x39 - A[2]
-    x41 = x40**2
+    x41 = x40 ** 2
     x42 = -x0 - x7 * (x2 + x41)
     x43 = x1 * x11
     x44 = -x0 - x7 * (x2 + x24)
@@ -4145,7 +4124,7 @@ def kinetic3d_41(a, A, b, B):
     x164 = x139 * x163
 
     # 45 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x37
             * (
@@ -4215,7 +4194,6 @@ def kinetic3d_41(a, A, b, B):
             + x164 * x8,
         ]
     )
-    return S
 
 
 def kinetic3d_42(a, A, b, B):
@@ -4230,12 +4208,12 @@ def kinetic3d_42(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = x6**2
-    x8 = 2 * a**2
+    x7 = x6 ** 2
+    x8 = 2 * a ** 2
     x9 = -x0 - x8 * (x3 + x7)
     x10 = -x4 * (a * A[0] + b * B[0])
     x11 = -x10 - A[0]
-    x12 = x11**2
+    x12 = x11 ** 2
     x13 = b * x4
     x14 = a * x13
     x15 = numpy.exp(-x14 * (A[0] - B[0]) ** 2)
@@ -4249,7 +4227,7 @@ def kinetic3d_42(a, A, b, B):
     x23 = x21 * x22
     x24 = x11 * x23 + x20
     x25 = x3 * (x18 + x24)
-    x26 = x21**2
+    x26 = x21 ** 2
     x27 = x17 * x26
     x28 = x3 * (x24 + x27)
     x29 = 2 * x19
@@ -4276,7 +4254,7 @@ def kinetic3d_42(a, A, b, B):
     x50 = x45 * x49
     x51 = -x4 * (a * A[2] + b * B[2])
     x52 = -x51 - A[2]
-    x53 = x52**2
+    x53 = x52 ** 2
     x54 = -x0 - x8 * (x3 + x53)
     x55 = x13 * (2 * a * x42 - x22 * x26 - x29)
     x56 = x25 + x41
@@ -4338,7 +4316,7 @@ def kinetic3d_42(a, A, b, B):
     x104 = x103 * x98
     x105 = x104 * x54 + x104 * x59
     x106 = x3 * x95
-    x107 = x91**2 * x95
+    x107 = x91 ** 2 * x95
     x108 = x106 + x107
     x109 = x11 * x92 + x3 * (3 * x18 + x20)
     x110 = x109 * x98
@@ -4352,7 +4330,7 @@ def kinetic3d_42(a, A, b, B):
     )
     x117 = x103 * x49
     x118 = x3 * x98
-    x119 = x103**2 * x98
+    x119 = x103 ** 2 * x98
     x120 = x118 + x119
     x121 = x109 * x95
     x122 = x118 * x54
@@ -4538,7 +4516,7 @@ def kinetic3d_42(a, A, b, B):
     x276 = x233 * x275
 
     # 90 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x49
             * (
@@ -4653,7 +4631,6 @@ def kinetic3d_42(a, A, b, B):
             + x276 * x9,
         ]
     )
-    return S
 
 
 def kinetic3d_43(a, A, b, B):
@@ -4668,8 +4645,8 @@ def kinetic3d_43(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = x6**2
-    x8 = 2 * a**2
+    x7 = x6 ** 2
+    x8 = 2 * a ** 2
     x9 = -x0 - x8 * (x3 + x7)
     x10 = -x4 * (a * A[0] + b * B[0])
     x11 = -x10 - A[0]
@@ -4681,7 +4658,7 @@ def kinetic3d_43(a, A, b, B):
     x17 = x15 * x16
     x18 = x17 * x3
     x19 = x12 * x18
-    x20 = x12**2 * x17
+    x20 = x12 ** 2 * x17
     x21 = x18 + x20
     x22 = x12 * x21
     x23 = x11 * x21
@@ -4723,13 +4700,13 @@ def kinetic3d_43(a, A, b, B):
     x59 = x54 * x58
     x60 = -x4 * (a * A[2] + b * B[2])
     x61 = -x60 - A[2]
-    x62 = x61**2
+    x62 = x61 ** 2
     x63 = -x0 - x8 * (x3 + x62)
     x64 = b * x4
     x65 = x64 * (2 * a * x34 - 2 * x22 - x46)
     x66 = x44 + x53
     x67 = x64 * (2 * a * x66 - 6 * x19 - x24)
-    x68 = x11**2
+    x68 = x11 ** 2
     x69 = -x0 - x8 * (x3 + x68)
     x70 = x18 * x69
     x71 = x1 * x64
@@ -4804,7 +4781,7 @@ def kinetic3d_43(a, A, b, B):
     x132 = x118 * x131
     x133 = x132 * x63 + x132 * x71
     x134 = x115 * x3
-    x135 = x109**2 * x115
+    x135 = x109 ** 2 * x115
     x136 = x134 + x135
     x137 = x11 * x120 + x11 * x28
     x138 = x11 * x127 + x3 * (x137 + 3 * x49 + 3 * x52)
@@ -4826,7 +4803,7 @@ def kinetic3d_43(a, A, b, B):
     )
     x151 = x131 * x58
     x152 = x118 * x3
-    x153 = x118 * x131**2
+    x153 = x118 * x131 ** 2
     x154 = x152 + x153
     x155 = x115 * x138
     x156 = x152 * x63
@@ -5108,7 +5085,7 @@ def kinetic3d_43(a, A, b, B):
     x394 = x331 * x393
 
     # 150 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x58
             * (
@@ -5283,7 +5260,6 @@ def kinetic3d_43(a, A, b, B):
             + x394 * x9,
         ]
     )
-    return S
 
 
 def kinetic3d_44(a, A, b, B):
@@ -5298,8 +5274,8 @@ def kinetic3d_44(a, A, b, B):
     x4 = (a + b) ** (-1.0)
     x5 = -x4 * (a * A[1] + b * B[1])
     x6 = -x5 - A[1]
-    x7 = x6**2
-    x8 = 2 * a**2
+    x7 = x6 ** 2
+    x8 = 2 * a ** 2
     x9 = -x0 - x8 * (x3 + x7)
     x10 = -x4 * (a * A[0] + b * B[0])
     x11 = -x10 - A[0]
@@ -5311,7 +5287,7 @@ def kinetic3d_44(a, A, b, B):
     x17 = x16 * x3
     x18 = 3 * x17
     x19 = -x10 - B[0]
-    x20 = x16 * x19**2
+    x20 = x16 * x19 ** 2
     x21 = x3 * (x18 + 3 * x20)
     x22 = 2 * x17
     x23 = x19 * x22
@@ -5355,7 +5331,7 @@ def kinetic3d_44(a, A, b, B):
     x61 = x56 * x60
     x62 = -x4 * (a * A[2] + b * B[2])
     x63 = -x62 - A[2]
-    x64 = x63**2
+    x64 = x63 ** 2
     x65 = -x0 - x8 * (x3 + x64)
     x66 = b * x4
     x67 = x66 * (2 * a * x37 - 2 * x27 - x47)
@@ -5363,7 +5339,7 @@ def kinetic3d_44(a, A, b, B):
     x69 = x66 * (2 * a * x68 - 3 * x21 - 3 * x28)
     x70 = x16 * x19
     x71 = 4 * x13
-    x72 = x11**2
+    x72 = x11 ** 2
     x73 = -x0 - x8 * (x3 + x72)
     x74 = x3 * (x49 * x73 + x70 * x71)
     x75 = x17 * x73
@@ -5451,7 +5427,7 @@ def kinetic3d_44(a, A, b, B):
     x149 = x133 * x148
     x150 = x149 * x65 + x149 * x76
     x151 = x130 * x3
-    x152 = x123**2 * x130
+    x152 = x123 ** 2 * x130
     x153 = x151 + x152
     x154 = x16 * x72
     x155 = x3 * (x154 + x50)
@@ -5483,7 +5459,7 @@ def kinetic3d_44(a, A, b, B):
     )
     x178 = x148 * x60
     x179 = x133 * x3
-    x180 = x133 * x148**2
+    x180 = x133 * x148 ** 2
     x181 = x179 + x180
     x182 = x130 * x157
     x183 = x179 * x65
@@ -5862,7 +5838,7 @@ def kinetic3d_44(a, A, b, B):
     x506 = x423 * x505
 
     # 225 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x60
             * (
@@ -6112,4 +6088,3 @@ def kinetic3d_44(a, A, b, B):
             + x506 * x9,
         ]
     )
-    return S
