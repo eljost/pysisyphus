@@ -10,7 +10,7 @@ def ovlp3d_00(a, A, b, B):
     x1 = a * b * x0
 
     # 1 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             numpy.pi ** (3 / 2)
             * x0 ** (3 / 2)
@@ -19,7 +19,6 @@ def ovlp3d_00(a, A, b, B):
             * numpy.exp(-x1 * (A[2] - B[2]) ** 2)
         ]
     )
-    return S
 
 
 def ovlp3d_01(a, A, b, B):
@@ -38,14 +37,13 @@ def ovlp3d_01(a, A, b, B):
     )
 
     # 3 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x2 * (x0 * (a * A[0] + b * B[0]) - B[0]),
             x2 * (x0 * (a * A[1] + b * B[1]) - B[1]),
             x2 * (x0 * (a * A[2] + b * B[2]) - B[2]),
         ]
     )
-    return S
 
 
 def ovlp3d_02(a, A, b, B):
@@ -73,17 +71,16 @@ def ovlp3d_02(a, A, b, B):
     x17 = x6 * x9
 
     # 6 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
-            x10 * x2 * (x3 * x7 + x7 * x8**2),
+            x10 * x2 * (x3 * x7 + x7 * x8 ** 2),
             x11 * x14,
             x14 * x15,
-            x10 * x4 * (x11**2 * x16 + x16 * x3),
+            x10 * x4 * (x11 ** 2 * x16 + x16 * x3),
             x11 * x12 * x13 * x15 * x5 * x9,
-            numpy.pi * x13 * (x15**2 * x17 + x17 * x3),
+            numpy.pi * x13 * (x15 ** 2 * x17 + x17 * x3),
         ]
     )
-    return S
 
 
 def ovlp3d_03(a, A, b, B):
@@ -100,7 +97,7 @@ def ovlp3d_03(a, A, b, B):
     x6 = numpy.sqrt(numpy.pi) * x5
     x7 = x4 * x6
     x8 = x2 * x7
-    x9 = x1**2 * x7 + x8
+    x9 = x1 ** 2 * x7 + x8
     x10 = numpy.exp(-x3 * (A[1] - B[1]) ** 2)
     x11 = numpy.exp(-x3 * (A[2] - B[2]) ** 2)
     x12 = numpy.pi * x0 * x11
@@ -110,18 +107,18 @@ def ovlp3d_03(a, A, b, B):
     x16 = x0 * (a * A[2] + b * B[2]) - B[2]
     x17 = x10 * x6
     x18 = x17 * x2
-    x19 = x14**2 * x17 + x18
+    x19 = x14 ** 2 * x17 + x18
     x20 = x12 * x4
     x21 = x19 * x20
     x22 = x0 * x10 * x4
     x23 = x11 * x6
     x24 = x2 * x23
-    x25 = x16**2 * x23 + x24
+    x25 = x16 ** 2 * x23 + x24
     x26 = numpy.pi * x22
     x27 = x25 * x26
 
     # 10 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x13 * (2 * x1 * x8 + x1 * x9),
             x14 * x15,
@@ -135,7 +132,6 @@ def ovlp3d_03(a, A, b, B):
             x26 * (2 * x16 * x24 + x16 * x25),
         ]
     )
-    return S
 
 
 def ovlp3d_04(a, A, b, B):
@@ -151,7 +147,7 @@ def ovlp3d_04(a, A, b, B):
     x5 = x3 * x4
     x6 = x0 * x5
     x7 = x1 * (a * A[0] + b * B[0]) - B[0]
-    x8 = x5 * x7**2
+    x8 = x5 * x7 ** 2
     x9 = x6 + x8
     x10 = 2 * x6 * x7 + x7 * x9
     x11 = numpy.exp(-x2 * (A[1] - B[1]) ** 2)
@@ -163,11 +159,11 @@ def ovlp3d_04(a, A, b, B):
     x17 = x1 * (a * A[2] + b * B[2]) - B[2]
     x18 = x11 * x4
     x19 = x0 * x18
-    x20 = x15**2 * x18
+    x20 = x15 ** 2 * x18
     x21 = x19 + x20
     x22 = x12 * x4
     x23 = x0 * x22
-    x24 = x17**2 * x22
+    x24 = x17 ** 2 * x22
     x25 = x23 + x24
     x26 = 2 * x15 * x19 + x15 * x21
     x27 = x13 * x3
@@ -177,7 +173,7 @@ def ovlp3d_04(a, A, b, B):
     x31 = x29 * x30
 
     # 15 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x14 * (x0 * (3 * x6 + 3 * x8) + x10 * x7),
             x15 * x16,
@@ -196,7 +192,6 @@ def ovlp3d_04(a, A, b, B):
             x29 * (x0 * (3 * x23 + 3 * x24) + x17 * x30),
         ]
     )
-    return S
 
 
 def ovlp3d_10(a, A, b, B):
@@ -215,14 +210,13 @@ def ovlp3d_10(a, A, b, B):
     )
 
     # 3 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x2 * (x0 * (a * A[0] + b * B[0]) - A[0]),
             x2 * (x0 * (a * A[1] + b * B[1]) - A[1]),
             x2 * (x0 * (a * A[2] + b * B[2]) - A[2]),
         ]
     )
-    return S
 
 
 def ovlp3d_11(a, A, b, B):
@@ -258,7 +252,7 @@ def ovlp3d_11(a, A, b, B):
     x25 = x12 * x24
 
     # 9 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x11 * x2 * (x3 * x6 + x5 * x8 * x9),
             x13 * x16,
@@ -271,7 +265,6 @@ def ovlp3d_11(a, A, b, B):
             numpy.pi * x21 * (x10 * x6 + x18 * x24 * x5),
         ]
     )
-    return S
 
 
 def ovlp3d_12(a, A, b, B):
@@ -290,7 +283,7 @@ def ovlp3d_12(a, A, b, B):
     x8 = x5 * x7
     x9 = x3 * x8
     x10 = -x1 - A[0]
-    x11 = x2**2 * x8 + x9
+    x11 = x2 ** 2 * x8 + x9
     x12 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
     x13 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
     x14 = numpy.pi * x0 * x13
@@ -302,7 +295,7 @@ def ovlp3d_12(a, A, b, B):
     x20 = -x19 - B[2]
     x21 = x12 * x7
     x22 = x21 * x3
-    x23 = x17**2 * x21 + x22
+    x23 = x17 ** 2 * x21 + x22
     x24 = x14 * x5
     x25 = x23 * x24
     x26 = numpy.pi ** (3 / 2)
@@ -310,7 +303,7 @@ def ovlp3d_12(a, A, b, B):
     x28 = x13 * x20 * x26 * x27 * x6
     x29 = x13 * x7
     x30 = x29 * x3
-    x31 = x20**2 * x29 + x30
+    x31 = x20 ** 2 * x29 + x30
     x32 = numpy.pi * x27
     x33 = x31 * x32
     x34 = -x16 - A[1]
@@ -320,7 +313,7 @@ def ovlp3d_12(a, A, b, B):
     x38 = x32 * (x20 * x29 * x37 + x30)
 
     # 18 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x15 * (x10 * x11 + 2 * x2 * x9),
             x17 * x18,
@@ -342,7 +335,6 @@ def ovlp3d_12(a, A, b, B):
             x32 * (2 * x20 * x30 + x31 * x37),
         ]
     )
-    return S
 
 
 def ovlp3d_13(a, A, b, B):
@@ -359,7 +351,7 @@ def ovlp3d_13(a, A, b, B):
     x6 = x0 * x5
     x7 = -x1 * (a * A[0] + b * B[0])
     x8 = -x7 - B[0]
-    x9 = x5 * x8**2
+    x9 = x5 * x8 ** 2
     x10 = -x7 - A[0]
     x11 = 2 * x6 * x8
     x12 = x6 + x9
@@ -375,13 +367,13 @@ def ovlp3d_13(a, A, b, B):
     x22 = -x21 - B[2]
     x23 = x14 * x4
     x24 = x0 * x23
-    x25 = x19**2 * x23
+    x25 = x19 ** 2 * x23
     x26 = x24 + x25
     x27 = x10 * x5 * x8 + x6
     x28 = x15 * x4
     x29 = x17 * x22
     x30 = x0 * x28
-    x31 = x22**2 * x28
+    x31 = x22 ** 2 * x28
     x32 = x30 + x31
     x33 = 2 * x19 * x24
     x34 = x19 * x26 + x33
@@ -402,7 +394,7 @@ def ovlp3d_13(a, A, b, B):
     x49 = x38 * (x32 * x47 + x40)
 
     # 30 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x17 * (x0 * (3 * x6 + 3 * x9) + x10 * x13),
             x19 * x20,
@@ -436,7 +428,6 @@ def ovlp3d_13(a, A, b, B):
             x38 * (x0 * (3 * x30 + 3 * x31) + x41 * x47),
         ]
     )
-    return S
 
 
 def ovlp3d_14(a, A, b, B):
@@ -454,7 +445,7 @@ def ovlp3d_14(a, A, b, B):
     x7 = x5 * x6
     x8 = x0 * x7
     x9 = x3 * x8
-    x10 = x3**2 * x7
+    x10 = x3 ** 2 * x7
     x11 = x10 + x8
     x12 = x11 * x3
     x13 = -x2 - A[0]
@@ -474,13 +465,13 @@ def ovlp3d_14(a, A, b, B):
     x27 = x11 * x13 + x15
     x28 = x18 * x6
     x29 = x0 * x28
-    x30 = x23**2 * x28
+    x30 = x23 ** 2 * x28
     x31 = x29 + x30
     x32 = x19 * x6
     x33 = x31 * x32
     x34 = x21 * x26
     x35 = x0 * x32
-    x36 = x26**2 * x32
+    x36 = x26 ** 2 * x32
     x37 = x35 + x36
     x38 = x28 * x37
     x39 = x23 * x29
@@ -518,7 +509,7 @@ def ovlp3d_14(a, A, b, B):
     x71 = x54 * (x48 * x67 + x56)
 
     # 45 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x21 * (x0 * (4 * x12 + 8 * x9) + x13 * x17),
             x23 * x24,
@@ -567,7 +558,6 @@ def ovlp3d_14(a, A, b, B):
             x54 * (x0 * (8 * x45 + 4 * x47) + x57 * x67),
         ]
     )
-    return S
 
 
 def ovlp3d_20(a, A, b, B):
@@ -595,17 +585,16 @@ def ovlp3d_20(a, A, b, B):
     x17 = x6 * x9
 
     # 6 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
-            x10 * x2 * (x3 * x7 + x7 * x8**2),
+            x10 * x2 * (x3 * x7 + x7 * x8 ** 2),
             x11 * x14,
             x14 * x15,
-            x10 * x4 * (x11**2 * x16 + x16 * x3),
+            x10 * x4 * (x11 ** 2 * x16 + x16 * x3),
             x11 * x12 * x13 * x15 * x5 * x9,
-            numpy.pi * x13 * (x15**2 * x17 + x17 * x3),
+            numpy.pi * x13 * (x15 ** 2 * x17 + x17 * x3),
         ]
     )
-    return S
 
 
 def ovlp3d_21(a, A, b, B):
@@ -633,7 +622,7 @@ def ovlp3d_21(a, A, b, B):
     x17 = x14 * x16
     x18 = -x1 * (a * A[1] + b * B[1])
     x19 = -x18 - B[1]
-    x20 = x17 * (x11 * x5**2 + x12)
+    x20 = x17 * (x11 * x5 ** 2 + x12)
     x21 = -x1 * (a * A[2] + b * B[2])
     x22 = -x21 - B[2]
     x23 = -x18 - A[1]
@@ -653,12 +642,12 @@ def ovlp3d_21(a, A, b, B):
     x37 = x22 * x36 + x34
     x38 = numpy.pi * x31
     x39 = x16 * x7
-    x40 = x39 * (x23**2 * x27 + x26)
+    x40 = x39 * (x23 ** 2 * x27 + x26)
     x41 = x38 * x7
-    x42 = x41 * (x33**2 * x35 + x34)
+    x42 = x41 * (x33 ** 2 * x35 + x34)
 
     # 18 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x17 * (x0 * (x10 * x11 + x9) + x13 * x5),
             x19 * x20,
@@ -680,7 +669,6 @@ def ovlp3d_21(a, A, b, B):
             x41 * (x0 * (x22 * x35 + x36) + x33 * x37),
         ]
     )
-    return S
 
 
 def ovlp3d_22(a, A, b, B):
@@ -697,7 +685,7 @@ def ovlp3d_22(a, A, b, B):
     x6 = x0 * x5
     x7 = -x1 * (a * A[0] + b * B[0])
     x8 = -x7 - B[0]
-    x9 = x5 * x8**2
+    x9 = x5 * x8 ** 2
     x10 = -x7 - A[0]
     x11 = x10 * x5
     x12 = x11 * x8
@@ -715,13 +703,13 @@ def ovlp3d_22(a, A, b, B):
     x24 = -x23 - B[2]
     x25 = x15 * x4
     x26 = x0 * x25
-    x27 = x20**2 * x25
+    x27 = x20 ** 2 * x25
     x28 = x26 + x27
-    x29 = x10**2 * x5 + x6
+    x29 = x10 ** 2 * x5 + x6
     x30 = x16 * x4
     x31 = x18 * x24
     x32 = x0 * x30
-    x33 = x24**2 * x30
+    x33 = x24 ** 2 * x30
     x34 = x32 + x33
     x35 = -x19 - A[1]
     x36 = x14 * x18
@@ -741,15 +729,15 @@ def ovlp3d_22(a, A, b, B):
     x50 = x32 + x49
     x51 = 2 * x24 * x32 + x34 * x46
     x52 = x44 * x51
-    x53 = x25 * x35**2 + x26
+    x53 = x25 * x35 ** 2 + x26
     x54 = x41 * (x0 * (x20 * x25 + x37) + x35 * x39)
     x55 = x41 * x8
     x56 = x44 * x8
-    x57 = x30 * x46**2 + x32
+    x57 = x30 * x46 ** 2 + x32
     x58 = x44 * (x0 * (x24 * x30 + x48) + x46 * x50)
 
     # 36 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x18 * (x0 * (2 * x12 + 3 * x6 + x9) + x10 * x14),
             x20 * x22,
@@ -789,7 +777,6 @@ def ovlp3d_22(a, A, b, B):
             x44 * (x0 * (3 * x32 + x33 + 2 * x49) + x46 * x51),
         ]
     )
-    return S
 
 
 def ovlp3d_23(a, A, b, B):
@@ -807,7 +794,7 @@ def ovlp3d_23(a, A, b, B):
     x7 = x5 * x6
     x8 = x0 * x7
     x9 = x3 * x8
-    x10 = x3**2 * x7
+    x10 = x3 ** 2 * x7
     x11 = x10 + x8
     x12 = x11 * x3
     x13 = -x2 - A[0]
@@ -830,7 +817,7 @@ def ovlp3d_23(a, A, b, B):
     x30 = -x29 - B[2]
     x31 = x19 * x6
     x32 = x0 * x31
-    x33 = x24**2 * x31
+    x33 = x24 ** 2 * x31
     x34 = x32 + x33
     x35 = x3 * x7
     x36 = x26 + x8
@@ -838,13 +825,13 @@ def ovlp3d_23(a, A, b, B):
     x38 = x20 * x6
     x39 = x22 * x30
     x40 = x0 * x38
-    x41 = x30**2 * x38
+    x41 = x30 ** 2 * x38
     x42 = x40 + x41
     x43 = x24 * x32
     x44 = 2 * x43
     x45 = x24 * x34
     x46 = x44 + x45
-    x47 = x13**2 * x7 + x8
+    x47 = x13 ** 2 * x7 + x8
     x48 = x30 * x38
     x49 = x24 * x31
     x50 = x30 * x40
@@ -875,17 +862,17 @@ def ovlp3d_23(a, A, b, B):
     x75 = 3 * x40
     x76 = x0 * (3 * x41 + x75) + x53 * x68
     x77 = x66 * x76
-    x78 = x31 * x54**2 + x32
+    x78 = x31 * x54 ** 2 + x32
     x79 = x0 * (x49 + x56) + x54 * x58
     x80 = x63 * (x0 * (x33 + 2 * x57 + x61) + x54 * x60)
     x81 = x3 * x63
     x82 = x3 * x66
-    x83 = x38 * x68**2 + x40
+    x83 = x38 * x68 ** 2 + x40
     x84 = x0 * (x48 + x70) + x68 * x72
     x85 = x66 * (x0 * (x41 + 2 * x71 + x75) + x68 * x74)
 
     # 60 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x22 * (x0 * (x12 + 3 * x14 + 8 * x9) + x13 * x18),
             x24 * x28,
@@ -949,7 +936,6 @@ def ovlp3d_23(a, A, b, B):
             x66 * (x0 * (8 * x50 + x52 + 3 * x73) + x68 * x76),
         ]
     )
-    return S
 
 
 def ovlp3d_24(a, A, b, B):
@@ -967,7 +953,7 @@ def ovlp3d_24(a, A, b, B):
     x7 = 3 * x6
     x8 = -x1 * (a * A[0] + b * B[0])
     x9 = -x8 - B[0]
-    x10 = x5 * x9**2
+    x10 = x5 * x9 ** 2
     x11 = x0 * (3 * x10 + x7)
     x12 = x6 * x9
     x13 = 2 * x12
@@ -993,7 +979,7 @@ def ovlp3d_24(a, A, b, B):
     x33 = -x32 - B[2]
     x34 = x23 * x4
     x35 = x0 * x34
-    x36 = x28**2 * x34
+    x36 = x28 ** 2 * x34
     x37 = x35 + x36
     x38 = x18 * x5
     x39 = x38 * x9
@@ -1002,7 +988,7 @@ def ovlp3d_24(a, A, b, B):
     x42 = x24 * x4
     x43 = x26 * x33
     x44 = x0 * x42
-    x45 = x33**2 * x42
+    x45 = x33 ** 2 * x42
     x46 = x44 + x45
     x47 = x28 * x35
     x48 = 2 * x47
@@ -1021,7 +1007,7 @@ def ovlp3d_24(a, A, b, B):
     x61 = x0 * (3 * x36 + x60)
     x62 = x28 * x50
     x63 = x61 + x62
-    x64 = x18**2 * x5 + x6
+    x64 = x18 ** 2 * x5 + x6
     x65 = 3 * x44
     x66 = x0 * (3 * x45 + x65)
     x67 = x33 * x59
@@ -1054,19 +1040,19 @@ def ovlp3d_24(a, A, b, B):
     x94 = 8 * x56
     x95 = x0 * (4 * x58 + x94) + x68 * x85
     x96 = x83 * x95
-    x97 = x34 * x69**2 + x35
+    x97 = x34 * x69 ** 2 + x35
     x98 = x0 * (x55 + x71) + x69 * x73
     x99 = x0 * (x36 + x60 + 2 * x72) + x69 * x75
     x100 = x80 * (x0 * (x49 + 3 * x74 + x78) + x69 * x77)
     x101 = x80 * x9
     x102 = x83 * x9
-    x103 = x42 * x85**2 + x44
+    x103 = x42 * x85 ** 2 + x44
     x104 = x0 * (x54 + x87) + x85 * x89
     x105 = x0 * (x45 + x65 + 2 * x88) + x85 * x91
     x106 = x83 * (x0 * (x58 + 3 * x90 + x94) + x85 * x93)
 
     # 90 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x26 * (x0 * (5 * x11 + x17 + 4 * x19) + x18 * x22),
             x28 * x31,
@@ -1160,7 +1146,6 @@ def ovlp3d_24(a, A, b, B):
             x83 * (x0 * (5 * x66 + x67 + 4 * x92) + x85 * x95),
         ]
     )
-    return S
 
 
 def ovlp3d_30(a, A, b, B):
@@ -1177,7 +1162,7 @@ def ovlp3d_30(a, A, b, B):
     x6 = numpy.sqrt(numpy.pi) * x5
     x7 = x4 * x6
     x8 = x2 * x7
-    x9 = x1**2 * x7 + x8
+    x9 = x1 ** 2 * x7 + x8
     x10 = numpy.exp(-x3 * (A[1] - B[1]) ** 2)
     x11 = numpy.exp(-x3 * (A[2] - B[2]) ** 2)
     x12 = numpy.pi * x0 * x11
@@ -1187,18 +1172,18 @@ def ovlp3d_30(a, A, b, B):
     x16 = x0 * (a * A[2] + b * B[2]) - A[2]
     x17 = x10 * x6
     x18 = x17 * x2
-    x19 = x14**2 * x17 + x18
+    x19 = x14 ** 2 * x17 + x18
     x20 = x12 * x4
     x21 = x19 * x20
     x22 = x0 * x10 * x4
     x23 = x11 * x6
     x24 = x2 * x23
-    x25 = x16**2 * x23 + x24
+    x25 = x16 ** 2 * x23 + x24
     x26 = numpy.pi * x22
     x27 = x25 * x26
 
     # 10 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x13 * (2 * x1 * x8 + x1 * x9),
             x14 * x15,
@@ -1212,7 +1197,6 @@ def ovlp3d_30(a, A, b, B):
             x26 * (2 * x16 * x24 + x16 * x25),
         ]
     )
-    return S
 
 
 def ovlp3d_31(a, A, b, B):
@@ -1229,7 +1213,7 @@ def ovlp3d_31(a, A, b, B):
     x6 = x0 * x5
     x7 = -x1 * (a * A[0] + b * B[0])
     x8 = -x7 - A[0]
-    x9 = x5 * x8**2
+    x9 = x5 * x8 ** 2
     x10 = -x7 - B[0]
     x11 = x5 * x8
     x12 = x10 * x11
@@ -1260,7 +1244,7 @@ def ovlp3d_31(a, A, b, B):
     x37 = x33 * x35
     x38 = x24 * x37
     x39 = x36 + x38
-    x40 = x25**2 * x29
+    x40 = x25 ** 2 * x29
     x41 = x28 + x40
     x42 = x0 * (x20 * x29 + x30) + x25 * x32
     x43 = x17 * x3
@@ -1268,7 +1252,7 @@ def ovlp3d_31(a, A, b, B):
     x45 = x43 * x8
     x46 = numpy.pi * x1 * x15 * x3
     x47 = x46 * x8
-    x48 = x33 * x35**2
+    x48 = x33 * x35 ** 2
     x49 = x36 + x48
     x50 = x0 * (x24 * x33 + x37) + x35 * x39
     x51 = x46 * x50
@@ -1276,7 +1260,7 @@ def ovlp3d_31(a, A, b, B):
     x53 = x46 * (2 * x35 * x36 + x35 * x49)
 
     # 30 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x18 * (x0 * (2 * x12 + 3 * x6 + x9) + x14 * x8),
             x20 * x22,
@@ -1310,7 +1294,6 @@ def ovlp3d_31(a, A, b, B):
             x46 * (x0 * (3 * x36 + 2 * x38 + x48) + x35 * x50),
         ]
     )
-    return S
 
 
 def ovlp3d_32(a, A, b, B):
@@ -1327,7 +1310,7 @@ def ovlp3d_32(a, A, b, B):
     x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
     x7 = numpy.sqrt(numpy.pi) * numpy.sqrt(x0)
     x8 = x6 * x7
-    x9 = x4**2 * x8
+    x9 = x4 ** 2 * x8
     x10 = x3 * x8
     x11 = x2 * x6
     x12 = x11 * x7
@@ -1348,21 +1331,21 @@ def ovlp3d_32(a, A, b, B):
     x27 = x24 * x26
     x28 = -x0 * (a * A[1] + b * B[1])
     x29 = -x28 - B[1]
-    x30 = x2**2 * x8
+    x30 = x2 ** 2 * x8
     x31 = x21 + x23
     x32 = x27 * (x2 * x31 + x3 * (x14 + x30))
     x33 = -x0 * (a * A[2] + b * B[2])
     x34 = -x33 - B[2]
     x35 = x24 * x7
     x36 = x3 * x35
-    x37 = x29**2 * x35
+    x37 = x29 ** 2 * x35
     x38 = x36 + x37
     x39 = x10 + x30
     x40 = 2 * x12 * x3 + x2 * x39
     x41 = x25 * x7
     x42 = x27 * x34
     x43 = x3 * x41
-    x44 = x34**2 * x41
+    x44 = x34 ** 2 * x41
     x45 = x43 + x44
     x46 = -x28 - A[1]
     x47 = x20 * x27
@@ -1382,7 +1365,7 @@ def ovlp3d_32(a, A, b, B):
     x61 = 2 * x43
     x62 = x45 * x55
     x63 = x34 * x61 + x62
-    x64 = x35 * x46**2
+    x64 = x35 * x46 ** 2
     x65 = x36 + x64
     x66 = x3 * (x48 + x60)
     x67 = x46 * x50
@@ -1392,7 +1375,7 @@ def ovlp3d_32(a, A, b, B):
     x71 = x11 * x26
     x72 = numpy.pi * x0 * x24
     x73 = x11 * x72
-    x74 = x41 * x55**2
+    x74 = x41 * x55 ** 2
     x75 = x43 + x74
     x76 = x3 * (x54 + x57)
     x77 = x55 * x59
@@ -1409,7 +1392,7 @@ def ovlp3d_32(a, A, b, B):
     x88 = x85 * (x3 * (x74 + x79) + x55 * x78)
 
     # 60 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x27 * (x2 * x20 + x3 * (4 * x16 + 2 * x18 + 2 * x21 + 2 * x23)),
             x29 * x32,
@@ -1473,7 +1456,6 @@ def ovlp3d_32(a, A, b, B):
             x85 * (x3 * (4 * x34 * x43 + 2 * x62 + 2 * x76 + 2 * x77) + x55 * x80),
         ]
     )
-    return S
 
 
 def ovlp3d_33(a, A, b, B):
@@ -1492,7 +1474,7 @@ def ovlp3d_33(a, A, b, B):
     x8 = x6 * x7
     x9 = x3 * x8
     x10 = x4 * x9
-    x11 = x4**2 * x8
+    x11 = x4 ** 2 * x8
     x12 = x11 + x9
     x13 = x12 * x4
     x14 = x12 * x2
@@ -1525,15 +1507,15 @@ def ovlp3d_33(a, A, b, B):
     x41 = -x40 - B[2]
     x42 = x28 * x7
     x43 = x3 * x42
-    x44 = x33**2 * x42
+    x44 = x33 ** 2 * x42
     x45 = x43 + x44
-    x46 = x2**2 * x8
+    x46 = x2 ** 2 * x8
     x47 = x36 + x38
     x48 = x2 * x47 + x3 * (x24 + x46)
     x49 = x29 * x7
     x50 = x31 * x41
     x51 = x3 * x49
-    x52 = x41**2 * x49
+    x52 = x41 ** 2 * x49
     x53 = x51 + x52
     x54 = x33 * x43
     x55 = 2 * x54
@@ -1569,7 +1551,7 @@ def ovlp3d_33(a, A, b, B):
     x85 = x3 * (3 * x52 + x84)
     x86 = x65 * x77
     x87 = x85 + x86
-    x88 = x42 * x66**2
+    x88 = x42 * x66 ** 2
     x89 = x43 + x88
     x90 = x3 * (x61 + x68)
     x91 = x66 * x70
@@ -1584,7 +1566,7 @@ def ovlp3d_33(a, A, b, B):
     x100 = x2 * x98
     x101 = numpy.pi * x0 * x28 * x6
     x102 = x101 * x2
-    x103 = x49 * x77**2
+    x103 = x49 * x77 ** 2
     x104 = x103 + x51
     x105 = x3 * (x60 + x79)
     x106 = x77 * x81
@@ -1605,7 +1587,7 @@ def ovlp3d_33(a, A, b, B):
     x121 = x101 * (x111 * x77 + x3 * (2 * x105 + 2 * x106 + 4 * x62 + 2 * x82))
 
     # 100 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x31 * (x2 * x21 + x3 * (2 * x16 + 2 * x19 + 3 * x25 + 3 * x27)),
             x33 * x39,
@@ -1709,7 +1691,6 @@ def ovlp3d_33(a, A, b, B):
             x101 * (x112 * x77 + x3 * (3 * x109 + 3 * x110 + 2 * x85 + 2 * x86)),
         ]
     )
-    return S
 
 
 def ovlp3d_34(a, A, b, B):
@@ -1728,7 +1709,7 @@ def ovlp3d_34(a, A, b, B):
     x8 = x3 * x7
     x9 = 3 * x8
     x10 = -x1 - B[0]
-    x11 = x10**2 * x7
+    x11 = x10 ** 2 * x7
     x12 = x3 * (3 * x11 + x9)
     x13 = x10 * x8
     x14 = 2 * x13
@@ -1765,7 +1746,7 @@ def ovlp3d_34(a, A, b, B):
     x45 = -x44 - B[2]
     x46 = x30 * x6
     x47 = x3 * x46
-    x48 = x35**2 * x46
+    x48 = x35 ** 2 * x46
     x49 = x47 + x48
     x50 = x40 + x42
     x51 = x10 * x7
@@ -1776,13 +1757,13 @@ def ovlp3d_34(a, A, b, B):
     x56 = x31 * x6
     x57 = x33 * x45
     x58 = x3 * x56
-    x59 = x45**2 * x56
+    x59 = x45 ** 2 * x56
     x60 = x58 + x59
     x61 = x35 * x47
     x62 = 2 * x61
     x63 = x35 * x49
     x64 = x62 + x63
-    x65 = x2**2 * x7
+    x65 = x2 ** 2 * x7
     x66 = x52 + x54
     x67 = x2 * x66 + x3 * (x39 + x65)
     x68 = x45 * x56
@@ -1827,7 +1808,7 @@ def ovlp3d_34(a, A, b, B):
     x107 = x3 * (x106 + 4 * x72)
     x108 = x83 * x97
     x109 = x107 + x108
-    x110 = x46 * x84**2
+    x110 = x46 * x84 ** 2
     x111 = x110 + x47
     x112 = x3 * (x69 + x86)
     x113 = x84 * x88
@@ -1845,7 +1826,7 @@ def ovlp3d_34(a, A, b, B):
     x125 = x123 * x2
     x126 = numpy.pi * x0 * x30 * x5
     x127 = x126 * x2
-    x128 = x56 * x97**2
+    x128 = x56 * x97 ** 2
     x129 = x128 + x58
     x130 = x3 * (x68 + x99)
     x131 = x101 * x97
@@ -1871,7 +1852,7 @@ def ovlp3d_34(a, A, b, B):
     x151 = x126 * (x139 * x97 + x3 * (2 * x104 + 3 * x134 + 3 * x135 + 2 * x81))
 
     # 150 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x33 * (x2 * x25 + x3 * (2 * x21 + 2 * x23 + 4 * x27 + 4 * x29)),
             x35 * x43,
@@ -2025,7 +2006,6 @@ def ovlp3d_34(a, A, b, B):
             x126 * (x140 * x97 + x3 * (2 * x107 + 2 * x108 + 4 * x137 + 4 * x138)),
         ]
     )
-    return S
 
 
 def ovlp3d_40(a, A, b, B):
@@ -2041,7 +2021,7 @@ def ovlp3d_40(a, A, b, B):
     x5 = x3 * x4
     x6 = x0 * x5
     x7 = x1 * (a * A[0] + b * B[0]) - A[0]
-    x8 = x5 * x7**2
+    x8 = x5 * x7 ** 2
     x9 = x6 + x8
     x10 = 2 * x6 * x7 + x7 * x9
     x11 = numpy.exp(-x2 * (A[1] - B[1]) ** 2)
@@ -2053,11 +2033,11 @@ def ovlp3d_40(a, A, b, B):
     x17 = x1 * (a * A[2] + b * B[2]) - A[2]
     x18 = x11 * x4
     x19 = x0 * x18
-    x20 = x15**2 * x18
+    x20 = x15 ** 2 * x18
     x21 = x19 + x20
     x22 = x12 * x4
     x23 = x0 * x22
-    x24 = x17**2 * x22
+    x24 = x17 ** 2 * x22
     x25 = x23 + x24
     x26 = 2 * x15 * x19 + x15 * x21
     x27 = x13 * x3
@@ -2067,7 +2047,7 @@ def ovlp3d_40(a, A, b, B):
     x31 = x29 * x30
 
     # 15 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x14 * (x0 * (3 * x6 + 3 * x8) + x10 * x7),
             x15 * x16,
@@ -2086,7 +2066,6 @@ def ovlp3d_40(a, A, b, B):
             x29 * (x0 * (3 * x23 + 3 * x24) + x17 * x30),
         ]
     )
-    return S
 
 
 def ovlp3d_41(a, A, b, B):
@@ -2110,7 +2089,7 @@ def ovlp3d_41(a, A, b, B):
     x13 = x8 * x9
     x14 = x12 + x13
     x15 = x14 * x3
-    x16 = x3**2 * x7
+    x16 = x3 ** 2 * x7
     x17 = x12 + x16
     x18 = 2 * x12 * x3 + x17 * x3
     x19 = 3 * x12
@@ -2140,14 +2119,14 @@ def ovlp3d_41(a, A, b, B):
     x43 = x39 * x41
     x44 = x30 * x43
     x45 = x42 + x44
-    x46 = x31**2 * x35
+    x46 = x31 ** 2 * x35
     x47 = x34 + x46
     x48 = x27 * x35
     x49 = x0 * (x36 + x48)
     x50 = x31 * x38
     x51 = x49 + x50
     x52 = x30 * x39
-    x53 = x39 * x41**2
+    x53 = x39 * x41 ** 2
     x54 = x42 + x53
     x55 = x0 * (x43 + x52)
     x56 = x41 * x45
@@ -2168,7 +2147,7 @@ def ovlp3d_41(a, A, b, B):
     x71 = x64 * (x0 * (3 * x53 + x67) + x41 * x66)
 
     # 45 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x25 * (x0 * (3 * x11 + 3 * x15 + x18) + x21 * x3),
             x27 * x28,
@@ -2217,7 +2196,6 @@ def ovlp3d_41(a, A, b, B):
             x64 * (x0 * (3 * x55 + 3 * x56 + x66) + x41 * x68),
         ]
     )
-    return S
 
 
 def ovlp3d_42(a, A, b, B):
@@ -2233,7 +2211,7 @@ def ovlp3d_42(a, A, b, B):
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
     x6 = numpy.sqrt(numpy.pi) * numpy.sqrt(x1)
     x7 = x5 * x6
-    x8 = x3**2 * x7
+    x8 = x3 ** 2 * x7
     x9 = x0 * x7
     x10 = 3 * x9
     x11 = -x2 - B[0]
@@ -2241,7 +2219,7 @@ def ovlp3d_42(a, A, b, B):
     x13 = x11 * x12
     x14 = x10 + 2 * x13
     x15 = x0 * (x14 + x8)
-    x16 = x11**2 * x7
+    x16 = x11 ** 2 * x7
     x17 = x0 * (x14 + x16)
     x18 = x11 * x7
     x19 = x0 * x18
@@ -2270,13 +2248,13 @@ def ovlp3d_42(a, A, b, B):
     x42 = -x41 - B[2]
     x43 = x31 * x6
     x44 = x0 * x43
-    x45 = x36**2 * x43
+    x45 = x36 ** 2 * x43
     x46 = x44 + x45
     x47 = x0 * (x10 + 3 * x8) + x3 * x38
     x48 = x32 * x6
     x49 = x34 * x42
     x50 = x0 * x48
-    x51 = x42**2 * x48
+    x51 = x42 ** 2 * x48
     x52 = x50 + x51
     x53 = -x35 - A[1]
     x54 = x30 * x34
@@ -2296,7 +2274,7 @@ def ovlp3d_42(a, A, b, B):
     x68 = 2 * x50
     x69 = x52 * x62
     x70 = x42 * x68 + x69
-    x71 = x43 * x53**2
+    x71 = x43 * x53 ** 2
     x72 = x44 + x71
     x73 = x0 * (x55 + x67)
     x74 = x53 * x57
@@ -2306,7 +2284,7 @@ def ovlp3d_42(a, A, b, B):
     x78 = x0 * (x45 + x77)
     x79 = x53 * x60
     x80 = x78 + x79
-    x81 = x48 * x62**2
+    x81 = x48 * x62 ** 2
     x82 = x50 + x81
     x83 = x0 * (x61 + x64)
     x84 = x62 * x66
@@ -2340,7 +2318,7 @@ def ovlp3d_42(a, A, b, B):
     x112 = x99 * (x0 * (x101 + 3 * x83 + 3 * x84) + x104 * x62)
 
     # 90 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x34 * (x0 * (2 * x15 + 3 * x17 + 3 * x23 + 2 * x28) + x3 * x30),
             x36 * x40,
@@ -2434,7 +2412,6 @@ def ovlp3d_42(a, A, b, B):
             x99 * (x0 * (2 * x102 + 2 * x103 + 3 * x88 + 3 * x89) + x105 * x62),
         ]
     )
-    return S
 
 
 def ovlp3d_43(a, A, b, B):
@@ -2453,7 +2430,7 @@ def ovlp3d_43(a, A, b, B):
     x8 = x6 * x7
     x9 = x3 * x8
     x10 = x4 * x9
-    x11 = x4**2 * x8
+    x11 = x4 ** 2 * x8
     x12 = x11 + x9
     x13 = x12 * x4
     x14 = x12 * x2
@@ -2487,7 +2464,7 @@ def ovlp3d_43(a, A, b, B):
     x42 = x39 * x41
     x43 = -x0 * (a * A[1] + b * B[1])
     x44 = -x43 - B[1]
-    x45 = x2**2 * x8
+    x45 = x2 ** 2 * x8
     x46 = x3 * (x26 + x45)
     x47 = x35 + x37
     x48 = x2 * x47
@@ -2497,7 +2474,7 @@ def ovlp3d_43(a, A, b, B):
     x52 = -x51 - B[2]
     x53 = x39 * x7
     x54 = x3 * x53
-    x55 = x44**2 * x53
+    x55 = x44 ** 2 * x53
     x56 = x54 + x55
     x57 = x45 + x9
     x58 = x2 * x57 + 2 * x2 * x9
@@ -2506,7 +2483,7 @@ def ovlp3d_43(a, A, b, B):
     x61 = x40 * x7
     x62 = x42 * x52
     x63 = x3 * x61
-    x64 = x52**2 * x61
+    x64 = x52 ** 2 * x61
     x65 = x63 + x64
     x66 = x44 * x54
     x67 = 2 * x66
@@ -2541,7 +2518,7 @@ def ovlp3d_43(a, A, b, B):
     x96 = x3 * (3 * x64 + x95)
     x97 = x76 * x88
     x98 = x96 + x97
-    x99 = x53 * x77**2
+    x99 = x53 * x77 ** 2
     x100 = x54 + x99
     x101 = x3 * (x72 + x79)
     x102 = x77 * x81
@@ -2553,7 +2530,7 @@ def ovlp3d_43(a, A, b, B):
     x108 = x3 * (8 * x66 + x68 + 3 * x82)
     x109 = x77 * x87
     x110 = x108 + x109
-    x111 = x61 * x88**2
+    x111 = x61 * x88 ** 2
     x112 = x111 + x63
     x113 = x3 * (x71 + x90)
     x114 = x88 * x92
@@ -2599,7 +2576,7 @@ def ovlp3d_43(a, A, b, B):
     x154 = x135 * (x143 * x88 + x3 * (2 * x138 + 2 * x139 + x144))
 
     # 150 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x42 * (x2 * x31 + x3 * (3 * x15 + 3 * x22 + 3 * x33 + 3 * x38)),
             x44 * x50,
@@ -2753,7 +2730,6 @@ def ovlp3d_43(a, A, b, B):
             x135 * (x145 * x88 + x3 * (3 * x120 + 3 * x121 + 3 * x141 + 3 * x142)),
         ]
     )
-    return S
 
 
 def ovlp3d_44(a, A, b, B):
@@ -2772,7 +2748,7 @@ def ovlp3d_44(a, A, b, B):
     x8 = x3 * x7
     x9 = 3 * x8
     x10 = -x1 - B[0]
-    x11 = x10**2 * x7
+    x11 = x10 ** 2 * x7
     x12 = x3 * (3 * x11 + x9)
     x13 = x10 * x8
     x14 = 2 * x13
@@ -2823,9 +2799,9 @@ def ovlp3d_44(a, A, b, B):
     x59 = -x58 - B[2]
     x60 = x43 * x6
     x61 = x3 * x60
-    x62 = x48**2 * x60
+    x62 = x48 ** 2 * x60
     x63 = x61 + x62
-    x64 = x2**2 * x7
+    x64 = x2 ** 2 * x7
     x65 = x3 * (x37 + x64)
     x66 = x53 + x55
     x67 = x2 * x66
@@ -2834,7 +2810,7 @@ def ovlp3d_44(a, A, b, B):
     x70 = x44 * x6
     x71 = x46 * x59
     x72 = x3 * x70
-    x73 = x59**2 * x70
+    x73 = x59 ** 2 * x70
     x74 = x72 + x73
     x75 = x48 * x61
     x76 = 2 * x75
@@ -2885,7 +2861,7 @@ def ovlp3d_44(a, A, b, B):
     x121 = x3 * (x120 + 4 * x87)
     x122 = x111 * x97
     x123 = x121 + x122
-    x124 = x60 * x98**2
+    x124 = x60 * x98 ** 2
     x125 = x124 + x61
     x126 = x3 * (x100 + x84)
     x127 = x102 * x98
@@ -2900,7 +2876,7 @@ def ovlp3d_44(a, A, b, B):
     x136 = x3 * (4 * x105 + 5 * x90 + x91)
     x137 = x110 * x98
     x138 = x136 + x137
-    x139 = x111**2 * x70
+    x139 = x111 ** 2 * x70
     x140 = x139 + x72
     x141 = x3 * (x113 + x83)
     x142 = x111 * x115
@@ -2957,7 +2933,7 @@ def ovlp3d_44(a, A, b, B):
     x193 = x169 * (x111 * x181 + x3 * (3 * x148 + 3 * x149 + 3 * x175 + 3 * x176))
 
     # 225 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x46 * (x2 * x32 + x3 * (3 * x20 + 3 * x26 + 4 * x34 + 4 * x42)),
             x48 * x57,
@@ -3186,4 +3162,3 @@ def ovlp3d_44(a, A, b, B):
             x169 * (x111 * x182 + x3 * (3 * x151 + 3 * x152 + 4 * x178 + 4 * x180)),
         ]
     )
-    return S

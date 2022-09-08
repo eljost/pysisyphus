@@ -34,14 +34,13 @@ def dipole3d_00(a, A, b, B, C):
     )
 
     # 3 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x2 * (x0 * (a * A[0] + b * B[0]) - C[0]),
             x2 * (x0 * (a * A[1] + b * B[1]) - C[1]),
             x2 * (x0 * (a * A[2] + b * B[2]) - C[2]),
         ]
     )
-    return S
 
 
 def dipole3d_01(a, A, b, B, C):
@@ -78,7 +77,7 @@ def dipole3d_01(a, A, b, B, C):
     x25 = x12 * x24
 
     # 9 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x11 * x2 * (x3 * x6 + x5 * x8 * x9),
             x13 * x16,
@@ -91,7 +90,6 @@ def dipole3d_01(a, A, b, B, C):
             numpy.pi * x21 * (x10 * x6 + x18 * x24 * x5),
         ]
     )
-    return S
 
 
 def dipole3d_02(a, A, b, B, C):
@@ -120,7 +118,7 @@ def dipole3d_02(a, A, b, B, C):
     x17 = x14 * x16
     x18 = -x1 * (a * A[1] + b * B[1])
     x19 = -x18 - C[1]
-    x20 = x17 * (x11 * x5**2 + x12)
+    x20 = x17 * (x11 * x5 ** 2 + x12)
     x21 = -x1 * (a * A[2] + b * B[2])
     x22 = -x21 - C[2]
     x23 = -x18 - B[1]
@@ -140,12 +138,12 @@ def dipole3d_02(a, A, b, B, C):
     x37 = x22 * x36 + x34
     x38 = numpy.pi * x31
     x39 = x16 * x7
-    x40 = x39 * (x23**2 * x27 + x26)
+    x40 = x39 * (x23 ** 2 * x27 + x26)
     x41 = x38 * x7
-    x42 = x41 * (x33**2 * x35 + x34)
+    x42 = x41 * (x33 ** 2 * x35 + x34)
 
     # 18 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x17 * (x0 * (x10 * x11 + x9) + x13 * x5),
             x19 * x20,
@@ -167,7 +165,6 @@ def dipole3d_02(a, A, b, B, C):
             x41 * (x0 * (x22 * x35 + x36) + x33 * x37),
         ]
     )
-    return S
 
 
 def dipole3d_03(a, A, b, B, C):
@@ -185,7 +182,7 @@ def dipole3d_03(a, A, b, B, C):
     x6 = x0 * x5
     x7 = -x1 * (a * A[0] + b * B[0])
     x8 = -x7 - B[0]
-    x9 = x5 * x8**2
+    x9 = x5 * x8 ** 2
     x10 = -x7 - C[0]
     x11 = x5 * x8
     x12 = x10 * x11
@@ -216,7 +213,7 @@ def dipole3d_03(a, A, b, B, C):
     x37 = x33 * x35
     x38 = x24 * x37
     x39 = x36 + x38
-    x40 = x25**2 * x29
+    x40 = x25 ** 2 * x29
     x41 = x28 + x40
     x42 = x0 * (x20 * x29 + x30) + x25 * x32
     x43 = x17 * x3
@@ -224,7 +221,7 @@ def dipole3d_03(a, A, b, B, C):
     x45 = x43 * x8
     x46 = numpy.pi * x1 * x15 * x3
     x47 = x46 * x8
-    x48 = x33 * x35**2
+    x48 = x33 * x35 ** 2
     x49 = x36 + x48
     x50 = x0 * (x24 * x33 + x37) + x35 * x39
     x51 = x46 * x50
@@ -232,7 +229,7 @@ def dipole3d_03(a, A, b, B, C):
     x53 = x46 * (2 * x35 * x36 + x35 * x49)
 
     # 30 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x18 * (x0 * (2 * x12 + 3 * x6 + x9) + x14 * x8),
             x20 * x22,
@@ -266,7 +263,6 @@ def dipole3d_03(a, A, b, B, C):
             x46 * (x0 * (3 * x36 + 2 * x38 + x48) + x35 * x50),
         ]
     )
-    return S
 
 
 def dipole3d_04(a, A, b, B, C):
@@ -291,7 +287,7 @@ def dipole3d_04(a, A, b, B, C):
     x13 = x8 * x9
     x14 = x12 + x13
     x15 = x14 * x3
-    x16 = x3**2 * x7
+    x16 = x3 ** 2 * x7
     x17 = x12 + x16
     x18 = 2 * x12 * x3 + x17 * x3
     x19 = 3 * x12
@@ -321,14 +317,14 @@ def dipole3d_04(a, A, b, B, C):
     x43 = x39 * x41
     x44 = x30 * x43
     x45 = x42 + x44
-    x46 = x31**2 * x35
+    x46 = x31 ** 2 * x35
     x47 = x34 + x46
     x48 = x27 * x35
     x49 = x0 * (x36 + x48)
     x50 = x31 * x38
     x51 = x49 + x50
     x52 = x30 * x39
-    x53 = x39 * x41**2
+    x53 = x39 * x41 ** 2
     x54 = x42 + x53
     x55 = x0 * (x43 + x52)
     x56 = x41 * x45
@@ -349,7 +345,7 @@ def dipole3d_04(a, A, b, B, C):
     x71 = x64 * (x0 * (3 * x53 + x67) + x41 * x66)
 
     # 45 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x25 * (x0 * (3 * x11 + 3 * x15 + x18) + x21 * x3),
             x27 * x28,
@@ -398,7 +394,6 @@ def dipole3d_04(a, A, b, B, C):
             x64 * (x0 * (3 * x55 + 3 * x56 + x66) + x41 * x68),
         ]
     )
-    return S
 
 
 def dipole3d_10(a, A, b, B, C):
@@ -435,7 +430,7 @@ def dipole3d_10(a, A, b, B, C):
     x25 = x12 * x24
 
     # 9 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x11 * x2 * (x3 * x6 + x5 * x8 * x9),
             x13 * x16,
@@ -448,7 +443,6 @@ def dipole3d_10(a, A, b, B, C):
             numpy.pi * x21 * (x10 * x6 + x18 * x24 * x5),
         ]
     )
-    return S
 
 
 def dipole3d_11(a, A, b, B, C):
@@ -516,7 +510,7 @@ def dipole3d_11(a, A, b, B, C):
     x56 = x44 * (x39 + x41 * x52)
 
     # 27 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x18 * (x0 * (x11 + x8) + x12 * x14),
             x20 * x21,
@@ -547,7 +541,6 @@ def dipole3d_11(a, A, b, B, C):
             x44 * (x0 * (x41 + x54) + x42 * x52),
         ]
     )
-    return S
 
 
 def dipole3d_12(a, A, b, B, C):
@@ -565,7 +558,7 @@ def dipole3d_12(a, A, b, B, C):
     x6 = x0 * x5
     x7 = -x1 * (a * A[0] + b * B[0])
     x8 = -x7 - B[0]
-    x9 = x5 * x8**2
+    x9 = x5 * x8 ** 2
     x10 = -x7 - C[0]
     x11 = x5 * x8
     x12 = x10 * x11
@@ -600,7 +593,7 @@ def dipole3d_12(a, A, b, B, C):
     x41 = x37 * x39
     x42 = x27 * x41
     x43 = x40 + x42
-    x44 = x28**2 * x32
+    x44 = x28 ** 2 * x32
     x45 = x31 + x44
     x46 = x13 * x14 + x6
     x47 = x23 * x32
@@ -612,7 +605,7 @@ def dipole3d_12(a, A, b, B, C):
     x53 = x21 * x39
     x54 = numpy.pi * x1 * x18 * x3
     x55 = x13 * x54
-    x56 = x37 * x39**2
+    x56 = x37 * x39 ** 2
     x57 = x40 + x56
     x58 = x27 * x37
     x59 = x0 * (x41 + x58)
@@ -636,7 +629,7 @@ def dipole3d_12(a, A, b, B, C):
     x77 = x54 * (2 * x39 * x40 + x57 * x72)
 
     # 54 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x21 * (x0 * (2 * x12 + 3 * x6 + x9) + x13 * x17),
             x23 * x25,
@@ -694,7 +687,6 @@ def dipole3d_12(a, A, b, B, C):
             x54 * (x0 * (3 * x40 + 2 * x42 + x56) + x60 * x72),
         ]
     )
-    return S
 
 
 def dipole3d_13(a, A, b, B, C):
@@ -720,7 +712,7 @@ def dipole3d_13(a, A, b, B, C):
     x14 = x12 + x13
     x15 = x14 * x3
     x16 = 2 * x12 * x3
-    x17 = x3**2 * x7
+    x17 = x3 ** 2 * x7
     x18 = x12 + x17
     x19 = x16 + x18 * x3
     x20 = -x2 - A[0]
@@ -756,7 +748,7 @@ def dipole3d_13(a, A, b, B, C):
     x50 = x47 + x49
     x51 = x39 * x50
     x52 = x11 + x14 * x20
-    x53 = x34**2 * x39
+    x53 = x34 ** 2 * x39
     x54 = x38 + x53
     x55 = x43 * x54
     x56 = x30 * x39
@@ -766,7 +758,7 @@ def dipole3d_13(a, A, b, B, C):
     x60 = x12 + x20 * x8
     x61 = x33 * x43
     x62 = x28 * x46
-    x63 = x43 * x46**2
+    x63 = x43 * x46 ** 2
     x64 = x47 + x63
     x65 = x39 * x64
     x66 = x0 * (x48 + x61)
@@ -813,7 +805,7 @@ def dipole3d_13(a, A, b, B, C):
     x107 = x80 * (x0 * (3 * x63 + x84) + x100 * x83)
 
     # 90 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x28 * (x0 * (3 * x11 + 3 * x15 + x19) + x20 * x24),
             x30 * x31,
@@ -907,7 +899,6 @@ def dipole3d_13(a, A, b, B, C):
             x80 * (x0 * (3 * x66 + 3 * x67 + x83) + x100 * x86),
         ]
     )
-    return S
 
 
 def dipole3d_14(a, A, b, B, C):
@@ -926,7 +917,7 @@ def dipole3d_14(a, A, b, B, C):
     x7 = 3 * x6
     x8 = -x1 * (a * A[0] + b * B[0])
     x9 = -x8 - B[0]
-    x10 = x5 * x9**2
+    x10 = x5 * x9 ** 2
     x11 = -x8 - C[0]
     x12 = x5 * x9
     x13 = x11 * x12
@@ -976,7 +967,7 @@ def dipole3d_14(a, A, b, B, C):
     x57 = x54 + x56
     x58 = x46 * x57
     x59 = x14 + x19 * x28
-    x60 = x41**2 * x46
+    x60 = x41 ** 2 * x46
     x61 = x45 + x60
     x62 = x50 * x61
     x63 = x23 + x24 * x28
@@ -987,7 +978,7 @@ def dipole3d_14(a, A, b, B, C):
     x68 = x50 * x67
     x69 = x40 * x50
     x70 = x35 * x53
-    x71 = x50 * x53**2
+    x71 = x50 * x53 ** 2
     x72 = x54 + x71
     x73 = x46 * x72
     x74 = x0 * (x55 + x69)
@@ -1059,7 +1050,7 @@ def dipole3d_14(a, A, b, B, C):
     x140 = x110 * (x0 * (8 * x89 + 4 * x91) + x113 * x131)
 
     # 135 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x35 * (x0 * (4 * x14 + 4 * x20 + x27) + x28 * x31),
             x37 * x38,
@@ -1198,7 +1189,6 @@ def dipole3d_14(a, A, b, B, C):
             x110 * (x0 * (x113 + 4 * x95 + 4 * x96) + x115 * x131),
         ]
     )
-    return S
 
 
 def dipole3d_20(a, A, b, B, C):
@@ -1227,7 +1217,7 @@ def dipole3d_20(a, A, b, B, C):
     x17 = x14 * x16
     x18 = -x1 * (a * A[1] + b * B[1])
     x19 = -x18 - C[1]
-    x20 = x17 * (x11 * x5**2 + x12)
+    x20 = x17 * (x11 * x5 ** 2 + x12)
     x21 = -x1 * (a * A[2] + b * B[2])
     x22 = -x21 - C[2]
     x23 = -x18 - A[1]
@@ -1247,12 +1237,12 @@ def dipole3d_20(a, A, b, B, C):
     x37 = x22 * x36 + x34
     x38 = numpy.pi * x31
     x39 = x16 * x7
-    x40 = x39 * (x23**2 * x27 + x26)
+    x40 = x39 * (x23 ** 2 * x27 + x26)
     x41 = x38 * x7
-    x42 = x41 * (x33**2 * x35 + x34)
+    x42 = x41 * (x33 ** 2 * x35 + x34)
 
     # 18 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x17 * (x0 * (x10 * x11 + x9) + x13 * x5),
             x19 * x20,
@@ -1274,7 +1264,6 @@ def dipole3d_20(a, A, b, B, C):
             x41 * (x0 * (x22 * x35 + x36) + x33 * x37),
         ]
     )
-    return S
 
 
 def dipole3d_21(a, A, b, B, C):
@@ -1321,7 +1310,7 @@ def dipole3d_21(a, A, b, B, C):
     x35 = x29 * x34
     x36 = x23 * x35
     x37 = x33 + x36
-    x38 = x5 * x8**2 + x6
+    x38 = x5 * x8 ** 2 + x6
     x39 = x19 * x4
     x40 = x21 * x38
     x41 = -x27 - B[2]
@@ -1355,19 +1344,19 @@ def dipole3d_21(a, A, b, B, C):
     x69 = x42 + x68
     x70 = x0 * (x43 + x64) + x45 * x62
     x71 = x60 * x70
-    x72 = x33 + x34 * x46**2
+    x72 = x33 + x34 * x46 ** 2
     x73 = x34 * x46
     x74 = x0 * (x48 + x73) + x46 * x50
     x75 = x20 * x9
     x76 = x55 * (x0 * (x35 + x73) + x46 * x53)
     x77 = x59 * x9
-    x78 = x39 * x62**2 + x42
+    x78 = x39 * x62 ** 2 + x42
     x79 = x39 * x62
     x80 = x0 * (x64 + x79) + x62 * x66
     x81 = x60 * (x0 * (x43 + x79) + x62 * x69)
 
     # 54 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x21 * (x0 * (x11 + x14 + x15 + 3 * x6) + x17 * x8),
             x23 * x26,
@@ -1425,7 +1414,6 @@ def dipole3d_21(a, A, b, B, C):
             x60 * (x0 * (3 * x42 + x44 + x65 + x68) + x62 * x70),
         ]
     )
-    return S
 
 
 def dipole3d_22(a, A, b, B, C):
@@ -1446,7 +1434,7 @@ def dipole3d_22(a, A, b, B, C):
     x9 = x7 * x8
     x10 = x5 * x9
     x11 = x10 * x4
-    x12 = x5**2 * x9
+    x12 = x5 ** 2 * x9
     x13 = x3 * x9
     x14 = 3 * x13
     x15 = x12 + x14
@@ -1489,7 +1477,7 @@ def dipole3d_22(a, A, b, B, C):
     x52 = x48 * x50
     x53 = x34 * x52
     x54 = x51 + x53
-    x55 = x35**2 * x41
+    x55 = x35 ** 2 * x41
     x56 = x40 + x55
     x57 = x13 + x36
     x58 = x2 * x57 + x3 * (x16 + x45)
@@ -1497,10 +1485,10 @@ def dipole3d_22(a, A, b, B, C):
     x60 = x3 * (x42 + x59)
     x61 = x35 * x44
     x62 = x60 + x61
-    x63 = x13 + x2**2 * x9
+    x63 = x13 + x2 ** 2 * x9
     x64 = x34 * x48
     x65 = x28 * x50
-    x66 = x48 * x50**2
+    x66 = x48 * x50 ** 2
     x67 = x51 + x66
     x68 = x3 * (x52 + x64)
     x69 = x50 * x54
@@ -1538,7 +1526,7 @@ def dipole3d_22(a, A, b, B, C):
     x101 = x100 + x66
     x102 = x3 * (x101 + 2 * x53) + x70 * x90
     x103 = x102 * x88
-    x104 = x40 + x41 * x71**2
+    x104 = x40 + x41 * x71 ** 2
     x105 = x3 * (x59 + x80) + x71 * x74
     x106 = x3 * (x42 + x80) + x71 * x77
     x107 = x85 * (x3 * (x43 + x73 + x76 + x82) + x71 * x79)
@@ -1546,7 +1534,7 @@ def dipole3d_22(a, A, b, B, C):
     x109 = x85 * (x3 * (2 * x76 + x83) + x71 * x81)
     x110 = x4 * x85
     x111 = x71 * x88
-    x112 = x48 * x90**2 + x51
+    x112 = x48 * x90 ** 2 + x51
     x113 = x3 * (x64 + x94) + x90 * x92
     x114 = x5 * x88
     x115 = x3 * (x52 + x94) + x90 * x96
@@ -1554,7 +1542,7 @@ def dipole3d_22(a, A, b, B, C):
     x117 = x88 * (x3 * (x101 + 2 * x95) + x90 * x99)
 
     # 108 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x28 * (x2 * x21 + x3 * (3 * x17 + x19 + 2 * x22 + x24)),
             x30 * x32,
@@ -1666,7 +1654,6 @@ def dipole3d_22(a, A, b, B, C):
             x88 * (x102 * x90 + x3 * (3 * x68 + x69 + 2 * x97 + x99)),
         ]
     )
-    return S
 
 
 def dipole3d_23(a, A, b, B, C):
@@ -1695,7 +1682,7 @@ def dipole3d_23(a, A, b, B, C):
     x17 = x16 * x4
     x18 = x14 * x4
     x19 = 2 * x18
-    x20 = x4**2 * x8
+    x20 = x4 ** 2 * x8
     x21 = x14 + x20
     x22 = x21 * x4
     x23 = x19 + x22
@@ -1738,7 +1725,7 @@ def dipole3d_23(a, A, b, B, C):
     x60 = x56 * x58
     x61 = x42 * x60
     x62 = x59 + x61
-    x63 = x43**2 * x50
+    x63 = x43 ** 2 * x50
     x64 = x49 + x63
     x65 = x11 * x2
     x66 = x12 + x45
@@ -1752,7 +1739,7 @@ def dipole3d_23(a, A, b, B, C):
     x74 = x2 * x73 + x3 * (x72 + x9)
     x75 = x42 * x56
     x76 = x36 * x58
-    x77 = x56 * x58**2
+    x77 = x56 * x58 ** 2
     x78 = x59 + x77
     x79 = x3 * (x60 + x75)
     x80 = x58 * x62
@@ -1768,7 +1755,7 @@ def dipole3d_23(a, A, b, B, C):
     x90 = x3 * (2 * x52 + x89)
     x91 = x43 * x71
     x92 = x90 + x91
-    x93 = x14 + x2**2 * x8
+    x93 = x14 + x2 ** 2 * x8
     x94 = x58 * x59
     x95 = 2 * x94
     x96 = x58 * x78
@@ -1817,7 +1804,7 @@ def dipole3d_23(a, A, b, B, C):
     x139 = 3 * x79
     x140 = x102 * x125 + x3 * (x139 + 3 * x80 + x97)
     x141 = x123 * x140
-    x142 = x103**2 * x50 + x49
+    x142 = x103 ** 2 * x50 + x49
     x143 = x103 * x106 + x3 * (x112 + x68)
     x144 = x103 * x109 + x3 * (x112 + x51)
     x145 = x103 * x111 + x3 * (x105 + x108 + x52 + x88)
@@ -1827,7 +1814,7 @@ def dipole3d_23(a, A, b, B, C):
     x149 = x120 * (x103 * x117 + x3 * (3 * x113 + 8 * x82 + x84))
     x150 = x10 * x120
     x151 = x103 * x123
-    x152 = x125**2 * x56 + x59
+    x152 = x125 ** 2 * x56 + x59
     x153 = x125 * x127 + x3 * (x129 + x75)
     x154 = x125 * x131 + x3 * (x129 + x60)
     x155 = x125 * x133 + x3 * (x126 + x130 + x61 + x98)
@@ -1837,7 +1824,7 @@ def dipole3d_23(a, A, b, B, C):
     x159 = x123 * (x125 * x138 + x3 * (3 * x134 + 8 * x94 + x96))
 
     # 180 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x36 * (x2 * x30 + x3 * (4 * x26 + x28 + 3 * x31 + x32)),
             x38 * x40,
@@ -2021,7 +2008,6 @@ def dipole3d_23(a, A, b, B, C):
             x123 * (x125 * x140 + x3 * (4 * x100 + x101 + 3 * x136 + x138)),
         ]
     )
-    return S
 
 
 def dipole3d_24(a, A, b, B, C):
@@ -2042,7 +2028,7 @@ def dipole3d_24(a, A, b, B, C):
     x9 = x7 * x8
     x10 = x5 * x9
     x11 = x10 * x4
-    x12 = x5**2 * x9
+    x12 = x5 ** 2 * x9
     x13 = x3 * x9
     x14 = 3 * x13
     x15 = x12 + x14
@@ -2101,7 +2087,7 @@ def dipole3d_24(a, A, b, B, C):
     x68 = x64 * x66
     x69 = x50 * x68
     x70 = x67 + x69
-    x71 = x51**2 * x58
+    x71 = x51 ** 2 * x58
     x72 = x57 + x71
     x73 = x16 + x53
     x74 = x2 * x20
@@ -2115,7 +2101,7 @@ def dipole3d_24(a, A, b, B, C):
     x82 = x2 * x75 + x3 * (x15 + 2 * x81)
     x83 = x50 * x64
     x84 = x44 * x66
-    x85 = x64 * x66**2
+    x85 = x64 * x66 ** 2
     x86 = x67 + x85
     x87 = x3 * (x68 + x83)
     x88 = x66 * x70
@@ -2153,7 +2139,7 @@ def dipole3d_24(a, A, b, B, C):
     x120 = x3 * (x119 + 3 * x79 + x93)
     x121 = x101 * x51
     x122 = x120 + x121
-    x123 = x13 + x2**2 * x9
+    x123 = x13 + x2 ** 2 * x9
     x124 = x3 * (x109 + 3 * x85)
     x125 = x108 * x66
     x126 = x124 + x125
@@ -2210,7 +2196,7 @@ def dipole3d_24(a, A, b, B, C):
     x177 = 4 * x111
     x178 = x130 * x158 + x3 * (4 * x112 + x126 + x177)
     x179 = x156 * x178
-    x180 = x131**2 * x58 + x57
+    x180 = x131 ** 2 * x58 + x57
     x181 = x131 * x134 + x3 * (x140 + x77)
     x182 = x131 * x137 + x3 * (x140 + x59)
     x183 = x131 * x139 + x3 * (x133 + x136 + x60 + x97)
@@ -2222,7 +2208,7 @@ def dipole3d_24(a, A, b, B, C):
     x189 = x153 * (x131 * x150 + x3 * (5 * x114 + x115 + 4 * x145))
     x190 = x153 * x4
     x191 = x131 * x156
-    x192 = x158**2 * x64 + x67
+    x192 = x158 ** 2 * x64 + x67
     x193 = x158 * x160 + x3 * (x162 + x83)
     x194 = x158 * x164 + x3 * (x162 + x68)
     x195 = x158 * x166 + x3 * (x109 + x159 + x163 + x69)
@@ -2234,7 +2220,7 @@ def dipole3d_24(a, A, b, B, C):
     x201 = x156 * (x158 * x176 + x3 * (5 * x124 + x125 + 4 * x171))
 
     # 270 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x44 * (x2 * x37 + x3 * (5 * x33 + x35 + 4 * x38 + x40)),
             x46 * x48,
@@ -2508,7 +2494,6 @@ def dipole3d_24(a, A, b, B, C):
             x156 * (x158 * x178 + x3 * (5 * x128 + x129 + 4 * x173 + x176)),
         ]
     )
-    return S
 
 
 def dipole3d_30(a, A, b, B, C):
@@ -2526,7 +2511,7 @@ def dipole3d_30(a, A, b, B, C):
     x6 = x0 * x5
     x7 = -x1 * (a * A[0] + b * B[0])
     x8 = -x7 - A[0]
-    x9 = x5 * x8**2
+    x9 = x5 * x8 ** 2
     x10 = -x7 - C[0]
     x11 = x5 * x8
     x12 = x10 * x11
@@ -2557,7 +2542,7 @@ def dipole3d_30(a, A, b, B, C):
     x37 = x33 * x35
     x38 = x24 * x37
     x39 = x36 + x38
-    x40 = x25**2 * x29
+    x40 = x25 ** 2 * x29
     x41 = x28 + x40
     x42 = x0 * (x20 * x29 + x30) + x25 * x32
     x43 = x17 * x3
@@ -2565,7 +2550,7 @@ def dipole3d_30(a, A, b, B, C):
     x45 = x43 * x8
     x46 = numpy.pi * x1 * x15 * x3
     x47 = x46 * x8
-    x48 = x33 * x35**2
+    x48 = x33 * x35 ** 2
     x49 = x36 + x48
     x50 = x0 * (x24 * x33 + x37) + x35 * x39
     x51 = x46 * x50
@@ -2573,7 +2558,7 @@ def dipole3d_30(a, A, b, B, C):
     x53 = x46 * (2 * x35 * x36 + x35 * x49)
 
     # 30 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x18 * (x0 * (2 * x12 + 3 * x6 + x9) + x14 * x8),
             x20 * x22,
@@ -2607,7 +2592,6 @@ def dipole3d_30(a, A, b, B, C):
             x46 * (x0 * (3 * x36 + 2 * x38 + x48) + x35 * x50),
         ]
     )
-    return S
 
 
 def dipole3d_31(a, A, b, B, C):
@@ -2650,7 +2634,7 @@ def dipole3d_31(a, A, b, B, C):
     x31 = x28 * x30
     x32 = -x0 * (a * A[1] + b * B[1])
     x33 = -x32 - C[1]
-    x34 = x2**2 * x7
+    x34 = x2 ** 2 * x7
     x35 = x34 + x9
     x36 = x31 * (x2 * x25 + x3 * (2 * x13 + x35))
     x37 = -x0 * (a * A[2] + b * B[2])
@@ -2695,7 +2679,7 @@ def dipole3d_31(a, A, b, B, C):
     x76 = x3 * (x53 + x67)
     x77 = x55 * x69
     x78 = x76 + x77
-    x79 = x43 * x56**2
+    x79 = x43 * x56 ** 2
     x80 = x42 + x79
     x81 = x3 * (x58 + x68) + x56 * x60
     x82 = x3 * (x44 + x68) + x56 * x63
@@ -2704,7 +2688,7 @@ def dipole3d_31(a, A, b, B, C):
     x85 = x11 * x30
     x86 = numpy.pi * x0 * x28
     x87 = x11 * x86
-    x88 = x49 * x69**2
+    x88 = x49 * x69 ** 2
     x89 = x52 + x88
     x90 = x3 * (x67 + x73) + x69 * x72
     x91 = x3 * (x53 + x73) + x69 * x75
@@ -2726,7 +2710,7 @@ def dipole3d_31(a, A, b, B, C):
     x107 = x101 * (x3 * (x105 + 2 * x74) + x69 * x91)
 
     # 90 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x31 * (x2 * x23 + x3 * (2 * x19 + 2 * x21 + x25 + x27)),
             x33 * x36,
@@ -2820,7 +2804,6 @@ def dipole3d_31(a, A, b, B, C):
             x101 * (x3 * (2 * x76 + 2 * x77 + x90 + x91) + x69 * x93),
         ]
     )
-    return S
 
 
 def dipole3d_32(a, A, b, B, C):
@@ -2841,7 +2824,7 @@ def dipole3d_32(a, A, b, B, C):
     x9 = x7 * x8
     x10 = x5 * x9
     x11 = x10 * x4
-    x12 = x5**2 * x9
+    x12 = x5 ** 2 * x9
     x13 = x3 * x9
     x14 = 3 * x13
     x15 = x12 + x14
@@ -2892,7 +2875,7 @@ def dipole3d_32(a, A, b, B, C):
     x60 = x51 * x59
     x61 = x43 * x60
     x62 = x58 + x61
-    x63 = x2**2 * x9
+    x63 = x2 ** 2 * x9
     x64 = x14 + x63
     x65 = x2 * x53 + x3 * (x36 + x64)
     x66 = x39 * x8
@@ -2902,7 +2885,7 @@ def dipole3d_32(a, A, b, B, C):
     x70 = x66 * x68
     x71 = x50 * x70
     x72 = x69 + x71
-    x73 = x51**2 * x59
+    x73 = x51 ** 2 * x59
     x74 = x58 + x73
     x75 = x2 * x55 + x3 * (2 * x32 + x64)
     x76 = x43 * x59
@@ -2913,7 +2896,7 @@ def dipole3d_32(a, A, b, B, C):
     x81 = 2 * x13 * x2 + x2 * x80
     x82 = x50 * x66
     x83 = x41 * x68
-    x84 = x66 * x68**2
+    x84 = x66 * x68 ** 2
     x85 = x69 + x84
     x86 = x3 * (x70 + x82)
     x87 = x68 * x72
@@ -2953,7 +2936,7 @@ def dipole3d_32(a, A, b, B, C):
     x121 = x3 * (x120 + 2 * x71)
     x122 = x107 * x88
     x123 = x121 + x122
-    x124 = x59 * x89**2
+    x124 = x59 * x89 ** 2
     x125 = x124 + x58
     x126 = x3 * (x76 + x98) + x89 * x92
     x127 = x3 * (x60 + x98)
@@ -2971,7 +2954,7 @@ def dipole3d_32(a, A, b, B, C):
     x139 = x137 * x2
     x140 = numpy.pi * x0 * x38 * x7
     x141 = x140 * x2
-    x142 = x107**2 * x66
+    x142 = x107 ** 2 * x66
     x143 = x142 + x69
     x144 = x107 * x109 + x3 * (x111 + x82)
     x145 = x3 * (x111 + x70)
@@ -3003,7 +2986,7 @@ def dipole3d_32(a, A, b, B, C):
     x171 = x140 * (x107 * x152 + x3 * (2 * x117 + 2 * x145 + 2 * x146 + 4 * x68 * x69))
 
     # 180 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x41 * (x2 * x30 + x3 * (2 * x16 + 2 * x22 + 2 * x33 + 2 * x35 + x37)),
             x43 * x48,
@@ -3188,7 +3171,6 @@ def dipole3d_32(a, A, b, B, C):
             * (x107 * x154 + x3 * (2 * x121 + 2 * x122 + 2 * x148 + 2 * x149 + x152)),
         ]
     )
-    return S
 
 
 def dipole3d_33(a, A, b, B, C):
@@ -3217,7 +3199,7 @@ def dipole3d_33(a, A, b, B, C):
     x17 = x16 * x4
     x18 = x14 * x4
     x19 = 2 * x18
-    x20 = x4**2 * x8
+    x20 = x4 ** 2 * x8
     x21 = x14 + x20
     x22 = x21 * x4
     x23 = x19 + x22
@@ -3282,7 +3264,7 @@ def dipole3d_33(a, A, b, B, C):
     x82 = x78 * x80
     x83 = x58 * x82
     x84 = x81 + x83
-    x85 = x59**2 * x69
+    x85 = x59 ** 2 * x69
     x86 = x68 + x85
     x87 = x62 + x64
     x88 = x74 + x76
@@ -3293,12 +3275,12 @@ def dipole3d_33(a, A, b, B, C):
     x93 = x3 * (x70 + x92)
     x94 = x59 * x72
     x95 = x93 + x94
-    x96 = x2**2 * x8
+    x96 = x2 ** 2 * x8
     x97 = x25 + x96
     x98 = x2 * x88 + x3 * (x53 + x97)
     x99 = x58 * x78
     x100 = x49 * x80
-    x101 = x78 * x80**2
+    x101 = x78 * x80 ** 2
     x102 = x101 + x81
     x103 = x3 * (x82 + x99)
     x104 = x80 * x84
@@ -3365,7 +3347,7 @@ def dipole3d_33(a, A, b, B, C):
     x165 = x3 * (3 * x104 + x121 + x164)
     x166 = x126 * x148
     x167 = x165 + x166
-    x168 = x127**2 * x69
+    x168 = x127 ** 2 * x69
     x169 = x168 + x68
     x170 = x127 * x130 + x3 * (x136 + x92)
     x171 = x3 * (x136 + x70)
@@ -3389,7 +3371,7 @@ def dipole3d_33(a, A, b, B, C):
     x189 = x187 * x2
     x190 = numpy.pi * x0 * x46 * x6
     x191 = x190 * x2
-    x192 = x148**2 * x78
+    x192 = x148 ** 2 * x78
     x193 = x192 + x81
     x194 = x148 * x150 + x3 * (x152 + x99)
     x195 = x3 * (x152 + x82)
@@ -3431,7 +3413,7 @@ def dipole3d_33(a, A, b, B, C):
     x231 = x190 * (x148 * x209 + x3 * (2 * x161 + 2 * x162 + 3 * x202 + 3 * x203))
 
     # 300 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x49 * (x2 * x37 + x3 * (2 * x24 + 2 * x31 + 3 * x42 + 3 * x44 + x45)),
             x51 * x56,
@@ -3737,7 +3719,6 @@ def dipole3d_33(a, A, b, B, C):
             * (x148 * x210 + x3 * (2 * x165 + 2 * x166 + 3 * x205 + 3 * x207 + x209)),
         ]
     )
-    return S
 
 
 def dipole3d_34(a, A, b, B, C):
@@ -3758,7 +3739,7 @@ def dipole3d_34(a, A, b, B, C):
     x9 = x7 * x8
     x10 = x5 * x9
     x11 = x10 * x4
-    x12 = x5**2 * x9
+    x12 = x5 ** 2 * x9
     x13 = x3 * x9
     x14 = 3 * x13
     x15 = x12 + x14
@@ -3839,7 +3820,7 @@ def dipole3d_34(a, A, b, B, C):
     x90 = x86 * x88
     x91 = x64 * x90
     x92 = x89 + x91
-    x93 = x65**2 * x77
+    x93 = x65 ** 2 * x77
     x94 = x76 + x93
     x95 = x70 + x72
     x96 = x18 * x2
@@ -3859,7 +3840,7 @@ def dipole3d_34(a, A, b, B, C):
     x110 = x100 * x2 + x3 * (2 * x107 + 2 * x109 + 4 * x25 + 2 * x59)
     x111 = x64 * x86
     x112 = x56 * x88
-    x113 = x86 * x88**2
+    x113 = x86 * x88 ** 2
     x114 = x113 + x89
     x115 = x3 * (x111 + x90)
     x116 = x88 * x92
@@ -3878,7 +3859,7 @@ def dipole3d_34(a, A, b, B, C):
     x129 = x3 * (x128 + 2 * x79)
     x130 = x105 * x65
     x131 = x129 + x130
-    x132 = x2**2 * x9
+    x132 = x2 ** 2 * x9
     x133 = x132 + x14
     x134 = x123 * x2 + x3 * (x133 + x82)
     x135 = x88 * x89
@@ -3958,7 +3939,7 @@ def dipole3d_34(a, A, b, B, C):
     x209 = x3 * (4 * x142 + x156 + x208)
     x210 = x160 * x187
     x211 = x209 + x210
-    x212 = x161**2 * x77
+    x212 = x161 ** 2 * x77
     x213 = x212 + x76
     x214 = x161 * x164 + x3 * (x102 + x170)
     x215 = x3 * (x170 + x78)
@@ -3988,7 +3969,7 @@ def dipole3d_34(a, A, b, B, C):
     x239 = x2 * x237
     x240 = numpy.pi * x0 * x53 * x7
     x241 = x2 * x240
-    x242 = x187**2 * x86
+    x242 = x187 ** 2 * x86
     x243 = x242 + x89
     x244 = x187 * x189 + x3 * (x111 + x191)
     x245 = x3 * (x191 + x90)
@@ -4040,7 +4021,7 @@ def dipole3d_34(a, A, b, B, C):
     x291 = x240 * (x187 * x265 + x3 * (2 * x205 + 2 * x206 + 4 * x259 + 4 * x260))
 
     # 450 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x56 * (x2 * x45 + x3 * (2 * x32 + 2 * x38 + 4 * x49 + 4 * x51 + x52)),
             x58 * x62,
@@ -4496,7 +4477,6 @@ def dipole3d_34(a, A, b, B, C):
             * (x187 * x266 + x3 * (2 * x209 + 2 * x210 + 4 * x262 + 4 * x263 + x265)),
         ]
     )
-    return S
 
 
 def dipole3d_40(a, A, b, B, C):
@@ -4521,7 +4501,7 @@ def dipole3d_40(a, A, b, B, C):
     x13 = x8 * x9
     x14 = x12 + x13
     x15 = x14 * x3
-    x16 = x3**2 * x7
+    x16 = x3 ** 2 * x7
     x17 = x12 + x16
     x18 = 2 * x12 * x3 + x17 * x3
     x19 = 3 * x12
@@ -4551,14 +4531,14 @@ def dipole3d_40(a, A, b, B, C):
     x43 = x39 * x41
     x44 = x30 * x43
     x45 = x42 + x44
-    x46 = x31**2 * x35
+    x46 = x31 ** 2 * x35
     x47 = x34 + x46
     x48 = x27 * x35
     x49 = x0 * (x36 + x48)
     x50 = x31 * x38
     x51 = x49 + x50
     x52 = x30 * x39
-    x53 = x39 * x41**2
+    x53 = x39 * x41 ** 2
     x54 = x42 + x53
     x55 = x0 * (x43 + x52)
     x56 = x41 * x45
@@ -4579,7 +4559,7 @@ def dipole3d_40(a, A, b, B, C):
     x71 = x64 * (x0 * (3 * x53 + x67) + x41 * x66)
 
     # 45 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x25 * (x0 * (3 * x11 + 3 * x15 + x18) + x21 * x3),
             x27 * x28,
@@ -4628,7 +4608,6 @@ def dipole3d_40(a, A, b, B, C):
             x64 * (x0 * (3 * x55 + 3 * x56 + x66) + x41 * x68),
         ]
     )
-    return S
 
 
 def dipole3d_41(a, A, b, B, C):
@@ -4671,7 +4650,7 @@ def dipole3d_41(a, A, b, B, C):
     x31 = x2 * x30
     x32 = x29 + x31
     x33 = x2 * x24 + x3 * (2 * x19 + 2 * x21 + x28 + x32)
-    x34 = x2**2 * x7
+    x34 = x2 ** 2 * x7
     x35 = x34 + x9
     x36 = x2 * x28 + x3 * (2 * x12 + x35)
     x37 = x2 * x32 + x3 * (2 * x14 + x35)
@@ -4725,7 +4704,7 @@ def dipole3d_41(a, A, b, B, C):
     x85 = x3 * (x62 + x76)
     x86 = x64 * x78
     x87 = x85 + x86
-    x88 = x53 * x65**2
+    x88 = x53 * x65 ** 2
     x89 = x52 + x88
     x90 = x3 * (x67 + x77)
     x91 = x65 * x69
@@ -4737,7 +4716,7 @@ def dipole3d_41(a, A, b, B, C):
     x97 = x3 * (x55 + x68 + x71 + x96)
     x98 = x65 * x75
     x99 = x97 + x98
-    x100 = x58 * x78**2
+    x100 = x58 * x78 ** 2
     x101 = x100 + x61
     x102 = x3 * (x76 + x82)
     x103 = x78 * x81
@@ -4777,7 +4756,7 @@ def dipole3d_41(a, A, b, B, C):
     x137 = x120 * (x125 * x78 + x3 * (3 * x105 + 3 * x106 + x122))
 
     # 135 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x41 * (x2 * x33 + x3 * (3 * x17 + 3 * x23 + x36 + x37)),
             x43 * x46,
@@ -4916,7 +4895,6 @@ def dipole3d_41(a, A, b, B, C):
             x120 * (x126 * x78 + x3 * (3 * x109 + 3 * x110 + x124 + x125)),
         ]
     )
-    return S
 
 
 def dipole3d_42(a, A, b, B, C):
@@ -4937,7 +4915,7 @@ def dipole3d_42(a, A, b, B, C):
     x9 = x7 * x8
     x10 = x5 * x9
     x11 = x10 * x4
-    x12 = x5**2 * x9
+    x12 = x5 ** 2 * x9
     x13 = x3 * x9
     x14 = 3 * x13
     x15 = x12 + x14
@@ -4988,7 +4966,7 @@ def dipole3d_42(a, A, b, B, C):
     x60 = x57 * x59
     x61 = -x0 * (a * A[1] + b * B[1])
     x62 = -x61 - C[1]
-    x63 = x2**2 * x9
+    x63 = x2 ** 2 * x9
     x64 = x14 + x63
     x65 = x3 * (x40 + x64)
     x66 = x2 * x48
@@ -5016,7 +4994,7 @@ def dipole3d_42(a, A, b, B, C):
     x88 = x84 * x86
     x89 = x69 * x88
     x90 = x87 + x89
-    x91 = x70**2 * x77
+    x91 = x70 ** 2 * x77
     x92 = x76 + x91
     x93 = x2 * x73 + x3 * (3 * x49 + 3 * x51 + x82)
     x94 = x62 * x77
@@ -5026,7 +5004,7 @@ def dipole3d_42(a, A, b, B, C):
     x98 = x2 * x82 + x3 * (x14 + 3 * x63)
     x99 = x69 * x84
     x100 = x60 * x86
-    x101 = x84 * x86**2
+    x101 = x84 * x86 ** 2
     x102 = x101 + x87
     x103 = x3 * (x88 + x99)
     x104 = x86 * x90
@@ -5066,7 +5044,7 @@ def dipole3d_42(a, A, b, B, C):
     x138 = x3 * (x137 + 2 * x89)
     x139 = x105 * x124
     x140 = x138 + x139
-    x141 = x106**2 * x77
+    x141 = x106 ** 2 * x77
     x142 = x141 + x76
     x143 = x3 * (x115 + x94)
     x144 = x106 * x109
@@ -5085,7 +5063,7 @@ def dipole3d_42(a, A, b, B, C):
     x157 = 2 * x113
     x158 = x3 * (x118 + x157 + 3 * x95 + x96)
     x159 = x156 + x158
-    x160 = x124**2 * x84
+    x160 = x124 ** 2 * x84
     x161 = x160 + x87
     x162 = x3 * (x128 + x99)
     x163 = x124 * x126
@@ -5147,7 +5125,7 @@ def dipole3d_42(a, A, b, B, C):
     x219 = x212 * (x124 * x202 + x3 * (3 * x172 + 3 * x173 + 2 * x196 + 2 * x197))
 
     # 270 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x60 * (x2 * x44 + x3 * (3 * x24 + 3 * x31 + 2 * x53 + 2 * x55 + x56)),
             x62 * x67,
@@ -5423,7 +5401,6 @@ def dipole3d_42(a, A, b, B, C):
             * (x124 * x203 + x3 * (3 * x175 + 3 * x177 + 2 * x199 + 2 * x200 + x202)),
         ]
     )
-    return S
 
 
 def dipole3d_43(a, A, b, B, C):
@@ -5452,7 +5429,7 @@ def dipole3d_43(a, A, b, B, C):
     x17 = x16 * x4
     x18 = x14 * x4
     x19 = 2 * x18
-    x20 = x4**2 * x8
+    x20 = x4 ** 2 * x8
     x21 = x14 + x20
     x22 = x21 * x4
     x23 = x19 + x22
@@ -5531,7 +5508,7 @@ def dipole3d_43(a, A, b, B, C):
     x96 = x81 * x95
     x97 = x71 * x96
     x98 = x94 + x97
-    x99 = x2**2 * x8
+    x99 = x2 ** 2 * x8
     x100 = x25 + x99
     x101 = x3 * (x100 + x57)
     x102 = x2 * x83
@@ -5543,7 +5520,7 @@ def dipole3d_43(a, A, b, B, C):
     x108 = x104 * x106
     x109 = x108 * x80
     x110 = x107 + x109
-    x111 = x81**2 * x95
+    x111 = x81 ** 2 * x95
     x112 = x111 + x94
     x113 = x88 + x90
     x114 = x101 + x102
@@ -5558,7 +5535,7 @@ def dipole3d_43(a, A, b, B, C):
     x123 = x114 * x2 + x3 * (x122 + 3 * x74 + 3 * x76)
     x124 = x104 * x80
     x125 = x106 * x69
-    x126 = x104 * x106**2
+    x126 = x104 * x106 ** 2
     x127 = x107 + x126
     x128 = x3 * (x108 + x124)
     x129 = x106 * x110
@@ -5624,7 +5601,7 @@ def dipole3d_43(a, A, b, B, C):
     x189 = x3 * (3 * x129 + x145 + x188)
     x190 = x150 * x172
     x191 = x189 + x190
-    x192 = x151**2 * x95
+    x192 = x151 ** 2 * x95
     x193 = x192 + x94
     x194 = x3 * (x117 + x160)
     x195 = x151 * x154
@@ -5649,7 +5626,7 @@ def dipole3d_43(a, A, b, B, C):
     x214 = x151 * x171
     x215 = x3 * (4 * x138 + x139 + 3 * x163 + x167)
     x216 = x214 + x215
-    x217 = x104 * x172**2
+    x217 = x104 * x172 ** 2
     x218 = x107 + x217
     x219 = x3 * (x124 + x176)
     x220 = x172 * x174
@@ -5738,7 +5715,7 @@ def dipole3d_43(a, A, b, B, C):
     x303 = x264 * (x172 * x282 + x3 * (3 * x236 + 3 * x237 + 3 * x275 + 3 * x276))
 
     # 450 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x69 * (x2 * x51 + x3 * (3 * x33 + 3 * x38 + 3 * x61 + 3 * x63 + x65)),
             x71 * x78,
@@ -6194,7 +6171,6 @@ def dipole3d_43(a, A, b, B, C):
             * (x172 * x284 + x3 * (3 * x239 + 3 * x240 + 3 * x278 + 3 * x279 + x282)),
         ]
     )
-    return S
 
 
 def dipole3d_44(a, A, b, B, C):
@@ -6215,7 +6191,7 @@ def dipole3d_44(a, A, b, B, C):
     x9 = x7 * x8
     x10 = x5 * x9
     x11 = x10 * x4
-    x12 = x5**2 * x9
+    x12 = x5 ** 2 * x9
     x13 = x3 * x9
     x14 = 3 * x13
     x15 = x12 + x14
@@ -6324,7 +6300,7 @@ def dipole3d_44(a, A, b, B, C):
     x118 = x114 * x116
     x119 = x118 * x88
     x120 = x117 + x119
-    x121 = x103 * x89**2
+    x121 = x103 * x89 ** 2
     x122 = x102 + x121
     x123 = x96 + x98
     x124 = x109 + x111
@@ -6341,14 +6317,14 @@ def dipole3d_44(a, A, b, B, C):
     x135 = x3 * (x104 + x134)
     x136 = x106 * x89
     x137 = x135 + x136
-    x138 = x2**2 * x9
+    x138 = x2 ** 2 * x9
     x139 = x138 + x14
     x140 = x3 * (x139 + x81)
     x141 = x124 * x2
     x142 = x132 * x2 + x3 * (2 * x140 + 2 * x141 + x84)
     x143 = x114 * x88
     x144 = x116 * x76
-    x145 = x114 * x116**2
+    x145 = x114 * x116 ** 2
     x146 = x117 + x145
     x147 = x3 * (x118 + x143)
     x148 = x116 * x120
@@ -6445,7 +6421,7 @@ def dipole3d_44(a, A, b, B, C):
     x239 = x3 * (4 * x173 + x186 + x238)
     x240 = x190 * x217
     x241 = x239 + x240
-    x242 = x103 * x191**2
+    x242 = x103 * x191 ** 2
     x243 = x102 + x242
     x244 = x3 * (x134 + x200)
     x245 = x191 * x194
@@ -6476,7 +6452,7 @@ def dipole3d_44(a, A, b, B, C):
     x270 = x191 * x216
     x271 = x3 * (5 * x180 + x181 + 4 * x207 + x212)
     x272 = x270 + x271
-    x273 = x114 * x217**2
+    x273 = x114 * x217 ** 2
     x274 = x117 + x273
     x275 = x3 * (x143 + x221)
     x276 = x217 * x219
@@ -6587,7 +6563,7 @@ def dipole3d_44(a, A, b, B, C):
     x381 = x332 * (x217 * x357 + x3 * (3 * x298 + 3 * x299 + 4 * x349 + 4 * x351))
 
     # 675 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x76 * (x2 * x57 + x3 * (3 * x40 + 3 * x46 + 4 * x69 + 4 * x71 + x72)),
             x78 * x86,
@@ -7268,4 +7244,3 @@ def dipole3d_44(a, A, b, B, C):
             * (x217 * x358 + x3 * (3 * x301 + 3 * x302 + 4 * x353 + 4 * x355 + x357)),
         ]
     )
-    return S

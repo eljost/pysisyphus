@@ -12,7 +12,7 @@ def coulomb3d_00(a, A, b, B, C):
     x1 = x0 ** (-1.0)
 
     # 1 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             2
             * numpy.pi
@@ -34,7 +34,6 @@ def coulomb3d_00(a, A, b, B, C):
             )
         ]
     )
-    return S
 
 
 def coulomb3d_01(a, A, b, B, C):
@@ -50,7 +49,7 @@ def coulomb3d_01(a, A, b, B, C):
     x5 = -x4 - C[1]
     x6 = -x1 * (a * A[2] + b * B[2])
     x7 = -x6 - C[2]
-    x8 = x0 * (x3**2 + x5**2 + x7**2)
+    x8 = x0 * (x3 ** 2 + x5 ** 2 + x7 ** 2)
     x9 = (
         2
         * numpy.pi
@@ -63,14 +62,13 @@ def coulomb3d_01(a, A, b, B, C):
     x11 = x9 * boys(1, x8)
 
     # 3 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x10 * (-x2 - B[0]) - x11 * x3,
             x10 * (-x4 - B[1]) - x11 * x5,
             x10 * (-x6 - B[2]) - x11 * x7,
         ]
     )
-    return S
 
 
 def coulomb3d_02(a, A, b, B, C):
@@ -86,7 +84,7 @@ def coulomb3d_02(a, A, b, B, C):
     x5 = -x4 - C[1]
     x6 = -x1 * (a * A[2] + b * B[2])
     x7 = -x6 - C[2]
-    x8 = x0 * (x3**2 + x5**2 + x7**2)
+    x8 = x0 * (x3 ** 2 + x5 ** 2 + x7 ** 2)
     x9 = (
         2
         * numpy.pi
@@ -108,7 +106,7 @@ def coulomb3d_02(a, A, b, B, C):
     x20 = x11 * x18 - x14 * x7
 
     # 6 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x12 + x13 * (x10 * x13 - x11 * x3) - x3 * (x11 * x13 - x14 * x3),
             x13 * x16 - x17 * x3,
@@ -118,7 +116,6 @@ def coulomb3d_02(a, A, b, B, C):
             x12 + x18 * x19 - x20 * x7,
         ]
     )
-    return S
 
 
 def coulomb3d_03(a, A, b, B, C):
@@ -136,7 +133,7 @@ def coulomb3d_03(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x5**2 + x7**2 + x9**2)
+    x10 = x1 * (x5 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -177,7 +174,7 @@ def coulomb3d_03(a, A, b, B, C):
     x41 = x20 + x29 * x34 - x35 * x9
 
     # 10 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             2 * x0 * (-x13 + x15 + x17)
             + x4 * (x17 * x4 + x18 - x19 * x5)
@@ -193,7 +190,6 @@ def coulomb3d_03(a, A, b, B, C):
             x29 * x40 + 2 * x33 - x41 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_04(a, A, b, B, C):
@@ -211,7 +207,7 @@ def coulomb3d_04(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x4**2 + x7**2 + x9**2)
+    x10 = x1 * (x4 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -299,7 +295,7 @@ def coulomb3d_04(a, A, b, B, C):
     x88 = x48 * x79 + 2 * x61 - x80 * x9
 
     # 15 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             3 * x0 * (x17 + x20 - x24 + x28)
             - x4
@@ -329,7 +325,6 @@ def coulomb3d_04(a, A, b, B, C):
             x48 * x87 + 3 * x78 - x88 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_10(a, A, b, B, C):
@@ -345,7 +340,7 @@ def coulomb3d_10(a, A, b, B, C):
     x5 = -x4 - C[1]
     x6 = -x1 * (a * A[2] + b * B[2])
     x7 = -x6 - C[2]
-    x8 = x0 * (x3**2 + x5**2 + x7**2)
+    x8 = x0 * (x3 ** 2 + x5 ** 2 + x7 ** 2)
     x9 = (
         2
         * numpy.pi
@@ -358,14 +353,13 @@ def coulomb3d_10(a, A, b, B, C):
     x11 = x9 * boys(1, x8)
 
     # 3 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x10 * (-x2 - A[0]) - x11 * x3,
             x10 * (-x4 - A[1]) - x11 * x5,
             x10 * (-x6 - A[2]) - x11 * x7,
         ]
     )
-    return S
 
 
 def coulomb3d_11(a, A, b, B, C):
@@ -381,7 +375,7 @@ def coulomb3d_11(a, A, b, B, C):
     x5 = -x4 - C[1]
     x6 = -x1 * (a * A[2] + b * B[2])
     x7 = -x6 - C[2]
-    x8 = x0 * (x3**2 + x5**2 + x7**2)
+    x8 = x0 * (x3 ** 2 + x5 ** 2 + x7 ** 2)
     x9 = (
         2
         * numpy.pi
@@ -412,7 +406,7 @@ def coulomb3d_11(a, A, b, B, C):
     x29 = x11 * x27 + x24
 
     # 9 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x12 + x13 * (x10 * x14 - x11 * x3) - x3 * (x11 * x14 - x15 * x3),
             x13 * x18 - x20 * x3,
@@ -425,7 +419,6 @@ def coulomb3d_11(a, A, b, B, C):
             x12 + x23 * x27 - x25 * x7,
         ]
     )
-    return S
 
 
 def coulomb3d_12(a, A, b, B, C):
@@ -443,7 +436,7 @@ def coulomb3d_12(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x5**2 + x7**2 + x9**2)
+    x10 = x1 * (x5 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -511,7 +504,7 @@ def coulomb3d_12(a, A, b, B, C):
     x68 = x40 * x59 + x53
 
     # 18 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             2 * x0 * (-x13 + x15 + x17)
             + x18 * (x17 * x4 + x19 - x20 * x5)
@@ -537,7 +530,6 @@ def coulomb3d_12(a, A, b, B, C):
             2 * x38 + x52 * x59 - x54 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_13(a, A, b, B, C):
@@ -555,7 +547,7 @@ def coulomb3d_13(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x4**2 + x7**2 + x9**2)
+    x10 = x1 * (x4 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -717,7 +709,7 @@ def coulomb3d_13(a, A, b, B, C):
     x162 = x115 + x133 * x98
 
     # 30 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             3 * x0 * (x17 + x20 - x24 + x28)
             + x29 * (x28 * x5 + x30 * (-x21 + x22 + x27) - x31 * x4)
@@ -775,7 +767,6 @@ def coulomb3d_13(a, A, b, B, C):
             x114 * x133 - x116 * x9 + 3 * x96,
         ]
     )
-    return S
 
 
 def coulomb3d_14(a, A, b, B, C):
@@ -792,7 +783,7 @@ def coulomb3d_14(a, A, b, B, C):
     x6 = -x5 - C[1]
     x7 = -x2 * (a * A[2] + b * B[2])
     x8 = -x7 - C[2]
-    x9 = x1 * (x4**2 + x6**2 + x8**2)
+    x9 = x1 * (x4 ** 2 + x6 ** 2 + x8 ** 2)
     x10 = (
         2
         * numpy.pi
@@ -1145,7 +1136,7 @@ def coulomb3d_14(a, A, b, B, C):
     x352 = x208 * x278 + x229
 
     # 45 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             4 * x0 * (x25 - x34 - x36 + x41)
             - x4
@@ -1269,7 +1260,6 @@ def coulomb3d_14(a, A, b, B, C):
             4 * x206 + x228 * x278 - x230 * x8,
         ]
     )
-    return S
 
 
 def coulomb3d_20(a, A, b, B, C):
@@ -1285,7 +1275,7 @@ def coulomb3d_20(a, A, b, B, C):
     x5 = -x4 - C[1]
     x6 = -x1 * (a * A[2] + b * B[2])
     x7 = -x6 - C[2]
-    x8 = x0 * (x3**2 + x5**2 + x7**2)
+    x8 = x0 * (x3 ** 2 + x5 ** 2 + x7 ** 2)
     x9 = (
         2
         * numpy.pi
@@ -1307,7 +1297,7 @@ def coulomb3d_20(a, A, b, B, C):
     x20 = x11 * x18 - x14 * x7
 
     # 6 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x12 + x13 * (x10 * x13 - x11 * x3) - x3 * (x11 * x13 - x14 * x3),
             x13 * x16 - x17 * x3,
@@ -1317,7 +1307,6 @@ def coulomb3d_20(a, A, b, B, C):
             x12 + x18 * x19 - x20 * x7,
         ]
     )
-    return S
 
 
 def coulomb3d_21(a, A, b, B, C):
@@ -1335,7 +1324,7 @@ def coulomb3d_21(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x5**2 + x7**2 + x9**2)
+    x10 = x1 * (x5 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -1402,7 +1391,7 @@ def coulomb3d_21(a, A, b, B, C):
     x67 = x22 + x54 * x58 - x59 * x9
 
     # 18 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x0 * (x16 - x18 + x19)
             + x0 * (x12 * x4 - x13 * x4 + x14 + x16)
@@ -1427,7 +1416,6 @@ def coulomb3d_21(a, A, b, B, C):
             x39 + x54 * x64 + x57 - x65 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_22(a, A, b, B, C):
@@ -1445,7 +1433,7 @@ def coulomb3d_22(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x5**2 + x7**2 + x9**2)
+    x10 = x1 * (x5 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -1632,7 +1620,7 @@ def coulomb3d_22(a, A, b, B, C):
     x187 = x134 * x159 + x145 - x160 * x9 + x73
 
     # 36 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x0 * (-x17 + x22 + x30)
             + x31 * (x22 * x31 + x32 * (-x13 + x15 + x19) - x33 * x5)
@@ -1695,7 +1683,6 @@ def coulomb3d_22(a, A, b, B, C):
             x100 + x134 * x169 + 2 * x158 - x170 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_23(a, A, b, B, C):
@@ -1713,7 +1700,7 @@ def coulomb3d_23(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x5**2 + x7**2 + x9**2)
+    x10 = x1 * (x5 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -2162,7 +2149,7 @@ def coulomb3d_23(a, A, b, B, C):
     x449 = x177 + x292 * x368 + 2 * x344 - x369 * x9
 
     # 60 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x0 * (-x25 + x32 + x43)
             + x44 * (x32 * x44 + x45 * (-x18 + x23 + x29 + x46) - x47 * x5)
@@ -2312,7 +2299,6 @@ def coulomb3d_23(a, A, b, B, C):
             x216 + x292 * x382 + 3 * x367 - x383 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_24(a, A, b, B, C):
@@ -2330,7 +2316,7 @@ def coulomb3d_24(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x5**2 + x7**2 + x9**2)
+    x10 = x1 * (x5 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -3273,7 +3259,7 @@ def coulomb3d_24(a, A, b, B, C):
     x943 = x360 + x565 * x740 + 3 * x705 - x741 * x9
 
     # 90 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x0 * (-x38 + x47 + x63)
             - x5
@@ -3589,7 +3575,6 @@ def coulomb3d_24(a, A, b, B, C):
             x410 + x565 * x758 + 4 * x739 - x759 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_30(a, A, b, B, C):
@@ -3607,7 +3592,7 @@ def coulomb3d_30(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x5**2 + x7**2 + x9**2)
+    x10 = x1 * (x5 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -3648,7 +3633,7 @@ def coulomb3d_30(a, A, b, B, C):
     x41 = x20 + x29 * x34 - x35 * x9
 
     # 10 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             2 * x0 * (-x13 + x15 + x17)
             + x4 * (x17 * x4 + x18 - x19 * x5)
@@ -3664,7 +3649,6 @@ def coulomb3d_30(a, A, b, B, C):
             x29 * x40 + 2 * x33 - x41 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_31(a, A, b, B, C):
@@ -3681,7 +3665,7 @@ def coulomb3d_31(a, A, b, B, C):
     x6 = -x5 - C[1]
     x7 = -x2 * (a * A[2] + b * B[2])
     x8 = -x7 - C[2]
-    x9 = x1 * (x4**2 + x6**2 + x8**2)
+    x9 = x1 * (x4 ** 2 + x6 ** 2 + x8 ** 2)
     x10 = (
         2
         * numpy.pi
@@ -3848,7 +3832,7 @@ def coulomb3d_31(a, A, b, B, C):
     x166 = x105 * x157 + 2 * x117 - x158 * x8
 
     # 30 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x0 * (x13 + x16 + x17 * x19 - x17 * x27 - x27 * x4 + x4 * (x20 + x23))
             + x17
@@ -3903,7 +3887,6 @@ def coulomb3d_31(a, A, b, B, C):
             x105 * x163 + 2 * x131 + x156 - x164 * x8,
         ]
     )
-    return S
 
 
 def coulomb3d_32(a, A, b, B, C):
@@ -3920,7 +3903,7 @@ def coulomb3d_32(a, A, b, B, C):
     x6 = -x5 - C[1]
     x7 = -x1 * (a * A[2] + b * B[2])
     x8 = -x7 - C[2]
-    x9 = x0 * (x3**2 + x6**2 + x8**2)
+    x9 = x0 * (x3 ** 2 + x6 ** 2 + x8 ** 2)
     x10 = (
         2
         * numpy.pi
@@ -4399,7 +4382,7 @@ def coulomb3d_32(a, A, b, B, C):
     x478 = x269 * x442 + x427 - x443 * x8 + x454
 
     # 60 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x27
             * (x17 * (-x33 + x47 + x56) + x27 * x48 - x3 * x57 + x49 * (x51 - x53 + x56))
@@ -4563,7 +4546,6 @@ def coulomb3d_32(a, A, b, B, C):
             x269 * x453 + 2 * x350 + 2 * x441 - x455 * x8,
         ]
     )
-    return S
 
 
 def coulomb3d_33(a, A, b, B, C):
@@ -4581,7 +4563,7 @@ def coulomb3d_33(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x1 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x0 * (x3**2 + x7**2 + x9**2)
+    x10 = x0 * (x3 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -5682,7 +5664,7 @@ def coulomb3d_33(a, A, b, B, C):
     x1101 = x566 * x995 + 2 * x716 - x9 * x997 + 2 * x967
 
     # 100 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             -x3
             * (
@@ -6082,7 +6064,6 @@ def coulomb3d_33(a, A, b, B, C):
             x1010 * x566 - x1011 * x9 + 2 * x752 + 3 * x994,
         ]
     )
-    return S
 
 
 def coulomb3d_34(a, A, b, B, C):
@@ -6099,7 +6080,7 @@ def coulomb3d_34(a, A, b, B, C):
     x6 = -x5 - C[1]
     x7 = -x1 * (a * A[2] + b * B[2])
     x8 = -x7 - C[2]
-    x9 = x0 * (x3**2 + x6**2 + x8**2)
+    x9 = x0 * (x3 ** 2 + x6 ** 2 + x8 ** 2)
     x10 = (
         2
         * numpy.pi
@@ -8300,7 +8281,7 @@ def coulomb3d_34(a, A, b, B, C):
     x2200 = x1039 * x1929 + 2 * x1357 + 3 * x1891 - x1930 * x8
 
     # 150 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x20 * (x57 - x78 - x81 + x93)
             - x3
@@ -9101,7 +9082,6 @@ def coulomb3d_34(a, A, b, B, C):
             x1039 * x1947 + 2 * x1404 + 4 * x1928 - x1948 * x8,
         ]
     )
-    return S
 
 
 def coulomb3d_40(a, A, b, B, C):
@@ -9119,7 +9099,7 @@ def coulomb3d_40(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x4**2 + x7**2 + x9**2)
+    x10 = x1 * (x4 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -9207,7 +9187,7 @@ def coulomb3d_40(a, A, b, B, C):
     x88 = x48 * x79 + 2 * x61 - x80 * x9
 
     # 15 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             3 * x0 * (x17 + x20 - x24 + x28)
             - x4
@@ -9237,7 +9217,6 @@ def coulomb3d_40(a, A, b, B, C):
             x48 * x87 + 3 * x78 - x88 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_41(a, A, b, B, C):
@@ -9255,7 +9234,7 @@ def coulomb3d_41(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x2 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x1 * (x5**2 + x7**2 + x9**2)
+    x10 = x1 * (x5 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -9634,7 +9613,7 @@ def coulomb3d_41(a, A, b, B, C):
     x379 = x190 * x370 + 3 * x318 - x371 * x9
 
     # 45 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x0
             * (
@@ -9776,7 +9755,6 @@ def coulomb3d_41(a, A, b, B, C):
             x190 * x376 + 3 * x332 + x369 - x377 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_42(a, A, b, B, C):
@@ -9794,7 +9772,7 @@ def coulomb3d_42(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x1 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x0 * (x5**2 + x7**2 + x9**2)
+    x10 = x0 * (x5 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -10871,7 +10849,7 @@ def coulomb3d_42(a, A, b, B, C):
     x1077 = x1023 + x1038 * x496 - x1039 * x9 + 3 * x881
 
     # 90 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x3
             * (
@@ -11276,7 +11254,6 @@ def coulomb3d_42(a, A, b, B, C):
             2 * x1037 + x1048 * x496 - x1049 * x9 + 3 * x908,
         ]
     )
-    return S
 
 
 def coulomb3d_43(a, A, b, B, C):
@@ -11294,7 +11271,7 @@ def coulomb3d_43(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x1 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x0 * (x3**2 + x7**2 + x9**2)
+    x10 = x0 * (x3 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -13695,7 +13672,7 @@ def coulomb3d_43(a, A, b, B, C):
     x2401 = x1029 * x2270 + 2 * x2243 - x2271 * x9 + x2286
 
     # 150 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             -x3
             * (
@@ -14633,7 +14610,6 @@ def coulomb3d_43(a, A, b, B, C):
             x1029 * x2285 + 3 * x1935 + 3 * x2269 - x2287 * x9,
         ]
     )
-    return S
 
 
 def coulomb3d_44(a, A, b, B, C):
@@ -14651,7 +14627,7 @@ def coulomb3d_44(a, A, b, B, C):
     x7 = -x6 - C[1]
     x8 = -x1 * (a * A[2] + b * B[2])
     x9 = -x8 - C[2]
-    x10 = x0 * (x3**2 + x7**2 + x9**2)
+    x10 = x0 * (x3 ** 2 + x7 ** 2 + x9 ** 2)
     x11 = (
         2
         * numpy.pi
@@ -19269,7 +19245,7 @@ def coulomb3d_44(a, A, b, B, C):
     x4618 = x1844 * x4279 + 3 * x3510 + 3 * x4239 - x4281 * x9
 
     # 225 item(s)
-    S = numpy.array(
+    return numpy.array(
         [
             x123
             * (
@@ -21073,4 +21049,3 @@ def coulomb3d_44(a, A, b, B, C):
             x1844 * x4298 + 3 * x3557 + 4 * x4278 - x4299 * x9,
         ]
     )
-    return S

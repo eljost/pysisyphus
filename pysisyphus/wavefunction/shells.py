@@ -32,43 +32,37 @@ def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
 
         https://joshuagoings.com/2017/04/28/integrals/
     """
-    l, m, n = lmn
-    L = l + m + n
-    # self.norm is a list of length equal to number primitives
-    # normalize primitives first (PGBFs)
+    L = sum(lmn)
+    fact2l, fact2m, fact2n = [factorial2(2 * _ - 1) for _ in lmn]
+
+    # Normalize primitives first (PGBFs)
     norm = np.sqrt(
         np.power(2, 2 * L + 1.5)
         * np.power(exps, L + 1.5)
-        / factorial2(2 * l - 1)
-        / factorial2(2 * m - 1)
-        / factorial2(2 * n - 1)
+        / fact2l
+        / fact2m
+        / fact2n
         / np.power(np.pi, 1.5)
     )
 
-    # now normalize the contracted basis functions (CGBFs)
+    # Normalize the contracted basis functions (CGBFs)
     # Eq. 1.44 of Valeev integral whitepaper
     prefactor = (
         np.power(np.pi, 1.5)
-        * factorial2(2 * l - 1)
-        * factorial2(2 * m - 1)
-        * factorial2(2 * n - 1)
+        * fact2l
+        * fact2m
+        * fact2n
         / np.power(2.0, L)
     )
 
-    N = 0.0
-    num_exps = len(exps)
-    for ia in range(num_exps):
-        for ib in range(num_exps):
-            N += (
-                norm[ia]
-                * norm[ib]
-                * coeffs[ia]
-                * coeffs[ib]
-                / np.power(exps[ia] + exps[ib], L + 1.5)
-            )
+    N = (
+        norm[:, None] * norm[None, :]
+        * coeffs[:, None] * coeffs[None, :]
+        / np.power(exps[:, None] + exps[None, :], L + 1.5)
+    ).sum()
 
     N *= prefactor
-    N = np.power(N, -0.5)
+    N = 1 / np.sqrt(N)
     return N, norm
 
 
