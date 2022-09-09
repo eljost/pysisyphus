@@ -19,7 +19,7 @@ from pysisyphus.wavefunction.helpers import (
     get_shell_shape,
     permut_for_order,
 )
-from pysisyphus.wavefunction import coulomb3d, dipole3d, kinetic3d, ovlp3d
+from pysisyphus.wavefunction import coulomb3d, dipole3d, gto3d, kinetic3d, ovlp3d
 
 # from pysisyphus.wavefunction.devel_ints import coulomb3d, dipole3d, kinetic3d, ovlp3d
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
@@ -65,6 +65,28 @@ def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
     N = 1 / np.sqrt(N)
     return N, norm
 
+def eval_pgtos(xyz, center, exponents, cart_powers):
+    """Evaluate primititve Cartesian GTOs at points xyz."""
+
+    xa, ya, za = (xyz - center).T
+    # Indepdendent of Cartesian powers, but dependent on contraction degree
+    exp_term = np.exp(-exponents[:, None] * (xa**2 + ya**2 + za**2))
+    # Indepdendent of contraction degree, but dependent on Cartesian powers
+    xpow, ypow, zpow = cart_powers.T
+    prefac = xa**xpow[:, None] * ya**ypow[:, None] * za**zpow[:, None]
+    return prefac[:, None, :] * exp_term
+
+
+def eval_shell(xyz, center, cart_powers, contr_coeffs, exponents, norms):
+    # pgtos shape is (nbf, npgto, nxyz)
+    # that is
+    # (number of basis funcs in shell, number of primitives, number of points)
+    pgtos = eval_pgtos(xyz, center, exponents, cart_powers)
+    # shape of norms is (number of basis fucns in shell, number of primitives)
+    # ndim of contr_coeffs is 1d
+    pgtos *= norms[...,None] * contr_coeffs[:, None]
+    return pgtos.sum(axis=1)
+
 
 class Shell:
     def __init__(self, L, center, coeffs, exps, center_ind=None, atomic_num=None):
@@ -81,6 +103,7 @@ class Shell:
 
     @property
     def norms(self):
+        """Shape (nbfs, nprimitives)"""
         if self._norms is None:
             lmns = canonical_order(self.L)
             Ns = list()
@@ -101,6 +124,10 @@ class Shell:
     @property
     def contr_depth(self):
         return self.coeffs.size
+
+    @property
+    def cart_powers(self):
+        return np.array(canonical_order(self.L), dtype=int)
 
     def size(self):
         L = self.L
@@ -129,11 +156,18 @@ def get_map(module, func_base_name, Ls_num=2):
     return func_map
 
 
+CGTOmap = get_map(gto3d, "cart_gto3d", Ls_num=1)  # Cartesian GTO shells
 Smap = get_map(ovlp3d, "ovlp3d")  # Overlap integrals
 Tmap = get_map(kinetic3d, "kinetic3d")  # Kinetic energy integrals
 Vmap = get_map(coulomb3d, "coulomb3d")  # 1el Coulomb integrals
 DPMmap = get_map(dipole3d, "dipole3d")  # Dipole moments integrals
 # ERImap = get_map(eri, "eri", 4)  # Dipole moments integrals
+
+
+def cart_gto(l_tot, a, A, R):
+    """Wrapper for evaluation of cartesian GTO shells."""
+    func = CGTOmap[(l_tot, )]
+    return func(a, A, R)
 
 
 def ovlp(la_tot, lb_tot, a, A, b, B):
@@ -304,11 +338,36 @@ class Shells:
 
     @property
     def P_sph(self):
+        """Permutation matrix for spherical basis functions."""
         return sp.linalg.block_diag(*[self.sph_Ps[shell.L] for shell in self.shells])
 
     @property
     def P_cart(self):
+        """Permutation matrix for Cartesian basis functions."""
         return sp.linalg.block_diag(*[self.cart_Ps[shell.L] for shell in self.shells])
+
+    def eval_single(self, xyz):
+        """Evaluate all basis functions at single point xyz."""
+        all_vals = list()
+        for shell in self.shells:
+            L_tot, center, contr_coeffs, exponents, norms = shell.as_tuple()
+            vals = cart_gto(L_tot, exponents, center, xyz)
+            vals *= norms * contr_coeffs[None, :]
+            vals = vals.sum(axis=1).T
+            all_vals.extend(vals)
+        return np.array(all_vals)
+
+    def eval(self, xyz):
+        """Evaluate all basis functions at points xyz."""
+        all_vals = list()
+        for shell in self.shells:
+            _, center, contr_coeffs, exponents, norms = shell.as_tuple()
+            cart_powers = shell.cart_powers
+            vals = eval_shell(xyz, center, cart_powers, contr_coeffs, exponents, norms)
+            all_vals.append(vals)
+        all_vals = np.concatenate(all_vals, axis=0)
+        return all_vals
+
 
     def get_1el_ints_cart(
         self, int_func, other=None, add_args=None, can_reorder: bool = True

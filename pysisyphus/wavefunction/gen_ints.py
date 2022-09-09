@@ -140,6 +140,26 @@ class CartGTOShell(Function):
         return exprs
 
 
+class CartGTO3d2(Function):
+    """3D Cartesian Gaussian function; not normalized."""
+
+    @classmethod
+    @functools.cache
+    def eval(cls, i, j, k, a, Xa, Ya, Za):
+        Xa2 = Xa ** 2
+        Ya2 = Ya ** 2
+        Za2 = Za ** 2
+        return (Xa ** i) * (Ya ** j) * (Za ** k) * exp(-a * (Xa2 + Ya2 + Za2))
+
+
+class CartGTOShell2(Function):
+    @classmethod
+    def eval(cls, La_tot, a, Xa, Ya, Za):
+        exprs = [CartGTO3d2(*La, a, Xa, Ya, Za) for La, in shell_iter((La_tot,))]
+        # print(CartGTO3d2.eval.cache_info())
+        return exprs
+
+
 class Multipole1d(Function):
     """1d multipole-moment integral of order 'e', between primitive 1d Gaussians
     Ga = G_i(a, r, A) and Gb = G_j(b, r, B) with Cartesian quantum number i and j,
@@ -646,6 +666,11 @@ def get_center(i):
     return Matrix([*symbs]).T  # Return column vector
 
 
+def get_centers(i):
+    symbs = [Symbol(str(i) + ind, real=True) for ind in ("x", "y", "z")]
+    return Matrix([*symbs]).T  # Return column vector
+
+
 def get_map(i, center_i):
     array = IndexedBase(i, shape=3)
     array_map = dict(zip(center_i, array))
@@ -776,15 +801,8 @@ def run():
     center_B = get_center("B")
     center_C = get_center("C")
     center_D = get_center("D")
-
-    # General coordinate R, e.g., used to evalute a Cartesian GTO.
     center_R = get_center("R")
-
-    # Cartesian components (x, y, z) of the centers A, B, C and D.
-    # Ax, Ay, Az = center_A
-    # Bx, By, Bz = center_B
-    # Cx, Cy, Cz = center_C
-    # Dx, Dy, Dz = center_D
+    Xa, Ya, Za = symbols("Xa Ya Za")
 
     # Orbital exponents a, b, c, d.
     a, b, c, d = symbols("a b c d", real=True)
@@ -803,14 +821,23 @@ def run():
     #################
 
     def cart_gto_doc_func(L_tot):
-        La_tot, = L_tot
+        (La_tot,) = L_tot
         shell_a = L_MAP[La_tot]
         return (
             f"3D Cartesian {shell_a}-Gaussian shell.\n\n"
             "Exponent a, centered at A, evaluated at R."
         )
 
+    # cart_gto_Ls = gen_integral_exprs(
+    # lambda La_tot: CartGTOShell2(La_tot, a, Xa, Ya, Za),
+    # (l_max,),
+    # "cart_gto",
+    # )
+    # cart_gto_rendered = render_py_funcs(
+    # cart_gto_Ls, (a, Xa, Ya, Za), "cart_gto3d", cart_gto_doc_func
+    # )
 
+    # This code evaluates 1 point at a time
     cart_gto_Ls = gen_integral_exprs(
         lambda La_tot: CartGTOShell(La_tot, a, center_A, center_R),
         (l_max,),
@@ -823,6 +850,7 @@ def run():
 
     write_py(out_dir, "gto3d.py", cart_gto_rendered)
     print()
+    return
 
     #####################
     # Overlap integrals #
@@ -954,20 +982,20 @@ def run():
 
     # I think this is still faulty!
     # so1el_ints_Ls = gen_integral_exprs(
-        # lambda La_tot, Lb_tot: SpinOrbitShell(
-            # La_tot, Lb_tot, a, b, center_A, center_B, center_C
-        # ),
-        # (l_max, l_max),
-        # "so1el",
-        # (A_map, B_map, C_map),
+    # lambda La_tot, Lb_tot: SpinOrbitShell(
+    # La_tot, Lb_tot, a, b, center_A, center_B, center_C
+    # ),
+    # (l_max, l_max),
+    # "so1el",
+    # (A_map, B_map, C_map),
     # )
 
     # so1el_rendered = render_py_funcs(
-        # so1el_ints_Ls,
-        # (a, A, b, B, C),
-        # "so1el",
-        # so1el_doc_func,
-        # add_imports=boys_import,
+    # so1el_ints_Ls,
+    # (a, A, b, B, C),
+    # "so1el",
+    # so1el_doc_func,
+    # add_imports=boys_import,
     # )
     # write_py(out_dir, "so1el.py", so1el_rendered)
     # print()
@@ -989,31 +1017,31 @@ def run():
 
     # I think this is still faulty!
     # eri_ints_Ls = gen_integral_exprs(
-        # lambda La_tot, Lb_tot, Lc_tot, Ld_tot: ERIShell(
-            # La_tot,
-            # Lb_tot,
-            # Lc_tot,
-            # Ld_tot,
-            # a,
-            # b,
-            # c,
-            # d,
-            # center_A,
-            # center_B,
-            # center_C,
-            # center_D,
-        # ),
-        # # (l_max, l_max, l_max, l_max),
-        # (2, 2, 2, 2),  # Stop at [dd|dd] for now
-        # "eri",
-        # (A_map, B_map, C_map, D_map),
+    # lambda La_tot, Lb_tot, Lc_tot, Ld_tot: ERIShell(
+    # La_tot,
+    # Lb_tot,
+    # Lc_tot,
+    # Ld_tot,
+    # a,
+    # b,
+    # c,
+    # d,
+    # center_A,
+    # center_B,
+    # center_C,
+    # center_D,
+    # ),
+    # # (l_max, l_max, l_max, l_max),
+    # (2, 2, 2, 2),  # Stop at [dd|dd] for now
+    # "eri",
+    # (A_map, B_map, C_map, D_map),
     # )
     # eri_rendered = render_py_funcs(
-        # eri_ints_Ls,
-        # (a, A, b, B, c, C, d, D),
-        # "eri",
-        # eri_doc_func,
-        # add_imports=boys_import,
+    # eri_ints_Ls,
+    # (a, A, b, B, c, C, d, D),
+    # "eri",
+    # eri_doc_func,
+    # add_imports=boys_import,
     # )
     # write_py(out_dir, "eri.py", eri_rendered)
     # print()
