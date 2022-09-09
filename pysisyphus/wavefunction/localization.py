@@ -144,7 +144,7 @@ def pipek_mezey(
         dP = P - P_prev
         logger.info(f"{i:03d}: {P=: >12.8f} {dP=: >12.8f}")
         if dP <= dP_thresh:
-            logger.info("Converged after {i+1} cycles.")
+            logger.info(f"Converged after {i+1} cycles.")
             break
         P_prev = P
     # Outside macro cycles
