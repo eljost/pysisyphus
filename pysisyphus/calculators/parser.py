@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 import pyparsing as pp
+import re
 
 
 def to_float(s, loc, toks):
@@ -123,3 +124,21 @@ def parse_turbo_exstates(text):
     result = parser.parseString(text)
     exc_energies_by_model = [(b.model, b.exc_ens.asList()) for b in result.exc_blocks]
     return exc_energies_by_model
+
+
+def parse_turbo_exstates_re(text):
+    results = dict()
+    exc_ens_str = "excitation_energies_"
+    model_re = re.compile(exc_ens_str + "(\w+?)_")
+    blocks = text.strip().split("$")
+    for block in blocks:
+        if not block.startswith(exc_ens_str):
+            continue
+        model_line, *exc_lines = block.strip().split("\n")
+        mobj = model_re.search(model_line)
+        model = mobj.group(1)
+        exc_lines = [line.strip().split() for line in exc_lines]
+        assert all([len(line) == 2 for line in exc_lines])
+        exc_ens = np.array([exc_en for _, exc_en in exc_lines], dtype=float)
+        results[model] = exc_ens
+    return results
