@@ -13,7 +13,8 @@ from pysisyphus.calculators.parser import (
     parse_turbo_gradient,
     parse_turbo_ccre0_ascii,
     parse_turbo_mos,
-    parse_turbo_exstates,
+    # parse_turbo_exstates,
+    parse_turbo_exstates_re as parse_turbo_exstates,
 )
 
 
@@ -116,7 +117,11 @@ class Turbomole(OverlapCalculator):
             second_cmd = "ricc2"
             self.prepare_td(text)
             self.root = self.get_ricc2_root(text)
-            self.frozen_mos = int(re.search(r"implicit core=\s*(\d+)", text)[1])
+            try:
+                frozen_mos = int(re.search(r"implicit core=\s*(\d+)", text)[1])
+            except TypeError:
+                frozen_mos = 0
+            self.frozen_mos = frozen_mos
             self.log(f"Found {self.frozen_mos} frozen orbitals.")
         if self.track:
             assert self.td or self.ricc2, (
@@ -628,7 +633,7 @@ class Turbomole(OverlapCalculator):
             # Drop CCS and take energies from whatever model was used
             exc_energies = [
                 (model, exc_ens)
-                for model, exc_ens in exc_energies_by_model
+                for model, exc_ens in exc_energies_by_model.items()
                 if model != "CCS"
             ]
             assert len(exc_energies) == 1
@@ -690,6 +695,14 @@ class Turbomole(OverlapCalculator):
                 cmd, cwd=path, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             result.wait()
+            # ricctools seem to crash sometimes, even though the respective ASCII
+            # ccre-files are generated.
+            subprocess.run(
+                "actual -r".split(),
+                cwd=path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
 
         if self.td:
             self.make_molden(path)
@@ -711,7 +724,8 @@ class Turbomole(OverlapCalculator):
             # Restore control backup
             shutil.copy(ctrl_backup, path / "control")
 
-    def make_molden(self, path):
+    @staticmethod
+    def make_molden(path):
         cmd = "tm2molden norm".split()
         fn = "wavefunction.molden"
         stdin = f"""{fn}
