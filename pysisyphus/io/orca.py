@@ -59,35 +59,34 @@ def wavefunction_from_json(text):
         coords.append(atom_coords)
 
     unrestricted = (mol["HFTyp"] == "UHF") or (mult != 1)
-    occ_a = 0
-    occ_b = 0
     mos = mol["MolecularOrbitals"]["MOs"]
-    Ca = list()
-    Cb = list()
+    if unrestricted:
+        mo_num = len(mos)
+        assert mo_num % 2 == 0
+        a_num = mo_num // 2
+        mos_a = mos[:a_num]
+        mos_b = mos[a_num:]
+    else:  # restricted
+        mos_a = mos
+        mos_b = list()
 
-    passed_a = False
-    prev_occ = -1
-    for mo in mos:
-        occ = mo["Occupancy"]
-        if (occ % 1) != 0.0:
-            raise Exception("Fractional occupations are not handled!")
-        occ = int(occ)
+    def get_occ_and_mo_coeffs(mos):
+        mo_coeffs = list()
+        occ = 0
+        for mo in mos:
+            _occ = mo["Occupancy"]
+            if (_occ % 1) != 0.0:
+                raise Exception("Fractional occupations are not handled!")
+            occ += int(_occ)
 
-        if not passed_a and (prev_occ == 0) and (occ == 1):
-            passed_a = True
+            mo_coeffs.append(mo["MOCoefficients"])
+        # MOs must be in columns
+        mo_coeffs = np.array(mo_coeffs).T
+        return occ, mo_coeffs
 
-        mo_coeffs = mo["MOCoefficients"]
-        if passed_a:
-            occ_b += occ
-            Cb.append(mo_coeffs)
-        else:
-            occ_a += occ
-            Ca.append(mo_coeffs)
-        prev_occ = occ
+    occ_a, Ca = get_occ_and_mo_coeffs(mos_a)
+    occ_b, Cb = get_occ_and_mo_coeffs(mos_b)
 
-    # MOs must be in columns
-    Ca = np.array(Ca).T
-    Cb = np.array(Cb).T
     # Restricted calculation
     if Cb.size == 0:
         Cb = Ca.copy()

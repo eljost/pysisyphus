@@ -68,6 +68,10 @@ class Wavefunction:
         return len(self.atoms)
 
     @property
+    def coords3d(self):
+        return self.coords.reshape(-1, 3)
+
+    @property
     def masses(self):
         return self._masses
 
