@@ -357,7 +357,7 @@ class Shells:
             all_vals.extend(vals)
         return np.array(all_vals)
 
-    def eval(self, xyz):
+    def eval(self, xyz, sph=False):
         """Evaluate all basis functions at points xyz."""
         all_vals = list()
         for shell in self.shells:
@@ -365,7 +365,9 @@ class Shells:
             cart_powers = shell.cart_powers
             vals = eval_shell(xyz, center, cart_powers, contr_coeffs, exponents, norms)
             all_vals.append(vals)
-        all_vals = np.concatenate(all_vals, axis=0)
+        all_vals = np.concatenate(all_vals, axis=0).T
+        if sph:
+            all_vals = all_vals @ self.cart2sph_coeffs.T @ self.P_sph.T
         return all_vals
 
 
@@ -575,7 +577,7 @@ class ORCAShells(Shells):
             [0, 1, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 0],
             [-1, 0, 0, 0, 0, 0, 0],  # ORCA, why you do this to me?
-            [0, 0, 0, 0, 0, 0, -1],  # sign flip, as line abo ve
+            [0, 0, 0, 0, 0, 0, -1],  # sign flip, as in the line above
         ],
         4: [
             [0, 0, 0, 0, 1, 0, 0, 0, 0],

@@ -27,9 +27,6 @@ def geoms_from_molden(fn, **kwargs):
 
 @file_or_str(".molden", ".input")
 def parse_molden(text, with_mos=True):
-    def get_line_word(*args):
-        return pp.Word(*args).setWhitespaceChars(" \t")
-
     int_ = pp.common.integer
     real = pp.common.real
     sci_real = pp.common.sci_real
