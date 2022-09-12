@@ -11,7 +11,11 @@ from scipy.special import factorial2
 
 
 from pysisyphus.config import L_MAX
-from pysisyphus.elem_data import INV_ATOMIC_NUMBERS, nuc_charges_for_atoms
+from pysisyphus.elem_data import (
+    ATOMIC_NUMBERS,
+    INV_ATOMIC_NUMBERS,
+    nuc_charges_for_atoms,
+)
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.helpers import (
     canonical_order,
@@ -47,17 +51,13 @@ def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
 
     # Normalize the contracted basis functions (CGBFs)
     # Eq. 1.44 of Valeev integral whitepaper
-    prefactor = (
-        np.power(np.pi, 1.5)
-        * fact2l
-        * fact2m
-        * fact2n
-        / np.power(2.0, L)
-    )
+    prefactor = np.power(np.pi, 1.5) * fact2l * fact2m * fact2n / np.power(2.0, L)
 
     N = (
-        norm[:, None] * norm[None, :]
-        * coeffs[:, None] * coeffs[None, :]
+        norm[:, None]
+        * norm[None, :]
+        * coeffs[:, None]
+        * coeffs[None, :]
         / np.power(exps[:, None] + exps[None, :], L + 1.5)
     ).sum()
 
@@ -65,15 +65,16 @@ def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
     N = 1 / np.sqrt(N)
     return N, norm
 
+
 def eval_pgtos(xyz, center, exponents, cart_powers):
     """Evaluate primititve Cartesian GTOs at points xyz."""
 
     xa, ya, za = (xyz - center).T
     # Indepdendent of Cartesian powers, but dependent on contraction degree
-    exp_term = np.exp(-exponents[:, None] * (xa**2 + ya**2 + za**2))
+    exp_term = np.exp(-exponents[:, None] * (xa ** 2 + ya ** 2 + za ** 2))
     # Indepdendent of contraction degree, but dependent on Cartesian powers
     xpow, ypow, zpow = cart_powers.T
-    prefac = xa**xpow[:, None] * ya**ypow[:, None] * za**zpow[:, None]
+    prefac = xa ** xpow[:, None] * ya ** ypow[:, None] * za ** zpow[:, None]
     return prefac[:, None, :] * exp_term
 
 
@@ -84,7 +85,7 @@ def eval_shell(xyz, center, cart_powers, contr_coeffs, exponents, norms):
     pgtos = eval_pgtos(xyz, center, exponents, cart_powers)
     # shape of norms is (number of basis fucns in shell, number of primitives)
     # ndim of contr_coeffs is 1d
-    pgtos *= norms[...,None] * contr_coeffs[:, None]
+    pgtos *= norms[..., None] * contr_coeffs[:, None]
     return pgtos.sum(axis=1)
 
 
@@ -166,7 +167,7 @@ DPMmap = get_map(dipole3d, "dipole3d")  # Dipole moments integrals
 
 def cart_gto(l_tot, a, A, R):
     """Wrapper for evaluation of cartesian GTO shells."""
-    func = CGTOmap[(l_tot, )]
+    func = CGTOmap[(l_tot,)]
     return func(a, A, R)
 
 
@@ -289,6 +290,21 @@ class Shells:
         shells = shells_from_fchk(text)
         return shells
 
+    @staticmethod
+    def from_pyscf_mol(mol):
+        shells = list()
+        for bas_id in range(mol.nbas):
+            L = mol.bas_angular(bas_id)
+            center = mol.bas_coord(bas_id)
+            coeffs = mol.bas_ctr_coeff(bas_id).flatten()
+            exps = mol.bas_exp(bas_id)
+            center_ind = mol.bas_atom(bas_id)
+            atom_symbol = mol.atom_symbol(center_ind)
+            atomic_num = ATOMIC_NUMBERS[atom_symbol.lower()]
+            shell = Shell(L, center, coeffs, exps, center_ind, atomic_num)
+            shells.append(shell)
+        return PySCFShells(shells)
+
     def center_shell_iter(self):
         sorted_shells = sorted(self.shells, key=lambda shell: shell.center_ind)
         return it.groupby(sorted_shells, key=lambda shell: shell.center_ind)
@@ -368,8 +384,9 @@ class Shells:
         all_vals = np.concatenate(all_vals, axis=0).T
         if sph:
             all_vals = all_vals @ self.cart2sph_coeffs.T @ self.P_sph.T
+        else:
+            all_vals = all_vals @ self.P_cart.T
         return all_vals
-
 
     def get_1el_ints_cart(
         self, int_func, other=None, add_args=None, can_reorder: bool = True
@@ -682,5 +699,58 @@ class MoldenShells(Shells):
             [0, 0, 0, 0, 0, 0, 0, -1, 0],  # sign flip
             [-1, 0, 0, 0, 0, 0, 0, 0, 0],  # sign flip
             [0, 0, 0, 0, 0, 0, 0, 0, -1],  # sign flip
+        ],
+    }
+
+
+def pyscf_cart_order(l):
+    order = list()
+    for lx in reversed(range(l + 1)):
+        for ly in reversed(range(l + 1 - lx)):
+            lz = l - lx - ly
+            order.append("x" * lx + "y" * ly + "z" * lz)
+    return tuple(order)
+
+
+class PySCFShells(Shells):
+
+    """
+    Cartesian bfs >= d angular momentum are not normalized!
+    S_ref = mol.intor("int1e_ovlp_cart")
+    N = 1 / np.diag(S_ref)**0.5
+    ao *= N
+    """
+
+    cart_order = [pyscf_cart_order(l) for l in range(5)]
+
+    sph_Ps = {
+        0: [[1]],  # s
+        1: [[1, 0, 0], [0, 0, 1], [0, 1, 0]],  # px py pz
+        2: [
+            [0, 0, 0, 0, 1],  # dxy
+            [0, 0, 0, 1, 0],  # dyz
+            [0, 0, 1, 0, 0],  # dz²
+            [0, 1, 0, 0, 0],  # dxz
+            [1, 0, 0, 0, 0],  # dx² - y²
+        ],
+        3: [
+            [0, 0, 0, 0, 0, 0, 1],
+            [0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0, 0, 0],
+        ],
+        4: [
+            [0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [0, 0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0],
         ],
     }
