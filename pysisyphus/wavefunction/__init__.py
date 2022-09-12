@@ -12,7 +12,6 @@ from pysisyphus.wavefunction.shells import (
     Shell,
     Shells,
 )
+
 from pysisyphus.wavefunction.wavefunction import Wavefunction
 from pysisyphus.wavefunction.localization import pipek_mezey
-
-
