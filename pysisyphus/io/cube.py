@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Tuple
+from math import ceil
+from typing import Optional, Tuple
 
 import jinja2
 import numpy as np
@@ -11,6 +12,41 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 
 
+def get_grid(coords3d, num=10, offset=3.0):
+    minx, miny, minz = coords3d.min(axis=0) - offset
+    maxx, maxy, maxz = coords3d.max(axis=0) + offset
+    X, Y, Z = np.mgrid[
+        minx : maxx : num * 1j,
+        miny : maxz : num * 1j,
+        minz : maxz : num * 1j,
+    ]
+    xyz = np.stack((X.flatten(), Y.flatten(), Z.flatten()), axis=1)
+    spacing = np.array((maxx - minx, maxy - miny, maxz - minz)) / (num - 1)
+    return xyz, spacing, (num, num, num)
+
+
+def get_grid_with_spacing(coords3d, spacing=0.30, margin=3.0):
+    minx, miny, minz = coords3d.min(axis=0) - margin
+    maxx, maxy, maxz = coords3d.max(axis=0) + margin
+    dx = maxx - minx
+    dy = maxy - miny
+    dz = maxz - minz
+
+    nx = ceil(dx / spacing)
+    ny = ceil(dy / spacing)
+    nz = ceil(dz / spacing)
+    X, Y, Z = np.mgrid[
+        minx : maxx : nx * 1j,
+        miny : maxz : ny * 1j,
+        minz : maxz : nz * 1j,
+    ]
+    xyz = np.stack((X.flatten(), Y.flatten(), Z.flatten()), axis=1)
+    act_spacing = np.array(
+        ((maxx - minx) / (nx - 1), (maxy - miny) / (ny - 1), (maxz - minz) / (nz - 1))
+    )
+    return xyz, act_spacing, (nx, ny, nz)
+
+
 @dataclass
 class Cube:
     atoms: Tuple
@@ -18,13 +54,26 @@ class Cube:
     origin: NDArray
     npoints: NDArray
     axes: NDArray
-    comment1: str
-    comment2: str
     vol_data: NDArray
+    comment1: Optional[str] = None
+    comment2: Optional[str] = None
 
     @staticmethod
     def from_file(fn):
         return parse_cube(fn)
+
+    def to_str(self):
+        return cube_to_str(
+            self.atoms,
+            self.coords3d,
+            self.vol_data.reshape(*self.npoints),
+            self.origin,
+            self.axes,
+        )
+
+    def write(self, fn):
+        with open(fn, "w") as handle:
+            handle.write(self.to_str())
 
 
 @file_or_str(".cube", ".cub")
@@ -81,9 +130,9 @@ def parse_cube(text):
         origin=origin,
         npoints=npoints,
         axes=axes,
+        vol_data=vol_data,
         comment1=comment1,
         comment2=comment2,
-        vol_data=vol_data,
     )
 
     return cube
@@ -109,7 +158,8 @@ CUBE_TPL = """{{ comment1 }}
 """
 
 
-def write_cube(atoms, coords3d, vol_data, origin, axes):
+def cube_to_str(atoms, coords3d, vol_data, origin, axes):
+    assert vol_data.ndim == 3
     env = jinja2.Environment(trim_blocks=True, lstrip_blocks=True)
     env.globals.update(zip=zip)
     tpl = env.from_string(CUBE_TPL)
@@ -117,7 +167,6 @@ def write_cube(atoms, coords3d, vol_data, origin, axes):
     org_x, org_y, org_z = origin
     axes_npoints = vol_data.shape
     atom_nums = [ATOMIC_NUMBERS[atom.lower()] for atom in atoms]
-
     nx, ny, nz = axes_npoints
     grid_str = ""
     for x in range(nx):
