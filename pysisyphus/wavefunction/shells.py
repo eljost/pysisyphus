@@ -23,9 +23,9 @@ from pysisyphus.wavefunction.helpers import (
     get_shell_shape,
     permut_for_order,
 )
+
 from pysisyphus.wavefunction import coulomb3d, dipole3d, gto3d, kinetic3d, ovlp3d
 
-# from pysisyphus.wavefunction.devel_ints import coulomb3d, dipole3d, kinetic3d, ovlp3d
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
 
@@ -159,10 +159,10 @@ DPMmap = get_map(dipole3d, "dipole3d")  # Dipole moments integrals
 # ERImap = get_map(eri, "eri", 4)  # Dipole moments integrals
 
 
-def cart_gto(l_tot, a, A, R):
+def cart_gto(l_tot, a, Xa, Ya, Za):
     """Wrapper for evaluation of cartesian GTO shells."""
     func = CGTOmap[(l_tot,)]
-    return func(a, A, R)
+    return func(a, Xa, Ya, Za)
 
 
 def ovlp(la_tot, lb_tot, a, A, b, B):
@@ -214,6 +214,8 @@ class Shells:
         except AttributeError:
             pass
 
+        self.atoms , self.coords3d = self.atoms_coords3d
+
     def __len__(self):
         return len(self.shells)
 
@@ -232,6 +234,7 @@ class Shells:
         center_inds = list()
         for shell in self.shells:
             center_ind = shell.center_ind
+            # Skip cycle if we already registered this center
             if center_ind in center_inds:
                 continue
             else:
@@ -356,19 +359,31 @@ class Shells:
         """Permutation matrix for Cartesian basis functions."""
         return sp.linalg.block_diag(*[self.cart_Ps[shell.L] for shell in self.shells])
 
-    def eval_single(self, xyz):
-        """Evaluate all basis functions at single point xyz."""
-        all_vals = list()
-        for shell in self.shells:
-            L_tot, center, contr_coeffs, exponents = shell.as_tuple()
-            vals = cart_gto(L_tot, exponents, center, xyz)
-            vals *= contr_coeffs
-            vals = vals.sum(axis=1).T
-            all_vals.extend(vals)
-        return np.array(all_vals)
+    def eval(self, xyz, spherical=True):
+        """Evaluate all basis functions at points xyz using generated code."""
+        if spherical:
+            precontr = self.cart2sph_coeffs.T @ self.P_sph.T
+        else:
+            precontr = self.P_cart.T
 
-    def eval(self, xyz, spherical=False):
-        """Evaluate all basis functions at points xyz."""
+        coords3d = self.coords3d
+        all_vals = list()
+        for center_ind, shells in self.center_shell_iter():
+            center = coords3d[center_ind]
+            Xa, Ya, Za = (xyz - center).T
+            for shell in shells:
+                L_tot, _, contr_coeffs, exponents = shell.as_tuple()
+                # shape (nbfs in shell, number of primitives, number of points)
+                vals = cart_gto(L_tot, exponents[:, None], Xa, Ya, Za)
+                vals *= contr_coeffs[..., None]
+                vals = vals.sum(axis=1)  # Contract primitives
+                all_vals.append(vals)
+        all_vals = np.concatenate(all_vals, axis=0).T
+        all_vals = all_vals @ precontr
+        return all_vals
+
+    def eval_manual(self, xyz, spherical=False):
+        """Evaluate all basis functions at points xyz using handwritten code."""
         all_vals = list()
         if spherical:
             precontr = self.cart2sph_coeffs.T @ self.P_sph.T

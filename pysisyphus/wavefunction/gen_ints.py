@@ -126,25 +126,6 @@ class CartGTO3d(Function):
 
     @classmethod
     @functools.cache
-    def eval(cls, i, j, k, a, A, R):
-        RA = R - A
-        xa, ya, za = RA
-        return (xa ** i) * (ya ** j) * (za ** k) * exp(-a * RA.norm() ** 2)
-
-
-class CartGTOShell(Function):
-    @classmethod
-    def eval(cls, La_tot, a, A, R):
-        exprs = [CartGTO3d(*La, a, A, R) for La, in shell_iter((La_tot,))]
-        # print(CartGTO3d.eval.cache_info())
-        return exprs
-
-
-class CartGTO3d2(Function):
-    """3D Cartesian Gaussian function; not normalized."""
-
-    @classmethod
-    @functools.cache
     def eval(cls, i, j, k, a, Xa, Ya, Za):
         Xa2 = Xa ** 2
         Ya2 = Ya ** 2
@@ -152,11 +133,11 @@ class CartGTO3d2(Function):
         return (Xa ** i) * (Ya ** j) * (Za ** k) * exp(-a * (Xa2 + Ya2 + Za2))
 
 
-class CartGTOShell2(Function):
+class CartGTOShell(Function):
     @classmethod
     def eval(cls, La_tot, a, Xa, Ya, Za):
-        exprs = [CartGTO3d2(*La, a, Xa, Ya, Za) for La, in shell_iter((La_tot,))]
-        # print(CartGTO3d2.eval.cache_info())
+        exprs = [CartGTO3d(*La, a, Xa, Ya, Za) for La, in shell_iter((La_tot,))]
+        # print(CartGTO3d.eval.cache_info())
         return exprs
 
 
@@ -814,7 +795,6 @@ def run():
     B, B_map = get_map("B", center_B)
     C, C_map = get_map("C", center_C)
     D, D_map = get_map("D", center_D)
-    R, R_map = get_map("R", center_R)
 
     #################
     # Cartesian GTO #
@@ -825,32 +805,20 @@ def run():
         shell_a = L_MAP[La_tot]
         return (
             f"3D Cartesian {shell_a}-Gaussian shell.\n\n"
-            "Exponent a, centered at A, evaluated at R."
+            "Exponent a, centered at A, evaluated at (Xa, Ya, Za) + A."
         )
 
-    # cart_gto_Ls = gen_integral_exprs(
-    # lambda La_tot: CartGTOShell2(La_tot, a, Xa, Ya, Za),
-    # (l_max,),
-    # "cart_gto",
-    # )
-    # cart_gto_rendered = render_py_funcs(
-    # cart_gto_Ls, (a, Xa, Ya, Za), "cart_gto3d", cart_gto_doc_func
-    # )
-
-    # This code evaluates 1 point at a time
+    # This code can evaluate multiple points at a time
     cart_gto_Ls = gen_integral_exprs(
-        lambda La_tot: CartGTOShell(La_tot, a, center_A, center_R),
+        lambda La_tot: CartGTOShell(La_tot, a, Xa, Ya, Za),
         (l_max,),
         "cart_gto",
-        (A_map, R_map),
     )
     cart_gto_rendered = render_py_funcs(
-        cart_gto_Ls, (a, A, R), "cart_gto3d", cart_gto_doc_func
+        cart_gto_Ls, (a, Xa, Ya, Za), "cart_gto3d", cart_gto_doc_func
     )
-
     write_py(out_dir, "gto3d.py", cart_gto_rendered)
     print()
-    return
 
     #####################
     # Overlap integrals #
