@@ -373,19 +373,21 @@ class Shells:
             all_vals.extend(vals)
         return np.array(all_vals)
 
-    def eval(self, xyz, sph=False):
+    def eval(self, xyz, spherical=False):
         """Evaluate all basis functions at points xyz."""
         all_vals = list()
+        if spherical:
+            precontr = self.cart2sph_coeffs.T @ self.P_sph.T
+        else:
+            precontr = self.P_cart.T
+
         for shell in self.shells:
             _, center, contr_coeffs, exponents, norms = shell.as_tuple()
             cart_powers = shell.cart_powers
             vals = eval_shell(xyz, center, cart_powers, contr_coeffs, exponents, norms)
             all_vals.append(vals)
         all_vals = np.concatenate(all_vals, axis=0).T
-        if sph:
-            all_vals = all_vals @ self.cart2sph_coeffs.T @ self.P_sph.T
-        else:
-            all_vals = all_vals @ self.P_cart.T
+        all_vals = all_vals @ precontr
         return all_vals
 
     def get_1el_ints_cart(
