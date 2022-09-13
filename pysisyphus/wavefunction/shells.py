@@ -360,7 +360,11 @@ class Shells:
         return sp.linalg.block_diag(*[self.cart_Ps[shell.L] for shell in self.shells])
 
     def eval(self, xyz, spherical=True):
-        """Evaluate all basis functions at points xyz using generated code."""
+        """Evaluate all basis functions at points xyz using generated code.
+
+        A possibly more efficient approach is discussed in III C of
+        https://doi.org/10.1063/1.469408.
+        """
         if spherical:
             precontr = self.cart2sph_coeffs.T @ self.P_sph.T
         else:

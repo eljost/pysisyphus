@@ -31,12 +31,12 @@ def test_grid_density():
     cc = cubegen.Cube(mol, nx, ny, nz, resolution=None, margin=3.0)
 
     GTOval = "GTOval"
-    coords = cc.get_coords()
-    ao = mol.eval_gto(GTOval, coords)
+    coords3d = cc.get_coords()
+    ao = mol.eval_gto(GTOval, coords3d)
     rho_ref = numint.eval_rho(mol, ao, dm)
 
     shells = Shells.from_pyscf_mol(mol)
-    vals = shells.eval(coords, spherical=True)
+    vals = shells.eval(coords3d, spherical=True)
     np.testing.assert_allclose(vals, ao, atol=1e-10)
     rho = np.einsum("uv,iu,iv->i", dm, vals, vals)
     np.testing.assert_allclose(rho, rho_ref)
