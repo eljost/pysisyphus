@@ -30,16 +30,17 @@ from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
 
 def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
-    """Norm of contracted GTO and norms of primitive GTOs.
+    """Norm of primitive GTOs and corresponding coefficients to normalize them.
 
     Based on a function, originally published by Joshua Goings here:
 
         https://joshuagoings.com/2017/04/28/integrals/
     """
+    coeffs = np.atleast_2d(coeffs)
     L = sum(lmn)
     fact2l, fact2m, fact2n = [factorial2(2 * _ - 1) for _ in lmn]
 
-    # Normalize primitives first (PGBFs)
+    # Normalize primitives.
     norm = np.sqrt(
         np.power(2, 2 * L + 1.5)
         * np.power(exps, L + 1.5)
@@ -50,17 +51,10 @@ def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
     )
 
     # Normalize the contracted basis functions (CGBFs)
-    # Eq. 1.44 of Valeev integral whitepaper
+    # Eq. 1.44 of Valeev integral whitepaper.
     prefactor = np.power(np.pi, 1.5) * fact2l * fact2m * fact2n / np.power(2.0, L)
 
-    N = (
-        norm[:, None]
-        * norm[None, :]
-        * coeffs[:, None]
-        * coeffs[None, :]
-        / np.power(exps[:, None] + exps[None, :], L + 1.5)
-    ).sum()
-
+    N = (coeffs.T * coeffs / np.power(exps[:, None] + exps[None, :], L + 1.5)).sum()
     N *= prefactor
     N = 1 / np.sqrt(N)
     return N, norm
@@ -78,46 +72,46 @@ def eval_pgtos(xyz, center, exponents, cart_powers):
     return prefac[:, None, :] * exp_term
 
 
-def eval_shell(xyz, center, cart_powers, contr_coeffs, exponents, norms):
+def eval_shell(xyz, center, cart_powers, contr_coeffs, exponents):
     # pgtos shape is (nbf, npgto, nxyz)
     # that is
     # (number of basis funcs in shell, number of primitives, number of points)
     pgtos = eval_pgtos(xyz, center, exponents, cart_powers)
-    # shape of norms is (number of basis fucns in shell, number of primitives)
-    # ndim of contr_coeffs is 1d
-    pgtos *= norms[..., None] * contr_coeffs[:, None]
+    # shape of contr_coeffs is (number of bfs in shell, number of primitives)
+    pgtos *= contr_coeffs[..., None]
     return pgtos.sum(axis=1)
 
 
 class Shell:
     def __init__(self, L, center, coeffs, exps, center_ind=None, atomic_num=None):
         self.L = get_l(L)
-        self.center = np.array(center, dtype=float)
-        self.coeffs = np.array(coeffs, dtype=float)
-        self.exps = np.array(exps, dtype=float)
-        assert self.coeffs.size == self.exps.size
-        assert self.coeffs.shape == self.exps.shape
+        self.center = np.array(center, dtype=float)  # (x, y, z), 1d array
+        # Contraction coefficients, 2d array, shape (bfs in shell, number of primitives)
+        self.coeffs = np.atleast_2d(coeffs)
+        self.exps = np.array(exps, dtype=float)  # Orbital exponents, 1d array
+        assert self.coeffs.shape[1] == self.exps.size
         self.center_ind = center_ind
         self.atomic_num = atomic_num
 
-        self._norms = None
+        # Store original copy of contraction coefficients
+        self.coeffs_org = self.coeffs.copy()
+        # Compute norms and multiply them onto the contraction coefficients
+        _, norm_coeffs = self.get_norms()
+        self.coeffs = self.coeffs * norm_coeffs
 
-    @property
-    def norms(self):
-        """Shape (nbfs, nprimitives)"""
-        if self._norms is None:
-            lmns = canonical_order(self.L)
-            Ns = list()
-            norms = list()
-            for lmn in lmns:
-                N, norm = normalize(lmn, self.coeffs, self.exps)
-                Ns.append(N)
-                norms.append(norm)
-            self._norms = np.array(norms)
-        return self._norms
+    def get_norms(self, coeffs=None):
+        """Shape (nbfs, nprimitives).
+
+        For s- and p-orbitals all rows will be the same, but they will start
+        to differ from d-orbitals on."""
+        if coeffs is None:
+            coeffs = self.coeffs
+        lmns = canonical_order(self.L)
+        Ns, norm_coeffs = zip(*[normalize(lmn, coeffs, self.exps) for lmn in lmns])
+        return Ns, np.array(norm_coeffs)
 
     def as_tuple(self):
-        return (self.L, self.center, self.coeffs, self.exps, self.norms)
+        return self.L, self.center, self.coeffs, self.exps
 
     def exps_coeffs_iter(self):
         return zip(self.exps, self.coeffs)
@@ -366,9 +360,9 @@ class Shells:
         """Evaluate all basis functions at single point xyz."""
         all_vals = list()
         for shell in self.shells:
-            L_tot, center, contr_coeffs, exponents, norms = shell.as_tuple()
+            L_tot, center, contr_coeffs, exponents = shell.as_tuple()
             vals = cart_gto(L_tot, exponents, center, xyz)
-            vals *= norms * contr_coeffs[None, :]
+            vals *= contr_coeffs
             vals = vals.sum(axis=1).T
             all_vals.extend(vals)
         return np.array(all_vals)
@@ -382,9 +376,9 @@ class Shells:
             precontr = self.P_cart.T
 
         for shell in self.shells:
-            _, center, contr_coeffs, exponents, norms = shell.as_tuple()
+            _, center, contr_coeffs, exponents = shell.as_tuple()
             cart_powers = shell.cart_powers
-            vals = eval_shell(xyz, center, cart_powers, contr_coeffs, exponents, norms)
+            vals = eval_shell(xyz, center, cart_powers, contr_coeffs, exponents)
             all_vals.append(vals)
         all_vals = np.concatenate(all_vals, axis=0).T
         all_vals = all_vals @ precontr
@@ -401,18 +395,15 @@ class Shells:
 
         rows = list()
         for shell_a in shells_a.shells:
-            La, A, dA, aa, normsa = shell_a.as_tuple()
+            La, A, dA, aa = shell_a.as_tuple()
             row = list()
             for shell_b in shells_b.shells:
-                Lb, B, dB, bb, normsb = shell_b.as_tuple()
+                Lb, B, dB, bb = shell_b.as_tuple()
                 shape = get_shell_shape(La, Lb)
                 # Integral over primitives, shape: (product(*shape), prims_a, prims_b)
                 pints = int_func(La, Lb, aa[:, None], A, bb[None, :], B, **add_args)
-                # Contraction coefficients
-                pints *= dA[:, None] * dB[None, :]
-                pints = pints.reshape(*shape, len(dA), len(dB))
-                # Normalization
-                pints *= normsa[:, None, :, None] * normsb[None, :, None, :]
+                pints = pints.reshape(*shape, len(aa), len(bb))
+                pints *= dA[:, None, :, None] * dB[None, :, None, :]
                 # Contract primitives, shape: shape
                 cints = pints.sum(axis=(2, 3)).reshape(shape)
                 row.append(cints)
@@ -525,17 +516,16 @@ class Shells:
         rows_y = list()
         rows_z = list()
         for shell_a in shells_a.shells:
-            La, A, dA, aa, normsa = shell_a.as_tuple()
+            La, A, dA, aa = shell_a.as_tuple()
             row_x = list()
             row_y = list()
             row_z = list()
             for shell_b in shells_b.shells:
-                Lb, B, dB, bb, normsb = shell_b.as_tuple()
+                Lb, B, dB, bb = shell_b.as_tuple()
                 shape = (*get_shell_shape(La, Lb), 3)
                 dp = dpm(La, Lb, aa[:, None], A, bb[None, :], B, C=origin)
-                dp *= dA[:, None] * dB[None, :]
-                dp = dp.reshape(*shape, len(dA), len(dB))
-                dp *= normsa[:, None, None, :, None] * normsb[None, :, None, None, :]
+                dp = dp.reshape(*shape, len(aa), len(bb))
+                dp *= dA[:, None, None, :, None] * dB[None, :, None, None, :]
                 # Shape: (*shape, 3)
                 dp = dp.sum(axis=(3, 4)).reshape(shape)
                 dp_x = dp[:, :, 0]
