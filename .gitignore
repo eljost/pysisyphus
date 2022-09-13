@@ -161,6 +161,7 @@ cur_out
 *.tmp
 *.gbw
 *.chkfile
+pysisyphus/wavefunction/devel_ints/*
 
 version.py
 
