@@ -10,6 +10,7 @@
 #     Toward a Systematic Molecular Orbital Theory for Excited States
 #     Foresman, Head-Gordon, Pople, Frisch, 1991
 
+import operator
 from typing import Literal, List, Optional, Tuple
 
 import numpy as np
@@ -130,6 +131,10 @@ class Wavefunction:
     def P(self):
         return [C_occ @ C_occ.T for C_occ in self.C_occ]
 
+    @property
+    def P_tot(self):
+        return operator.add(*self.P)
+
     def P_exc(self, trans_dens):
         """
         Eqs. (2.25) and (2.26) in [3].
@@ -140,6 +145,8 @@ class Wavefunction:
         occ = occ_a
         occupations = np.zeros(self.mo_num)
         occupations[:occ_a] = 2
+        if self.unrestricted:
+            raise Exception("Fix density matrix construction!")
         P = np.diag(occupations)
         dP_oo = -np.einsum("ia,ja->ij", trans_dens, trans_dens)
         dP_vv = np.einsum("ia,ic->ac", trans_dens, trans_dens)
@@ -149,6 +156,14 @@ class Wavefunction:
         # The density matric is currently still in the MO basis. Transform
         # it to the AO basis and return.
         return C @ P @ C.T
+
+    def eval_density(self, coords3d, P=None):
+        if P is None:
+            P = self.P_tot
+        spherical = self.bf_type == BFType.PURE_SPHERICAL
+        vals = self.shells.eval(coords3d, spherical=spherical)
+        rho = np.einsum("uv,iu,iv->i", P, vals, vals)
+        return rho
 
     @property
     def S(self):
