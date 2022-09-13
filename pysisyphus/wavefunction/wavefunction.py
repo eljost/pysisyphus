@@ -37,6 +37,7 @@ class Wavefunction:
         C: NDArray[float],
         bf_type: BFType,
         shells: Optional[Shells] = None,
+        strict=True,
     ):
         self.atoms = atoms
         self.coords = np.array(coords).flatten()
@@ -61,6 +62,17 @@ class Wavefunction:
         self.shells = shells
 
         self._masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+
+        if strict:
+            self.check_sanity()
+
+    def check_sanity(self):
+        assert self.shells is not None
+        S = self.S  # Overlap matrix
+        Pa_mo, Pb_mo = [
+            C.T @ S @ P @ S @ C for C, P in zip(self.C, self.P)
+        ]  # Density matrices in MO basis
+        assert np.isclose([np.trace(P) for P in (Pa_mo, Pb_mo)], self.occ).all()
 
     @property
     def atom_num(self):
