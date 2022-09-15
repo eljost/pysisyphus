@@ -11,8 +11,7 @@ from pysisyphus.helpers_pure import interpolate_colors
 
 
 CUBE_ISO_VAL = 0.001
-TPL_BASE = jinja2.Template(
-    """
+TPL_BASE = """
 {{ orient }}
 
 function _setModelState() {
@@ -31,12 +30,11 @@ function _setModelState() {
 }
 _setModelState;
 """
-)
+
 CUBE_TPL = jinja2.Template(
-    """
-load {{ cube_fn }}
-{{ TPL_BASE }}
-isosurface cutoff {{ isoval }} sign {{ colors }} "{{ cube_fn }}"
+    "load {{ cube_fn }}\n"
+    + TPL_BASE
+    + """isosurface cutoff {{ isoval }} sign {{ colors }} "{{ cube_fn }}"
 {% if png_fn %}write image pngt "{{ png_fn }}"{% endif %}
 """
 )
@@ -62,9 +60,7 @@ def call_jmol(spt_str, show=False):
 
 
 def view_cdd_cube(cdd_cube, isoval=CUBE_ISO_VAL, orient=""):
-    tpl_base = TPL_BASE.render(orient=orient)
     spt = CUBE_TPL.render(
-        TPL_BASE=tpl_base,
         orient=orient,
         cube_fn=cdd_cube,
         isoval=isoval,
@@ -77,9 +73,7 @@ def view_cdd_cube(cdd_cube, isoval=CUBE_ISO_VAL, orient=""):
 
 def render_cdd_cube(cdd_cube, isoval=CUBE_ISO_VAL, orient=""):
     png_fn = Path(cdd_cube).with_suffix(".png")
-    tpl_base = TPL_BASE.render(orient=orient)
     spt = CUBE_TPL.render(
-        TPL_BASE=tpl_base,
         orient=orient,
         cube_fn=cdd_cube,
         isoval=isoval,
