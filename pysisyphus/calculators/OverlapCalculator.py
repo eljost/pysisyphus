@@ -374,7 +374,8 @@ class OverlapCalculator(Calculator):
         )
         return overlaps
 
-    def tden_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, ao_ovlp):
+    @staticmethod
+    def tden_overlaps(mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, ao_ovlp):
         """
         Parameters
         ----------
@@ -395,11 +396,12 @@ class OverlapCalculator(Calculator):
             sum(ci_coeffs.shape[1:]) for ci_coeffs in (ci_coeffs1, ci_coeffs2)
         ]
         assert ao_ovlp.shape == (nmo1, nmo2)
-        _, occ, _ = ci_coeffs1.shape
+        _, occ1, virt1 = ci_coeffs1.shape
+        _, occ2, virt2 = ci_coeffs2.shape
         # MO overlaps, and the respective sub-matrices (occ x occ), (virt x virt)
         S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
-        S_MO_occ = S_MO[:occ, :occ]
-        S_MO_vir = S_MO[occ:, occ:]
+        S_MO_occ = S_MO[:occ1, :occ2]
+        S_MO_vir = S_MO[occ1:, occ2:]
 
         # Thanks Philipp and Klaus!
         overlaps = np.zeros((ci_coeffs1.shape[0], ci_coeffs2.shape[0]))
