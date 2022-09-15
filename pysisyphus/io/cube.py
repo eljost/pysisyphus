@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from math import ceil
+import tempfile
 from typing import Tuple
 
 import jinja2
@@ -10,6 +11,7 @@ import pyparsing as pp
 from pysisyphus.elem_data import ATOMIC_NUMBERS, INV_ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.wrapper.jmol import view_cdd_cube
 
 
 def get_grid(coords3d, num=10, offset=3.0):
@@ -86,6 +88,11 @@ class Cube:
     def write(self, fn):
         with open(fn, "w") as handle:
             handle.write(self.to_str())
+
+    def view_cdd(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".cube") as tmp_cube:
+            self.write(tmp_cube.name)
+            view_cdd_cube(tmp_cube.name)
 
 
 @file_or_str(".cube", ".cub")
