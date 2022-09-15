@@ -495,6 +495,19 @@ class Calculator:
         tools like formchk or ricctools.
         """
 
+    def popen(self, cmd, cwd=None):
+        if isinstance(cmd, str):
+            cmd = cmd.split()
+        proc = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            universal_newlines=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        proc.wait()
+        return proc
+
     def prepare_pattern(self, raw_pat):
         """Prepare globs.
 
