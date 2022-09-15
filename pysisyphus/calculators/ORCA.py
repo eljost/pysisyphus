@@ -358,7 +358,8 @@ class ORCA(OverlapCalculator):
             "molden:orca.molden",
             "hess",
             "pcgrad",
-            "densities",
+            "densities:orca.densities",
+            "json",
         )
         self.do_tddft = False
         if "tddft" in self.blocks:
@@ -544,16 +545,15 @@ class ORCA(OverlapCalculator):
     def run_after(self, path):
         # Create .molden file when CDDs are requested
         if self.cdds:
-            cmd = "orca_2mkl orca -molden".split()
-            proc = subprocess.Popen(
-                cmd,
-                cwd=path,
-                universal_newlines=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            proc.wait()
+            cmd = "orca_2mkl orca -molden"
+            self.popen(cmd, cwd=path)
             shutil.copy(path / "orca.molden.input", path / "orca.molden")
+
+        # Will silently fail with ECPs
+        cmd = "orca_2json orca"
+        proc = self.popen(cmd, cwd=path)
+        if (ret := proc.returncode) != 0:
+            self.log(f"orca_2json call failed with return-code {ret}!")
 
     @staticmethod
     @file_or_str(".hess", method=False)
