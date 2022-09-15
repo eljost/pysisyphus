@@ -162,7 +162,7 @@ class Wavefunction:
             P = self.P_tot
         spherical = self.bf_type == BFType.PURE_SPHERICAL
         vals = self.shells.eval(coords3d, spherical=spherical)
-        rho = np.einsum("uv,iu,iv->i", P, vals, vals)
+        rho = np.einsum("uv,iu,iv->i", P, vals, vals, optimize=['einsum_path', (0, 1), (0, 1)])
         return rho
 
     @property
