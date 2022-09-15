@@ -17,7 +17,7 @@ def get_grid(coords3d, num=10, offset=3.0):
     maxx, maxy, maxz = coords3d.max(axis=0) + offset
     X, Y, Z = np.mgrid[
         minx : maxx : num * 1j,
-        miny : maxz : num * 1j,
+        miny : maxy : num * 1j,
         minz : maxz : num * 1j,
     ]
     xyz = np.stack((X.flatten(), Y.flatten(), Z.flatten()), axis=1)
@@ -37,7 +37,7 @@ def get_grid_with_spacing(coords3d, spacing=0.30, margin=3.0):
     nz = ceil(dz / spacing)
     X, Y, Z = np.mgrid[
         minx : maxx : nx * 1j,
-        miny : maxz : ny * 1j,
+        miny : maxy : ny * 1j,
         minz : maxz : nz * 1j,
     ]
     xyz = np.stack((X.flatten(), Y.flatten(), Z.flatten()), axis=1)
