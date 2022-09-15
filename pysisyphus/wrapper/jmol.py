@@ -2,6 +2,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import jinja2
 import numpy as np
 
 from pysisyphus.config import get_cmd
@@ -9,10 +10,12 @@ from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import interpolate_colors
 
 
-TPL_BASE = """
-{orient}
+CUBE_ISO_VAL = 0.001
+TPL_BASE = jinja2.Template(
+    """
+{{ orient }}
 
-function _setModelState() {{
+function _setModelState() {
 
     select;
     Spacefill 0.0;
@@ -25,17 +28,16 @@ function _setModelState() {{
     frank off
     set showhydrogens True;
 
-}}
-
+}
 _setModelState;
-
 """
-CUBE_TPL = (
-    "load {cube_fn}"
-    + TPL_BASE
-    + """
-isosurface cutoff {isoval} sign {colors} "{cube_fn}"
-write image pngt "{png_fn}"
+)
+CUBE_TPL = jinja2.Template(
+    """
+load {{ cube_fn }}
+{{ TPL_BASE }}
+isosurface cutoff {{ isoval }} sign {{ colors }} "{{ cube_fn }}"
+{% if png_fn %}write image pngt "{{ png_fn }}"{% endif %}
 """
 )
 
@@ -59,9 +61,25 @@ def call_jmol(spt_str, show=False):
     return stdout, stderr
 
 
-def render_cdd_cube(cdd_cube, isoval=0.002, orient=""):
+def view_cdd_cube(cdd_cube, isoval=CUBE_ISO_VAL, orient=""):
+    tpl_base = TPL_BASE.render(orient=orient)
+    spt = CUBE_TPL.render(
+        TPL_BASE=tpl_base,
+        orient=orient,
+        cube_fn=cdd_cube,
+        isoval=isoval,
+        colors="red blue",
+    )
+    with open("jmol.spt", "w") as handle:
+        handle.write(spt)
+    stdout, stderr = call_jmol(spt, show=True)
+
+
+def render_cdd_cube(cdd_cube, isoval=CUBE_ISO_VAL, orient=""):
     png_fn = Path(cdd_cube).with_suffix(".png")
-    spt = CUBE_TPL.format(
+    tpl_base = TPL_BASE.render(orient=orient)
+    spt = CUBE_TPL.render(
+        TPL_BASE=tpl_base,
         orient=orient,
         cube_fn=cdd_cube,
         isoval=isoval,
@@ -105,8 +123,3 @@ def render_geom_and_charges(geom, point_charges):
             )
         print(f"SPT:\n\n{spt}")
         call_jmol(spt, show=True)
-
-
-if __name__ == "__main__":
-    cdd = "/scratch/turbontos/11_bz_pure/image_000.005.S_004_CDD.cub"
-    render_cdd_cube(cdd)
