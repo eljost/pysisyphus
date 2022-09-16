@@ -382,6 +382,15 @@ class Calculator:
         if isinstance(cmd, str):
             cmd = [cmd]
 
+        act_cmd = cmd[0]
+        cmd_availble = shutil.which(act_cmd)
+        if not cmd_availble:
+            print(
+                f"Command '{act_cmd}' could not be found on $PATH! "
+                "Maybe you forgot to make it available?"
+            )
+            return
+
         args = cmd + [self.inp_fn]
         if add_args:
             args.extend(add_args)
