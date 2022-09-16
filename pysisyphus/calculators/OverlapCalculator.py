@@ -19,7 +19,7 @@ from pysisyphus.helpers_pure import describe
 from pysisyphus.io.hdf5 import get_h5_group
 from pysisyphus.wrapper.mwfn import make_cdd, get_mwfn_exc_str
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
-from pysisyphus.wavefunction.es_overlaps import rAB as top_rAB
+from pysisyphus.wavefunction.es_overlaps import rAB as top_rAB, tden_overlaps
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
@@ -374,48 +374,6 @@ class OverlapCalculator(Calculator):
         )
         return overlaps
 
-    @staticmethod
-    def tden_overlaps(mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, ao_ovlp):
-        """
-        Parameters
-        ----------
-        mo_coeffs1 : ndarray, shape (MOs, AOs)
-            MO coefficient matrix. One row per MO, one column per basis
-            function. Usually square.
-        mo_coeffs2 : ndarray
-            See mo_coeffs1.
-        ci_coeffs1 : ndarray, shape(occ. MOs, MOs)
-            CI-coefficient matrix.
-        ci_coeffs2 : ndarray, shape(occ. MOs, MOs)
-            See ci_coeffs1.
-        ao_ovlp : ndarray, shape(AOs1, AOs2)
-            Double molcule AO overlaps.
-        """
-        # Total number of molecular orbitals for ci_coeffs1 and ci_coeffs2 (occ + virt)
-        nmo1, nmo2 = [
-            sum(ci_coeffs.shape[1:]) for ci_coeffs in (ci_coeffs1, ci_coeffs2)
-        ]
-        assert ao_ovlp.shape == (nmo1, nmo2)
-        _, occ1, virt1 = ci_coeffs1.shape
-        _, occ2, virt2 = ci_coeffs2.shape
-        # MO overlaps, and the respective sub-matrices (occ x occ), (virt x virt)
-        S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
-        S_MO_occ = S_MO[:occ1, :occ2]
-        S_MO_vir = S_MO[occ1:, occ2:]
-
-        # Thanks Philipp and Klaus!
-        overlaps = np.zeros((ci_coeffs1.shape[0], ci_coeffs2.shape[0]))
-        for i, state1 in enumerate(ci_coeffs1):
-            precontr = S_MO_vir.T @ state1.T @ S_MO_occ
-            for j, state2 in enumerate(ci_coeffs2):
-                overlaps[i, j] = np.trace(precontr @ state2)
-
-        # overlaps = np.einsum(
-        # "mil,ij,njk,kl->mn", ci_coeffs1, S_MO_occ, ci_coeffs2, S_MO_vir.T,
-        # optimize=['einsum_path', (0, 3), (1, 2), (0, 1)],
-        # )
-        return overlaps
-
     def get_tden_overlaps(self, indices=None, ao_ovlp=None):
         mo_coeffs_ref, mo_coeffs_cur, ao_ovlp = self.get_orbital_matrices(
             indices, ao_ovlp
@@ -424,7 +382,7 @@ class OverlapCalculator(Calculator):
         ref, cur = self.get_indices(indices)
         ci_coeffs_ref = self.ci_coeff_list[ref]
         ci_coeffs_cur = self.ci_coeff_list[cur]
-        overlaps = self.tden_overlaps(
+        overlaps = tden_overlaps(
             mo_coeffs_ref, ci_coeffs_ref, mo_coeffs_cur, ci_coeffs_cur, ao_ovlp
         )
         return overlaps
@@ -434,7 +392,7 @@ class OverlapCalculator(Calculator):
         ci_coeffs1 = self.ci_coeff_list[-1]
         mo_coeffs2 = calc.mo_coeff_list[-1]
         ci_coeffs2 = calc.ci_coeff_list[-1]
-        overlaps = self.tden_overlaps(
+        overlaps = tden_overlaps(
             mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, ao_ovlp=ao_ovlp
         )
         return overlaps
