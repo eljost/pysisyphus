@@ -169,3 +169,29 @@ def test_orca_unrestricted(this_dir):
     fosc = wf.oscillator_strength(exc_ens, tdms)
     ref_fosc = (0.030505412, 0.000000181, 0.000000011, 0.000072701, 0.000000226)
     np.testing.assert_allclose(fosc, ref_fosc, atol=1e-6)
+
+
+@pytest.mark.parametrize(
+    "charge, ecp_electrons",
+    (
+        (0, (28,)),
+        (
+            0,
+            {
+                0: 28,
+            },
+        ),
+        pytest.param(
+            10,
+            {
+                0: 28,
+            },
+            marks=pytest.mark.xfail,
+        ),
+        pytest.param(0, (0,), marks=pytest.mark.xfail),
+        pytest.param(0, None, marks=pytest.mark.xfail),
+    ),
+)
+def test_orca_ecp(charge, ecp_electrons):
+    fn = WF_LIB_DIR / "orca_yttrium_ecp.molden.input"
+    Wavefunction.from_orca_molden(fn, charge=charge, ecp_electrons=ecp_electrons)

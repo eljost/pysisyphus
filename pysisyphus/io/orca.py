@@ -201,7 +201,7 @@ def shells_from_molden(text):
 
 
 @file_or_str(".molden", ".input")
-def wavefunction_from_molden(text):
+def wavefunction_from_molden(text, charge=None, **wf_kwargs):
     data = parse_molden(text)
     atoms, coords, nuc_charges = parse_molden_atoms(data)
     nuc_charge = sum(nuc_charges)
@@ -238,7 +238,9 @@ def wavefunction_from_molden(text):
         occ_a = occ_b = occ_a // 2
     C = np.stack((Ca, Cb))
 
-    charge = nuc_charge - (occ_a + occ_b)
+    molden_charge = nuc_charge - (occ_a + occ_b)
+    if charge is None:
+        charge = molden_charge
     # Multiplicity = (2S + 1), S = number of unpaired elecs. * 0.5
     mult = (occ_a - occ_b) + 1
     unrestricted = set(spins) == {"Alpha", "Beta"}
@@ -255,4 +257,5 @@ def wavefunction_from_molden(text):
         C=C,
         bf_type=BFType.PURE_SPHERICAL,
         shells=shells,
+        **wf_kwargs,
     )
