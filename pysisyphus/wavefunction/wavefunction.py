@@ -11,7 +11,9 @@
 #     Foresman, Head-Gordon, Pople, Frisch, 1991
 
 import operator
+from pathlib import Path
 from typing import Literal, List, Optional, Tuple
+import warnings
 
 import numpy as np
 from numpy.typing import NDArray
@@ -38,13 +40,14 @@ class Wavefunction:
         C: NDArray[float],
         bf_type: BFType,
         shells: Optional[Shells] = None,
+        ecp_electrons=None,
         strict=True,
+        warn_charge=4,
     ):
         self.atoms = atoms
         self.coords = np.array(coords).flatten()
         assert 3 * len(self.atoms) == len(self.coords)
 
-        self.charge = charge
         self.mult = mult
         if self.mult != 1:
             unrestricted = True
@@ -61,6 +64,21 @@ class Wavefunction:
             self.C = np.array((self.C, self.C.copy()))
         self.bf_type = bf_type
         self.shells = shells
+        if ecp_electrons is None:
+            ecp_electrons = np.zeros(len(self.atoms))
+        elif isinstance(ecp_electrons, dict):
+            _ecp_electrons = np.zeros(len(self.atoms))
+            for k, v in ecp_electrons.items():
+                _ecp_electrons[k] = v
+            ecp_electrons = _ecp_electrons
+        self.ecp_electrons = np.array(ecp_electrons, dtype=int)
+        self.charge = charge
+        if abs(self.charge) > warn_charge:
+            warnings.warn(
+                f"Encountered charge={self.charge} with high absolute value!\n"
+                "This may happen in systems with ECPs. In such cases please set "
+                "'ecp_electrons' or at least the correct total charge."
+            )
 
         self._masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
 
@@ -73,7 +91,25 @@ class Wavefunction:
         Pa_mo, Pb_mo = [
             C.T @ S @ P @ S @ C for C, P in zip(self.C, self.P)
         ]  # Density matrices in MO basis
-        assert np.isclose([np.trace(P) for P in (Pa_mo, Pb_mo)], self.occ).all()
+        calc_occ_a = np.trace(Pa_mo)
+        calc_occ_b = np.trace(Pb_mo)
+        assert np.isclose((calc_occ_a, calc_occ_b), self.occ).all()
+
+        assert (
+            self.ecp_electrons >= 0
+        ).all(), "All entries in 'ecp_electrons' must be >= 0!"
+        # We can't use self.nuc_charges, as it already contains ecp_electrons
+        electrons_expected = (
+            nuc_charges_for_atoms(self.atoms).sum()
+            - self.charge  # Negative charge means MORE electrons, not less!
+            - self.ecp_electrons.sum()
+        )
+        electrons_present = sum(self.occ)
+        electrons_missing = electrons_expected - electrons_present
+        assert electrons_missing == 0, (
+            f"{electrons_missing} electrons are missing! Did you forget to specify "
+            "'ecp_electrons' and/or the correct 'charge'?"
+        )
 
     @property
     def atom_num(self):
@@ -89,7 +125,7 @@ class Wavefunction:
 
     @property
     def nuc_charges(self):
-        return nuc_charges_for_atoms(self.atoms)
+        return nuc_charges_for_atoms(self.atoms) - self.ecp_electrons
 
     @property
     def masses(self):
@@ -100,8 +136,36 @@ class Wavefunction:
         return self.C.shape[1]
 
     @staticmethod
+    def from_file(fn, **kwargs):
+        path = Path(fn)
+
+        from_funcs = {
+            ".json": Wavefunction.from_orca_json,
+        }
+        from_funcs_for_str = (
+            ("Molden file created by orca_2mkl", Wavefunction.from_orca_molden),
+        )
+        try:
+            from_func = from_funcs[path.suffix]
+        except KeyError:
+            # Search for certain strings in the file
+            with open(fn) as handle:
+                text = handle.read()
+            for key, func in from_funcs_for_str:
+                if key in text:
+                    from_func = func
+            else:
+                raise Exception("Could not determien file format!")
+        return from_func(fn, **kwargs)
+
+    @staticmethod
     @file_or_str(".json")
     def from_orca_json(text):
+        """Create wavefunction from ORCA JSON.
+
+        As of version 5.0.3 ORCA does not create JSON files for systems
+        containing an ECP, so this method does not take any additional
+        args or kwargs in contrast to from_orca_molden."""
         from pysisyphus.io.orca import wavefunction_from_json
 
         wf = wavefunction_from_json(text)
@@ -109,10 +173,20 @@ class Wavefunction:
 
     @staticmethod
     @file_or_str(".json")
-    def from_orca_molden(text):
+    def from_orca_molden(text, **kwargs):
+        """Create wavefunction from ORCA molden file.
+
+        While ORCA refuses to create JSON files for systems containing
+        ECPs, this is not the case for 'orca_2mkl [fn] -molden'. So we may
+        encounter ECPs here. To handle this 'wavefunction_from_molden' accepts
+        an additional charge argument, to specify the correct charge, e.g. as
+        stored in an ORCA calculator. If the actual, true charge is not availble
+        wavefunction_from_molden will come up with an absurdly high charge.
+        """
+
         from pysisyphus.io.orca import wavefunction_from_molden
 
-        wf = wavefunction_from_molden(text)
+        wf = wavefunction_from_molden(text, **kwargs)
         return wf
 
     @property
@@ -162,7 +236,9 @@ class Wavefunction:
             P = self.P_tot
         spherical = self.bf_type == BFType.PURE_SPHERICAL
         vals = self.shells.eval(coords3d, spherical=spherical)
-        rho = np.einsum("uv,iu,iv->i", P, vals, vals, optimize=['einsum_path', (0, 1), (0, 1)])
+        rho = np.einsum(
+            "uv,iu,iv->i", P, vals, vals, optimize=["einsum_path", (0, 1), (0, 1)]
+        )
         return rho
 
     @property
