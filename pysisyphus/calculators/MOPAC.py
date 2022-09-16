@@ -68,7 +68,7 @@ class MOPAC(Calculator):
 
         self.inp = textwrap.dedent(
             """
-        NOSYM PM7 {mult} CHARGE={charge} {calc_type} {uhf} THREADS={pal} AUX(6,PRECISION=9) NOREOR
+        NOSYM {method} {mult} CHARGE={charge} {calc_type} {uhf} THREADS={pal} AUX(6,PRECISION=9) NOREOR
 
  
         {coord_str}
@@ -93,6 +93,7 @@ class MOPAC(Calculator):
         coord_str = self.prepare_coords(atoms, coords, opt)
 
         inp = self.inp.format(
+            method=self.method,
             charge=self.charge,
             mult=self.MULT_STRS[self.mult],
             uhf=self.uhf,

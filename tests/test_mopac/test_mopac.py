@@ -14,9 +14,10 @@ def test_mopac():
     forces = geom.forces
     norm = np.linalg.norm(forces)
     energy = geom.energy
-    assert energy == pytest.approx(-0.091702313)
-    np.testing.assert_allclose(norm, 0.0407509836626757)
+    # assert energy == pytest.approx(-0.091702313)
+    assert energy == pytest.approx(-0.09170261366094087)
+    assert norm == pytest.approx(0.0407509836626757)
 
     nus, *_ = geom.get_normal_modes()
-    ref = (1369.84, 2778.85, 2785.06)
+    ref = [1370.787877, 2780.770355, 2786.987219]
     np.testing.assert_allclose(nus, ref, atol=1e-2)
