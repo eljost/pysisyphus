@@ -14,4 +14,4 @@ from pysisyphus.wavefunction.shells import (
 )
 
 from pysisyphus.wavefunction.wavefunction import Wavefunction
-from pysisyphus.wavefunction.localization import pipek_mezey
+from pysisyphus.wavefunction.localization import foster_boys, pipek_mezey
