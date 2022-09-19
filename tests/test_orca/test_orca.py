@@ -10,7 +10,7 @@ import pytest
 from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators import ORCA
-from pysisyphus.calculators.ORCA import parse_densities, parse_orca_cis
+from pysisyphus.calculators.ORCA import parse_orca_densities, parse_orca_cis
 from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.testing import using
 from pysisyphus.wavefunction import Wavefunction
@@ -200,7 +200,7 @@ def assert_dens_mats(dens_dict, json_fn):
 )
 def test_orca_gs_densities(dens_fn, json_fn):
 
-    dens_dict = parse_densities(WF_LIB_DIR / dens_fn)
+    dens_dict = parse_orca_densities(WF_LIB_DIR / dens_fn)
     _ = assert_dens_mats(dens_dict, WF_LIB_DIR / json_fn)
 
 
@@ -220,7 +220,7 @@ def test_orca_gs_densities(dens_fn, json_fn):
     ),
 )
 def test_orca_es_densities(dens_fn, json_fn, ref_dpm):
-    dens_dict = parse_densities(WF_LIB_DIR / dens_fn)
+    dens_dict = parse_orca_densities(WF_LIB_DIR / dens_fn)
     wf = assert_dens_mats(dens_dict, WF_LIB_DIR / json_fn)
     # ref_dpm = (0.00613, 0.00867, -0.00000)  # From ORCA output
 
