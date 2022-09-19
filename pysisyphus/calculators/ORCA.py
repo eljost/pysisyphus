@@ -201,7 +201,8 @@ def parse_orca_cis(cis_fn):
     return Xs_a, Ys_a, Xs_b, Ys_b
 
 
-def parse_all_energies(text, triplets=False, do_tddft=False):
+@file_or_str(".log", ".out")
+def parse_orca_all_energies(text, triplets=False, do_tddft=False):
     energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
     energy_mobj = re.search(energy_re, text)
     gs_energy = float(energy_mobj.groups()[0])
@@ -234,7 +235,7 @@ def get_name(text: bytes):
 
 
 @file_or_str(".densities", mode="rb")
-def parse_densities(text: bytes):
+def parse_orca_densities(text: bytes):
     handle = io.BytesIO(text)
 
     # Determine file size
@@ -761,7 +762,7 @@ class ORCA(OverlapCalculator):
         if triplets is None:
             triplets = self.triplets
 
-        return parse_all_energies(text, triplets, self.do_tddft)
+        return parse_orca_all_energies(text, triplets, self.do_tddft)
 
     @staticmethod
     @file_or_str(".out", method=False)
