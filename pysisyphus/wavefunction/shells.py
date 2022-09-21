@@ -26,6 +26,7 @@ from pysisyphus.wavefunction.helpers import (
 
 from pysisyphus.wavefunction import (
     coulomb3d,
+    diag_quadrupole3d,
     dipole3d,
     gto3d,
     kinetic3d,
@@ -72,7 +73,7 @@ def eval_pgtos(xyz, center, exponents, cart_powers):
 
     xa, ya, za = (xyz - center).T
     # Indepdendent of Cartesian powers, but dependent on contraction degree
-    exp_term = np.exp(-exponents[:, None] * (xa ** 2 + ya ** 2 + za ** 2))
+    exp_term = np.exp(-exponents[:, None] * (xa**2 + ya**2 + za**2))
     # Indepdendent of contraction degree, but dependent on Cartesian powers
     xpow, ypow, zpow = cart_powers.T
     prefac = xa ** xpow[:, None] * ya ** ypow[:, None] * za ** zpow[:, None]
@@ -164,6 +165,9 @@ Tmap = get_map(kinetic3d, "kinetic3d")  # Kinetic energy integrals
 Vmap = get_map(coulomb3d, "coulomb3d")  # 1el Coulomb integrals
 DPMmap = get_map(dipole3d, "dipole3d")  # Dipole moments integrals
 QPMmap = get_map(quadrupole3d, "quadrupole3d")  # Quadrupole moments integrals
+DQPMmap = get_map(
+    diag_quadrupole3d, "diag_quadrupole3d"
+)  # Diagonal quadrupole moments integrals
 
 
 def cart_gto(l_tot, a, Xa, Ya, Za):
@@ -199,6 +203,12 @@ def dipole(la_tot, lb_tot, a, A, b, B, C):
 def quadrupole(la_tot, lb_tot, a, A, b, B, C):
     """Wrapper for quadratic moment integrals (quadrupole moment)."""
     func = QPMmap[(la_tot, lb_tot)]
+    return func(a, A, b, B, C)
+
+
+def diag_quadrupole(la_tot, lb_tot, a, A, b, B, C):
+    """Wrapper for diagonal entries of quadratic moment integrals."""
+    func = DQPMmap[(la_tot, lb_tot)]
     return func(a, A, b, B, C)
 
 
@@ -574,14 +584,26 @@ class Shells:
     def get_dipole_ints_sph(self, origin) -> NDArray:
         return self.get_multipole_ints_sph(self, self, dipole, components=3, C=origin)
 
+    ##################################################
+    # Quadrupole moment integrals, diagonal elements #
+    ##################################################
+
+    def get_diag_quadrupole_ints_cart(self, origin):
+        return self.get_multipole_ints_cart(
+            self, self, diag_quadrupole, components=3, C=origin
+        )
+
+    def get_diag_quadrupole_ints_sph(self, origin):
+        return self.get_multipole_ints_sph(
+            self, self, diag_quadrupole, components=3, C=origin
+        )
+
     ###############################
     # Quadrupole moment integrals #
     ###############################
 
     def get_quadrupole_ints_cart(self, origin):
-        _ = self.get_multipole_ints_cart(
-            self, self, quadrupole, components=6, C=origin
-        )
+        _ = self.get_multipole_ints_cart(self, self, quadrupole, components=6, C=origin)
         shape = _.shape
         sym = np.zeros((3, 3, *shape[1:]))
         triu = np.triu_indices(3)
@@ -592,9 +614,7 @@ class Shells:
         return sym.reshape(3, 3, *shape[1:])
 
     def get_quadrupole_ints_sph(self, origin) -> NDArray:
-        _ = self.get_multipole_ints_sph(
-            self, self, quadrupole, components=6, C=origin
-        )
+        _ = self.get_multipole_ints_sph(self, self, quadrupole, components=6, C=origin)
         shape = _.shape
         sym = np.zeros((3, 3, *shape[1:]))
         triu = np.triu_indices(3)
