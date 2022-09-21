@@ -13,6 +13,9 @@
 #     Localized molecular orbitals for polyatomic molecules.
 #     I. A comparison of the Edmiston‐Ruedenberg and Boys localization methods
 #     Kleier, Halgren, Hall Jr., Lipscomb, 1974
+# [5] https://doi.org/10.1063/1.4894472
+#     Diabatization based on the dipole and quadrupole: The DQ method
+#     Hoyer, Xu, Ma, Gagliardi, Truhlar, 2014
 
 
 from functools import singledispatch
@@ -193,7 +196,7 @@ def foster_boys(
      ‾‾‾   ‾‾‾
     i = 1 j = 1
 
-    or similarily (see eq. (6) in [4])
+    or similarily (see eq. (6) in [4] or the appendix of [5])
 
      nMO
      ___

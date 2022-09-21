@@ -59,3 +59,9 @@ def test_quadrupole_ints():
     shells = Shells.from_pyscf_mol(mol)
     pysis_quad = shells.get_quadrupole_ints_sph(origin)
     np.testing.assert_allclose(pysis_quad, quad, atol=1e-14)
+
+    # Only diagonal elements
+    pysis_dquad = shells.get_diag_quadrupole_ints_sph(origin)
+    np.testing.assert_allclose(
+        pysis_dquad, pysis_quad[[0, 1, 2], [0, 1, 2]], atol=1e-14
+    )

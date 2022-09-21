@@ -127,10 +127,10 @@ class CartGTO3d(Function):
     @classmethod
     @functools.cache
     def eval(cls, i, j, k, a, Xa, Ya, Za):
-        Xa2 = Xa ** 2
-        Ya2 = Ya ** 2
-        Za2 = Za ** 2
-        return (Xa ** i) * (Ya ** j) * (Za ** k) * exp(-a * (Xa2 + Ya2 + Za2))
+        Xa2 = Xa**2
+        Ya2 = Ya**2
+        Za2 = Za**2
+        return (Xa**i) * (Ya**j) * (Za**k) * exp(-a * (Xa2 + Ya2 + Za2))
 
 
 class CartGTOShell(Function):
@@ -170,7 +170,7 @@ class Multipole1d(Function):
         if i.is_zero and j.is_zero and e.is_zero:
             X = A - B
             mu = a * b / p
-            return sqrt(pi / p) * exp(-mu * X ** 2)
+            return sqrt(pi / p) * exp(-mu * X**2)
         # Decrement i
         elif i.is_positive:
             X = P - A
@@ -201,6 +201,17 @@ class Multipole3dShell(Function):
             for Le, La, Lb in shell_iter((Le_tot, La_tot, Lb_tot))
         ]
         # print(Multipole1d.eval.cache_info())
+        return exprs
+
+
+class DiagQuadrupole3dShell(Function):
+    @classmethod
+    def eval(cls, La_tot, Lb_tot, a, b, A, B, C=(0.0, 0.0, 0.0)):
+        exprs = list()
+        for Le in ((2, 0, 0), (0, 2, 0), (0, 0, 2)):
+            for La, Lb in shell_iter((La_tot, Lb_tot)):
+                exprs.append(Multipole3d(La, Lb, a, b, A, B, Le, C))
+        # print(DiagQuadrupole3dShell.eval.cache_info())
         return exprs
 
 
@@ -246,7 +257,7 @@ class Kinetic1d(Function):
         # Base case
         if i == 0 and j == 0:
             X = P - A
-            return (a - 2 * a ** 2 * (X ** 2 + 1 / (2 * p))) * Overlap1d(
+            return (a - 2 * a**2 * (X**2 + 1 / (2 * p))) * Overlap1d(
                 i, j, a, b, A, B
             )
         # Decrement i
@@ -884,6 +895,47 @@ def run():
         comment=dipole_comment,
     )
     write_py(out_dir, "dipole3d.py", dipole_rendered)
+    print()
+
+    ###########################################
+    # Diagonal of quadrupole moment integrals #
+    ###########################################
+
+    def diag_quadrupole_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return (
+            f"Cartesian 3D ({shell_a}{shell_b}) quadrupole moment integrals\n"
+            "for operators x², y² and z². The origin is at C."
+        )
+
+    diag_quadrupole_comment = """
+    Diagonal of the quadrupole moment matrix with operators x², y², z².
+
+    for rr in (xx, yy, zz):
+        for bf_a in basis_functions_a:
+            for bf_b in basis_functions_b:
+                    quadrupole_integrals(bf_a, bf_b, rr)
+    """
+
+    diag_quadrupole_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot: DiagQuadrupole3dShell(
+            La_tot, Lb_tot, a, b, center_A, center_B, center_C
+        ),
+        (l_max, l_max),
+        "diag quadrupole moment",
+        (A_map, B_map, C_map),
+    )
+
+    diag_quadrupole_rendered = render_py_funcs(
+        diag_quadrupole_ints_Ls,
+        (a, A, b, B, C),
+        "diag_quadrupole3d",
+        diag_quadrupole_doc_func,
+        comment=diag_quadrupole_comment,
+    )
+    write_py(out_dir, "diag_quadrupole3d.py", diag_quadrupole_rendered)
     print()
 
     ###############################
