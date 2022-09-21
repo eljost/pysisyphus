@@ -9,6 +9,10 @@
 #     Constructing diabatic states from adiabatic states: Extending
 #     generalized Mulliken–Hush to multiple charge centers with Boys localization
 #     Subotnik, Yeganeh, Cave, Ratner, 2008
+# [4] https://doi.org/10.1063/1.1681683
+#     Localized molecular orbitals for polyatomic molecules.
+#     I. A comparison of the Edmiston‐Ruedenberg and Boys localization methods
+#     Kleier, Halgren, Hall Jr., Lipscomb, 1974
 
 
 from functools import singledispatch
@@ -178,7 +182,7 @@ def foster_boys(
     Partial adaption of code found in orbloc.f90 of Multiwfn 3.8. It
     seems like Multiwfn does not calculate the actual function that is
     maximized in FB localization, but the PM function. Here we calculate
-    the actual function eq. (2) in [3].
+    the actual cost function eq. (2) in [3].
 
      nMO   nMO
      ___   ___
@@ -188,6 +192,17 @@ def foster_boys(
      ╱     ╱    |                   |
      ‾‾‾   ‾‾‾
     i = 1 j = 1
+
+    or similarily (see eq. (6) in [4])
+
+     nMO
+     ___
+     ╲                2
+      ╲    |         |
+      ╱    | <i|R|i> |
+     ╱     |         |
+     ‾‾‾
+    i = 1
 
     Parameters
     ----------
@@ -227,8 +242,8 @@ def foster_boys(
             jrj = contract(mo_j, mo_j)
             jrk = contract(mo_j, mo_k)
             krk = contract(mo_k, mo_k)
-            A = (jrk**2).sum() - ((jrj - krk) ** 2).sum() / 4
-            B = (jrk * (jrj - krk)).sum()
+            A = (jrk**2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
+            B = ((jrj - krk) * jrk).sum()  # Eq. (10) in [4]
 
             if (A**2 + B**2) <= 1e-12:
                 continue
