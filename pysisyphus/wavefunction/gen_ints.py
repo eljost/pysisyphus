@@ -198,7 +198,7 @@ class Multipole3dShell(Function):
     def eval(cls, La_tot, Lb_tot, a, b, A, B, Le_tot=0, C=(0.0, 0.0, 0.0)):
         exprs = [
             Multipole3d(La, Lb, a, b, A, B, Le, C)
-            for La, Lb, Le in shell_iter((La_tot, Lb_tot, Le_tot))
+            for Le, La, Lb in shell_iter((Le_tot, La_tot, Lb_tot))
         ]
         # print(Multipole1d.eval.cache_info())
         return exprs
@@ -849,7 +849,7 @@ def run():
         shell_a = L_MAP[La_tot]
         shell_b = L_MAP[Lb_tot]
         return (
-            f"Cartesian 3D ({shell_a}{shell_b}) dipole moment integral.\n"
+            f"Cartesian 3D ({shell_a}{shell_b}) dipole moment integrals.\n"
             "The origin is at C."
         )
 
@@ -885,6 +885,53 @@ def run():
     )
     write_py(out_dir, "dipole3d.py", dipole_rendered)
     print()
+
+    ###############################
+    # Quadrupole moment integrals #
+    ###############################
+
+    def quadrupole_doc_func(L_tots):
+        La_tot, Lb_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        return (
+            f"Cartesian 3D ({shell_a}{shell_b}) quadrupole moment integrals.\n"
+            "The origin is at C."
+        )
+
+    quadrupole_comment = """
+    Quadrupole integrals contain the upper triangular part of the symmetric
+    3x3 quadrupole matrix.
+
+    / xx xy xz \\
+    |    yy yz |
+    \       zz /
+
+    for cart_dir1 in (x, y, z):
+        for bf_a in basis_functions_a:
+            for bf_b in basis_functions_b:
+                    quadrupole_integrals(bf_a, bf_b, cart_dir1)
+    """
+
+    quadrupole_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot: Multipole3dShell(
+            La_tot, Lb_tot, a, b, center_A, center_B, 2, center_C
+        ),
+        (l_max, l_max),
+        "quadrupole moment",
+        (A_map, B_map, C_map),
+    )
+
+    quadrupole_rendered = render_py_funcs(
+        quadrupole_ints_Ls,
+        (a, A, b, B, C),
+        "quadrupole3d",
+        quadrupole_doc_func,
+        comment=quadrupole_comment,
+    )
+    write_py(out_dir, "quadrupole3d.py", quadrupole_rendered)
+    print()
+    return
 
     ############################
     # Kinetic energy integrals #

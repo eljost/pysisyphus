@@ -24,7 +24,14 @@ from pysisyphus.wavefunction.helpers import (
     permut_for_order,
 )
 
-from pysisyphus.wavefunction import coulomb3d, dipole3d, gto3d, kinetic3d, ovlp3d
+from pysisyphus.wavefunction import (
+    coulomb3d,
+    dipole3d,
+    gto3d,
+    kinetic3d,
+    ovlp3d,
+    quadrupole3d,
+)
 
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
@@ -156,7 +163,7 @@ Smap = get_map(ovlp3d, "ovlp3d")  # Overlap integrals
 Tmap = get_map(kinetic3d, "kinetic3d")  # Kinetic energy integrals
 Vmap = get_map(coulomb3d, "coulomb3d")  # 1el Coulomb integrals
 DPMmap = get_map(dipole3d, "dipole3d")  # Dipole moments integrals
-# ERImap = get_map(eri, "eri", 4)  # Dipole moments integrals
+QPMmap = get_map(quadrupole3d, "quadrupole3d")  # Quadrupole moments integrals
 
 
 def cart_gto(l_tot, a, Xa, Ya, Za):
@@ -183,16 +190,16 @@ def coulomb(la_tot, lb_tot, a, A, b, B, C):
     return func(a, A, b, B, C)
 
 
-def dpm(la_tot, lb_tot, a, A, b, B, C):
-    """Wrapper for linear moment integrals."""
+def dipole(la_tot, lb_tot, a, A, b, B, C):
+    """Wrapper for linear moment integrals (dipole moment)."""
     func = DPMmap[(la_tot, lb_tot)]
     return func(a, A, b, B, C)
 
 
-# def eri(la_tot, lb_tot, lc_tot, ld_tot, a, A, b, B, c, C, d, D):
-# """Wrapper for electron repulsion integrals."""
-# func = ERImap[(la_tot, lb_tot, lc_tot, ld_tot)]
-# return func(a, A, b, B, c, C, d, D)
+def quadrupole(la_tot, lb_tot, a, A, b, B, C):
+    """Wrapper for quadratic moment integrals (quadrupole moment)."""
+    func = QPMmap[(la_tot, lb_tot)]
+    return func(a, A, b, B, C)
 
 
 class Shells:
@@ -214,7 +221,7 @@ class Shells:
         except AttributeError:
             pass
 
-        self.atoms , self.coords3d = self.atoms_coords3d
+        self.atoms, self.coords3d = self.atoms_coords3d
 
     def __len__(self):
         return len(self.shells)
@@ -251,7 +258,7 @@ class Shells:
         return atoms, coords3d
 
     @property
-    def get_cart_bf_num(self):
+    def cart_bf_num(self):
         return sum([shell.size() for shell in self.shells])
 
     def from_basis(self, name, **kwargs):
@@ -498,7 +505,7 @@ class Shells:
     def get_V_cart(self, **kwargs) -> NDArray:
         atoms, coords3d = self.atoms_coords3d
         charges = nuc_charges_for_atoms(atoms)
-        cart_bf_num = self.get_cart_bf_num
+        cart_bf_num = self.cart_bf_num
         V_nuc = np.zeros((cart_bf_num, cart_bf_num))
         # Loop over all cores and add the contributions
         for C, Z in zip(coords3d, charges):
@@ -523,65 +530,79 @@ class Shells:
     def V_sph(self):
         return self.get_V_sph()
 
+    def get_multipole_ints_cart(self, shells_a, shells_b, func, components, **kwargs):
+        cart_bf_num = self.cart_bf_num
+        # Preallocate empty matrices and directly assign the calculated values
+        integrals = np.zeros((components, cart_bf_num, cart_bf_num))
+        a_ind = 0
+        for shell_a in shells_a.shells:
+            La, A, dA, aa = shell_a.as_tuple()
+            b_ind = 0
+            for shell_b in shells_b.shells:
+                Lb, B, dB, bb = shell_b.as_tuple()
+                shell_shape = get_shell_shape(La, Lb)
+                shape = (components, *shell_shape)
+                a_size, b_size = shell_shape
+                qp = func(La, Lb, aa[:, None], A, bb[None, :], B, **kwargs)
+                qp = qp.reshape(*shape, len(aa), len(bb))
+                qp *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
+                qp = qp.sum(axis=(3, 4)).reshape(shape)
+                integrals[:, a_ind : a_ind + a_size, b_ind : b_ind + b_size] = qp
+                b_ind += (Lb + 1) * (Lb + 2) // 2
+            a_ind += (La + 1) * (La + 2) // 2
+        return integrals
+
+    def get_multipole_ints_sph(self, shells_a, shells_b, func, **kwargs) -> NDArray:
+        cart_ints = self.get_multipole_ints_cart(shells_a, shells_b, func, **kwargs)
+        C_a = shells_a.cart2sph_coeffs
+        C_b = shells_b.cart2sph_coeffs
+        sph_ints = list()
+        for ci in cart_ints:
+            ti = C_a.dot(ci).dot(C_b.T)  # Cartsian -> Spherical conversion
+            if self.ordering == "native":
+                ti = shells_a.P_sph.dot(ti).dot(shells_b.P_sph.T)  # Reorder
+            sph_ints.append(ti)
+        return np.array(sph_ints)
+
     ###########################
     # Dipole moment integrals #
     ###########################
 
     def get_dipole_ints_cart(self, origin):
-        shells_a = self
-        shells_b = shells_a
-
-        rows_x = list()
-        rows_y = list()
-        rows_z = list()
-        for shell_a in shells_a.shells:
-            La, A, dA, aa = shell_a.as_tuple()
-            row_x = list()
-            row_y = list()
-            row_z = list()
-            for shell_b in shells_b.shells:
-                Lb, B, dB, bb = shell_b.as_tuple()
-                shape = (*get_shell_shape(La, Lb), 3)
-                dp = dpm(La, Lb, aa[:, None], A, bb[None, :], B, C=origin)
-                dp = dp.reshape(*shape, len(aa), len(bb))
-                dp *= dA[:, None, None, :, None] * dB[None, :, None, None, :]
-                # Shape: (*shape, 3)
-                dp = dp.sum(axis=(3, 4)).reshape(shape)
-                dp_x = dp[:, :, 0]
-                dp_y = dp[:, :, 1]
-                dp_z = dp[:, :, 2]
-                row_x.append(dp_x)
-                row_y.append(dp_y)
-                row_z.append(dp_z)
-            rows_x.append(row_x)
-            rows_y.append(row_y)
-            rows_z.append(row_z)
-        DP_x = np.block(rows_x)
-        DP_y = np.block(rows_y)
-        DP_z = np.block(rows_z)
-        return np.array((DP_x, DP_y, DP_z))
+        return self.get_multipole_ints_cart(self, self, dipole, components=3, C=origin)
 
     def get_dipole_ints_sph(self, origin) -> NDArray:
-        dp_cart = self.get_dipole_ints_cart(origin)
-        shells_b = self
-        C_a = self.cart2sph_coeffs
-        C_b = shells_b.cart2sph_coeffs
-        dp_sph = list()
-        for dp in dp_cart:
-            dp_ = C_a.dot(dp).dot(C_b.T)  # Cartsian -> Spherical conversion
-            if self.ordering == "native":
-                dp_ = self.P_sph.dot(dp_).dot(shells_b.P_sph.T)  # Reorder
-            dp_sph.append(dp_)
-        dp_sph = np.array(dp_sph)
-        return dp_sph
+        return self.get_multipole_ints_sph(self, self, dipole, components=3, C=origin)
 
-    #######################################
-    # Electron repulsion integrals - ERIs #
-    #######################################
+    ###############################
+    # Quadrupole moment integrals #
+    ###############################
 
-    def get_eri_cart(self):
-        # shells_a = shells_b = shells_c = shells_d = self
-        pass
+    def get_quadrupole_ints_cart(self, origin):
+        _ = self.get_multipole_ints_cart(
+            self, self, quadrupole, components=6, C=origin
+        )
+        shape = _.shape
+        sym = np.zeros((3, 3, *shape[1:]))
+        triu = np.triu_indices(3)
+        triu1 = np.triu_indices(3, k=1)
+        tril1 = np.tril_indices(3, k=-1)
+        sym[triu] = _
+        sym[tril1] = sym[triu1]
+        return sym.reshape(3, 3, *shape[1:])
+
+    def get_quadrupole_ints_sph(self, origin) -> NDArray:
+        _ = self.get_multipole_ints_sph(
+            self, self, quadrupole, components=6, C=origin
+        )
+        shape = _.shape
+        sym = np.zeros((3, 3, *shape[1:]))
+        triu = np.triu_indices(3)
+        triu1 = np.triu_indices(3, k=1)
+        tril1 = np.tril_indices(3, k=-1)
+        sym[triu] = _
+        sym[tril1] = sym[triu1]
+        return sym.reshape(3, 3, *shape[1:])
 
     def __str__(self):
         return f"{self.__class__.__name__}({len(self.shells)} shells, ordering={self.ordering})"

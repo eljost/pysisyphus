@@ -40,3 +40,22 @@ def test_grid_density():
     np.testing.assert_allclose(vals, ao, atol=1e-10)
     rho = np.einsum("uv,iu,iv->i", dm, vals, vals)
     np.testing.assert_allclose(rho, rho_ref)
+
+
+@using("pyscf")
+def test_quadrupole_ints():
+    def _charge_center(mol):
+        charges = mol.atom_charges()
+        coords = mol.atom_coords()
+        return np.einsum("z,zr->r", charges, coords) / charges.sum()
+
+    mol = gto.M(verbose=0, atom="H 0 0 0; H 0 0 1.0;", basis="ccpvtz")
+
+    nao = mol.nao
+
+    origin = _charge_center(mol)
+    with mol.with_common_orig(origin):
+        quad = mol.intor("int1e_rr").reshape(3, 3, nao, nao)
+    shells = Shells.from_pyscf_mol(mol)
+    pysis_quad = shells.get_quadrupole_ints_sph(origin)
+    np.testing.assert_allclose(pysis_quad, quad, atol=1e-14)

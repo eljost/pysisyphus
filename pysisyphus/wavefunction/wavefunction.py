@@ -417,6 +417,20 @@ class Wavefunction:
         fosc = 2 / 3 * exc_ens * (trans_moms ** 2).sum(axis=1)
         return fosc
 
+    def quadrupole_ints(
+        self, origin: Optional[NDArray] = None, kind: Center = "coc"
+    ) -> NDArray[float]:
+        if origin is None:
+            origin = self.get_origin(kind=kind)
+
+        quadrupole_ints = {
+            BFType.CARTESIAN: lambda *args: self.shells.get_quadrupole_ints_cart(*args),
+            BFType.PURE_SPHERICAL: lambda *args: self.shells.get_quadrupole_ints_sph(
+                *args
+            ),
+        }[self.bf_type](origin)
+        return quadrupole_ints
+
     def as_geom(self):
         return Geometry(self.atoms, self.coords)
 
