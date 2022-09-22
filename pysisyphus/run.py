@@ -1372,6 +1372,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     calc_kwargs = run_dict["calc"]
     calc_run_func = calc_kwargs.pop("run_func", None)
     calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir / OUT_DIR_DEFAULT)
+    calc_base_name = calc_kwargs.get("base_name", "calculator")
     if calc_key in ("oniom", "ext"):
         geoms = get_geoms(xyz, quiet=True)
         iter_dict = {
@@ -1385,7 +1386,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     else:
         iter_dict = None
     calc_getter = get_calc_closure(
-        "calculator", calc_key, calc_kwargs, iter_dict=iter_dict
+        calc_base_name, calc_key, calc_kwargs, iter_dict=iter_dict
     )
     # Create second function that returns a wrapped calculator. This may be
     # useful if we later want to drop the wrapper and use the actual calculator.
@@ -1997,6 +1998,32 @@ def run_from_dict(
     return run_result
 
 
+def load_run_dict(yaml_fn):
+    with open(yaml_fn) as handle:
+        yaml_str = handle.read()
+    try:
+        loader = get_loader()
+        try:
+            run_dict = yaml.load(yaml_str, Loader=loader)
+        except yaml.constructor.ConstructorError as err:
+            mobj = re.compile("for the tag '\!(\w+)'").search(err.problem)
+            if mobj:
+                err_unit = mobj.group(1)
+                best_match, _ = find_closest_sequence(err_unit, UNITS)
+                print(
+                    f"Unknown unit!\nKnown units are\n'{UNITS}'.\n"
+                    f"Did you mean '{best_match}', instead of '{err_unit}'?\n"
+                )
+            raise err
+        assert type(run_dict) == type(dict())
+    except (AssertionError, yaml.parser.ParserError) as err:
+        print(err)
+        if not (yaml_fn.lower().endswith(".yaml")):
+            print("Are you sure that you supplied a YAML file?")
+        sys.exit(1)
+    return run_dict
+
+
 def run():
     start_time = datetime.datetime.now()
     args = parse_args(sys.argv[1:])
@@ -2006,29 +2033,8 @@ def run():
     yaml_dir = Path(".")
 
     if args.yaml:
+        run_dict = load_run_dict(args.yaml)
         yaml_dir = Path(os.path.abspath(args.yaml)).parent
-        with open(args.yaml) as handle:
-            yaml_str = handle.read()
-        try:
-            loader = get_loader()
-            try:
-                run_dict = yaml.load(yaml_str, Loader=loader)
-            except yaml.constructor.ConstructorError as err:
-                mobj = re.compile("for the tag '\!(\w+)'").search(err.problem)
-                if mobj:
-                    err_unit = mobj.group(1)
-                    best_match, _ = find_closest_sequence(err_unit, UNITS)
-                    print(
-                        f"Unknown unit!\nKnown units are\n'{UNITS}'.\n"
-                        f"Did you mean '{best_match}', instead of '{err_unit}'?\n"
-                    )
-                raise err
-            assert type(run_dict) == type(dict())
-        except (AssertionError, yaml.parser.ParserError) as err:
-            print(err)
-            if not (args.yaml.lower().endswith(".yaml")):
-                print("Are you sure that you supplied a YAML file?")
-            sys.exit(1)
     elif args.bibtex:
         print_bibtex()
         return
