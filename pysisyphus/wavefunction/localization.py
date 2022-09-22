@@ -309,6 +309,7 @@ def pipek_mezey(C, S, ao_center_map, **kwargs) -> JacobiSweepResult:
                 P += Q ** 2
         return P
 
+    logger.info("Pipek-Mezey localization")
     return jacobi_sweeps(C, cost_func, ab_func, callback, **kwargs)
 
 
@@ -324,6 +325,63 @@ def _(wf: Wavefunction) -> JacobiSweepResult:
 def dq_diabatization(
     C: NDArray[float],
     dip_moms: NDArray[float],
+    alpha: Optional[float] = 1.0,
     quad_moms: Optional[NDArray[float]] = None,
 ) -> JacobiSweepResult:
-    pass
+    """DQ-diabatization as outlined in [5].
+
+    Reduces to Boys-localization/diabatization when no quadrupole moments are given."""
+
+    assert dip_moms.shape == (3, *C.shape)
+    assert C.ndim == 2
+    assert C.shape[0] == C.shape[1]
+    """When no quadrupole moments are given, the DQ-diabatization reduces to a simple
+    Boys-diabatization, as outlined by Subotnik et al in [3]. In this case we just
+    set the quadrupole moments to zero matrix and carry on. As the overall size of the
+    matrices is be small the additional FLOPs wont hurt but the code can be kept simpler.
+    """
+
+    if quad_moms is None:
+        name = "Boys-diabatization"
+        quad_moms = np.zeros_like(dip_moms)
+    else:
+        name = "DQ-diabatization"
+        assert quad_moms.shape == dip_moms.shape
+
+    def contract(moments, mo_j, mo_k):
+        return np.einsum(
+            "xkl,k,l->x", moments, mo_j, mo_k, optimize=["einsum_path", (0, 1), (0, 1)]
+        )
+
+    def _ab_func(moments, mo_j, mo_k):
+        jrj = contract(moments, mo_j, mo_j)
+        jrk = contract(moments, mo_j, mo_k)
+        krk = contract(moments, mo_k, mo_k)
+        A = (jrk ** 2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
+        B = ((jrj - krk) * jrk).sum()  # Eq. (10) in [4]
+        return A, B
+
+    def ab_func(j, k, C):
+        mo_j = C[:, j]
+        mo_k = C[:, k]
+        dip_A, dip_B = _ab_func(dip_moms, mo_j, mo_k)
+        quad_A, quad_B = _ab_func(quad_moms, mo_j, mo_k)
+        A = dip_A + alpha * quad_A
+        B = dip_B + alpha * quad_B
+        return A, B
+
+    def _cost_func(moments, C):
+        mom_C = np.einsum(
+            "xkl,ki,li->ix", moments, C, C, optimize=["einsum_path", (0, 1), (0, 1)]
+        )
+        P = ((mom_C[:, None, :] - mom_C) ** 2).sum()
+        return P
+
+    def cost_func(C):
+        dip_P = _cost_func(dip_moms, C)
+        quad_P = _cost_func(quad_moms, C)
+        P = dip_P + alpha * quad_P
+        return P
+
+    logger.info(name)
+    return jacobi_sweeps(C, cost_func, ab_func)
