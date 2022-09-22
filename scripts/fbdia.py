@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 from pysisyphus.constants import AU2EV
-from pysisyphus.wavefunction import foster_boys
+from pysisyphus.wavefunction import dq_diabatization
 
 
 def parse_args(args):
@@ -97,7 +97,7 @@ def run():
     print()
 
     U0 = np.eye(nstates)
-    dia_result = foster_boys(U0, dpm_mat)
+    dia_result = dq_diabatization(U0, dpm_mat)
     assert dia_result.is_converged
     U = dia_result.C
     print()
