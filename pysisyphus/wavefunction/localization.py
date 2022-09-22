@@ -18,9 +18,10 @@
 #     Hoyer, Xu, Ma, Gagliardi, Truhlar, 2014
 
 
+from dataclasses import dataclass
 from functools import singledispatch
 import itertools as it
-from typing import List
+from typing import Callable, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -78,30 +79,38 @@ def rot_inplace(mat, rad, i, j):
     mat[:, j] = j_rot
 
 
-@singledispatch
-def pipek_mezey(
+@dataclass
+class JacobiSweepResult:
+    is_converged: bool
+    cur_cycle: int
+    C: NDArray[float]
+    P: float
+
+
+def jacobi_sweeps(
     C: NDArray[float],
-    S: NDArray[float],
-    ao_center_map: dict[int, List[int]],
+    cost_func: Callable,
+    ab_func: Callable,
+    callback: Optional[Callable] = None,
     max_cycles: int = 100,
     dP_thresh: float = 1e-8,
-) -> NDArray[float]:
-    """Pipek-Mezey localization using Mulliken population analysis.
-
-    Python adaption of code found in orbloc.f90 of Multiwfn 3.8.
-    For now, only Mulliken population and localization exponent 2 is supported.
+) -> JacobiSweepResult:
+    """Wrapper for 2x2 Jacobi-sweeps as used in localization/diabatization.
 
     Parameters
     ----------
     C
-        Matrix of molecular orbital coefficients to be localized.
-        Shape is (naos, nmos).
-    S
-        Overlap matrix of shape (naos x naos).
-    ao_center_map
-        Mapping between atom indices and AOs, centered at the respective atom.
+        MO coefficient matrix (shape naos x nmos) or rotation matrix (nstates x nstates).
+    cost_func
+        Function to be maximized/minimized.
+    ab_func
+        Function that returns A & B values, used to calculate the angle
+        for the 2x2 rotation.
+    callback
+        Function that is called after the 2x2 rotation took place. It takes three arguments:
+        (gamma, j, k).
     max_cycles
-        Maximum number of macro cycles to achieve successful localization.
+        Maximum number of macro cycles.
     dP_thresh
         Indicate convergence when change in cost function is equal or below
         this threshold.
@@ -112,80 +121,54 @@ def pipek_mezey(
         Localized molecular orbital coefficient matrix of shape (naos, nmos).
     """
 
+    assert max_cycles > 0
     C = C.copy()
     _, nmos = C.shape
-    centers = list(ao_center_map.keys())
 
-    SC = S @ C
+    if callback is None:
+        callback = lambda *args: None
+
     P_prev = 0.0
-    logger.info("Pipek-Mezey localization")
+
     for i in range(max_cycles):
         # Loop over pairs of MO indices and do 2x2 rotations.
         for j, k in it.combinations(range(nmos), 2):
-            Q = SC * C
-            A = 0.0
-            B = 0.0
-            # Eq. (9) in [1]
-            for center in centers:
-                ao_inds = ao_center_map[center]
-                Qjk = (
-                    C[ao_inds, j] * SC[ao_inds, k] + C[ao_inds, k] * SC[ao_inds, j]
-                ).sum() / 2
-                Qjj = Q[ao_inds, j].sum()
-                Qkk = Q[ao_inds, k].sum()
-                A += (Qjk**2) - ((Qjj - Qkk) ** 2) / 4
-                B += Qjk * (Qjj - Qkk)
+            A, B = ab_func(j, k, C)
 
-            if (A**2 + B**2) <= 1e-12:
+            if (A ** 2 + B ** 2) <= 1e-12:
                 continue
 
-            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A**2 + B**2)) / 4
+            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A ** 2 + B ** 2)) / 4
             assert -PI_QUART <= gamma <= PI_QUART
             # 2x2 MO rotations
             rot_inplace(C, gamma, j, k)
-            # The MO rotations invalidate the SC matrix product. We update it too.
-            rot_inplace(SC, gamma, j, k)
+            callback(gamma, j, k)
         # Outside of loop over orbital pairs
 
-        # We wan't to maximize P and we monitor the progress. Eq. (8) in [1].
-        P = 0.0
-        for l in range(nmos):
-            for center in centers:
-                ao_inds = ao_center_map[center]
-                Q = (C[ao_inds, l][:, None] * C[:, l] * S[ao_inds, :]).sum()
-                P += Q**2
+        # Calculate the target cost function we want to maximize/minimize.
+        P = cost_func(C)
         dP = P - P_prev
         logger.info(f"{i:03d}: {P=: >12.8f} {dP=: >12.8f}")
-        if dP <= dP_thresh:
+        if is_converged := (dP <= dP_thresh):
             logger.info(f"Converged after {i+1} cycles.")
             break
         P_prev = P
     # Outside macro cycles
-    return C
 
-
-@pipek_mezey.register
-def _(wf: Wavefunction):
-    """Currently localizes only C_(α,occ) MOs."""
-    S = wf.S
-    Cao, _ = wf.C_occ
-    C_chol_loc = cholesky(Cao)
-    return pipek_mezey(C_chol_loc, S, wf.ao_center_map)
+    result = JacobiSweepResult(
+        is_converged=is_converged,
+        cur_cycle=i,
+        C=C,
+        P=P,
+    )
+    return result
 
 
 @singledispatch
 def foster_boys(
-    dip_ints: NDArray[float],
-    C: NDArray[float],
-    max_cycles: int = 100,
-    dP_thresh: float = 1e-8,
-) -> NDArray[float]:
+    C: NDArray[float], dip_ints: NDArray[float], **kwargs
+) -> JacobiSweepResult:
     """Foster-Boys localization.
-
-    Partial adaption of code found in orbloc.f90 of Multiwfn 3.8. It
-    seems like Multiwfn does not calculate the actual function that is
-    maximized in FB localization, but the PM function. Here we calculate
-    the actual cost function eq. (2) in [3].
 
      nMO   nMO
      ___   ___
@@ -214,11 +197,8 @@ def foster_boys(
     C
         Matrix of molecular orbital coefficients to be localized.
         Shape is (naos, nmos).
-    max_cycles
-        Maximum number of macro cycles to achieve successful localization.
-    dP_thresh
-        Indicate convergence when change in cost function is equal or below
-        this threshold.
+    kwargs
+        Additional keyword arguments that are passed jacobi_sweeps.
 
     Returns
     -------
@@ -226,38 +206,22 @@ def foster_boys(
         Localized molecular orbital coefficient matrix of shape (naos, nmos).
     """
 
-    C = C.copy()
-    _, nmos = C.shape
-
-    P_prev = 0.0
-    logger.info("Foster-Boys localization")
-
     def contract(mo_j, mo_k):
         return np.einsum(
             "xkl,k,l->x", dip_ints, mo_j, mo_k, optimize=["einsum_path", (0, 1), (0, 1)]
         )
 
-    for i in range(max_cycles):
-        # Loop over pairs of MO indices and do 2x2 rotations.
-        for j, k in it.combinations(range(nmos), 2):
-            mo_j = C[:, j]
-            mo_k = C[:, k]
-            jrj = contract(mo_j, mo_j)
-            jrk = contract(mo_j, mo_k)
-            krk = contract(mo_k, mo_k)
-            A = (jrk**2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
-            B = ((jrj - krk) * jrk).sum()  # Eq. (10) in [4]
+    def ab_func(j, k, C):
+        mo_j = C[:, j]
+        mo_k = C[:, k]
+        jrj = contract(mo_j, mo_j)
+        jrk = contract(mo_j, mo_k)
+        krk = contract(mo_k, mo_k)
+        A = (jrk ** 2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
+        B = ((jrj - krk) * jrk).sum()  # Eq. (10) in [4]
+        return A, B
 
-            if (A**2 + B**2) <= 1e-12:
-                continue
-
-            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A**2 + B**2)) / 4
-            assert -PI_QUART <= gamma <= PI_QUART
-            # 2x2 MO rotations
-            rot_inplace(C, gamma, j, k)
-        # Outside of loop over orbital pairs
-
-        # Calculate the target function we want to maximize.
+    def cost_func(C):
         dip_C = np.einsum(
             "xkl,ki,li->ix", dip_ints, C, C, optimize=["einsum_path", (0, 1), (0, 1)]
         )
@@ -273,20 +237,93 @@ def foster_boys(
             krk = contract(mo_k, mo_k)
             P += ((jrj - krk)**2).sum()
         """
-        dP = P - P_prev
-        logger.info(f"{i:03d}: {P=: >12.8f} {dP=: >12.8f}")
-        if dP <= dP_thresh:
-            logger.info(f"Converged after {i+1} cycles.")
-            break
-        P_prev = P
-    # Outside macro cycles
-    return C
+        return P
+
+    logger.info("Foster-Boys localization")
+    return jacobi_sweeps(C, cost_func, ab_func, **kwargs)
 
 
 @foster_boys.register
-def _(wf: Wavefunction):
+def _(wf: Wavefunction) -> JacobiSweepResult:
     """Currently localizes only C_(α,occ) MOs."""
     Cao, _ = wf.C_occ
     dip_ints = wf.dipole_ints()
     C_chol_loc = cholesky(Cao)
-    return foster_boys(dip_ints, C_chol_loc)
+    return foster_boys(C_chol_loc, dip_ints)
+
+
+@singledispatch
+def pipek_mezey(C, S, ao_center_map, **kwargs) -> JacobiSweepResult:
+    """Pipek-Mezey localization using Mulliken population analysis.
+
+    Python adaption of code found in orbloc.f90 of Multiwfn 3.8.
+    For now, only Mulliken population and localization exponent 2 is supported.
+
+    Parameters
+    ----------
+    C
+        Matrix of molecular orbital coefficients to be localized.
+        Shape is (naos, nmos).
+    S
+        Overlap matrix of shape (naos x naos).
+    ao_center_map
+        Mapping between atom indices and AOs, centered at the respective atom.
+
+    Returns
+    -------
+    C_loc
+        Localized molecular orbital coefficient matrix of shape (naos, nmos).
+    """
+    _, nmos = C.shape
+    centers = list(ao_center_map.keys())
+
+    SC = S @ C
+
+    def ab_func(j, k, C):
+        Q = SC * C
+        A = 0.0
+        B = 0.0
+        # Eq. (9) in [1]
+        for center in centers:
+            ao_inds = ao_center_map[center]
+            Qjk = (
+                C[ao_inds, j] * SC[ao_inds, k] + C[ao_inds, k] * SC[ao_inds, j]
+            ).sum() / 2
+            Qjj = Q[ao_inds, j].sum()
+            Qkk = Q[ao_inds, k].sum()
+            A += (Qjk ** 2) - ((Qjj - Qkk) ** 2) / 4
+            B += Qjk * (Qjj - Qkk)
+        return A, B
+
+    def callback(gamma, j, k):
+        # The MO rotations invalidate the SC matrix product. We update it too.
+        rot_inplace(SC, gamma, j, k)
+
+    def cost_func(C):
+        # We wan't to maximize P and we monitor the progress. Eq. (8) in [1].
+        P = 0.0
+        for l in range(nmos):
+            for center in centers:
+                ao_inds = ao_center_map[center]
+                Q = (C[ao_inds, l][:, None] * C[:, l] * S[ao_inds, :]).sum()
+                P += Q ** 2
+        return P
+
+    return jacobi_sweeps(C, cost_func, ab_func, callback, **kwargs)
+
+
+@pipek_mezey.register
+def _(wf: Wavefunction) -> JacobiSweepResult:
+    """Currently localizes only C_(α,occ) MOs."""
+    S = wf.S
+    Cao, _ = wf.C_occ
+    C_chol_loc = cholesky(Cao)
+    return pipek_mezey(C_chol_loc, S, wf.ao_center_map)
+
+
+def dq_diabatization(
+    C: NDArray[float],
+    dip_moms: NDArray[float],
+    quad_moms: Optional[NDArray[float]] = None,
+) -> JacobiSweepResult:
+    pass

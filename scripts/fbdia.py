@@ -67,10 +67,10 @@ def run():
     unique_dpms = list()
     if args.debye:
         dpm_fact = 0.393456
-        dpm_unit_org = "Debye"
+        # dpm_unit_org = "Debye"
     else:
         dpm_fact = 1.0
-        dpm_unit_org = "au"
+        # dpm_unit_org = "au"
 
     with open(args.dpms) as handle:
         dpm_text = handle.read()
@@ -97,7 +97,9 @@ def run():
     print()
 
     U0 = np.eye(nstates)
-    U = foster_boys(dpm_mat, U0)
+    dia_result = foster_boys(U0, dpm_mat)
+    assert dia_result.is_converged
+    U = dia_result.C
     print()
     print("Final rotation matrix U")
     print(U)
