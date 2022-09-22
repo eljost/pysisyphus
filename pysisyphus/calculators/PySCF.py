@@ -73,10 +73,10 @@ class PySCF(OverlapCalculator):
         self.auxbasis = auxbasis
         self.keep_chk = keep_chk
         self.verbose = int(verbose)
-        if self.unrestricted is None:
+        if unrestricted is None:
             self.unrestricted = self.mult > 1
         else:
-            self.unrestricted = bool(unrestricted)
+            self.unrestricted = unrestricted
         self.grid_level = int(grid_level)
         self.pruning = pruning.lower()
 
