@@ -910,7 +910,7 @@ def setup_redundant(
         ]
     typed_prims += unmapped_typed_prims
     # Drop duplicated typed_prims
-    typed_prims = tuple(set(typed_prims))
+    typed_prims = tuple(dict.fromkeys(typed_prims))
 
     coord_info = CoordInfo(
         bonds=bonds,
