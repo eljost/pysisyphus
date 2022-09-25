@@ -18,7 +18,7 @@ from pysisyphus.config import CONFIG_DIR, L_MAX
 
 
 _BOYS_TABLE = np.load(
-    CONFIG_DIR / "wavefunction/boys_table_N_64_xasym_27.1_step_0.01.npy"
+    CONFIG_DIR / "wavefunction/ints/boys_table_N_64_xasym_27.1_step_0.01.npy"
 )
 _BOYS_N_MAX = L_MAX ** 3
 _BOYS_X_ASYM = (
