@@ -65,7 +65,7 @@ def test_orca_iao(fn):
 )
 def test_orca_dipole_moments(fn, ref_dip_mom):
     wf = Wavefunction.from_orca_json(WF_LIB_DIR / fn)
-    dip_mom = wf.dipole_moment()
+    dip_mom = wf.dipole_moment
     np.testing.assert_allclose(dip_mom, ref_dip_mom, atol=1e-5)
 
 
@@ -82,12 +82,12 @@ def test_transition_dipole_moments(this_dir):
         CI = handle["ci_coeffs"][step]
     exc_ens = all_ens[1:] - all_ens[0]
 
-    tdms = wf.transition_dipole_moment(CI)
+    tdms = wf.get_transition_dipole_moment(CI)
     fosc = wf.oscillator_strength(exc_ens, tdms)
     fmt = " .6f"
     for i, (f, tdm) in enumerate(zip(fosc, tdms)):
         x, y, z = tdm
-        tot = (tdm ** 2).sum()
+        tot = (tdm**2).sum()
         print(f"{i}: {f=:{fmt}} {x:{fmt}} {y:{fmt}} {z:{fmt}}, tot={tot:{fmt}}")
 
     np.testing.assert_allclose(fosc, (0.506729325, 0.506497773, 0.506627503), atol=1e-6)
@@ -103,7 +103,7 @@ def test_P_exc(this_dir):
         CI = handle["ci_coeffs"][0]
     S1 = CI[0]
     P_exc = wf.P_exc(S1)
-    exc_dpm = wf.dipole_moment(P_exc[None, :, :])
+    exc_dpm = wf.get_dipole_moment(P=P_exc)
     print(exc_dpm)
 
 
@@ -118,7 +118,7 @@ def test_mulliken_exc(this_dir):
     ref_charges = (0.399031, 0.025996, 0.474676, 0.369144, 0.009265)
     for i, (tden, ref_charge) in enumerate(zip(CI, ref_charges), 1):
         P_exc = wf.P_exc(tden)
-        _ = wf.dipole_moment((P_exc, P_exc))
+        _ = wf.get_dipole_moment(P=P_exc + P_exc)
         charges = mulliken_charges(
             P=(P_exc / 2, P_exc / 2),
             S=wf.S,
@@ -145,7 +145,7 @@ def test_orca_unrestricted(this_dir):
     assert occ_b == 9
     # ORCA uses center of mass by default, which differs a bit from the one
     # that pysisyphus calculates.
-    dpm = wf.dipole_moment(origin=(-1.487808, 3.034774, 0.292895))
+    dpm = wf.get_dipole_moment(origin=(-1.487808, 3.034774, 0.292895))
     ref_dpm = (-0.00017, -0.00085, 0.00235)
     np.testing.assert_allclose(dpm, ref_dpm, atol=1e-5)
 
@@ -160,11 +160,11 @@ def test_orca_unrestricted(this_dir):
     assert Xb.shape == Yb.shape == (5, 9, 13)
     norms_a = np.linalg.norm(Xa, axis=(1, 2))
     norms_b = np.linalg.norm(Xb, axis=(1, 2))
-    norms = norms_a ** 2 + norms_b ** 2
+    norms = norms_a**2 + norms_b**2
     ones = np.ones_like(norms)
     np.testing.assert_allclose(norms, ones)
 
-    tdms = wf.transition_dipole_moment(Xa, Xb)
+    tdms = wf.get_transition_dipole_moment(Xa, Xb)
     exc_ens = (0.080127, 0.128713, 0.214026, 0.230042, 0.246588)
     fosc = wf.oscillator_strength(exc_ens, tdms)
     ref_fosc = (0.030505412, 0.000000181, 0.000000011, 0.000072701, 0.000000226)
@@ -195,3 +195,10 @@ def test_orca_unrestricted(this_dir):
 def test_orca_ecp(charge, ecp_electrons):
     fn = WF_LIB_DIR / "orca_yttrium_ecp.molden.input"
     Wavefunction.from_orca_molden(fn, charge=charge, ecp_electrons=ecp_electrons)
+
+
+def test_quadrupole_moment():
+    wf = Wavefunction.from_file(WF_LIB_DIR / "orca_benzene_quad.json")
+    quad_moms = wf.quadrupole_moment
+    diag = np.diag(quad_moms)
+    np.testing.assert_allclose(diag, (-23.80829, -23.80856, -30.13957), atol=1e-5)
