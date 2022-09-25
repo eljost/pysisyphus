@@ -1,6 +1,6 @@
 import numpy
 
-from pysisyphus.wavefunction.boys import boys
+from pysisyphus.wavefunction.ints.boys import boys
 
 
 def eri_0000(a, A, b, B, c, C, d, D):

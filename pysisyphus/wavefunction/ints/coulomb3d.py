@@ -1,6 +1,6 @@
 import numpy
 
-from pysisyphus.wavefunction.boys import boys
+from pysisyphus.wavefunction.ints.boys import boys
 
 
 def coulomb3d_00(a, A, b, B, C):

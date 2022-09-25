@@ -1017,7 +1017,7 @@ def run():
         shell_b = L_MAP[Lb_tot]
         return f"Cartesian ({shell_a}{shell_b}) 1-electron Coulomb integral."
 
-    boys_import = ("from pysisyphus.wavefunction.boys import boys",)
+    boys_import = ("from pysisyphus.wavefunction.ints.boys import boys",)
 
     coulomb_ints_Ls = gen_integral_exprs(
         lambda La_tot, Lb_tot: CoulombShell(

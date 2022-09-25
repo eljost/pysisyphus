@@ -24,7 +24,7 @@ from pysisyphus.wavefunction.helpers import (
     permut_for_order,
 )
 
-from pysisyphus.wavefunction import (
+from pysisyphus.wavefunction.ints import (
     coulomb3d,
     diag_quadrupole3d,
     dipole3d,
