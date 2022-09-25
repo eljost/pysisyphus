@@ -1,12 +1,4 @@
-# [1] https://doi.org/10.1063/1.4937410
-#     The consequences of improperly describing oscillator strengths
-#     beyond the electric dipole approximation
-#     Lestrange, Egidi, Li, 2015
-# [2] https://doi.org/10.1016/0009-2614(95)01036-9
-#     Ab initio calculation and display of the rotary strength tensor in
-#     the random phase approximation. Method and model studies.
-#     Pedersen, Hansen, 1995
-# [3] https://pubs.acs.org/doi/pdf/10.1021/j100180a030.
+# [1] https://pubs.acs.org/doi/pdf/10.1021/j100180a030.
 #     Toward a Systematic Molecular Orbital Theory for Excited States
 #     Foresman, Head-Gordon, Pople, Frisch, 1991
 
@@ -21,8 +13,12 @@ from numpy.typing import NDArray
 from pysisyphus.elem_data import nuc_charges_for_atoms, MASS_DICT
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
-from pysisyphus.wavefunction.shells import Shells
 from pysisyphus.wavefunction.helpers import BFType
+from pysisyphus.wavefunction.multipole import (
+    get_multipole_moment,
+    get_transition_multipole_moment,
+)
+from pysisyphus.wavefunction.shells import Shells
 
 
 Center = Literal["coc", "com"]
@@ -129,10 +125,6 @@ class Wavefunction:
         return nuc_charges_for_atoms(self.atoms) - self.ecp_electrons
 
     @property
-    def masses(self):
-        return np.ones(len(self.atoms))
-
-    @property
     def mo_num(self):
         return self.C.shape[1]
 
@@ -233,7 +225,7 @@ class Wavefunction:
 
     def P_exc(self, trans_dens):
         """
-        Eqs. (2.25) and (2.26) in [3].
+        Eqs. (2.25) and (2.26) in [1].
         """
         trans_dens *= 2**0.5 / 2
         occ_a, occ_b = self.occ
@@ -363,6 +355,10 @@ class Wavefunction:
             ao_center_map.setdefault(aoc, list()).append(i)
         return ao_center_map
 
+    #####################
+    # Multipole Moments #
+    #####################
+
     def get_origin(self, kind="coc"):
         kind = kind.lower()
         assert kind in ("com", "coc")
@@ -389,113 +385,6 @@ class Wavefunction:
         }[self.bf_type](origin)
         return dipole_ints
 
-    def dipole_moment(
-        self,
-        P: NDArray[float] = None,
-        origin: Optional[NDArray] = None,
-        kind: Center = "coc",
-    ) -> NDArray[float]:
-        # Make a copy, as the coordinates must be give w.r.t. the origin, which
-        # may be != (0., 0., 0.).
-        coords3d = self.coords.reshape(-1, 3).copy()
-        nuc_charges = self.nuc_charges
-
-        if P is None:
-            P = self.P
-
-        if origin is None:
-            origin = self.get_origin(kind=kind)
-
-        # origin = (-1.487808,  3.034774,  0.292895)
-        origin = np.array(origin, dtype=float)
-        coords3d -= origin[None, :]
-        dipole_ints = self.dipole_ints(origin)
-        electronic = np.sum(
-            [np.einsum("xij,ji->x", dipole_ints, P_) for P_ in P], axis=0
-        )
-        nuclear = np.einsum("i,ix->x", nuc_charges, coords3d)
-        molecular = nuclear - electronic
-
-        return molecular
-
-    def transition_dipole_moment(
-        self,
-        # trans_dens: NDArray[float],
-        trans_dens_a: NDArray[float],
-        trans_dens_b: NDArray[float] = None,
-    ) -> NDArray[float]:
-        """
-        Transition dipole moments from transition density matrices.
-
-        Eq. (33) in [1].
-
-        Parameters
-        ----------
-        trans_dens_a
-            Numpy array containing transition density matrices of shape
-            (nstates, occ, virt) or (occ, virt) in the α-electron space.
-        trans_dens_b
-            See trans_dens_a. Optional. If not provided, trans_dens_a is used.
-
-        Returns
-        -------
-        tdms
-            Numpy array of shape (nstates, 3) containing the Cartesian transition
-            dipole moments in the length gauge.
-        """
-
-        origin = self.get_origin(kind="coc")
-        dipole_ints = self.dipole_ints(origin)
-
-        # Deal with unrestricted transition density matrices that contain
-        # only one state.
-        def atleast_3d(tden):
-            if tden.ndim == 2:
-                tden = tden[None, :]
-            return tden
-
-        trans_dens_a = atleast_3d(trans_dens_a)
-        if trans_dens_b is None:
-            trans_dens_a = 1 / 2**0.5 * trans_dens_a
-            trans_dens_b = trans_dens_a
-        trans_dens_b = atleast_3d(trans_dens_b)
-
-        # Expected shape: (nstates, occ, virt)
-        assert trans_dens_a.ndim == trans_dens_b.ndim == 3
-
-        def get_tdm(
-            C: NDArray[float], occ: NDArray[int], trans_dens: NDArray[float]
-        ) -> NDArray[float]:
-            dipole_ints_mo = np.einsum(
-                "jl,ilm,mk->ijk", C[:, :occ].T, dipole_ints, C[:, occ:]
-            )
-
-            # Then contract with dipole integrals. See Eq. (18) in [2].
-            #
-            # j : Cartesian direction
-            # k : occ. MO space
-            # l : virt. MO space
-            # i : Excited state number
-            tdm = np.einsum("jkl,ikl->ij", dipole_ints_mo, trans_dens)
-            return tdm
-
-        # Transitions between α -> α and β -> β
-        C_a, C_b = self.C
-        occ_a, occ_b = self.occ
-        tdms_a = get_tdm(C_a, occ_a, trans_dens_a)
-        tdms_b = get_tdm(C_b, occ_b, trans_dens_b)
-        tdms = tdms_a + tdms_b
-        return tdms
-
-    def oscillator_strength(
-        self, exc_ens: NDArray[float], trans_moms: NDArray[float]
-    ) -> NDArray[float]:
-        exc_ens = np.atleast_1d(exc_ens)
-        if trans_moms.ndim == 1:
-            trans_moms = trans_moms[None, :]
-        fosc = 2 / 3 * exc_ens * (trans_moms**2).sum(axis=1)
-        return fosc
-
     def quadrupole_ints(
         self, origin: Optional[NDArray] = None, kind: Center = "coc"
     ) -> NDArray[float]:
@@ -509,6 +398,86 @@ class Wavefunction:
             ),
         }[self.bf_type](origin)
         return quadrupole_ints
+
+    def get_dipole_moment(
+        self,
+        P: Optional[NDArray[float]] = None,
+        origin: Optional[NDArray[float]] = None,
+        kind: Center = "coc",
+    ) -> NDArray[float]:
+        if origin is None:
+            origin = self.get_origin(kind=kind)
+        if P is None:
+            P = self.P_tot
+        dipole_ints = self.dipole_ints(origin)
+        return get_multipole_moment(
+            1, self.coords3d, origin, dipole_ints, self.nuc_charges, P
+        )
+
+    @property
+    def dipole_moment(self) -> NDArray[float]:
+        return self.get_dipole_moment()
+
+    def get_quadrupole_moment(
+        self,
+        P: Optional[NDArray[float]] = None,
+        origin: Optional[NDArray[float]] = None,
+        kind: Center = "coc",
+    ) -> NDArray[float]:
+        if origin is None:
+            origin = self.get_origin(kind=kind)
+        if P is None:
+            P = self.P_tot
+        quadrupole_ints = self.quadrupole_ints(origin)
+        return get_multipole_moment(
+            2, self.coords3d, origin, quadrupole_ints, self.nuc_charges, P
+        )
+
+    @property
+    def quadrupole_moment(self) -> NDArray[float]:
+        return self.get_quadrupole_moment()
+
+    def get_transition_dipole_moment(
+        self,
+        P_a: NDArray[float],
+        P_b: NDArray[float] = None,
+        origin: Optional[NDArray[float]] = None,
+        kind: Center = "coc",
+    ) -> NDArray[float]:
+        if origin is None:
+            origin = self.get_origin(kind=kind)
+        dipole_ints = self.dipole_ints(origin)
+        C_a, C_b = self.C
+        occ_a, occ_b = self.occ
+        return get_transition_multipole_moment(
+            dipole_ints, C_a, C_b, occ_a, occ_b, P_a, P_b
+        )
+
+    def get_transition_quadrupole_moment(
+        self,
+        P_a: NDArray[float],
+        P_b: NDArray[float] = None,
+        origin: Optional[NDArray[float]] = None,
+        kind: Center = "coc",
+    ) -> NDArray[float]:
+        if origin is None:
+            origin = self.get_origin(kind=kind)
+        quadrupole_ints = self.quadrupole_ints(origin)
+        C_a, C_b = self.C
+        occ_a, occ_b = self.occ
+        return get_transition_multipole_moment(
+            quadrupole_ints, C_a, C_b, occ_a, occ_b, P_a, P_b
+        )
+
+    def oscillator_strength(
+        self, exc_ens: NDArray[float], trans_moms: NDArray[float]
+    ) -> NDArray[float]:
+        """Oscillator strength from TDMs and excitation energies."""
+        exc_ens = np.atleast_1d(exc_ens)
+        if trans_moms.ndim == 1:
+            trans_moms = trans_moms[None, :]
+        fosc = 2 / 3 * exc_ens * (trans_moms**2).sum(axis=1)
+        return fosc
 
     def as_geom(self):
         return Geometry(self.atoms, self.coords)
