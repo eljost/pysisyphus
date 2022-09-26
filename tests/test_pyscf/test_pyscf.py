@@ -29,3 +29,57 @@ def test_mulliken_charges():
     ref_charges = np.array(chrg_ref.strip().split(), dtype=float)
 
     np.testing.assert_allclose(charges, ref_charges, atol=1e-5)
+
+
+@using("pyscf")
+@pytest.mark.parametrize("test_input", ["nwchem", "sg1", "treutler", "None"])
+def test_pruning(test_input):
+    geom = geom_loader("lib:01_h2o.xyz")
+
+    calc_kwargs = {
+        "basis": "sto3g",
+        "pruning": test_input,
+    }
+    calc = PySCF(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    mol = calc.prepare_input(geom.atoms, geom.coords)
+    mf = calc.get_driver("dft", mol=mol)
+    assert(test_input in str(mf.grids.prune))
+
+
+@using("pyscf")
+@pytest.mark.parametrize("test_input", ["0", "3", "9"])
+def test_grid_level(test_input):
+    geom = geom_loader("lib:01_h2o.xyz")
+
+    calc_kwargs = {
+        "basis": "sto3g",
+        "grid_level": test_input,
+    }
+    calc = PySCF(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    mol = calc.prepare_input(geom.atoms, geom.coords)
+    mf = calc.get_driver("dft", mol=mol)
+    assert(test_input == str(mf.grids.level))
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "test_input, expected",
+    [(None, "Restricted"), (True, "Unrestricted"), (False, "Restricted")]
+)
+def test_unrestricted(test_input, expected):
+    geom = geom_loader("lib:01_h2o.xyz")
+
+    calc_kwargs = {
+        "basis": "sto3g",
+        "unrestricted": test_input,
+    }
+    calc = PySCF(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    mol = calc.prepare_input(geom.atoms, geom.coords)
+    mf = calc.get_driver("dft", mol=mol)
+    assert(expected in mf.__doc__)
