@@ -9,6 +9,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.helpers_pure import describe
 from pysisyphus.init_logging import init_logging
 from pysisyphus.testing import using
+from pysisyphus.wavefunction.excited_states import tden_overlaps
 
 
 @pytest.mark.parametrize(
@@ -108,7 +109,7 @@ def test_tden_self_overlap(h5_fn, this_dir):
         # print(f"norm(CI): {ci_norm}")
         # print(f"norm(MOs): {describe(mo_norm)}")
 
-        overlaps = calc.tden_overlaps(
+        overlaps = tden_overlaps(
             mo_coeffs, ci_coeffs, mo_coeffs, ci_coeffs, ao_ovlp
         )
         return overlaps
