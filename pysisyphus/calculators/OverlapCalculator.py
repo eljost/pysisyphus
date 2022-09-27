@@ -19,7 +19,13 @@ from pysisyphus.helpers_pure import describe
 from pysisyphus.io.hdf5 import get_h5_group
 from pysisyphus.wrapper.mwfn import make_cdd, get_mwfn_exc_str
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
-from pysisyphus.wavefunction.excited_states import rAB as top_rAB, tden_overlaps
+from pysisyphus.wavefunction.excited_states import (
+    rAB as top_rAB,
+    tden_overlaps,
+    nto_overlaps,
+    nto_org_overlaps,
+    norm_ci_coeffs,
+)
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
@@ -433,43 +439,13 @@ class OverlapCalculator(Calculator):
         return overlaps
 
     def nto_overlaps(self, ntos_1, ntos_2, ao_ovlp):
-        states1 = len(ntos_1)
-        states2 = len(ntos_2)
-        ovlps = np.zeros((states1, states2))
-        for i in range(states1):
-            n_i = ntos_1[i]
-            l_i = n_i.lambdas[:, None]
-            ntos_i = l_i * n_i.ntos
-            for j in range(states2):
-                n_j = ntos_2[j]
-                l_j = n_j.lambdas[:, None]
-                ntos_j = l_j * n_j.ntos
-                ovlp = np.sum(np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
-                ovlps[i, j] = ovlp
-        return ovlps
+        return nto_overlaps(ntos_1, ntos_2, ao_ovlp)
 
     def nto_org_overlaps(self, ntos_1, ntos_2, ao_ovlp, nto_thresh=0.3):
-        states_1 = len(ntos_1)
-        states_2 = len(ntos_2)
-        ovlps = np.zeros((states_1, states_2))
-
-        for i in range(states_1):
-            n_i = ntos_1[i]
-            l_i = n_i.lambdas[:, None]
-            ntos_i = n_i.ntos[(l_i >= nto_thresh).flatten()]
-            l_i_big = l_i[l_i >= nto_thresh]
-            for j in range(states_2):
-                n_j = ntos_2[j]
-                l_j = n_j.lambdas[:, None]
-                ntos_j = n_j.ntos[(l_j >= nto_thresh).flatten()]
-                ovlp = np.sum(
-                    l_i_big[:, None] * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T))
-                )
-                ovlps[i, j] = ovlp
-        return ovlps
+        return nto_org_overlaps(ntos_1, ntos_2, ao_ovlp, nto_thresh=nto_thresh)
 
     def get_top_differences(self, indices=None, ao_ovlp=None):
-        """Transition orbital pair."""
+        """Transition orbital pair. differences"""
         C_ref, C_cur, ao_ovlp = self.get_orbital_matrices(indices, ao_ovlp)
         S_MO = C_ref @ ao_ovlp @ C_cur.T  # Currently MOs are given in rows
 
@@ -672,20 +648,21 @@ class OverlapCalculator(Calculator):
 
         if overlap_data is None:
             overlap_data = self.prepare_overlap_data(path)
-        mo_coeffs, X, Y, all_ens = overlap_data
+        # Currently, still only restricted calculations are supported, so X and Y
+        # will always be Xa and Ya.
+        mo_coeffs, Xa, Ya, all_ens = overlap_data
 
+        X = Xa
+        Y = Ya
         assert mo_coeffs.ndim == 2
         assert all([mat.ndim == 3 for mat in (X, Y)])
 
         ao_ovlp = self.get_sao_from_mo_coeffs(mo_coeffs)
         mo_coeffs = self.renorm_mos(mo_coeffs, ao_ovlp)
 
-        X_norms, Y_norms = [np.linalg.norm(mat, axis=(1, 2)) for mat in (X, Y)]
-        ci_norms = np.sqrt(X_norms ** 2 - Y_norms ** 2)
-        X /= ci_norms[:, None, None]
-        Y /= ci_norms[:, None, None]
-        X_renorms, Y_renorms = [np.linalg.norm(mat, axis=(1, 2)) for mat in (X, Y)]
-        ci_renorms = np.sqrt(X_renorms ** 2 - Y_renorms ** 2)
+        # When unrestricted calculations are finally supported the default
+        # 'restricted_norm' must be used!
+        X, Y = norm_ci_coeffs(X, Y, restricted_norm=1.0)
         self.X_list.append(X.copy())
         self.Y_list.append(Y.copy())
 
@@ -699,7 +676,6 @@ class OverlapCalculator(Calculator):
             raise Exception(
                 f"Invalid 'XY' value. Allowed values are: '{self.VALID_XY}'!"
             )
-        self.log(f"CI-vector norms: {ci_renorms}")
 
         # Don't create the wf-object when we use a different ovlp method.
         if (self.ovlp_type == "wf") and (self.wfow is None):
