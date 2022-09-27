@@ -31,6 +31,12 @@ class PySCF(OverlapCalculator):
         "tddft": ("dft", "tddft"),
         "tda": ("dft", "tda"),
     }
+    pruning_method = {
+        "nwchem": pyscf.dft.gen_grid.nwchem_prune,
+        "sg1": pyscf.dft.gen_grid.sg1_prune,
+        "treutler": pyscf.dft.gen_grid.treutler_prune,
+        "none": None,
+    }
 
     def __init__(
         self,
@@ -42,6 +48,9 @@ class PySCF(OverlapCalculator):
         auxbasis=None,
         keep_chk=True,
         verbose=0,
+        unrestricted=None,
+        grid_level=3,
+        pruning="nwchem",
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -64,10 +73,15 @@ class PySCF(OverlapCalculator):
         self.auxbasis = auxbasis
         self.keep_chk = keep_chk
         self.verbose = int(verbose)
+        if unrestricted is None:
+            self.unrestricted = self.mult > 1
+        else:
+            self.unrestricted = unrestricted
+        self.grid_level = int(grid_level)
+        self.pruning = pruning.lower()
 
         self.chkfile = None
         self.out_fn = "pyscf.out"
-        self.unrestricted = self.mult > 1
 
         lib.num_threads(self.pal)
 
@@ -85,11 +99,9 @@ class PySCF(OverlapCalculator):
             mf._numint.libxc = xcfun
             mf.conv_tol = 1e-8
             mf.max_cycle = 150
-            # TODO: grids
-            # grids = pyscf.dft.gen_grid.Grids(mol)
-            # grids.level = 4
-            # grids.build()
-            # mf.grids = grids
+            mf.grids.level = self.grid_level
+            mf.grids.prune = self.pruning_method[self.pruning]
+            mf.grids.build()
         elif mol and (step == "scf"):
             driver = self.drivers[(step, self.unrestricted)]
             mf = driver(mol)
