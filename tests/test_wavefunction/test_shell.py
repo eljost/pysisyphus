@@ -13,7 +13,7 @@ from pysisyphus.testing import using
 
 @using("pyscf")
 def test_pyscf_shells():
-    mol = gto.M(atom="H 0 0 0; H 0 0 1", basis="def2qzvpp")
+    mol = gto.M(atom="H 0 0 0; H 0 0 1", basis="def2qzvpp", parse_arg=False)
     shells = Shells.from_pyscf_mol(mol)
     S_ref = mol.intor("int1e_ovlp_sph")
     S = shells.S_sph
@@ -23,7 +23,7 @@ def test_pyscf_shells():
 
 @using("pyscf")
 def test_grid_density():
-    mol = gto.M(atom="H 0 0 0; H 0 0 1", basis="def2qzvpp")
+    mol = gto.M(atom="H 0 0 0; H 0 0 1", basis="def2qzvpp", parse_arg=False)
     mf = scf.RHF(mol)
     mf.scf()
     dm = mf.make_rdm1()
@@ -49,7 +49,7 @@ def test_quadrupole_ints():
         coords = mol.atom_coords()
         return np.einsum("z,zr->r", charges, coords) / charges.sum()
 
-    mol = gto.M(verbose=0, atom="H 0 0 0; H 0 0 1.0;", basis="ccpvtz")
+    mol = gto.M(verbose=0, atom="H 0 0 0; H 0 0 1.0;", basis="ccpvtz", parse_arg=False)
 
     nao = mol.nao
 
