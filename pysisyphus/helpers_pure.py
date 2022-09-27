@@ -567,3 +567,23 @@ def to_subscript_num(num):
 
 def to_sets(iterable):
     return set([frozenset(i) for i in iterable])
+
+
+def cache_arrays(sources, dest):
+    dest_path = Path(dest).with_suffix(".npz")
+
+    def cache_decorator(func):
+        def wrapped_func(*args, **kwargs):
+            if dest_path.exists():
+                npzfile = np.load(dest_path)
+                arrays = tuple([npzfile[src] for src in sources])
+            else:
+                arrays = func(*args, **kwargs)
+                assert len(arrays) == len(sources)
+                kwds = {src: arr for src, arr in zip(sources, arrays)}
+                np.savez(dest_path, **kwds)
+            return arrays
+
+        return wrapped_func
+
+    return cache_decorator
