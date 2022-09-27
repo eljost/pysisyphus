@@ -51,32 +51,32 @@ def norm_ci_coeffs(
 
 
 def get_state_to_state_transition_density(
-    P_a: NDArray[float], P_b: NDArray[float]
+    T_a: NDArray[float], T_b: NDArray[float]
 ) -> NDArray[float]:
     """State-to-state transition density.
 
     Parameters
     ----------
-    P_a
+    T_a
         Transition density matrix for state A of shape (occ, virt).
-    P_b
+    T_b
         Transition density matrix for state B of shape (occ, virt).
 
     Returns
     -------
-    P_trans
+    T_ab
         State-to-state transition density of shape (occ+virt, occ+virt).
     """
-    assert P_a.shape == P_b.shape
+    assert T_a.shape == T_b.shape
 
-    electron = P_a.T @ P_b
-    hole = P_b @ P_a.T
-    occ, virt = P_a.shape
+    electron = T_a.T @ T_b
+    hole = T_b @ T_a.T
+    occ, virt = T_a.shape
     ov = occ + virt
-    P_trans = np.zeros((ov, ov))
-    P_trans[:occ, :occ] = -hole
-    P_trans[occ:, occ:] = electron
-    return P_trans
+    T_ab = np.zeros((ov, ov))
+    T_ab[:occ, :occ] = -hole
+    T_ab[occ:, occ:] = electron
+    return T_ab
 
 
 def mo_inds_from_tden(
@@ -296,3 +296,45 @@ def tden_overlaps(
     )
     """
     return overlaps
+
+
+###############################
+# Natural Transition Orbitals #
+###############################
+
+
+def nto_overlaps(ntos_1, ntos_2, ao_ovlp):
+    states1 = len(ntos_1)
+    states2 = len(ntos_2)
+    ovlps = np.zeros((states1, states2))
+    for i in range(states1):
+        n_i = ntos_1[i]
+        l_i = n_i.lambdas[:, None]
+        ntos_i = l_i * n_i.ntos
+        for j in range(states2):
+            n_j = ntos_2[j]
+            l_j = n_j.lambdas[:, None]
+            ntos_j = l_j * n_j.ntos
+            ovlp = np.sum(np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
+            ovlps[i, j] = ovlp
+    return ovlps
+
+def nto_org_overlaps(ntos_1, ntos_2, ao_ovlp, nto_thresh=0.3):
+    states_1 = len(ntos_1)
+    states_2 = len(ntos_2)
+    ovlps = np.zeros((states_1, states_2))
+
+    for i in range(states_1):
+        n_i = ntos_1[i]
+        l_i = n_i.lambdas[:, None]
+        ntos_i = n_i.ntos[(l_i >= nto_thresh).flatten()]
+        l_i_big = l_i[l_i >= nto_thresh]
+        for j in range(states_2):
+            n_j = ntos_2[j]
+            l_j = n_j.lambdas[:, None]
+            ntos_j = n_j.ntos[(l_j >= nto_thresh).flatten()]
+            ovlp = np.sum(
+                l_i_big[:, None] * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T))
+            )
+            ovlps[i, j] = ovlp
+    return ovlps
