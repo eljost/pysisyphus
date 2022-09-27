@@ -91,24 +91,32 @@ class PySCF(OverlapCalculator):
         geom.set_calculator(PySCF(**kwargs))
         return geom
 
+    def set_scf_params(self, mf):
+        mf.conv_tol = 1e-8
+        mf.max_cycle = 150
+
+    def build_grid(self, mf):
+        mf.grids.level = self.grid_level
+        mf.grids.prune = self.pruning_method[self.pruning]
+        mf.grids.build()
+
     def get_driver(self, step, mol=None, mf=None):
+        def _get_driver():
+            return self.drivers[(step, self.unrestricted)]
+
         if mol and (step == "dft"):
-            driver = self.drivers[(step, self.unrestricted)]
+            driver = _get_driver()
             mf = driver(mol)
             mf.xc = self.xc
             mf._numint.libxc = xcfun
-            mf.conv_tol = 1e-8
-            mf.max_cycle = 150
-            mf.grids.level = self.grid_level
-            mf.grids.prune = self.pruning_method[self.pruning]
-            mf.grids.build()
+            self.set_scf_params(mf)
+            self.build_grid(mf)
         elif mol and (step == "scf"):
-            driver = self.drivers[(step, self.unrestricted)]
+            driver = _get_driver()
             mf = driver(mol)
-            mf.conv_tol = 1e-8
-            mf.max_cycle = 150
+            self.set_scf_params(mf)
         elif mf and (step == "mp2"):
-            mp2_mf = self.drivers[(step, self.unrestricted)]
+            mp2_mf = _get_driver()
             mf = mp2_mf(mf)
         elif mf and (step == "tddft"):
             mf = pyscf.tddft.TDDFT(mf)

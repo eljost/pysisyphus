@@ -17,7 +17,7 @@ def test_mulliken_charges():
     geom.set_calculator(calc)
 
     energy = geom.energy
-    assert energy == pytest.approx(-5.789815189924002E+02)
+    assert energy == pytest.approx(-5.789815189924002e02)
 
     charges = calc.parse_charges()
     chrg_ref = """
@@ -32,54 +32,63 @@ def test_mulliken_charges():
 
 
 @using("pyscf")
-@pytest.mark.parametrize("test_input", ["nwchem", "sg1", "treutler", "None"])
-def test_pruning(test_input):
+@pytest.mark.parametrize(
+    "pruning, ref_name",
+    (
+        ("nwchem", "nwchem_prune"),
+        ("sg1", "sg1_prune"),
+        ("treutler", "treutler_prune"),
+        pytest.param(None, None, marks=pytest.mark.xfail),
+    ),
+)
+def test_pruning(pruning, ref_name):
     geom = geom_loader("lib:01_h2o.xyz")
 
     calc_kwargs = {
         "basis": "sto3g",
-        "pruning": test_input,
+        "pruning": pruning,
     }
     calc = PySCF(**calc_kwargs)
-    geom.set_calculator(calc)
 
     mol = calc.prepare_input(geom.atoms, geom.coords)
     mf = calc.get_driver("dft", mol=mol)
-    assert(test_input in str(mf.grids.prune))
+    assert mf.grids.prune.__name__ == ref_name
 
 
 @using("pyscf")
-@pytest.mark.parametrize("test_input", ["0", "3", "9"])
-def test_grid_level(test_input):
+@pytest.mark.parametrize("grid_level", (0, 3, 9))
+def test_grid_level(grid_level):
     geom = geom_loader("lib:01_h2o.xyz")
 
     calc_kwargs = {
         "basis": "sto3g",
-        "grid_level": test_input,
+        "grid_level": grid_level,
     }
     calc = PySCF(**calc_kwargs)
-    geom.set_calculator(calc)
 
     mol = calc.prepare_input(geom.atoms, geom.coords)
     mf = calc.get_driver("dft", mol=mol)
-    assert(test_input == str(mf.grids.level))
+    assert grid_level == mf.grids.level
 
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "test_input, expected",
-    [(None, "Restricted"), (True, "Unrestricted"), (False, "Restricted")]
+    "unrestricted, expected",
+    (
+        (None, "Restricted"),
+        (False, "Restricted"),
+        (True, "Unrestricted"),
+    ),
 )
-def test_unrestricted(test_input, expected):
+def test_unrestricted(unrestricted, expected):
     geom = geom_loader("lib:01_h2o.xyz")
 
     calc_kwargs = {
         "basis": "sto3g",
-        "unrestricted": test_input,
+        "unrestricted": unrestricted,
     }
     calc = PySCF(**calc_kwargs)
-    geom.set_calculator(calc)
 
     mol = calc.prepare_input(geom.atoms, geom.coords)
     mf = calc.get_driver("dft", mol=mol)
-    assert(expected in mf.__doc__)
+    assert expected in mf.__doc__
