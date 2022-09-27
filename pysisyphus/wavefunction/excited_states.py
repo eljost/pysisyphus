@@ -1,7 +1,82 @@
-from typing import Iterable, List, Sequence, Tuple
+from typing import Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
+
+
+def norm_ci_coeffs(
+    Xa: NDArray[float],
+    Ya: NDArray[float],
+    Xb: Optional[NDArray[float]] = None,
+    Yb: Optional[NDArray[float]] = None,
+    restricted_norm: float = 0.5,
+    unrestricted_norm: float = 1.0,
+) -> Tuple[NDArray[float], NDArray[float]]:
+    """Normalize transition density matrices.
+
+    target_norm = (N*X)**2 - (N*Y)**2
+                = N**2 * (X**2 - Y**2)
+    N**2 = target_norm / (X**2 - Y**2)
+    N    = sqrt(target_norm / (X**2 - Y**2))
+    """
+    nstates_a, occ_a, virt_a = Xa.shape
+    unrestricted = (Xb is not None) and (Yb is not None)
+    if unrestricted:
+        nstates_b, occ_b, virt_b = Xb.shape
+        assert nstates_a == nstates_b
+        assert (occ_a + virt_a) == (occ_b + virt_b)
+        nstates = nstates_a
+        X = np.concatenate((Xa.reshape(nstates, -1), Xb.reshape(nstates, -1)), axis=1)
+        Y = np.concatenate((Ya.reshape(nstates, -1), Yb.reshape(nstates, -1)), axis=1)
+        target_norm = unrestricted_norm
+    else:
+        nstates = nstates_a
+        X = Xa.reshape(nstates, -1)
+        Y = Ya.reshape(nstates, -1)
+        target_norm = restricted_norm
+    X_norms, Y_norms = [np.linalg.norm(mat, axis=1) for mat in (X, Y)]
+    ci_norms = X_norms ** 2 - Y_norms ** 2
+    N = np.sqrt(target_norm / ci_norms)
+    X *= N[:, None]
+    Y *= N[:, None]
+    entries_a = occ_a * virt_a
+    Xa = X[:, :entries_a].reshape(nstates, occ_a, virt_a)
+    Ya = Y[:, :entries_a].reshape(nstates, occ_a, virt_a)
+    returns = [Xa, Ya]
+    if unrestricted:
+        Xb = X[:, entries_a:].reshape(nstates, occ_b, virt_b)
+        Yb = Y[:, entries_a:].reshape(nstates, occ_b, virt_b)
+        returns.extend([Xb, Yb])
+    return returns
+
+
+def get_state_to_state_transition_density(
+    P_a: NDArray[float], P_b: NDArray[float]
+) -> NDArray[float]:
+    """State-to-state transition density.
+
+    Parameters
+    ----------
+    P_a
+        Transition density matrix for state A of shape (occ, virt).
+    P_b
+        Transition density matrix for state B of shape (occ, virt).
+
+    Returns
+    -------
+    P_trans
+        State-to-state transition density of shape (occ+virt, occ+virt).
+    """
+    assert P_a.shape == P_b.shape
+
+    electron = P_a.T @ P_b
+    hole = P_b @ P_a.T
+    occ, virt = P_a.shape
+    ov = occ + virt
+    P_trans = np.zeros((ov, ov))
+    P_trans[:occ, :occ] = -hole
+    P_trans[occ:, occ:] = electron
+    return P_trans
 
 
 def mo_inds_from_tden(
@@ -210,8 +285,14 @@ def tden_overlaps(
         for j, state2 in enumerate(ci_coeffs2):
             overlaps[i, j] = np.trace(precontr @ state2)
 
-    # overlaps = np.einsum(
-    # "mil,ij,njk,kl->mn", ci_coeffs1, S_MO_occ, ci_coeffs2, S_MO_vir.T,
-    # optimize=['einsum_path', (0, 3), (1, 2), (0, 1)],
-    # )
+    """
+    overlaps = np.einsum(
+        "mil,ij,njk,kl->mn",
+        ci_coeffs1,
+        S_MO_occ,
+        ci_coeffs2,
+        S_MO_vir.T,
+        optimize=["einsum_path", (0, 3), (1, 2), (0, 1)],
+    )
+    """
     return overlaps

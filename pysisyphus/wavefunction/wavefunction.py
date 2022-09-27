@@ -227,7 +227,7 @@ class Wavefunction:
         """
         Eqs. (2.25) and (2.26) in [1].
         """
-        trans_dens *= 2**0.5 / 2
+        trans_dens *= 2 ** 0.5 / 2
         occ_a, occ_b = self.occ
         assert occ_a == occ_b
         occ = occ_a
@@ -437,37 +437,45 @@ class Wavefunction:
     def quadrupole_moment(self) -> NDArray[float]:
         return self.get_quadrupole_moment()
 
-    def get_transition_dipole_moment(
+    ################################
+    # Transition Multipole Moments #
+    ################################
+
+    def get_transition_multipole_moment(
         self,
-        P_a: NDArray[float],
-        P_b: NDArray[float] = None,
+        order: int,
+        T_a: NDArray[float],
+        T_b: NDArray[float] = None,
         origin: Optional[NDArray[float]] = None,
         kind: Center = "coc",
+        full=False,
     ) -> NDArray[float]:
         if origin is None:
             origin = self.get_origin(kind=kind)
-        dipole_ints = self.dipole_ints(origin)
+        if order == 1:
+            multipole_ints = self.dipole_ints(origin)
+        elif order == 2:
+            multipole_ints = self.quadrupole_ints(origin)
+        else:
+            raise Exception("Multipoles of order {order} are not implemented!")
         C_a, C_b = self.C
         occ_a, occ_b = self.occ
         return get_transition_multipole_moment(
-            dipole_ints, C_a, C_b, occ_a, occ_b, P_a, P_b
+            multipole_ints,
+            C_a,
+            C_b,
+            T_a,
+            T_b,
+            occ_a,
+            occ_b,
+            full=full,
         )
 
-    def get_transition_quadrupole_moment(
-        self,
-        P_a: NDArray[float],
-        P_b: NDArray[float] = None,
-        origin: Optional[NDArray[float]] = None,
-        kind: Center = "coc",
-    ) -> NDArray[float]:
-        if origin is None:
-            origin = self.get_origin(kind=kind)
-        quadrupole_ints = self.quadrupole_ints(origin)
-        C_a, C_b = self.C
-        occ_a, occ_b = self.occ
-        return get_transition_multipole_moment(
-            quadrupole_ints, C_a, C_b, occ_a, occ_b, P_a, P_b
-        )
+    def get_transition_dipole_moment(self, *args, **kwargs):
+        return self.get_transition_multipole_moment(1, *args, **kwargs)
+
+    def get_transition_quadrupole_moment(self, *args, **kwargs):
+        return self.get_transition_multipole_moment(2, *args, **kwargs)
 
     def oscillator_strength(
         self, exc_ens: NDArray[float], trans_moms: NDArray[float]
@@ -476,7 +484,7 @@ class Wavefunction:
         exc_ens = np.atleast_1d(exc_ens)
         if trans_moms.ndim == 1:
             trans_moms = trans_moms[None, :]
-        fosc = 2 / 3 * exc_ens * (trans_moms**2).sum(axis=1)
+        fosc = 2 / 3 * exc_ens * (trans_moms ** 2).sum(axis=1)
         return fosc
 
     def as_geom(self):

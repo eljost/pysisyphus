@@ -7,6 +7,8 @@
 #     the random phase approximation. Method and model studies.
 #     Pedersen, Hansen, 1995
 
+from typing import List, Optional
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -58,15 +60,22 @@ def get_transition_multipole_moment(
     multipole_ints: NDArray[float],
     C_a: NDArray[float],
     C_b: NDArray[float],
-    occ_a: int,
-    occ_b: int,
-    P_a: NDArray[float],
-    P_b: NDArray[float] = None,
-) -> NDArray[float]:
+    T_a: NDArray[float],
+    T_b: NDArray[float] = None,
+    occ_a: Optional[int] = None,
+    occ_b: Optional[int] = None,
+    full: bool = False,
+) -> List[NDArray[float]]:
     """
     Transition multipole moments from transition density matrices.
 
-    See Eq. (33) in [1].
+    This functions relies on the following normalization
+
+        closed shell: 0.5 = norm(X_a)**2 - norm(Y_a)**2
+          open shell: 1.0 = norm(X_a,X_b)**2 - norm(Y_a,Y_b)**2
+
+    with X_a,X_b indicating a vector formed by concatenating the elements
+    of X_a and X_b for every state. See also Eq. (33) in [1].
 
     Parameters
     ----------
@@ -78,16 +87,19 @@ def get_transition_multipole_moment(
         MO-coefficients for α-electrons.
     C_b
         MO-coefficients for β-electrons.
+    T_a
+        Numpy array containing transition density matrices of shape
+        (nstates, occ, virt) or (occ, virt) in the α-electron space.
+        The transition density must be given in the MO-basis!
+    T_b
+        See P_a. Optional. If not provided, P_b is derived from P_a.
     occ_a
         Number of α-electrons.
     occ_b
         Number of β-electrons.
-    P_a
-        Numpy array containing transition density matrices of shape
-        (nstates, occ, virt) or (occ, virt) in the α-electron space.
-        The transition density must be given in the MO-basis!
-    P_b
-        See P_a. Optional. If not provided, P_b is derived from P_a.
+    full
+        Use all MOs to transform multipole integrals. Needed for state-to-state
+        transition denstiy matrices of shape (occ+virt, occ+virt).
 
     Returns
     -------
@@ -103,21 +115,26 @@ def get_transition_multipole_moment(
             tden = tden[None, :]
         return tden
 
-    P_a = atleast_3d(P_a)
-    if P_b is None:
-        P_a = 1 / 2**0.5 * P_a
-        P_b = P_a
-    P_b = atleast_3d(P_b)
-
+    T_a = atleast_3d(T_a)
+    if T_b is not None:
+        T_b = atleast_3d(T_b)
     # Expected shape: (nstates, occ, virt)
-    assert P_a.ndim == P_b.ndim == 3
+    assert T_a.ndim == 3
+    if not full:
+        assert occ_a is not None
 
     def get_trans_moment(
-        C: NDArray[float], occ: NDArray[int], trans_dens: NDArray[float]
+        C: NDArray[float], occ: int, T: NDArray[float]
     ) -> NDArray[float]:
         # Transform AO integrals to MO basis
+        if full:
+            C_occ = C
+            C_virt = C
+        else:
+            C_occ = C[:, :occ]
+            C_virt = C[:, occ:]
         multipole_ints_mo = np.einsum(
-            "jl,...lm,mk->...jk", C[:, :occ].T, multipole_ints, C[:, occ:]
+            "jl,...lm,mk->...jk", C_occ.T, multipole_ints, C_virt
         )
 
         """
@@ -126,11 +143,13 @@ def get_transition_multipole_moment(
         j : occ. MO space
         k : virt. MO space
         """
-        trans_moment = np.einsum("...jk,ijk->i...", multipole_ints_mo, trans_dens)
+        trans_moment = np.einsum("...jk,ijk->i...", multipole_ints_mo, T)
         return trans_moment
 
     # Transitions between α -> α and β -> β
-    trans_moment_a = get_trans_moment(C_a, occ_a, P_a)
-    trans_moment_b = get_trans_moment(C_b, occ_b, P_b)
-    trans_moment = trans_moment_a + trans_moment_b
+    trans_moment = get_trans_moment(C_a, occ_a, T_a)
+    if T_b is None:
+        trans_moment *= 2
+    else:
+        trans_moment += get_trans_moment(C_b, occ_b, T_b)
     return trans_moment

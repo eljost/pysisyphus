@@ -19,7 +19,7 @@ from pysisyphus.helpers_pure import describe
 from pysisyphus.io.hdf5 import get_h5_group
 from pysisyphus.wrapper.mwfn import make_cdd, get_mwfn_exc_str
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
-from pysisyphus.wavefunction.es_overlaps import rAB as top_rAB, tden_overlaps
+from pysisyphus.wavefunction.excited_states import rAB as top_rAB, tden_overlaps
 
 
 NTOs = namedtuple("NTOs", "ntos lambdas")
