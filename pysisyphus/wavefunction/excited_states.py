@@ -296,7 +296,7 @@ def tden_overlaps(
     # Thanks Philipp and Klaus!
     overlaps = np.zeros((ci_coeffs1.shape[0], ci_coeffs2.shape[0]))
     for i, state1 in enumerate(ci_coeffs1):
-        precontr = S_MO_vir @ state1.T @ S_MO_occ.T
+        precontr = S_MO_vir.T @ state1.T @ S_MO_occ
         for j, state2 in enumerate(ci_coeffs2):
             overlaps[i, j] = np.trace(precontr @ state2)
 
@@ -304,9 +304,9 @@ def tden_overlaps(
     overlaps = np.einsum(
         "mil,ij,njk,kl->mn",
         ci_coeffs1,
-        S_MO_occ.T,
+        S_MO_occ,
         ci_coeffs2,
-        S_MO_vir,
+        S_MO_vir.T,
         optimize=["einsum_path", (0, 3), (1, 2), (0, 1)],
     )
     """
