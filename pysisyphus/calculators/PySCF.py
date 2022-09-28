@@ -6,8 +6,6 @@ import pyscf
 from pyscf import gto, grad, lib, hessian, tddft, qmmm
 from pyscf.dft import xcfun
 
-# from pyscf.lib.chkfile import save_mol
-
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.helpers import geom_loader
 
@@ -273,7 +271,7 @@ class PySCF(OverlapCalculator):
         exc_mf = self.mf
 
         gs_energy = gs_mf.e_tot
-        mo_coeffs = gs_mf.mo_coeff.T
+        C = gs_mf.mo_coeff
 
         first_Y = exc_mf.xy[0][1]
         # In TDA calculations Y is just the integer 0.
@@ -291,7 +289,7 @@ class PySCF(OverlapCalculator):
         all_energies = np.zeros(exc_energies.size + 1)
         all_energies[0] = gs_energy
         all_energies[1:] = exc_energies
-        return mo_coeffs, X, Y, all_energies
+        return C, X, Y, all_energies
 
     def parse_charges(self):
         results = self.mf.analyze(with_meta_lowdin=False)

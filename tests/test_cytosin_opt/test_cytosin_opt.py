@@ -97,6 +97,7 @@ def test_cytosin_s1_opt(calc_cls, calc_kwargs, this_dir):
         "ovlp_type": "tden",
         "mos_renorm": True,
         "track": True,
+        "cdds": "render",
     })
     calc = calc_cls(**calc_kwargs)
     geom.set_calculator(calc)

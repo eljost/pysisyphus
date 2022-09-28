@@ -9,7 +9,7 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.helpers_pure import describe
 from pysisyphus.init_logging import init_logging
 from pysisyphus.testing import using
-from pysisyphus.wavefunction.excited_states import tden_overlaps
+from pysisyphus.wavefunction.excited_states import norm_ci_coeffs, tden_overlaps
 
 
 @pytest.mark.parametrize(
@@ -95,26 +95,12 @@ def test_tden_self_overlap(h5_fn, this_dir):
 
     calc = OverlapCalculator()
 
-    def tden_self_overlap(mo_coeffs, ci_coeffs):
-        ao_ovlp = calc.get_sao_from_mo_coeffs(mo_coeffs)
+    def tden_self_overlap(C, Xa):
+        S_AO = calc.get_sao_from_mo_coeffs(C)
+        Xa, _ = norm_ci_coeffs(Xa, np.zeros_like(Xa), restricted_norm=1.0)
+        return tden_overlaps(C, Xa, C, Xa, S_AO)
 
-        ci_norm = np.linalg.norm(ci_coeffs, axis=(1, 2))
-        mo_norm = calc.get_mo_norms(mo_coeffs, ao_ovlp)
-
-        ci_coeffs = ci_coeffs / ci_norm[:, None, None]
-        mo_coeffs = calc.renorm_mos(mo_coeffs, ao_ovlp)
-
-        ci_norm = np.linalg.norm(ci_coeffs, axis=(1, 2))
-        mo_norm = calc.get_mo_norms(mo_coeffs, ao_ovlp)
-        # print(f"norm(CI): {ci_norm}")
-        # print(f"norm(MOs): {describe(mo_norm)}")
-
-        overlaps = tden_overlaps(
-            mo_coeffs, ci_coeffs, mo_coeffs, ci_coeffs, ao_ovlp
-        )
-        return overlaps
-
-    for i, (moc, cic) in enumerate(zip(mo_coeffs, ci_coeffs)):
-        ovlps = tden_self_overlap(moc, cic)
+    for Ca, Xa in zip(mo_coeffs, ci_coeffs):
+        ovlps = tden_self_overlap(Ca.T, Xa)
         I = np.eye(ovlps.shape[0])
         np.testing.assert_allclose(ovlps, I, atol=5e-5)

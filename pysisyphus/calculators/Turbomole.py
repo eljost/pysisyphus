@@ -270,13 +270,6 @@ class Turbomole(OverlapCalculator):
             self.sub_control(r"\$exopt\s*(\d+)", f"$exopt {self.root}", root_log_msg)
             self.log(f"Using '{repl}'")
 
-            # Adapt number of roots
-            # roots_number_repl = "\$soes\s+a\s+(\d+)"
-            # self.sub_control(roots_number_repl,
-            # f"$soes\n a {self.roots_number}",
-            # "with number of roots to be calculated: "
-            # f"{self.roots_number}"
-            # )
         if self.root and self.ricc2:
             repl = f"state=(a {self.root})"
             self.sub_control(
@@ -658,9 +651,9 @@ class Turbomole(OverlapCalculator):
         self.log(f"Reading MO coefficients from '{self.mos}'.")
         with open(self.mos) as handle:
             text = handle.read()
-        mo_coeffs = parse_turbo_mos(text)
+        C = parse_turbo_mos(text)
         self.log(f"Reading electronic energies from '{self.out}'.")
-        return mo_coeffs, X, Y, all_energies
+        return C, X, Y, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)

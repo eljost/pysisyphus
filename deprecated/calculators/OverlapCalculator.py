@@ -169,14 +169,6 @@ class OverlapCalculator(Calculator):
         self.ci_coeff_list = list()
         self.X_list = list()
         self.Y_list = list()
-
-        self.Ca_list = list()
-        self.Cb_list = list()
-        self.Xa_list = list()
-        self.Ya_list = list()
-        self.Xb_list = list()
-        self.Yb_list = list()
-
         self.nto_list = list()
         self.coords_list = list()
         # This list will hold the root indices at the beginning of the cycle
@@ -439,12 +431,18 @@ class OverlapCalculator(Calculator):
         ntos_1 = self.nto_list[ref]
         ntos_2 = self.nto_list[cur]
         if org:
-            overlaps = nto_org_overlaps(
+            overlaps = self.nto_org_overlaps(
                 ntos_1, ntos_2, ao_ovlp, nto_thresh=self.nto_thresh
             )
         else:
-            overlaps = nto_overlaps(ntos_1, ntos_2, ao_ovlp)
+            overlaps = self.nto_overlaps(ntos_1, ntos_2, ao_ovlp)
         return overlaps
+
+    def nto_overlaps(self, ntos_1, ntos_2, ao_ovlp):
+        return nto_overlaps(ntos_1, ntos_2, ao_ovlp)
+
+    def nto_org_overlaps(self, ntos_1, ntos_2, ao_ovlp, nto_thresh=0.3):
+        return nto_org_overlaps(ntos_1, ntos_2, ao_ovlp, nto_thresh=nto_thresh)
 
     def get_top_differences(self, indices=None, ao_ovlp=None):
         """Transition orbital pair. differences"""
@@ -653,9 +651,9 @@ class OverlapCalculator(Calculator):
         # Currently, still only restricted calculations are supported, so X and Y
         # will always be Xa and Ya.
         mo_coeffs, Xa, Ya, all_ens = overlap_data
+
         X = Xa
         Y = Ya
-
         assert mo_coeffs.ndim == 2
         assert all([mat.ndim == 3 for mat in (X, Y)])
 
@@ -667,15 +665,6 @@ class OverlapCalculator(Calculator):
         X, Y = norm_ci_coeffs(X, Y, restricted_norm=1.0)
         self.X_list.append(X.copy())
         self.Y_list.append(Y.copy())
-
-        Xa_, Ya_, Xb_, Yb_ = norm_ci_coeffs(Xa, Ya, Xa, Ya)
-        C = mo_coeffs.T  # MOs are in columns!
-        self.Ca_list.append(C.copy())
-        self.Cb_list.append(C.copy())
-        self.Xa_list.append(Xa_)
-        self.Ya_list.append(Ya_)
-        self.Xb_list.append(Xb_)
-        self.Yb_list.append(Yb_)
 
         if self.XY == "X":
             ci_coeffs = X
