@@ -325,8 +325,8 @@ def _(wf: Wavefunction) -> JacobiSweepResult:
 def dq_diabatization(
     C: NDArray[float],
     dip_moms: NDArray[float],
-    alpha: Optional[float] = 1.0,
     quad_moms: Optional[NDArray[float]] = None,
+    alpha: Optional[float] = 1.0,
 ) -> JacobiSweepResult:
     """DQ-diabatization as outlined in [5].
 
