@@ -294,8 +294,8 @@ def parse_orca_densities(text: bytes):
     return dens_dict
 
 
-def get_exc_ens_fosc(json_fn, cis_fn, log_fn):
-    wf = Wavefunction.from_orca_json(json_fn)
+def get_exc_ens_fosc(wf_fn, cis_fn, log_fn):
+    wf = Wavefunction.from_file(wf_fn)
     Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn)
     all_energies = parse_orca_all_energies(log_fn, do_tddft=True)
     Xa, Ya = norm_ci_coeffs(Xa, Ya)

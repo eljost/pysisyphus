@@ -13,3 +13,4 @@ from pysisyphus.drivers.rates import (
     wigner_corr,
 )
 from pysisyphus.drivers.replace import replace_atoms
+from pysisyphus.drivers.spectrum import Spectrum

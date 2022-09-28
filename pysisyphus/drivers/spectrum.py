@@ -1,5 +1,7 @@
+# [1] https://gaussian.com/uvvisplot/
+
+from dataclasses import dataclass
 from typing import Tuple
-import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,6 +21,25 @@ PREFACTOR = (  # Prefactor in eq. (5) of [1]
 _04EV = 0.4 / AU2EV
 # Factor used in converting energy in Hartree to wavelength
 _AU2NM = PLANCK * C * 1e9 / AU2J
+
+
+@dataclass
+class Spectrum:
+    exc_ens: NDArray[float]
+    exc_ens_nm: NDArray[float]
+    fosc: NDArray[float]
+    nm: NDArray[float]
+    epsilon: NDArray[float]
+
+    def plot(self, **kwargs):
+        plot_spectrum(self.nm, self.epsilon, self.exc_ens_nm, self.fosc, **kwargs)
+
+    @staticmethod
+    def from_orca(wf_fn, cis_fn, log_fn, **kwargs):
+        from pysisyphus.calculators.ORCA import get_exc_ens_fosc
+
+        exc_ens, fosc = get_exc_ens_fosc(wf_fn, cis_fn, log_fn)
+        return spectrum_from_ens_fosc(exc_ens, fosc, **kwargs)
 
 
 def au2nm(au):
@@ -57,14 +78,21 @@ def homogeneous_broadening(
 def spectrum_from_ens_fosc(exc_ens, fosc, **kwargs):
     exc_ens_nm = au2nm(exc_ens)
     nm, epsilon = homogeneous_broadening(exc_ens, fosc, **kwargs)
-    return exc_ens, exc_ens_nm, fosc, nm, epsilon
+    spectrum = Spectrum(
+        exc_ens=exc_ens,
+        exc_ens_nm=exc_ens_nm,
+        fosc=fosc,
+        nm=nm,
+        epsilon=epsilon,
+    )
+    return spectrum
 
 
 def plot_spectrum(nm, epsilon, exc_ens_nm=None, fosc=None, show=False):
     fig, ax = plt.subplots()
     ax.plot(nm, epsilon)
-    ax.set_ylabel("$\epsilon$")
-    ax.set_xlabel("$\lambda$ / nm")
+    ax.set_ylabel(r"$\epsilon$")
+    ax.set_xlabel(r"$\lambda$ / nm")
     axs = [
         ax,
     ]
