@@ -1,6 +1,7 @@
 # [1] https://gaussian.com/uvvisplot/
 
-from dataclasses import dataclass
+import dataclasses
+from pathlib import Path
 from typing import Tuple
 
 import matplotlib.pyplot as plt
@@ -23,7 +24,7 @@ _04EV = 0.4 / AU2EV
 _AU2NM = PLANCK * C * 1e9 / AU2J
 
 
-@dataclass
+@dataclasses.dataclass
 class Spectrum:
     exc_ens: NDArray[float]
     exc_ens_nm: NDArray[float]
@@ -33,6 +34,18 @@ class Spectrum:
 
     def plot(self, **kwargs):
         plot_spectrum(self.nm, self.epsilon, self.exc_ens_nm, self.fosc, **kwargs)
+
+    def save(self, fn):
+        act_fn = Path(fn).with_suffix(".npz")
+        data = dataclasses.asdict(self)
+        np.savez(act_fn, **data)
+        return act_fn
+
+    @staticmethod
+    def load(fn):
+        handle = np.load(fn)
+        kwargs = {key: handle[key] for key in handle.files}
+        return Spectrum(**kwargs)
 
     @staticmethod
     def from_orca(wf_fn, cis_fn, log_fn, **kwargs):
