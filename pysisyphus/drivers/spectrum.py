@@ -6,8 +6,6 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pysisyphus.constants import AU2J, C, M_E, NA, PLANCK, AU2EV
-from pysisyphus.wavefunction import Wavefunction
-from pysisyphus.calculators.ORCA import parse_orca_cis, parse_orca_all_energies
 
 
 # Computation of prefactor from Gaussian whitepaper
@@ -56,16 +54,10 @@ def homogeneous_broadening(
     return nm, epsilon
 
 
-def from_orca(json_fn, cis_fn, log_fn):
-    wf = Wavefunction.from_orca_json(json_fn)
-    Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn)
-    all_energies = parse_orca_all_energies(log_fn, do_tddft=True)
-
-    exc_ens = all_energies[1:] - all_energies[0]
-    tdens = wf.transition_dipole_moment(Xa + Ya)
-    warnings.warn("Only alpha TDM is currently taken into account!")
-    fosc = wf.oscillator_strength(exc_ens, tdens)
-    return exc_ens, fosc
+def spectrum_from_ens_fosc(exc_ens, fosc, **kwargs):
+    exc_ens_nm = au2nm(exc_ens)
+    nm, epsilon = homogeneous_broadening(exc_ens, fosc, **kwargs)
+    return exc_ens, exc_ens_nm, fosc, nm, epsilon
 
 
 def plot_spectrum(nm, epsilon, exc_ens_nm=None, fosc=None, show=False):

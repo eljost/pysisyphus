@@ -6,7 +6,7 @@ import os
 import re
 import struct
 import shutil
-import subprocess
+import warnings
 
 import numpy as np
 import pyparsing as pp
@@ -14,6 +14,7 @@ import pyparsing as pp
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.wavefunction import norm_ci_coeffs, Wavefunction
 
 
 def make_sym_mat(table_block):
@@ -291,6 +292,18 @@ def parse_orca_densities(text: bytes):
     assert set(dens_dict) <= {"scfp", "scfr", "cisp", "cisr"}
 
     return dens_dict
+
+
+def get_exc_ens_fosc(json_fn, cis_fn, log_fn):
+    wf = Wavefunction.from_orca_json(json_fn)
+    Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn)
+    all_energies = parse_orca_all_energies(log_fn, do_tddft=True)
+    Xa, Ya = norm_ci_coeffs(Xa, Ya)
+    exc_ens = all_energies[1:] - all_energies[0]
+    tdens = wf.get_transition_dipole_moment(Xa + Ya)
+    warnings.warn("Only alpha TDM is currently taken into account!")
+    fosc = wf.oscillator_strength(exc_ens, tdens)
+    return exc_ens, fosc
 
 
 class ORCA(OverlapCalculator):
