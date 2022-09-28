@@ -103,8 +103,9 @@ def parse_turbo_mos(text):
     parsed = parser.parseString(text)
     mo_coeffs = np.array(
         [mo.mo_coeffs.asList() for mo in parsed.mos]
-    )
+    ).T
 
+    # MOs are in columns
     return mo_coeffs
 
 

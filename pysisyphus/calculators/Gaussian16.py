@@ -521,9 +521,9 @@ class Gaussian16(OverlapCalculator):
         )
         scf_key, mo_energies_key, mo_key, exc_key = keys
         fchk_dict = self.parse_fchk(self.fchk, keys=keys)
-        mo_coeffs = fchk_dict[mo_key]
         mo_energies = fchk_dict[mo_energies_key]
-        mo_coeffs = mo_coeffs.reshape(-1, mo_energies.size)
+        C = fchk_dict[mo_key].T
+        C = C.reshape(-1, mo_energies.size)
 
         gs_energy = fchk_dict[scf_key]
         exc_data = fchk_dict[exc_key].reshape(-1, 16)
@@ -531,7 +531,7 @@ class Gaussian16(OverlapCalculator):
         all_energies = np.zeros(len(exc_energies) + 1)
         all_energies[0] = gs_energy
         all_energies[1:] += exc_energies
-        return mo_coeffs, X, Y, all_energies
+        return C, X, Y, all_energies
 
     def parse_force(self, path):
         results = {}

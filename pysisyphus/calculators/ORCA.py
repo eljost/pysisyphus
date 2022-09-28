@@ -693,12 +693,7 @@ class ORCA(OverlapCalculator):
             operators = struct.unpack("<i", handle.read(4))[0]
             dimension = struct.unpack("<i", handle.read(4))[0]
 
-            # print('Offset: {}'.format(offset))
-            # print('Number of Operators: {}'.format(operators))
-            # print('Basis Dimension: {}'.format(dimension))
-
             coeffs_fmt = "<" + dimension ** 2 * "d"
-
             assert operators == 1, "Unrestricted case is not implemented!"
 
             for i in range(operators):
@@ -709,25 +704,10 @@ class ORCA(OverlapCalculator):
                 irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
                 cores = struct.iter_unpack("<i", handle.read(4 * dimension))
 
-                coeffs = np.array(coeffs).reshape(-1, dimension).T
+                coeffs = np.array(coeffs).reshape(-1, dimension)
                 energies = np.array([en[0] for en in energies])
 
-                # print('Coefficients')
-                # for coef in coefficients:
-                # print('{:16.12f}'.format(*coef))
-                # print('Occupations')
-                # for occupation in occupations:
-                # print('{:16.12f}'.format(*occupation))
-                # print('Energies')
-                # for energy in energies:
-                # print('{:16.12f}'.format(*energy))
-                # print('Irreps')
-                # for irrep in irreps:
-                # print('{}'.format(*irrep))
-                # print('Core')
-                # for core in cores:
-                # print('{}'.format(*core))
-            # MOs are returned in rows
+            # MOs are returned in columns
             return coeffs, energies
 
     @staticmethod
@@ -823,9 +803,9 @@ class ORCA(OverlapCalculator):
         X, Y = self.parse_cis(self.cis)
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
-        mo_coeffs, _ = self.parse_gbw(self.gbw)
+        C, _ = self.parse_gbw(self.gbw)
         all_energies = self.parse_all_energies()
-        return mo_coeffs, X, Y, all_energies
+        return C, X, Y, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)

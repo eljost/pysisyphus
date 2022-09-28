@@ -305,8 +305,8 @@ class DFTBp(OverlapCalculator):
             eigenvecs = handle.read().strip()
         eigenvecs = eigenvecs.split("Eigenvector")[1:]
 
-        mo_coeffs = np.array([parse_mo(eigvec) for eigvec in eigenvecs], dtype=float)
-        assert mo_coeffs.shape[0] == mo_coeffs.shape[1]
+        C = np.array([parse_mo(eigvec) for eigvec in eigenvecs], dtype=float).T
+        assert C.shape[0] == C.shape[1]
 
         #
         # CI coefficients
@@ -316,7 +316,7 @@ class DFTBp(OverlapCalculator):
         electrons = int(float(mobj[1]))
         assert electrons % 2 == 0
         occ = electrons // 2
-        mo_num = mo_coeffs.shape[0]
+        mo_num = C.shape[0]
         vir = mo_num - occ
         # X+Y
         with open(path / "XplusY.DAT") as handle:
@@ -324,4 +324,4 @@ class DFTBp(OverlapCalculator):
         size, states, xpy = parse_xplusy(xpy_text)
         ci_coeffs = xpy.reshape(states, occ, vir)
         assert size == occ * vir
-        return mo_coeffs, ci_coeffs, all_energies
+        return C, ci_coeffs, all_energies

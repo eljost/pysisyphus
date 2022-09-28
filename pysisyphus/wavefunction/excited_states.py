@@ -231,9 +231,12 @@ def rAB(
     YPA = (np.abs(YA)[None, :] @ SY).flatten()
     YPB = (SY @ np.abs(YB)[:, None]).flatten()
 
-    # Eq. (13); Where does the 2 come from?!
-    tA = 2 * (alphaA ** 2 - betaA ** 2)
-    tB = 2 * (alphaB ** 2 - betaB ** 2)
+    # Eq. (13) in the original paper includes a factor 2, probably because the algorithm
+    # is only formulated for closed-shell cases. Here, we exclude this factor and expect
+    # that closed-shell/open-shell transition density matrices are normalized differently,
+    # e.g. as done in 'norm_ci_coeffs'
+    tA = alphaA ** 2 - betaA ** 2
+    tB = alphaB ** 2 - betaB ** 2
 
     rXAB = r_diff(XPA, XB, tB)  # r_X^A->B
     rYAB = r_diff(YPA, YB, tB)  # r_Y^A->B
@@ -244,12 +247,25 @@ def rAB(
     return r
 
 
+def top_differences(XA, YA, XB, YB, S_MO):
+    states_A = XA.shape[0]
+    states_B = XB.shape[0]
+
+    rs = list()
+    for xai, yai in zip(XA, YA):
+        for xbj, ybj in zip(XB, YB):
+            r = rAB(xai, yai, xbj, ybj, S_MO)
+            rs.append(r)
+    rs = np.array(rs).reshape(states_A, states_B)
+    return rs
+
+
 def tden_overlaps(
-    mo_coeffs1: NDArray[float],
+    C_1: NDArray[float],
     ci_coeffs1: NDArray[float],
-    mo_coeffs2: NDArray[:float],
+    C_2: NDArray[:float],
     ci_coeffs2: NDArray[float],
-    ao_ovlp: NDArray[float],
+    S_AO: NDArray[float],
 ):
     """
     Transition density overlaps.
@@ -257,31 +273,30 @@ def tden_overlaps(
     Parameters
     ----------
     mo_coeffs1 : ndarray, shape (MOs, AOs)
-        MO coefficient matrix. One row per MO, one column per basis
-        function. Usually square.
+        MO coefficient matrix. MOs are expected to be in columns.
     mo_coeffs2 : ndarray
         See mo_coeffs1.
     ci_coeffs1 : ndarray, shape(occ. MOs, MOs)
         CI-coefficient matrix.
     ci_coeffs2 : ndarray, shape(occ. MOs, MOs)
         See ci_coeffs1.
-    ao_ovlp : ndarray, shape(AOs1, AOs2)
+    S_AO : ndarray, shape(AOs1, AOs2)
         Double molcule AO overlaps.
     """
     # Total number of molecular orbitals for ci_coeffs1 and ci_coeffs2 (occ + virt)
     nmo1, nmo2 = [sum(ci_coeffs.shape[1:]) for ci_coeffs in (ci_coeffs1, ci_coeffs2)]
-    assert ao_ovlp.shape == (nmo1, nmo2)
-    _, occ1, virt1 = ci_coeffs1.shape
-    _, occ2, virt2 = ci_coeffs2.shape
+    assert S_AO.shape == (nmo1, nmo2)
+    _, occ1, _ = ci_coeffs1.shape
+    _, occ2, _ = ci_coeffs2.shape
     # MO overlaps, and the respective sub-matrices (occ x occ), (virt x virt)
-    S_MO = mo_coeffs1.dot(ao_ovlp).dot(mo_coeffs2.T)
+    S_MO = C_1.T @ S_AO @ C_2
     S_MO_occ = S_MO[:occ1, :occ2]
     S_MO_vir = S_MO[occ1:, occ2:]
 
     # Thanks Philipp and Klaus!
     overlaps = np.zeros((ci_coeffs1.shape[0], ci_coeffs2.shape[0]))
     for i, state1 in enumerate(ci_coeffs1):
-        precontr = S_MO_vir.T @ state1.T @ S_MO_occ
+        precontr = S_MO_vir @ state1.T @ S_MO_occ.T
         for j, state2 in enumerate(ci_coeffs2):
             overlaps[i, j] = np.trace(precontr @ state2)
 
@@ -289,9 +304,9 @@ def tden_overlaps(
     overlaps = np.einsum(
         "mil,ij,njk,kl->mn",
         ci_coeffs1,
-        S_MO_occ,
+        S_MO_occ.T,
         ci_coeffs2,
-        S_MO_vir.T,
+        S_MO_vir,
         optimize=["einsum_path", (0, 3), (1, 2), (0, 1)],
     )
     """
@@ -303,6 +318,7 @@ def tden_overlaps(
 ###############################
 
 
+"""
 def nto_overlaps(ntos_1, ntos_2, ao_ovlp):
     states1 = len(ntos_1)
     states2 = len(ntos_2)
@@ -338,3 +354,4 @@ def nto_org_overlaps(ntos_1, ntos_2, ao_ovlp, nto_thresh=0.3):
             )
             ovlps[i, j] = ovlp
     return ovlps
+"""
