@@ -70,7 +70,7 @@ def _(wf: Wavefunction):
 
 
 def rot_inplace(mat, rad, i, j):
-    """Inplace rotation of matrix columns A[:, i] and A[:, j] by 'rad' radians."""
+    """Inplace rotation of matrix columns mat[:, i] and mat[:, j] by 'rad' radians."""
     cos = np.cos(rad)
     sin = np.sin(rad)
     i_rot = cos * mat[:, i] + sin * mat[:, j]
@@ -135,10 +135,10 @@ def jacobi_sweeps(
         for j, k in it.combinations(range(nmos), 2):
             A, B = ab_func(j, k, C)
 
-            if (A ** 2 + B ** 2) <= 1e-12:
+            if (A**2 + B**2) <= 1e-12:
                 continue
 
-            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A ** 2 + B ** 2)) / 4
+            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A**2 + B**2)) / 4
             assert -PI_QUART <= gamma <= PI_QUART
             # 2x2 MO rotations
             rot_inplace(C, gamma, j, k)
@@ -162,6 +162,120 @@ def jacobi_sweeps(
         P=P,
     )
     return result
+
+
+@singledispatch
+def pipek_mezey(C, S, ao_center_map, **kwargs) -> JacobiSweepResult:
+    """Pipek-Mezey localization using Mulliken population analysis.
+
+    Python adaption of code found in orbloc.f90 of Multiwfn 3.8.
+    For now, only Mulliken population and localization exponent 2 is supported.
+
+    Parameters
+    ----------
+    C
+        Matrix of molecular orbital coefficients to be localized.
+        Shape is (naos, nmos).
+    S
+        Overlap matrix of shape (naos x naos).
+    ao_center_map
+        Mapping between atom indices and AOs, centered at the respective atom.
+
+    Returns
+    -------
+    C_loc
+        Localized molecular orbital coefficient matrix of shape (naos, nmos).
+    """
+    _, nmos = C.shape
+    centers = list(ao_center_map.keys())
+
+    SC = S @ C
+
+    def ab_func(j, k, C):
+        Q = SC * C
+        A = 0.0
+        B = 0.0
+        # Eq. (9) in [1]
+        for center in centers:
+            ao_inds = ao_center_map[center]
+            Qjk = (
+                C[ao_inds, j] * SC[ao_inds, k] + C[ao_inds, k] * SC[ao_inds, j]
+            ).sum() / 2
+            Qjj = Q[ao_inds, j].sum()
+            Qkk = Q[ao_inds, k].sum()
+            A += (Qjk**2) - ((Qjj - Qkk) ** 2) / 4
+            B += Qjk * (Qjj - Qkk)
+        return A, B
+
+    def callback(gamma, j, k):
+        # The MO rotations invalidate the SC matrix product. We update it too.
+        rot_inplace(SC, gamma, j, k)
+
+    def cost_func(C):
+        # We wan't to maximize P and we monitor the progress. Eq. (8) in [1].
+        P = 0.0
+        for l in range(nmos):
+            for center in centers:
+                ao_inds = ao_center_map[center]
+                Q = (C[ao_inds, l][:, None] * C[:, l] * S[ao_inds, :]).sum()
+                P += Q**2
+        return P
+
+    logger.info("Pipek-Mezey localization")
+    return jacobi_sweeps(C, cost_func, ab_func, callback, **kwargs)
+
+
+@pipek_mezey.register
+def _(wf: Wavefunction) -> JacobiSweepResult:
+    """Currently localizes only C_(α,occ) MOs."""
+    S = wf.S
+    Cao, _ = wf.C_occ
+    C_chol_loc = cholesky(Cao)
+    return pipek_mezey(C_chol_loc, S, wf.ao_center_map)
+
+
+def get_fb_contract(moments_ints):
+    def contract(mo_j, mo_k):
+        return np.einsum(
+            "xkl,k,l->x",
+            moments_ints,
+            mo_j,
+            mo_k,
+            optimize=["einsum_path", (0, 1), (0, 1)],
+        )
+
+    return contract
+
+
+def get_fb_ab_func(moments_ints):
+    contract = get_fb_contract(moments_ints)
+
+    def ab_func(j, k, C):
+        mo_j = C[:, j]
+        mo_k = C[:, k]
+        jrj = contract(mo_j, mo_j)
+        jrk = contract(mo_j, mo_k)
+        krk = contract(mo_k, mo_k)
+        A = (jrk**2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
+        B = ((jrj - krk) * jrk).sum()  # Eq. (10) in [4]
+        return A, B
+
+    return ab_func
+
+
+def get_fb_cost_func(moments_ints):
+    def cost_func(C):
+        vals = np.einsum(
+            "xkl,ki,li->ix",
+            moments_ints,
+            C,
+            C,
+            optimize=["einsum_path", (0, 1), (0, 1)],
+        )
+        val = ((vals[:, None, :] - vals) ** 2).sum()
+        return val
+
+    return cost_func
 
 
 @singledispatch
@@ -206,39 +320,8 @@ def foster_boys(
         Localized molecular orbital coefficient matrix of shape (naos, nmos).
     """
 
-    def contract(mo_j, mo_k):
-        return np.einsum(
-            "xkl,k,l->x", dip_ints, mo_j, mo_k, optimize=["einsum_path", (0, 1), (0, 1)]
-        )
-
-    def ab_func(j, k, C):
-        mo_j = C[:, j]
-        mo_k = C[:, k]
-        jrj = contract(mo_j, mo_j)
-        jrk = contract(mo_j, mo_k)
-        krk = contract(mo_k, mo_k)
-        A = (jrk ** 2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
-        B = ((jrj - krk) * jrk).sum()  # Eq. (10) in [4]
-        return A, B
-
-    def cost_func(C):
-        dip_C = np.einsum(
-            "xkl,ki,li->ix", dip_ints, C, C, optimize=["einsum_path", (0, 1), (0, 1)]
-        )
-        P = ((dip_C[:, None, :] - dip_C) ** 2).sum()
-        """
-        # Explicit implementation that yields 1/2 of the above P, as it.combinations only
-        # yields the upper triangular matrix elements.
-        P = 0.0
-        for j, k in it.combinations(range(nmos), 2):
-            mo_j = C[:, j]
-            mo_k = C[:, k]
-            jrj = contract(mo_j, mo_j)
-            krk = contract(mo_k, mo_k)
-            P += ((jrj - krk)**2).sum()
-        """
-        return P
-
+    ab_func = get_fb_ab_func(dip_ints)
+    cost_func = get_fb_cost_func(dip_ints)
     logger.info("Foster-Boys localization")
     return jacobi_sweeps(C, cost_func, ab_func, **kwargs)
 
@@ -252,146 +335,72 @@ def _(wf: Wavefunction) -> JacobiSweepResult:
     return foster_boys(C_chol_loc, dip_ints)
 
 
-@singledispatch
-def pipek_mezey(C, S, ao_center_map, **kwargs) -> JacobiSweepResult:
-    """Pipek-Mezey localization using Mulliken population analysis.
-
-    Python adaption of code found in orbloc.f90 of Multiwfn 3.8.
-    For now, only Mulliken population and localization exponent 2 is supported.
-
-    Parameters
-    ----------
-    C
-        Matrix of molecular orbital coefficients to be localized.
-        Shape is (naos, nmos).
-    S
-        Overlap matrix of shape (naos x naos).
-    ao_center_map
-        Mapping between atom indices and AOs, centered at the respective atom.
-
-    Returns
-    -------
-    C_loc
-        Localized molecular orbital coefficient matrix of shape (naos, nmos).
-    """
-    _, nmos = C.shape
-    centers = list(ao_center_map.keys())
-
-    SC = S @ C
-
-    def ab_func(j, k, C):
-        Q = SC * C
-        A = 0.0
-        B = 0.0
-        # Eq. (9) in [1]
-        for center in centers:
-            ao_inds = ao_center_map[center]
-            Qjk = (
-                C[ao_inds, j] * SC[ao_inds, k] + C[ao_inds, k] * SC[ao_inds, j]
-            ).sum() / 2
-            Qjj = Q[ao_inds, j].sum()
-            Qkk = Q[ao_inds, k].sum()
-            A += (Qjk ** 2) - ((Qjj - Qkk) ** 2) / 4
-            B += Qjk * (Qjj - Qkk)
-        return A, B
-
-    def callback(gamma, j, k):
-        # The MO rotations invalidate the SC matrix product. We update it too.
-        rot_inplace(SC, gamma, j, k)
-
-    def cost_func(C):
-        # We wan't to maximize P and we monitor the progress. Eq. (8) in [1].
-        P = 0.0
-        for l in range(nmos):
-            for center in centers:
-                ao_inds = ao_center_map[center]
-                Q = (C[ao_inds, l][:, None] * C[:, l] * S[ao_inds, :]).sum()
-                P += Q ** 2
-        return P
-
-    logger.info("Pipek-Mezey localization")
-    return jacobi_sweeps(C, cost_func, ab_func, callback, **kwargs)
-
-
-@pipek_mezey.register
-def _(wf: Wavefunction) -> JacobiSweepResult:
-    """Currently localizes only C_(α,occ) MOs."""
-    S = wf.S
-    Cao, _ = wf.C_occ
-    C_chol_loc = cholesky(Cao)
-    return pipek_mezey(C_chol_loc, S, wf.ao_center_map)
-
-
 def dq_diabatization(
-    C: NDArray[float],
     dip_moms: NDArray[float],
     quad_moms: Optional[NDArray[float]] = None,
     alpha: Optional[float] = 1.0,
 ) -> JacobiSweepResult:
     """DQ-diabatization as outlined in [5].
 
-    Reduces to Boys-localization/diabatization when no quadrupole moments are given."""
-
-    assert dip_moms.shape == (3, *C.shape)
-    assert C.ndim == 2
-    assert C.shape[0] == C.shape[1]
-    """When no quadrupole moments are given, the DQ-diabatization reduces to a simple
+    When no quadrupole moments are given, the DQ-diabatization reduces to a simple
     Boys-diabatization, as outlined by Subotnik et al in [3]. In this case we just
     zeros for the quadrupole moments. As the overall size of the matrices is small,
     the additional FLOPs dont hurt and the code can be kept simpler.
+
+    We only use the trace of the quadrupole moment matrix. There are three
+    dipole moment components, but only one trace of the quadrupole moment
+    matrix.
+
+    Parameters
+    ----------
+    dip_moms
+        Dipole moment matrix of the adiabatic states.
+        Shape (3, nstates, nstates).
+    quad_moms
+        Optional matrix containing the trace of the primitive quadrupole
+        moments. Shape (1, nstates, nstates). Optional.
+    alpha
+        Factor controlling the quadrupole moment contribution.
+
+
+    Returns
+    -------
+    JacobiSweepResult
+        Diabatization result.
     """
 
-    # We only use the trace of the quadrupole moment matrix
+    _, nstates, _ = dip_moms.shape
+    U = np.eye(nstates)
+
+    assert dip_moms.shape == (3, *U.shape)
+    assert U.ndim == 2
+    assert U.shape[0] == U.shape[1]
     expected_quad_mom_shape = (1, *dip_moms.shape[1:])
     if quad_moms is None:
         name = "Boys-diabatization"
-        quad_moms = np.zeros_like(expected_quad_mom_shape)
+        quad_moms = np.zeros(expected_quad_mom_shape)
     else:
         name = "DQ-diabatization"
     quad_moms = quad_moms.reshape(*expected_quad_mom_shape)
 
-    def contract(moments, mo_j, mo_k):
-        return np.einsum(
-            "xkl,k,l->x", moments, mo_j, mo_k, optimize=["einsum_path", (0, 1), (0, 1)]
-        )
+    dip_ab_func = get_fb_ab_func(dip_moms)
+    quad_ab_func = get_fb_ab_func(quad_moms)
 
-    """
-    Compared to plain Boys localization, we treat dipole moments and the
-    trace of the quadrupole moments. _ab_func and _cost_func defined below
-    are the same as ab_func and cost_func in foster_boys. ab_func and cost_func
-    defined below are just wrappers that call _ab_func/_cost_func for the
-    dipole moments as well as the trace of the quadrupole moments.
-    """
-
-    def _ab_func(moments, mo_j, mo_k):
-        jrj = contract(moments, mo_j, mo_j)
-        jrk = contract(moments, mo_j, mo_k)
-        krk = contract(moments, mo_k, mo_k)
-        A = (jrk ** 2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
-        B = ((jrj - krk) * jrk).sum()  # Eq. (10) in [4]
-        return A, B
-
-    def ab_func(j, k, C):
-        mo_j = C[:, j]
-        mo_k = C[:, k]
-        dip_A, dip_B = _ab_func(dip_moms, mo_j, mo_k)
-        quad_A, quad_B = _ab_func(quad_moms, mo_j, mo_k)
+    def ab_func(j, k, U):
+        dip_A, dip_B = dip_ab_func(j, k, U)
+        quad_A, quad_B = quad_ab_func(j, k, U)
         A = dip_A + alpha * quad_A
         B = dip_B + alpha * quad_B
         return A, B
 
-    def _cost_func(moments, C):
-        mom_C = np.einsum(
-            "xkl,ki,li->ix", moments, C, C, optimize=["einsum_path", (0, 1), (0, 1)]
-        )
-        P = ((mom_C[:, None, :] - mom_C) ** 2).sum()
-        return P
+    dip_cost_func = get_fb_cost_func(dip_moms)
+    quad_cost_func = get_fb_cost_func(quad_moms)
 
-    def cost_func(C):
-        dip_P = _cost_func(dip_moms, C)
-        quad_P = _cost_func(quad_moms, C)
+    def cost_func(U):
+        dip_P = dip_cost_func(U)
+        quad_P = quad_cost_func(U)
         P = dip_P + alpha * quad_P
         return P
 
     logger.info(name)
-    return jacobi_sweeps(C, cost_func, ab_func)
+    return jacobi_sweeps(U, cost_func, ab_func)
