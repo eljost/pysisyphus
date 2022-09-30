@@ -337,21 +337,31 @@ def dq_diabatization(
     assert C.shape[0] == C.shape[1]
     """When no quadrupole moments are given, the DQ-diabatization reduces to a simple
     Boys-diabatization, as outlined by Subotnik et al in [3]. In this case we just
-    set the quadrupole moments to zero matrix and carry on. As the overall size of the
-    matrices is be small the additional FLOPs wont hurt but the code can be kept simpler.
+    zeros for the quadrupole moments. As the overall size of the matrices is small,
+    the additional FLOPs dont hurt and the code can be kept simpler.
     """
 
+    # We only use the trace of the quadrupole moment matrix
+    expected_quad_mom_shape = (1, *dip_moms.shape[1:])
     if quad_moms is None:
         name = "Boys-diabatization"
-        quad_moms = np.zeros_like(dip_moms)
+        quad_moms = np.zeros_like(expected_quad_mom_shape)
     else:
         name = "DQ-diabatization"
-        assert quad_moms.shape == dip_moms.shape
+    quad_moms = quad_moms.reshape(*expected_quad_mom_shape)
 
     def contract(moments, mo_j, mo_k):
         return np.einsum(
             "xkl,k,l->x", moments, mo_j, mo_k, optimize=["einsum_path", (0, 1), (0, 1)]
         )
+
+    """
+    Compared to plain Boys localization, we treat dipole moments and the
+    trace of the quadrupole moments. _ab_func and _cost_func defined below
+    are the same as ab_func and cost_func in foster_boys. ab_func and cost_func
+    defined below are just wrappers that call _ab_func/_cost_func for the
+    dipole moments as well as the trace of the quadrupole moments.
+    """
 
     def _ab_func(moments, mo_j, mo_k):
         jrj = contract(moments, mo_j, mo_j)
