@@ -57,7 +57,7 @@ jinja2==3.0.3
     # via
     #   distributed
     #   pysisyphus (setup.py)
-joblib==1.1.0
+joblib==1.2.0
     # via scikit-learn
 kiwisolver==1.3.2
     # via matplotlib
