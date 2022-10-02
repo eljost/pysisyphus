@@ -178,7 +178,7 @@ class Wavefunction:
         return wf
 
     @staticmethod
-    @file_or_str(".json")
+    @file_or_str(".molden", ".molden.input")
     def from_orca_molden(text, **kwargs):
         """Create wavefunction from ORCA molden file.
 
