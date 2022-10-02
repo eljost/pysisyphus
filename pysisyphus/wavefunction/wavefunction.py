@@ -151,6 +151,14 @@ class Wavefunction:
         return from_func(fn, **kwargs)
 
     @staticmethod
+    @file_or_str(".molden", ".molden.input")
+    def from_molden(text, **kwargs):
+        from pysisyphus.io.molden import wavefunction_from_molden
+
+        wf = wavefunction_from_molden(text, **kwargs)
+        return wf
+
+    @staticmethod
     @file_or_str(".json")
     def from_orca_json(text):
         """Create wavefunction from ORCA JSON.
@@ -164,7 +172,7 @@ class Wavefunction:
         return wf
 
     @staticmethod
-    @file_or_str(".json")
+    @file_or_str(".molden", ".molden.input")
     def from_orca_molden(text, **kwargs):
         """Create wavefunction from ORCA molden file.
 

@@ -95,7 +95,8 @@ class Shell:
         self.L = get_l(L)
         self.center = np.array(center, dtype=float)  # (x, y, z), 1d array
         # Contraction coefficients, 2d array, shape (bfs in shell, number of primitives)
-        self.coeffs = np.atleast_2d(coeffs)
+        self.org_coeffs = np.array(coeffs)
+        self.coeffs = np.atleast_2d(self.org_coeffs.copy())
         self.exps = np.array(exps, dtype=float)  # Orbital exponents, 1d array
         assert self.coeffs.shape[1] == self.exps.size
         self.center_ind = center_ind
