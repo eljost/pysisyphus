@@ -513,13 +513,22 @@ class Shells:
     # Nuclear attraction integrals #
     ################################
 
-    def get_V_cart(self, **kwargs) -> NDArray:
-        atoms, coords3d = self.atoms_coords3d
-        charges = nuc_charges_for_atoms(atoms)
+    def get_V_cart(self, coords3d=None, charges=None, **kwargs):
+        # Coordinates and charges must be omitted/given together
+        # Alternatively, this function could also take one array that
+        # combines coords3c and charges.
+        assert ((coords3d is None) and (charges is None)) or (
+            (coords3d is not None) and (charges is not None)
+        )
+        if coords3d is None:
+            atoms, coords3d = self.atoms_coords3d
+            charges = nuc_charges_for_atoms(atoms)
+
         cart_bf_num = self.cart_bf_num
         V_nuc = np.zeros((cart_bf_num, cart_bf_num))
-        # Loop over all cores and add the contributions
+        # Loop over all centers and add their contributions
         for C, Z in zip(coords3d, charges):
+            # -Z = -1 * Z, because electrons have negative charge.
             V_nuc += -Z * self.get_1el_ints_cart(
                 coulomb,
                 add_args={
@@ -529,8 +538,8 @@ class Shells:
             )
         return V_nuc
 
-    def get_V_sph(self) -> NDArray:
-        V_cart = self.get_V_cart(can_reorder=False)
+    def get_V_sph(self, coords3d=None, charges=None) -> NDArray:
+        V_cart = self.get_V_cart(coords3d, charges, can_reorder=False)
         return self.get_1el_ints_sph(int_func=None, int_matrix=V_cart)
 
     @property
@@ -739,8 +748,8 @@ class MoldenShells(Shells):
             [0, 0, 0, 0, 1, 0, 0],
             [0, 1, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 1, 0],
-            [-1, 0, 0, 0, 0, 0, 0],  # ORCA, why you do this to me?
-            [0, 0, 0, 0, 0, 0, -1],  # sign flip, as line abo ve
+            [1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1],
         ],
         4: [
             [0, 0, 0, 0, 1, 0, 0, 0, 0],
@@ -748,10 +757,44 @@ class MoldenShells(Shells):
             [0, 0, 0, 0, 0, 1, 0, 0, 0],
             [0, 0, 1, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 1, 0, 0],
-            [0, -1, 0, 0, 0, 0, 0, 0, 0],  # sign flip
-            [0, 0, 0, 0, 0, 0, 0, -1, 0],  # sign flip
-            [-1, 0, 0, 0, 0, 0, 0, 0, 0],  # sign flip
-            [0, 0, 0, 0, 0, 0, 0, 0, -1],  # sign flip
+            [0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, 0],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1],
+        ],
+    }
+
+
+class ORCAMoldenShells(Shells):
+    sph_Ps = {
+        0: [[1]],  # s
+        1: [[1, 0, 0], [0, 0, 1], [0, 1, 0]],  # px, py, pz
+        2: [
+            [0, 0, 1, 0, 0],  # dz²
+            [0, 1, 0, 0, 0],  # dxz
+            [0, 0, 0, 1, 0],  # dyz
+            [1, 0, 0, 0, 0],  # dx² - y²
+            [0, 0, 0, 0, 1],  # dxy
+        ],
+        3: [
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0],
+            [-1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, -1],
+        ],
+        4: [
+            [0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, -1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, -1, 0],
+            [-1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, -1],
         ],
     }
 

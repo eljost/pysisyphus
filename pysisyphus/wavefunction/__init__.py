@@ -9,6 +9,7 @@ from pysisyphus.wavefunction.shells import (
     get_l,
     MoldenShells,
     ORCAShells,
+    ORCAMoldenShells,
     Shell,
     Shells,
 )

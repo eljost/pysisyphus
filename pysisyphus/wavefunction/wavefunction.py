@@ -135,7 +135,10 @@ class Wavefunction:
             ".json": Wavefunction.from_orca_json,
         }
         from_funcs_for_str = (
+            # ORCA
             ("Molden file created by orca_2mkl", Wavefunction.from_orca_molden),
+            # OpenMolcas
+            # ("[N_Atoms]", Wavefunction.from_molden),  # seems buggy right now
         )
         try:
             from_func = from_funcs[path.suffix]
@@ -146,8 +149,9 @@ class Wavefunction:
             for key, func in from_funcs_for_str:
                 if key in text:
                     from_func = func
+                    break
             else:
-                raise Exception("Could not determien file format!")
+                raise Exception("Could not determine file format!")
         return from_func(fn, **kwargs)
 
     @staticmethod
@@ -213,7 +217,7 @@ class Wavefunction:
         """
         Eqs. (2.25) and (2.26) in [1].
         """
-        trans_dens *= 2 ** 0.5 / 2
+        trans_dens *= 2**0.5 / 2
         occ_a, occ_b = self.occ
         assert occ_a == occ_b
         occ = occ_a
@@ -241,6 +245,51 @@ class Wavefunction:
         )
         return rho
 
+    def eval_esp(self, coords3d, with_nuc=True):
+        charges = np.ones(1)  # Assume positive charge of 1 e
+        esp = np.zeros(len(coords3d))
+        nuc_coords3d = self.coords3d
+        Pa, Pb = self.P
+        for i, c3d in enumerate(coords3d):
+            V = self.get_V(c3d[None, :], charges)  # 1el Coulomb integrals
+            el = np.einsum("uv,uv->", Pa, V)
+            if self.unrestricted:
+                el += np.einsum("uv,uv->", Pb, V)
+            else:
+                el *= 2.0
+            if with_nuc:
+                nuc = (
+                    self.nuc_charges
+                    / np.linalg.norm(nuc_coords3d - c3d[None, :], axis=1)
+                ).sum()
+            else:
+                nuc = 0.0
+            esp[i] = el + nuc
+        return esp
+
+    @property
+    def ao_centers(self) -> List[int]:
+        return list(
+            {
+                BFType.CARTESIAN: lambda: self.shells.cart_ao_centers,
+                BFType.PURE_SPHERICAL: lambda: self.shells.sph_ao_centers,
+            }[self.bf_type]()
+        )
+
+    @property
+    def ao_center_map(self) -> dict[int, List[int]]:
+        ao_center_map = dict()
+        for i, aoc in enumerate(self.ao_centers):
+            ao_center_map.setdefault(aoc, list()).append(i)
+        return ao_center_map
+
+    def as_geom(self, **kwargs):
+        return Geometry(self.atoms, self.coords, **kwargs)
+
+    #####################
+    # Overlap Integrals #
+    #####################
+
     @property
     def S(self):
         # Check what type of basis functions we are using.
@@ -267,22 +316,6 @@ class Wavefunction:
         C = self.C[0]
         C_other = other.C[0]
         return C.T @ S_AO @ C_other
-
-    @property
-    def ao_centers(self) -> List[int]:
-        return list(
-            {
-                BFType.CARTESIAN: lambda: self.shells.cart_ao_centers,
-                BFType.PURE_SPHERICAL: lambda: self.shells.sph_ao_centers,
-            }[self.bf_type]()
-        )
-
-    @property
-    def ao_center_map(self) -> dict[int, List[int]]:
-        ao_center_map = dict()
-        for i, aoc in enumerate(self.ao_centers):
-            ao_center_map.setdefault(aoc, list()).append(i)
-        return ao_center_map
 
     #####################
     # Multipole Moments #
@@ -413,11 +446,18 @@ class Wavefunction:
         exc_ens = np.atleast_1d(exc_ens)
         if trans_moms.ndim == 1:
             trans_moms = trans_moms[None, :]
-        fosc = 2 / 3 * exc_ens * (trans_moms ** 2).sum(axis=1)
+        fosc = 2 / 3 * exc_ens * (trans_moms**2).sum(axis=1)
         return fosc
 
-    def as_geom(self):
-        return Geometry(self.atoms, self.coords)
+    #########################
+    # 1el Coulomb Integrals #
+    #########################
+
+    def get_V(self, coords3d, charges):
+        return {
+            BFType.CARTESIAN: self.shells.get_V_cart,
+            BFType.PURE_SPHERICAL: self.shells.get_V_sph,
+        }[self.bf_type](coords3d, charges)
 
     def __str__(self):
         is_restricted = "unrestricted" if self.unrestricted else "restricted"

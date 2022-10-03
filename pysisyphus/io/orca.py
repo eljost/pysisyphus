@@ -10,7 +10,13 @@ from scipy.special import gamma
 
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.io import molden
-from pysisyphus.wavefunction import get_l, MoldenShells, Shell, ORCAShells, Wavefunction
+from pysisyphus.wavefunction import (
+    get_l,
+    Shell,
+    ORCAShells,
+    ORCAMoldenShells,
+    Wavefunction,
+)
 from pysisyphus.wavefunction.helpers import BFType
 
 
@@ -171,7 +177,7 @@ def shells_from_molden(text):
             atomic_num=shell.atomic_num,
         )
         _shells.append(fixed_shell)
-    shells = MoldenShells(_shells)
+    shells = ORCAMoldenShells(_shells)
     return shells
 
 
