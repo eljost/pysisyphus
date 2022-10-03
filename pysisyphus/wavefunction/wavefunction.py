@@ -227,7 +227,7 @@ class Wavefunction:
         """
         Eqs. (2.25) and (2.26) in [1].
         """
-        trans_dens *= 2 ** 0.5 / 2
+        trans_dens *= 2**0.5 / 2
         occ_a, occ_b = self.occ
         assert occ_a == occ_b
         occ = occ_a
@@ -338,22 +338,6 @@ class Wavefunction:
         C = self.C[0]
         C_other = other.C[0]
         return C.T @ S_AO @ C_other
-
-    @property
-    def ao_centers(self) -> List[int]:
-        return list(
-            {
-                BFType.CARTESIAN: lambda: self.shells.cart_ao_centers,
-                BFType.PURE_SPHERICAL: lambda: self.shells.sph_ao_centers,
-            }[self.bf_type]()
-        )
-
-    @property
-    def ao_center_map(self) -> dict[int, List[int]]:
-        ao_center_map = dict()
-        for i, aoc in enumerate(self.ao_centers):
-            ao_center_map.setdefault(aoc, list()).append(i)
-        return ao_center_map
 
     #####################
     # Multipole Moments #
@@ -484,11 +468,18 @@ class Wavefunction:
         exc_ens = np.atleast_1d(exc_ens)
         if trans_moms.ndim == 1:
             trans_moms = trans_moms[None, :]
-        fosc = 2 / 3 * exc_ens * (trans_moms ** 2).sum(axis=1)
+        fosc = 2 / 3 * exc_ens * (trans_moms**2).sum(axis=1)
         return fosc
 
-    def as_geom(self):
-        return Geometry(self.atoms, self.coords)
+    #########################
+    # 1el Coulomb Integrals #
+    #########################
+
+    def get_V(self, coords3d, charges):
+        return {
+            BFType.CARTESIAN: self.shells.get_V_cart,
+            BFType.PURE_SPHERICAL: self.shells.get_V_sph,
+        }[self.bf_type](coords3d, charges)
 
     def __str__(self):
         is_restricted = "unrestricted" if self.unrestricted else "restricted"

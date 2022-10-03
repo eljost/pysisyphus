@@ -1,3 +1,5 @@
+import json
+
 import h5py
 import numpy as np
 import pytest
@@ -170,3 +172,31 @@ def test_quadrupole_moment():
     quad_moms = wf.quadrupole_moment
     diag = np.diag(quad_moms)
     np.testing.assert_allclose(diag, (-23.80829, -23.80856, -30.13957), atol=1e-5)
+
+
+def test_one_el_terms():
+    fn = WF_LIB_DIR / "orca_ch4_sto3g.json"
+    wf = Wavefunction.from_orca_json(fn)
+    shells = wf.shells
+    T = shells.T_sph
+    V = shells.V_sph
+    H = T + V
+
+    with open(fn) as handle:
+        ref_data = json.load(handle)
+    H_ref = ref_data["Molecule"]["H-Matrix"]
+    np.testing.assert_allclose(H, H_ref, atol=1e-12)
+
+
+def test_eval_esp():
+    wf = Wavefunction.from_file(WF_LIB_DIR / "orca_lih_ccpvdz.molden.input")
+    coords3d = np.array((
+        (0.0, 0.0, 1.0),
+        (0.0, 0.0, 2.0),
+        (1.0, 0.0, 3.0),
+    ))
+    print()
+    esp = wf.eval_esp(coords3d)
+    # From orca_vpot
+    esp_ref = (0.7086898598813272, 0.0984935998538505, -0.0830229403844891)
+    np.testing.assert_allclose(esp, esp_ref, atol=1e-10)
