@@ -35,6 +35,7 @@ CUBE_TPL = jinja2.Template(
     "load {{ cube_fn }}\n"
     + TPL_BASE
     + """isosurface cutoff {{ isoval }} sign {{ colors }} "{{ cube_fn }}"
+    color isosurface translucent
 {% if png_fn %}write image pngt "{{ png_fn }}"{% endif %}
 """
 )
