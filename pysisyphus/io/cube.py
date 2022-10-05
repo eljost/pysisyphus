@@ -89,10 +89,10 @@ class Cube:
         with open(fn, "w") as handle:
             handle.write(self.to_str())
 
-    def view_cdd(self):
+    def view_cdd(self, **kwargs):
         with tempfile.NamedTemporaryFile("w", suffix=".cube") as tmp_cube:
             self.write(tmp_cube.name)
-            view_cdd_cube(tmp_cube.name)
+            view_cdd_cube(tmp_cube.name, **kwargs)
 
 
 @file_or_str(".cube", ".cub")
