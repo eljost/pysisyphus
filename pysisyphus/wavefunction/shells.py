@@ -1,5 +1,6 @@
 from jinja2 import Template
 import itertools as it
+from math import sqrt, log, pi
 import textwrap
 from typing import Tuple
 
@@ -428,7 +429,13 @@ class Shells:
         return all_vals
 
     def get_1el_ints_cart(
-        self, func, other=None, can_reorder=True, components=0, **kwargs
+        self,
+        func,
+        other=None,
+        can_reorder=True,
+        components=0,
+        screen_func=None,
+        **kwargs,
     ):
         shells_a = self
         symmetric = other is None
@@ -443,6 +450,10 @@ class Shells:
         # Preallocate empty matrices and directly assign the calculated values
         integrals = np.zeros((components, cart_bf_num_a, cart_bf_num_b))
 
+        # Dummy screen function that always returns True
+        if screen_func is None:
+            screen_func = lambda *args: True
+
         a_ind = 0
         b_skipped = 0
         for i, shell_a in enumerate(shells_a):
@@ -456,12 +467,17 @@ class Shells:
             # all other basis functions in shells_b, so we reset i to 0.
             else:
                 i = 0
+            a_min_exp = aa.min()  # Minimum exponent used for screening
             for shell_b in shells_b[i:]:
                 Lb, B, dB, bb = shell_b.as_tuple()
+                b_min_exp = bb.min()  # Minimum exponent used for screening
+                R_ab = np.linalg.norm(A - B)  # Shell center distance
                 b_size = get_shell_shape(Lb)[0]
+                if not screen_func(a_min_exp, b_min_exp, R_ab):
+                    b_ind += b_size
+                    continue
                 shell_shape = (a_size, b_size)
                 shape = (components, *shell_shape)
-                a_size, b_size = shell_shape
                 qp = func(La, Lb, aa[:, None], A, bb[None, :], B, **kwargs)
                 qp = qp.reshape(*shape, len(aa), len(bb))
                 qp *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
@@ -513,11 +529,44 @@ class Shells:
     # Overlap integrals #
     #####################
 
+    @staticmethod
+    def screen_S(a, b, R, k=10):
+        """
+        Returns False when distance R is below calculated threshold.
+        Derived from the sympy code below.
+
+        from sympy import *
+
+        a, b, S, R = symbols("a b S R", real=True, positive=True)
+        k = symbols("k", integer=True, positive=True)
+        apb = a + b
+        # 0 = S - 10**(-k)
+        ovlp = (pi / apb)**Rational(3,2) * exp(-a*b / apb * R**2) - 10**(-k)
+        print("ss-overlap:", ovlp)
+        # Distance R, when ss-overlaps drops below 10**(-k)
+        R = solve(ovlp, R)[0]
+        print("R:", R)
+
+        Parameters
+        ----------
+        a
+            Minimum exponent in shell a.
+        b
+            Minimum exponent in shell b.
+        R
+            Real space distance of shells a and b.
+        """
+        return R < (
+            sqrt(a + b)
+            * sqrt(log(10 ** k * pi ** (3 / 2) / (a + b) ** (3 / 2)))
+            / (sqrt(a) * sqrt(b))
+        )
+
     def get_S_cart(self, other=None) -> NDArray:
-        return self.get_1el_ints_cart(ovlp, other=other)
+        return self.get_1el_ints_cart(ovlp, other=other, screen_func=Shells.screen_S)
 
     def get_S_sph(self, other=None) -> NDArray:
-        return self.get_1el_ints_sph(ovlp, other=other)
+        return self.get_1el_ints_sph(ovlp, other=other, screen_func=Shells.screen_S)
 
     @property
     def S_cart(self):
@@ -589,27 +638,37 @@ class Shells:
     ###########################
 
     def get_dipole_ints_cart(self, origin):
-        return self.get_1el_ints_cart(dipole, components=3, C=origin)
+        return self.get_1el_ints_cart(
+            dipole, components=3, C=origin, screen_func=Shells.screen_S
+        )
 
     def get_dipole_ints_sph(self, origin) -> NDArray:
-        return self.get_1el_ints_sph(dipole, components=3, C=origin)
+        return self.get_1el_ints_sph(
+            dipole, components=3, C=origin, screen_func=Shells.screen_S
+        )
 
     ##################################################
     # Quadrupole moment integrals, diagonal elements #
     ##################################################
 
     def get_diag_quadrupole_ints_cart(self, origin):
-        return self.get_1el_ints_cart(diag_quadrupole, components=3, C=origin)
+        return self.get_1el_ints_cart(
+            diag_quadrupole, components=3, C=origin, screen_func=Shells.screen_S
+        )
 
     def get_diag_quadrupole_ints_sph(self, origin):
-        return self.get_1el_ints_sph(diag_quadrupole, components=3, C=origin)
+        return self.get_1el_ints_sph(
+            diag_quadrupole, components=3, C=origin, screen_func=Shells.screen_S
+        )
 
     ###############################
     # Quadrupole moment integrals #
     ###############################
 
     def get_quadrupole_ints_cart(self, origin):
-        _ = self.get_1el_ints_cart(quadrupole, components=6, C=origin)
+        _ = self.get_1el_ints_cart(
+            quadrupole, components=6, C=origin, screen_func=Shells.screen_S
+        )
         shape = _.shape
         sym = np.zeros((3, 3, *shape[1:]))
         triu = np.triu_indices(3)
@@ -620,7 +679,9 @@ class Shells:
         return sym.reshape(3, 3, *shape[1:])
 
     def get_quadrupole_ints_sph(self, origin) -> NDArray:
-        _ = self.get_1el_ints_sph(quadrupole, components=6, C=origin)
+        _ = self.get_1el_ints_sph(
+            quadrupole, components=6, C=origin, screen_func=Shells.screen_S
+        )
         shape = _.shape
         sym = np.zeros((3, 3, *shape[1:]))
         triu = np.triu_indices(3)
