@@ -26,7 +26,7 @@ def test_xtb_energy(geom):
 def test_xtb_forces(geom):
     forces = geom.forces
     norm = np.linalg.norm(forces)
-    assert norm == pytest.approx(0.000092380076)
+    assert norm == pytest.approx(0.0000923641)
 
 
 @using("xtb")

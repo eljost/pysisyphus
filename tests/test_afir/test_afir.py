@@ -74,12 +74,7 @@ def test_three_frag_afir():
     )
     geom.set_calculator(afir)
 
-    opt_kwargs = {
-        # "dump": True,
-        # "reset_on_topo_change": True,
-        # "reset_on_topo_change": False,
-    }
-    opt = RFOptimizer(geom, **opt_kwargs)
+    opt = RFOptimizer(geom)
     opt.run()
 
     assert opt.is_converged
@@ -87,7 +82,7 @@ def test_three_frag_afir():
 
     c3d = geom.coords3d
     assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.610, abs=1e-3)
-    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.761, abs=1e-3)
+    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.763, abs=1e-3)
 
 
 @using("pyscf")
