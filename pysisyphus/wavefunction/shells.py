@@ -73,7 +73,7 @@ def eval_pgtos(xyz, center, exponents, cart_powers):
 
     xa, ya, za = (xyz - center).T
     # Indepdendent of Cartesian powers, but dependent on contraction degree
-    exp_term = np.exp(-exponents[:, None] * (xa**2 + ya**2 + za**2))
+    exp_term = np.exp(-exponents[:, None] * (xa ** 2 + ya ** 2 + za ** 2))
     # Indepdendent of contraction degree, but dependent on Cartesian powers
     xpow, ypow, zpow = cart_powers.T
     prefac = xa ** xpow[:, None] * ya ** ypow[:, None] * za ** zpow[:, None]
@@ -233,6 +233,10 @@ class Shells:
             pass
 
         self.atoms, self.coords3d = self.atoms_coords3d
+        # Precontract & store coefficients for reordering spherical basis functions
+        # and converting them from Cartesian basis functions.
+        self.reorder_c2s_coeffs = self.P_sph @ self.cart2sph_coeffs
+
 
     def __len__(self):
         return len(self.shells)
@@ -422,36 +426,52 @@ class Shells:
         return all_vals
 
     def get_1el_ints_cart(
-        self, int_func, other=None, add_args=None, can_reorder: bool = True
-    ) -> NDArray:
+        self, func, other=None, can_reorder=True, components=0, **kwargs
+    ):
         shells_a = self
         shells_b = shells_a if other is None else other
+        cart_bf_num_a = shells_a.cart_bf_num
+        cart_bf_num_b = shells_b.cart_bf_num
 
-        if add_args is None:
-            add_args = {}
+        if is_2d := (components == 0):
+            components = 1
 
-        rows = list()
+        # Preallocate empty matrices and directly assign the calculated values
+        integrals = np.zeros((components, cart_bf_num_a, cart_bf_num_b))
+
+        a_ind = 0
         for shell_a in shells_a.shells:
             La, A, dA, aa = shell_a.as_tuple()
-            row = list()
+            b_ind = 0
             for shell_b in shells_b.shells:
                 Lb, B, dB, bb = shell_b.as_tuple()
-                shape = get_shell_shape(La, Lb)
-                # Integral over primitives, shape: (product(*shape), prims_a, prims_b)
-                pints = int_func(La, Lb, aa[:, None], A, bb[None, :], B, **add_args)
-                pints = pints.reshape(*shape, len(aa), len(bb))
-                pints *= dA[:, None, :, None] * dB[None, :, None, :]
-                # Contract primitives, shape: shape
-                cints = pints.sum(axis=(2, 3)).reshape(shape)
-                row.append(cints)
-            rows.append(row)
-        int_matrix = np.block(rows)
+                shell_shape = get_shell_shape(La, Lb)
+                shape = (components, *shell_shape)
+                a_size, b_size = shell_shape
+                qp = func(La, Lb, aa[:, None], A, bb[None, :], B, **kwargs)
+                qp = qp.reshape(*shape, len(aa), len(bb))
+                qp *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
+                qp = qp.sum(axis=(3, 4)).reshape(shape)
+                integrals[:, a_ind : a_ind + a_size, b_ind : b_ind + b_size] = qp
+                b_ind += (Lb + 1) * (Lb + 2) // 2
+            a_ind += (La + 1) * (La + 2) // 2
+
+        # Return plain 2d array if components is set to 0, i.e., remove first axis.
+        if is_2d:
+            integrals = np.squeeze(integrals, axis=0)
+
         # Reordering will be disabled, when spherical integrals are desired. They
         # are reordered outside of this function. Reordering them already here
         # would mess up the results after the 2nd reordering.
         if can_reorder and self.ordering == "native":
-            int_matrix = self.P_cart.dot(int_matrix).dot(shells_b.P_cart.T)
-        return int_matrix
+            integrals = np.einsum(
+                "ij,...jk,kl->...il",
+                self.P_cart,
+                integrals,
+                shells_b.P_cart.T,
+                optimize="greedy",
+            )
+        return integrals
 
     def get_1el_ints_sph(
         self, int_func=None, int_matrix=None, other=None, **kwargs
@@ -463,14 +483,12 @@ class Shells:
             )
 
         shells_b = self if other is None else other
-        C_a = self.cart2sph_coeffs
-        C_b = shells_b.cart2sph_coeffs
-        # Cartsian -> Spherical conversion
-        int_matrix_sph = C_a.dot(int_matrix).dot(C_b.T)
-        # Reorder to the native ordering of the respective program/format, e.g.
-        # ORCA or .fchk.
-        if self.ordering == "native":
-            int_matrix_sph = self.P_sph.dot(int_matrix_sph).dot(shells_b.P_sph.T)
+        # Reordering (P) and Cartesian to spherical conversion (C).
+        PC_a = self.reorder_c2s_coeffs
+        PC_b = shells_b.reorder_c2s_coeffs
+        int_matrix_sph = np.einsum(
+            "ij,...jk,kl->...il", PC_a, int_matrix, PC_b.T, optimize="greedy"
+        )
         return int_matrix_sph
 
     #####################
@@ -531,9 +549,7 @@ class Shells:
             # -Z = -1 * Z, because electrons have negative charge.
             V_nuc += -Z * self.get_1el_ints_cart(
                 coulomb,
-                add_args={
-                    "C": C,
-                },
+                C=C,
                 **kwargs,
             )
         return V_nuc
@@ -550,70 +566,32 @@ class Shells:
     def V_sph(self):
         return self.get_V_sph()
 
-    def get_multipole_ints_cart(self, shells_a, shells_b, func, components, **kwargs):
-        cart_bf_num = self.cart_bf_num
-        # Preallocate empty matrices and directly assign the calculated values
-        integrals = np.zeros((components, cart_bf_num, cart_bf_num))
-        a_ind = 0
-        for shell_a in shells_a.shells:
-            La, A, dA, aa = shell_a.as_tuple()
-            b_ind = 0
-            for shell_b in shells_b.shells:
-                Lb, B, dB, bb = shell_b.as_tuple()
-                shell_shape = get_shell_shape(La, Lb)
-                shape = (components, *shell_shape)
-                a_size, b_size = shell_shape
-                qp = func(La, Lb, aa[:, None], A, bb[None, :], B, **kwargs)
-                qp = qp.reshape(*shape, len(aa), len(bb))
-                qp *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
-                qp = qp.sum(axis=(3, 4)).reshape(shape)
-                integrals[:, a_ind : a_ind + a_size, b_ind : b_ind + b_size] = qp
-                b_ind += (Lb + 1) * (Lb + 2) // 2
-            a_ind += (La + 1) * (La + 2) // 2
-        return integrals
-
-    def get_multipole_ints_sph(self, shells_a, shells_b, func, **kwargs) -> NDArray:
-        cart_ints = self.get_multipole_ints_cart(shells_a, shells_b, func, **kwargs)
-        C_a = shells_a.cart2sph_coeffs
-        C_b = shells_b.cart2sph_coeffs
-        sph_ints = list()
-        for ci in cart_ints:
-            ti = C_a.dot(ci).dot(C_b.T)  # Cartsian -> Spherical conversion
-            if self.ordering == "native":
-                ti = shells_a.P_sph.dot(ti).dot(shells_b.P_sph.T)  # Reorder
-            sph_ints.append(ti)
-        return np.array(sph_ints)
-
     ###########################
     # Dipole moment integrals #
     ###########################
 
     def get_dipole_ints_cart(self, origin):
-        return self.get_multipole_ints_cart(self, self, dipole, components=3, C=origin)
+        return self.get_1el_ints_cart(dipole, components=3, C=origin)
 
     def get_dipole_ints_sph(self, origin) -> NDArray:
-        return self.get_multipole_ints_sph(self, self, dipole, components=3, C=origin)
+        return self.get_1el_ints_sph(dipole, components=3, C=origin)
 
     ##################################################
     # Quadrupole moment integrals, diagonal elements #
     ##################################################
 
     def get_diag_quadrupole_ints_cart(self, origin):
-        return self.get_multipole_ints_cart(
-            self, self, diag_quadrupole, components=3, C=origin
-        )
+        return self.get_1el_ints_cart(diag_quadrupole, components=3, C=origin)
 
     def get_diag_quadrupole_ints_sph(self, origin):
-        return self.get_multipole_ints_sph(
-            self, self, diag_quadrupole, components=3, C=origin
-        )
+        return self.get_1el_ints_sph(diag_quadrupole, components=3, C=origin)
 
     ###############################
     # Quadrupole moment integrals #
     ###############################
 
     def get_quadrupole_ints_cart(self, origin):
-        _ = self.get_multipole_ints_cart(self, self, quadrupole, components=6, C=origin)
+        _ = self.get_1el_ints_cart(quadrupole, components=6, C=origin)
         shape = _.shape
         sym = np.zeros((3, 3, *shape[1:]))
         triu = np.triu_indices(3)
@@ -624,7 +602,7 @@ class Shells:
         return sym.reshape(3, 3, *shape[1:])
 
     def get_quadrupole_ints_sph(self, origin) -> NDArray:
-        _ = self.get_multipole_ints_sph(self, self, quadrupole, components=6, C=origin)
+        _ = self.get_1el_ints_sph(quadrupole, components=6, C=origin)
         shape = _.shape
         sym = np.zeros((3, 3, *shape[1:]))
         triu = np.triu_indices(3)
