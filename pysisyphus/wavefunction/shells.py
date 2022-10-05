@@ -237,9 +237,11 @@ class Shells:
         # and converting them from Cartesian basis functions.
         self.reorder_c2s_coeffs = self.P_sph @ self.cart2sph_coeffs
 
-
     def __len__(self):
         return len(self.shells)
+
+    def __getitem__(self, key):
+        return self.shells[key]
 
     def print_shells(self):
         for shell in self.shells:
@@ -429,10 +431,12 @@ class Shells:
         self, func, other=None, can_reorder=True, components=0, **kwargs
     ):
         shells_a = self
-        shells_b = shells_a if other is None else other
+        symmetric = other is None
+        shells_b = shells_a if symmetric else other
         cart_bf_num_a = shells_a.cart_bf_num
         cart_bf_num_b = shells_b.cart_bf_num
 
+        # components = 0 indicates, that a plain 2d matrix is desired.
         if is_2d := (components == 0):
             components = 1
 
@@ -440,21 +444,35 @@ class Shells:
         integrals = np.zeros((components, cart_bf_num_a, cart_bf_num_b))
 
         a_ind = 0
-        for shell_a in shells_a.shells:
+        b_skipped = 0
+        for i, shell_a in enumerate(shells_a):
             La, A, dA, aa = shell_a.as_tuple()
-            b_ind = 0
-            for shell_b in shells_b.shells:
+            a_size = get_shell_shape(La)[0]
+            a_slice = slice(a_ind, a_ind + a_size)
+            b_ind = b_skipped
+            if symmetric:
+                b_skipped += a_size
+            # When we don't deal with symmetric matrices we have to iterate over
+            # all other basis functions in shells_b, so we reset i to 0.
+            else:
+                i = 0
+            for shell_b in shells_b[i:]:
                 Lb, B, dB, bb = shell_b.as_tuple()
-                shell_shape = get_shell_shape(La, Lb)
+                b_size = get_shell_shape(Lb)[0]
+                shell_shape = (a_size, b_size)
                 shape = (components, *shell_shape)
                 a_size, b_size = shell_shape
                 qp = func(La, Lb, aa[:, None], A, bb[None, :], B, **kwargs)
                 qp = qp.reshape(*shape, len(aa), len(bb))
                 qp *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
                 qp = qp.sum(axis=(3, 4)).reshape(shape)
-                integrals[:, a_ind : a_ind + a_size, b_ind : b_ind + b_size] = qp
-                b_ind += (Lb + 1) * (Lb + 2) // 2
-            a_ind += (La + 1) * (La + 2) // 2
+                b_slice = slice(b_ind, b_ind + b_size)
+                integrals[:, a_slice, b_slice] = qp
+                # Fill up the lower tringular part of the matrix
+                if symmetric:
+                    integrals[:, b_slice, a_slice] = np.transpose(qp, axes=(0, 2, 1))
+                b_ind += b_size
+            a_ind += a_size
 
         # Return plain 2d array if components is set to 0, i.e., remove first axis.
         if is_2d:
