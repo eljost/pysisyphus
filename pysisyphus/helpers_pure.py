@@ -126,14 +126,18 @@ class OrderedEnum(Enum):
         return self.name
 
 
-def timed(logger):
+def timed(logger=None):
     def decorator(func):
         def wrapper(*args, **kwargs):
             start = time.time()
             result = func(*args, **kwargs)
             end = time.time()
             duration = end - start
-            log(logger, f"Execution of '{func.__name__}' took {duration:.2f} s.")
+            msg = f"Execution of '{func.__name__}' took {duration:.2f} s."
+            if logger is not None:
+                log(logger, msg)
+            else:
+                print(msg)
             return result
 
         return wrapper
