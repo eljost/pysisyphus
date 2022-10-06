@@ -356,22 +356,27 @@ class Optimizer(metaclass=abc.ABCMeta):
                 6 * rms_force,
                 4 * rms_force,
             )
-        keys = [
+        keys = keep_keys = [
             "max_force_thresh",
             "rms_force_thresh",
+            "max_step_thresh",
+            "rms_step_thresh",
         ]
+        conv_dict = {k: v for k, v in zip(keys, threshs)}
+
         # Only used gradient information for COS optimizations
-        if not self.is_cos:
-            keys += ["max_step_thresh", "rms_step_thresh"]
+        if self.is_cos:
+            keep_keys = ["max_force_thresh", "rms_force_thresh"]
 
         if rms_force_only:
             self.log("Checking convergence with rms(forces) only!")
-            keys = ["rms_force_thresh"]
+            keep_keys = ["rms_force_thresh"]
         elif max_force_only:
             self.log("Checking convergence with max(forces) only!")
-            keys = ["max_force_thresh"]
+            keep_keys = ["max_force_thresh"]
 
-        conv_dict = {k: v for k, v in zip(keys, threshs)}
+        # The dictionary should only contain pairs that are needed
+        conv_dict = {key: value for key, value in conv_dict.items() if key in keep_keys}
         return conv_dict
 
     def report_conv_thresholds(self):
