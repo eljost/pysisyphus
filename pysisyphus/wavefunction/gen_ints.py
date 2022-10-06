@@ -38,6 +38,7 @@ from sympy import (
 )
 from sympy.codegen.ast import Assignment
 from sympy.printing.numpy import NumPyPrinter
+from sympy.printing.c import C99CodePrinter
 
 try:
     from pysisyphus.config import L_MAX
@@ -63,7 +64,6 @@ def make_py_func(repls, reduced, args=None, name=None, doc_str=""):
         name = "func_" + "".join(
             [random.choice(string.ascii_letters) for i in range(8)]
         )
-    arg_strs = [arg.strip() for arg in args.split(",")]
 
     # This allows using the 'boys' function without producing an error
     print_settings = {
@@ -100,10 +100,81 @@ def make_py_func(repls, reduced, args=None, name=None, doc_str=""):
             return_val=return_val,
             n_return_vals=len(reduced),
             doc_str=doc_str,
-            arg_strs=arg_strs,
         )
     ).strip()
     return rendered
+
+
+def make_c_func(repls, reduced, args=None, name=None, doc_str=""):
+    if args is None:
+        args = list()
+    # Generate random name, if no name was supplied
+    if name is None:
+        name = "func_" + "".join(
+            [random.choice(string.ascii_letters) for i in range(8)]
+        )
+    arg_strs = list()
+    for arg in args:
+        if arg.islower():
+            arg_str = f"double {arg}"
+        elif arg.isupper():
+            arg_str = f"double {arg}[3]"
+        else:
+            raise Exception
+        arg_strs.append(arg_str)
+    args_str = ", ".join(arg_strs)
+
+    # This allows using the 'boys' function without producing an error
+    print_settings = {
+        "allow_unknown_functions": True,
+        # Without disabling contract some expressions will raise ValueError.
+        "contract": False,
+    }
+    print_func = C99CodePrinter(print_settings).doprint
+    assignments = [Assignment(lhs, rhs) for lhs, rhs in repls]
+    repl_lines = [print_func(as_) for as_ in assignments]
+    res_lines = [print_func(red) for red in reduced]
+    res_len = len(reduced)
+
+    signature = f"double * {name}({args_str})"
+
+    tpl = Template(
+        """
+    {{ signature }} {
+        {% if doc_str %}
+        /* {{ doc_str }} */
+        {% endif %}
+
+        static double {{ res_name }}[{{ res_len}}];
+
+        {% for line in repl_lines %}
+        const double {{ line }}
+        {% endfor %}
+
+        {% for rhs in res_lines %}
+        {{ res_name }}[{{ loop.index0}}] = {{ rhs }};
+        {% endfor %}
+
+        return {{ res_name }};
+    }
+    """,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+    rendered = textwrap.dedent(
+        tpl.render(
+            signature=signature,
+            res_name="results",
+            res_len=res_len,
+            repl_lines=repl_lines,
+            res_lines=res_lines,  # c_lines=c_lines,
+            reduced=reduced,
+            doc_str=doc_str,
+            args_str=args_str,
+        )
+    ).strip()
+    return rendered, signature
 
 
 def canonical_order(L):
@@ -127,10 +198,10 @@ class CartGTO3d(Function):
     @classmethod
     @functools.cache
     def eval(cls, i, j, k, a, Xa, Ya, Za):
-        Xa2 = Xa**2
-        Ya2 = Ya**2
-        Za2 = Za**2
-        return (Xa**i) * (Ya**j) * (Za**k) * exp(-a * (Xa2 + Ya2 + Za2))
+        Xa2 = Xa ** 2
+        Ya2 = Ya ** 2
+        Za2 = Za ** 2
+        return (Xa ** i) * (Ya ** j) * (Za ** k) * exp(-a * (Xa2 + Ya2 + Za2))
 
 
 class CartGTOShell(Function):
@@ -170,7 +241,7 @@ class Multipole1d(Function):
         if i.is_zero and j.is_zero and e.is_zero:
             X = A - B
             mu = a * b / p
-            return sqrt(pi / p) * exp(-mu * X**2)
+            return sqrt(pi / p) * exp(-mu * X ** 2)
         # Decrement i
         elif i.is_positive:
             X = P - A
@@ -257,7 +328,7 @@ class Kinetic1d(Function):
         # Base case
         if i == 0 and j == 0:
             X = P - A
-            return (a - 2 * a**2 * (X**2 + 1 / (2 * p))) * Overlap1d(
+            return (a - 2 * a ** 2 * (X ** 2 + 1 / (2 * p))) * Overlap1d(
                 i, j, a, b, A, B
             )
         # Decrement i
@@ -748,11 +819,61 @@ def render_py_funcs(exprs_Ls, args, base_name, doc_func, add_imports=None, comme
     return np_rendered
 
 
-def write_py(out_dir, name, py_rendered):
-    py_name = out_dir / name
-    with open(py_name, "w") as handle:
-        handle.write(py_rendered)
-    print(f"Wrote '{py_name}'.")
+def render_c_funcs(exprs_Ls, args, base_name, doc_func, add_imports=None, comment=""):
+    if add_imports is not None:
+        raise Exception("Implement me!")
+
+    arg_strs = [str(arg) for arg in args]
+
+    funcs = list()
+    signatures = list()
+    for (repls, reduced), L_tots in exprs_Ls:
+        doc_str = doc_func(L_tots)
+        doc_str += "\n\n\t\tGenerated code; DO NOT modify by hand!"
+        doc_str = textwrap.dedent(doc_str)
+        name = base_name + "_" + "".join(str(l) for l in L_tots)
+        func, signature = make_c_func(
+            repls, reduced, args=arg_strs, name=name, doc_str=doc_str
+        )
+        funcs.append(func)
+        signatures.append(signature)
+    funcs_joined = "\n\n".join(funcs)
+
+    if comment != "":
+        comment = f"/*{comment}*/"
+
+    # Render C files
+    c_tpl = Template(
+        "#include <math.h>\n\n{{ comment }}\n\n{{ funcs }}",
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    c_rendered = c_tpl.render(comment=comment, funcs=funcs_joined)
+    c_rendered = textwrap.dedent(c_rendered)
+    # Render simple header file
+    h_rendered = "\n".join([f"{sig};" for sig in signatures])
+    return c_rendered, h_rendered
+
+
+def write_file(out_dir, name, rendered):
+    out_name = out_dir / name
+    with open(out_name, "w") as handle:
+        handle.write(rendered)
+    print(f"Wrote '{out_name}'.")
+
+
+def write_render(ints_Ls, args, name, doc_func, out_dir, comment="", c=True):
+    ints_Ls = list(ints_Ls)
+    # Python
+    py_rendered = render_py_funcs(ints_Ls, args, name, doc_func, comment=comment)
+    write_file(out_dir, f"{name}.py", py_rendered)
+    # C
+    if c:
+        c_rendered, h_rendered = render_c_funcs(
+            ints_Ls, args, name, doc_func, comment=comment
+        )
+        write_file(out_dir, f"{name}.c", c_rendered)
+        write_file(out_dir, f"{name}.h", h_rendered)
 
 
 def parse_args(args):
@@ -828,7 +949,7 @@ def run():
     cart_gto_rendered = render_py_funcs(
         cart_gto_Ls, (a, Xa, Ya, Za), "cart_gto3d", cart_gto_doc_func
     )
-    write_py(out_dir, "gto3d.py", cart_gto_rendered)
+    write_file(out_dir, "gto3d.py", cart_gto_rendered)
     print()
 
     #####################
@@ -847,8 +968,7 @@ def run():
         "overlap",
         (A_map, B_map),
     )
-    ovlp_rendered = render_py_funcs(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func)
-    write_py(out_dir, "ovlp3d.py", ovlp_rendered)
+    write_render(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func, out_dir, c=True)
     print()
 
     ###########################
@@ -886,15 +1006,15 @@ def run():
         "dipole moment",
         (A_map, B_map, C_map),
     )
-
-    dipole_rendered = render_py_funcs(
+    write_render(
         dipole_ints_Ls,
         (a, A, b, B, C),
         "dipole3d",
         dipole_doc_func,
+        out_dir,
         comment=dipole_comment,
+        c=True,
     )
-    write_py(out_dir, "dipole3d.py", dipole_rendered)
     print()
 
     ###########################################
@@ -927,15 +1047,15 @@ def run():
         "diag quadrupole moment",
         (A_map, B_map, C_map),
     )
-
-    diag_quadrupole_rendered = render_py_funcs(
+    write_render(
         diag_quadrupole_ints_Ls,
         (a, A, b, B, C),
         "diag_quadrupole3d",
         diag_quadrupole_doc_func,
+        out_dir,
         comment=diag_quadrupole_comment,
+        c=True,
     )
-    write_py(out_dir, "diag_quadrupole3d.py", diag_quadrupole_rendered)
     print()
 
     ###############################
@@ -958,11 +1078,6 @@ def run():
     / xx xy xz \\
     |    yy yz |
     \       zz /
-
-    for cart_dir1 in (x, y, z):
-        for bf_a in basis_functions_a:
-            for bf_b in basis_functions_b:
-                    quadrupole_integrals(bf_a, bf_b, cart_dir1)
     """
 
     quadrupole_ints_Ls = gen_integral_exprs(
@@ -974,16 +1089,16 @@ def run():
         (A_map, B_map, C_map),
     )
 
-    quadrupole_rendered = render_py_funcs(
+    write_render(
         quadrupole_ints_Ls,
         (a, A, b, B, C),
         "quadrupole3d",
         quadrupole_doc_func,
+        out_dir,
         comment=quadrupole_comment,
+        c=True,
     )
-    write_py(out_dir, "quadrupole3d.py", quadrupole_rendered)
     print()
-    return
 
     ############################
     # Kinetic energy integrals #
@@ -1001,10 +1116,14 @@ def run():
         "kinetic",
         (A_map, B_map),
     )
-    kinetic_rendered = render_py_funcs(
-        kinetic_ints_Ls, (a, A, b, B), "kinetic3d", kinetic_doc_func
+    write_render(
+        kinetic_ints_Ls,
+        (a, A, b, B),
+        "kinetic3d",
+        kinetic_doc_func,
+        out_dir,
+        c=True,
     )
-    write_py(out_dir, "kinetic3d.py", kinetic_rendered)
     print()
 
     #########################
@@ -1034,7 +1153,8 @@ def run():
         coulomb_doc_func,
         add_imports=boys_import,
     )
-    write_py(out_dir, "coulomb3d.py", coulomb_rendered)
+    # TODO: handle add_args and Boys function in C
+    write_file(out_dir, "coulomb3d.py", coulomb_rendered)
     print()
 
     ####################################
@@ -1064,7 +1184,7 @@ def run():
     # so1el_doc_func,
     # add_imports=boys_import,
     # )
-    # write_py(out_dir, "so1el.py", so1el_rendered)
+    # write_file(out_dir, "so1el.py", so1el_rendered)
     # print()
 
     #########################
@@ -1110,7 +1230,7 @@ def run():
     # eri_doc_func,
     # add_imports=boys_import,
     # )
-    # write_py(out_dir, "eri.py", eri_rendered)
+    # write_file(out_dir, "eri.py", eri_rendered)
     # print()
 
 
