@@ -1,3 +1,7 @@
+# [1] https://doi.org/10.1063/1.4894472
+#     Diabatization based on the dipole and quadrupole: The DQ method
+#     Hoyer, Xu, Ma, Gagliardi, Truhlar, 2014
+
 from typing import Optional
 
 import matplotlib.pyplot as plt
@@ -19,7 +23,7 @@ def dq_jacobi_sweeps(
     quad_moms: Optional[NDArray[float]] = None,
     alpha: Optional[float] = 1.0,
 ) -> JacobiSweepResult:
-    """Rotation matrix from DQ-diabatization as outlined in [5].
+    """Rotation matrix from DQ-diabatization as outlined in [1].
 
     When no quadrupole moments are given, the DQ-diabatization reduces to a simple
     Boys-diabatization, as outlined by Subotnik et al in [3]. In this case we just
@@ -103,7 +107,8 @@ def dq_diabatization_from_npz(npz_fn, use_states=None):
         tr_qpm = qpm[0, 0] + qpm[1, 1] + qpm[2, 2]
         dia_res = dq_jacobi_sweeps(dpm, tr_qpm, alpha=10.0)
         U = dia_res.C
-        print(f"Rotation matrix\n{U}\n")
+        det = np.linalg.det(U)
+        print(f"Rotation matrix\n{U}\ndet(U)={det:.6f}")
 
         adia_energies[i] = ens
         adia_mat = np.diag(ens)
