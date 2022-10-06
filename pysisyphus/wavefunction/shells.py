@@ -1,10 +1,12 @@
-from jinja2 import Template
 import itertools as it
 from math import sqrt, log, pi
+from pathlib import Path
 import textwrap
-from typing import Tuple
+from typing import List, Literal, Tuple
 
 
+from jinja2 import Template
+from joblib import Memory
 import numpy as np
 from numpy.typing import NDArray
 import scipy as sp
@@ -214,12 +216,25 @@ def diag_quadrupole(la_tot, lb_tot, a, A, b, B, C):
     return func(a, A, b, B, C)
 
 
+Ordering = Literal["native", "pysis"]
+
+
 class Shells:
     sph_Ps = {l: np.eye(2 * l + 1) for l in range(L_MAX)}
 
-    def __init__(self, shells, ordering="native"):
+    def __init__(
+        self,
+        shells: List[Shell],
+        screen: bool = True,
+        cache: bool = True,
+        cache_path: str = "./cache",
+        ordering: Ordering = "native",
+    ):
         self.shells = shells
         self.ordering = ordering
+        self.screen = screen
+        self.cache = cache
+        self.cache_path = Path(cache_path)
         """
         'native' refers to the original ordering, as used in the QC program. The
         ordering will be reflected in the MO coefficient ordering. With 'native'
@@ -237,6 +252,12 @@ class Shells:
         # Precontract & store coefficients for reordering spherical basis functions
         # and converting them from Cartesian basis functions.
         self.reorder_c2s_coeffs = self.P_sph @ self.cart2sph_coeffs
+
+        # Enable disk cache for 1el-integrals
+        if self.cache:
+            self.memory = Memory(self.cache_path, verbose=0)
+            self.get_1el_ints_cart = self.memory.cache(self.get_1el_ints_cart)
+            self.get_1el_ints_sph = self.memory.cache(self.get_1el_ints_sph)
 
     def __len__(self):
         return len(self.shells)
@@ -451,7 +472,7 @@ class Shells:
         integrals = np.zeros((components, cart_bf_num_a, cart_bf_num_b))
 
         # Dummy screen function that always returns True
-        if screen_func is None:
+        if (not self.screen) or (screen_func is None):
             screen_func = lambda *args: True
 
         a_ind = 0
