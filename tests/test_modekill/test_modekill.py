@@ -17,7 +17,7 @@ def test_modekill_xtb(this_dir):
     geom.set_calculator(calc)
     w, v = np.linalg.eigh(geom.mw_hessian)
     nus = eigval_to_wavenumber(w)
-    np.testing.assert_allclose(nus[[0, 1]], (-199.668834, -94.054391), atol=1e-5)
+    np.testing.assert_allclose(nus[[0, 1]], (-199.668834, -94.054391), atol=1e-2)
 
     modekill = ModeKill(geom, kill_inds=[0, ])
     modekill.run()
@@ -25,7 +25,7 @@ def test_modekill_xtb(this_dir):
     w, v = np.linalg.eigh(geom.mw_hessian)
     nus = eigval_to_wavenumber(w)
 
-    assert nus[0] == pytest.approx(-96.202534)
+    assert nus[0] == pytest.approx(-96.202534, abs=1e-2)
 
 
 @using("pyscf")
@@ -37,7 +37,7 @@ def test_modekill_pyscf(this_dir):
 
     w, v = np.linalg.eigh(geom.eckart_projection(geom.mw_hessian))
     nus = eigval_to_wavenumber(w)
-    assert nus[0] == pytest.approx(-266.2978391005)
+    assert nus[0] == pytest.approx(-266.2978391005, abs=1e-2)
 
     modekill = ModeKill(geom, kill_inds=[0, ])
     modekill.run()
@@ -45,4 +45,4 @@ def test_modekill_pyscf(this_dir):
 
     w, v = np.linalg.eigh(geom.eckart_projection(geom.mw_hessian))
     nus = eigval_to_wavenumber(w)
-    assert nus[0] == pytest.approx(324.4358155, abs=1e-4)
+    assert nus[0] == pytest.approx(324.4358155, abs=1e-2)

@@ -81,8 +81,9 @@ def test_three_frag_afir():
     assert geom.energy == pytest.approx(-22.58019, abs=1e-4)
 
     c3d = geom.coords3d
-    assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.610, abs=1e-3)
-    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.763, abs=1e-3)
+    # These values are quiet sensitive to the xtb version (6.4.1 vs 6.5.1)
+    assert np.linalg.norm(c3d[3] - c3d[9]) == pytest.approx(2.610, abs=1e-2)
+    assert np.linalg.norm(c3d[2] - c3d[0]) == pytest.approx(3.763, abs=1e-2)
 
 
 @using("pyscf")
