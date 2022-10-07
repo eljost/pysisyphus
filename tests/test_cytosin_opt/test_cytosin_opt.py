@@ -109,6 +109,7 @@ def test_cytosin_s1_opt(calc_cls, calc_kwargs, this_dir):
         # "trust_max": 0.3,
         "line_search": True,
         "gdiis": True,
+        "dump": True,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()

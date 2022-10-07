@@ -36,6 +36,7 @@ Contrubtions are welcome, so feel free to submit a PR.
    chainofstates.rst
    tsoptimization.rst
    irc.rst
+   diabatization.rst
    plotting.rst
    pysistrj.rst
    api/modules.rst
