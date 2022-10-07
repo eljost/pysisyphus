@@ -1,0 +1,12 @@
+# Guanine-Indole cation, wB97X-D/6-31G*, TDA, 3 states.
+# Values are taken from the Table S2 in the SI of
+# https://doi.org/10.1063/5.0035593
+adiabatic_energies: [0.0, 0.717, 0.905]
+#adiabiatc_labels: [GS, LE, CT]
+dipoles:
+  - [0, 0, -1.253, 0.270, -1.876]
+  - [1, 1, -1.691, -0.653, -2.083]
+  - [2, 2, 0.948, 0.733, -1.327]
+  - [0, 1, -1.224, -0.279, -0.325]
+  - [0, 2, 2.227, 0.866, 0.735]
+  - [1, 2, -1.574, -1.029, -0.517]

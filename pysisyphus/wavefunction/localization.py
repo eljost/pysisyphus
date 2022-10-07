@@ -150,7 +150,7 @@ def jacobi_sweeps(
         dP = P - P_prev
         logger.info(f"{i:03d}: {P=: >12.8f} {dP=: >12.8f}")
         if is_converged := (dP <= dP_thresh):
-            logger.info(f"Converged after {i+1} cycles.")
+            logger.info(f"Jacobi sweeps converged in {i+1} cycles.")
             break
         P_prev = P
     # Outside macro cycles
