@@ -165,11 +165,29 @@ Executing `pysisdia guanine_indole_dia.yaml` produces the following output:
 
 .. code::
 
-    D-diabatization
+                              ###################
+                              # D-DIABATIZATION #
+                              ###################
+
+    Dipole moments
+    --------------
+    [[[-1.253 -1.224  2.227]
+      [-1.224 -1.691 -1.574]
+      [ 2.227 -1.574  0.948]]
+
+     [[ 0.27  -0.279  0.866]
+      [-0.279 -0.653 -1.029]
+      [ 0.866 -1.029  0.733]]
+
+     [[-1.876 -0.325  0.735]
+      [-0.325 -2.083 -0.517]
+      [ 0.735 -0.517 -1.327]]]
+
+    Starting Jacobi sweeps.
     000: P=169.63193103 dP=169.63193103
     001: P=172.49529007 dP=  2.86335904
     002: P=172.49529008 dP=  0.00000000
-    Converged after 3 cycles.
+    Jacobi sweeps converged in 3 cycles.
 
     All energies are given in eV.
 
@@ -200,9 +218,9 @@ Executing `pysisdia guanine_indole_dia.yaml` produces the following output:
 
     Composition of diabatic states Ξᵢ
     ---------------------------------
-    Ξ₀ = + 0.1629·Φ₀ - 0.8406·Φ₁ - 0.5166·Φ₂
-    Ξ₁ = + 0.8492·Φ₀ + 0.3860·Φ₁ - 0.3603·Φ₂
-    Ξ₂ = + 0.5023·Φ₀ - 0.3800·Φ₁ + 0.7767·Φ₂
+    Ξ₀ = + 0.1629·Φ₀(GS) - 0.8406·Φ₁(LE) - 0.5166·Φ₂(CT)
+    Ξ₁ = + 0.8492·Φ₀(GS) + 0.3860·Φ₁(LE) - 0.3603·Φ₂(CT)
+    Ξ₂ = + 0.5023·Φ₀(GS) - 0.3800·Φ₁(LE) + 0.7767·Φ₂(CT)
 
     Weights U²
     ----------

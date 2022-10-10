@@ -33,24 +33,21 @@ def make_array(nstates, components, lines):
     return arr
 
 
-def dq_diabatization_from_yaml(yaml_fn):
-    with open(yaml_fn) as handle:
-        data = yaml.load(handle, Loader=yaml.SafeLoader)
-
-    adia_ens = np.array(data["adiabatic_energies"], dtype=float)
+def dq_diabatization_from_run_dict(run_dict):
+    adia_ens = np.array(run_dict["adiabatic_energies"], dtype=float)
     nstates = adia_ens.size
 
     # Dipole moments must be present
-    dip_moms = make_array(nstates, 3, data["dipoles"])
+    dip_moms = make_array(nstates, 3, run_dict["dipoles"])
     # Quadrupole moments and electrostatic potential are optional.
-    quad_moms = make_array(nstates, 1, data.get("quadrupoles", list()))
-    epots = make_array(nstates, 1, data.get("epots", list()))
+    quad_moms = make_array(nstates, 1, run_dict.get("quadrupoles", list()))
+    epots = make_array(nstates, 1, run_dict.get("epots", list()))
 
     kwargs = {}
-    if "alpha" in data:
-        kwargs["alpha"] = data["alpha"]
-    if "beta" in data:
-        kwargs["beta"] = data["beta"]
+    if "alpha" in run_dict:
+        kwargs["alpha"] = run_dict["alpha"]
+    if "beta" in run_dict:
+        kwargs["beta"] = run_dict["beta"]
 
     return dq_diabatization(
         adia_ens, dip_moms, quad_moms=quad_moms, epots=epots, **kwargs
@@ -93,12 +90,12 @@ def run():
     args = parse_args(sys.argv[1:])
 
     yaml_fn = args.yaml
-    dia_res = dq_diabatization_from_yaml(yaml_fn)
-    report = dia_res.render_report()
-    # TODO:
-    #   Use adiabatic labels
-    #   Report property matrices
-
+    with open(yaml_fn) as handle:
+        run_dict = yaml.load(handle, Loader=yaml.SafeLoader)
+    adia_labels = run_dict.pop("adiabatic_labels", None)
+    unit = run_dict.pop("unit", "eV")
+    dia_res = dq_diabatization_from_run_dict(run_dict)
+    report = dia_res.render_report(adia_labels=adia_labels, unit=unit)
     print(report)
 
 

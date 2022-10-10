@@ -17,13 +17,35 @@ from jinja2 import Template
 import numpy as np
 from numpy.typing import NDArray
 
-from pysisyphus.helpers_pure import to_subscript_num
+from pysisyphus.helpers_pure import highlight_text, to_subscript_num
 from pysisyphus.wavefunction import logger
 from pysisyphus.wavefunction.localization import (
     JacobiSweepResult,
     jacobi_sweeps,
     get_fb_ab_func,
     get_fb_cost_func,
+)
+
+DQTemplate = Template(
+    """{{ name }}
+
+Dipole moments
+--------------
+{{ dip_moms }}
+{%- if quad_moms %}
+Trace of quadrupole tensor
+--------------------------
+{{ quad_moms }}
+α = {{ "%.2f"|fmt(alpha) }}
+{% endif %}
+{%- if epots %}
+Electronic component of electrostatic potential
+-----------------------------------------------
+{{ epots}}
+β = {{ "%.2f"|fmt(beta) }}
+{% endif %}
+
+"""
 )
 
 
@@ -84,9 +106,9 @@ def dq_jacobi_sweeps(
         if property_ is not None
     ]
     name = "".join(prefixes) + "-diabatization"
-    if quad_moms is None:
+    if no_quad_moms := quad_moms is None:
         quad_moms = np.zeros(expected_quad_mom_shape)
-    if epots is None:
+    if no_epots := epots is None:
         epots = np.zeros(expected_quad_mom_shape)
     quad_moms = quad_moms.reshape(*expected_quad_mom_shape)
     epots = epots.reshape(*expected_quad_mom_shape)
@@ -114,7 +136,15 @@ def dq_jacobi_sweeps(
         P = dip_P + alpha * quad_P + beta * epot_P
         return P
 
-    logger.info(name)
+    msg = DQTemplate.render(
+        name=highlight_text(name),
+        dip_moms=dip_moms,
+        quad_moms=quad_moms if not no_quad_moms else None,
+        alpha=alpha,
+        epots=epots if not no_epots else None,
+        beta=beta,
+    )
+    logger.info(msg)
     return jacobi_sweeps(U, cost_func, ab_func)
 
 
@@ -170,6 +200,9 @@ class DiabatizationResult:
     is_converged: bool
     cur_cycle: int
     P: float
+    dip_moms: Optional[NDArray] = None
+    quad_moms: Optional[NDArray] = None
+    epots: Optional[NDArray] = None
 
     @property
     def nstates(self):
@@ -191,7 +224,7 @@ class DiabatizationResult:
                 couplings[key] = couplings[key[::-1]] = abs_dia_mat[from_, to_]
         return couplings
 
-    def render_report(self, unit="eV"):
+    def render_report(self, adia_labels=None, unit="eV"):
         U = self.U
         nstates = self.nstates
         U2 = U ** 2
@@ -210,13 +243,19 @@ class DiabatizationResult:
 
         # Composition of diabatic states
         dia_compositions = list()
+        if adia_labels:
+            adia_labels = [f"({al})" for al in adia_labels]
+        else:
+            adia_labels = ["" for _ in range(nstates)]
         for i in range(nstates):
             coeffs = U[:, i]
             signs = ["+" if c > 0 else "-" for c in coeffs]
             sum_ = " ".join(
                 [
-                    f"{sign} {c:>6.4f}·{awf}"
-                    for sign, c, awf in zip(signs, np.abs(coeffs), adia_wfs)
+                    f"{sign} {c:>6.4f}·{awf}{al}"
+                    for sign, c, awf, al in zip(
+                        signs, np.abs(coeffs), adia_wfs, adia_labels
+                    )
                 ]
             )
             dia_compositions.append(f"{dia_wfs[i]} = {sum_}")
@@ -258,5 +297,8 @@ def dq_diabatization(adia_ens, dip_moms, quad_moms=None, epots=None, **kwargs):
         is_converged=jac_res.is_converged,
         cur_cycle=jac_res.cur_cycle,
         P=jac_res.P,
+        dip_moms=dip_moms,
+        quad_moms=quad_moms,
+        epots=epots,
     )
     return dia_result

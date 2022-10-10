@@ -130,15 +130,16 @@ def jacobi_sweeps(
 
     P_prev = 0.0
 
+    logger.info(f"Starting Jacobi sweeps.")
     for i in range(max_cycles):
         # Loop over pairs of MO indices and do 2x2 rotations.
         for j, k in it.combinations(range(nmos), 2):
             A, B = ab_func(j, k, C)
 
-            if (A**2 + B**2) <= 1e-12:
+            if (A ** 2 + B ** 2) <= 1e-12:
                 continue
 
-            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A**2 + B**2)) / 4
+            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A ** 2 + B ** 2)) / 4
             assert -PI_QUART <= gamma <= PI_QUART
             # 2x2 MO rotations
             rot_inplace(C, gamma, j, k)
@@ -203,7 +204,7 @@ def pipek_mezey(C, S, ao_center_map, **kwargs) -> JacobiSweepResult:
             ).sum() / 2
             Qjj = Q[ao_inds, j].sum()
             Qkk = Q[ao_inds, k].sum()
-            A += (Qjk**2) - ((Qjj - Qkk) ** 2) / 4
+            A += (Qjk ** 2) - ((Qjj - Qkk) ** 2) / 4
             B += Qjk * (Qjj - Qkk)
         return A, B
 
@@ -218,7 +219,7 @@ def pipek_mezey(C, S, ao_center_map, **kwargs) -> JacobiSweepResult:
             for center in centers:
                 ao_inds = ao_center_map[center]
                 Q = (C[ao_inds, l][:, None] * C[:, l] * S[ao_inds, :]).sum()
-                P += Q**2
+                P += Q ** 2
         return P
 
     logger.info("Pipek-Mezey localization")
@@ -256,7 +257,7 @@ def get_fb_ab_func(moments_ints):
         jrj = contract(mo_j, mo_j)
         jrk = contract(mo_j, mo_k)
         krk = contract(mo_k, mo_k)
-        A = (jrk**2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
+        A = (jrk ** 2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
         B = ((jrj - krk) * jrk).sum()  # Eq. (10) in [4]
         return A, B
 
