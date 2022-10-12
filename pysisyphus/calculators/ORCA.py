@@ -55,6 +55,44 @@ def save_orca_pc_file(point_charges, pc_fn, hardness=None):
     )
 
 
+def parse_orca_gbw(gbw_fn):
+    """Adapted from
+    https://orcaforum.kofo.mpg.de/viewtopic.php?f=8&t=3299
+
+    The first 5 long int values represent pointers into the file:
+
+    Pointer @+0:  Internal ORCA data structures
+    Pointer @+8:  Geometry
+    Pointer @+16: BasisSet
+    Pointer @+24: Orbitals
+    Pointer @+32: ECP data
+    """
+
+    with open(gbw_fn, "rb") as handle:
+        handle.seek(24)
+        offset = struct.unpack("<q", handle.read(8))[0]
+        handle.seek(offset)
+        operators = struct.unpack("<i", handle.read(4))[0]
+        dimension = struct.unpack("<i", handle.read(4))[0]
+
+        coeffs_fmt = "<" + dimension ** 2 * "d"
+        assert operators == 1, "Unrestricted case is not implemented!"
+
+        for i in range(operators):
+            # print('\nOperator: {}'.format(i))
+            coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension ** 2))
+            occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
+            energies = struct.iter_unpack("<d", handle.read(8 * dimension))
+            irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
+            cores = struct.iter_unpack("<i", handle.read(4 * dimension))
+
+            coeffs = np.array(coeffs).reshape(-1, dimension)
+            energies = np.array([en[0] for en in energies])
+
+        # MOs are returned in columns
+        return coeffs, energies
+
+
 def parse_orca_cis(cis_fn):
     """
     Read binary CI vector file from ORCA.
@@ -679,49 +717,17 @@ class ORCA(OverlapCalculator):
 
         return results
 
-    def parse_cis(self, cis):
+    @staticmethod
+    def parse_cis(cis):
         """Simple wrapper of external function.
 
         Currently, only returns Xα and Yα.
         """
         return parse_orca_cis(cis)[:2]
 
-    def parse_gbw(self, gbw_fn):
-        """Adapted from
-        https://orcaforum.kofo.mpg.de/viewtopic.php?f=8&t=3299
-
-        The first 5 long int values represent pointers into the file:
-
-        Pointer @+0:  Internal ORCA data structures
-        Pointer @+8:  Geometry
-        Pointer @+16: BasisSet
-        Pointer @+24: Orbitals
-        Pointer @+32: ECP data
-        """
-
-        with open(gbw_fn, "rb") as handle:
-            handle.seek(24)
-            offset = struct.unpack("<q", handle.read(8))[0]
-            handle.seek(offset)
-            operators = struct.unpack("<i", handle.read(4))[0]
-            dimension = struct.unpack("<i", handle.read(4))[0]
-
-            coeffs_fmt = "<" + dimension ** 2 * "d"
-            assert operators == 1, "Unrestricted case is not implemented!"
-
-            for i in range(operators):
-                # print('\nOperator: {}'.format(i))
-                coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension ** 2))
-                occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
-                energies = struct.iter_unpack("<d", handle.read(8 * dimension))
-                irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
-                cores = struct.iter_unpack("<i", handle.read(4 * dimension))
-
-                coeffs = np.array(coeffs).reshape(-1, dimension)
-                energies = np.array([en[0] for en in energies])
-
-            # MOs are returned in columns
-            return coeffs, energies
+    @staticmethod
+    def parse_gbw(gbw_fn):
+        return parse_orca_gbw(gbw_fn)
 
     @staticmethod
     def set_mo_coeffs_in_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs):
