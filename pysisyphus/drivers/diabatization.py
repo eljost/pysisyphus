@@ -1,9 +1,12 @@
 import argparse
+import itertools as it
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
 import yaml
 
+from pysisyphus.constants import AU2EV
 from pysisyphus.wavefunction.diabatization import dq_diabatization
 
 
@@ -54,30 +57,56 @@ def dq_diabatization_from_run_dict(run_dict):
     )
 
 
-"""
-def diabatize_path(adia_ens, dip_moms, quad_moms_tr=None, epots=None, **kwargs):
-    assert len(adia_ens) > 0
-    arrs = [arr for arr in (dip_moms, quad_moms_tr, epots) if arr is not None]
-    # All present arrays must be of same length
-    assert [len(arr) == len(adia_ens) for arr in arrs]
+def diabatize_path(adia_ens, dip_moms, tr_quad_moms=None, epots=None, **kwargs):
+    nones = [None for _ in adia_ens]
+    if tr_quad_moms is None:
+        tr_quad_moms = nones
+    if epots is None:
+        epots = nones
+    assert len(adia_ens) == len(dip_moms) == len(tr_quad_moms) == len(epots)
 
-    for aens, dpm, qpm, epot in zip(adia_ens, dip_moms, quad_moms_tr, epots):
+    for aens, dpm, qpm, epot in zip(adia_ens, dip_moms, tr_quad_moms, epots):
         yield dq_diabatization(aens, dpm, qpm, epot, **kwargs)
 
 
-def plot_adia_dia(adia_energies, dia_energies, show=True):
-    fig, ax = plt.subplots()
-    for i, state in enumerate(adia_energies.T):
-        ax.plot(state, "o--", label=f"$V_{i}$")
-    for i, state in enumerate(dia_energies.T):
-        ax.plot(state, "x-", label=f"$U_{i}$")
-    ax.legend()
-    ax.set_xlabel("Step")
-    ax.set_ylabel(r"$\Delta E$ / eV")
+def plot_dia_res(dia_res, show=False):
+    nstates = dia_res[0].nstates
+    adia_ens = np.zeros((len(dia_res), nstates))
+    dia_ens = np.zeros((len(dia_res), nstates))
+    keys = list(it.combinations(range(nstates), 2))
+    couplings = np.zeros((len(dia_res), len(keys)))
+    for i, dr in enumerate(dia_res):
+        adia_ens[i] = dr.adia_ens
+        dia_ens[i] = dr.dia_ens
+        for j, key in enumerate(keys):
+            couplings[i, j] = dr.couplings[key]
+
+    adia_min = adia_ens.min()
+    adia_ens -= adia_min
+    adia_ens *= AU2EV
+    dia_ens -= adia_min
+    dia_ens *= AU2EV
+    couplings *= AU2EV
+
+    fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
+    for i, state in enumerate(adia_ens.T):
+        ax0.plot(state, "o--", label=f"$V_{i}$")
+    for i, state in enumerate(dia_ens.T):
+        ax0.plot(state, "x-", label=f"$U_{i}$")
+    ax0.legend()
+    ax0.set_xlabel("Step")
+    ax0.set_ylabel(r"$\Delta E$ / eV")
+
+    # Couplings
+    for i, cpls in enumerate(couplings.T):
+        from_to = "".join([str(_) for _ in keys[i]])
+        ax1.plot(cpls, "o-", label=f"$|D_{{{from_to}}}|$")
+    ax1.legend()
+
+    fig.tight_layout()
     if show:
         plt.show()
-    return fig, ax
-"""
+    return fig, (ax0, ax1)
 
 
 def parse_args(args):

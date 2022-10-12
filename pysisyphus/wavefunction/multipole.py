@@ -134,7 +134,7 @@ def get_transition_multipole_moment(
             C_occ = C[:, :occ]
             C_virt = C[:, occ:]
         multipole_ints_mo = np.einsum(
-            "jl,...lm,mk->...jk", C_occ.T, multipole_ints, C_virt
+            "jl,...lm,mk->...jk", C_occ.T, multipole_ints, C_virt, optimize="greedy",
         )
 
         """
@@ -143,7 +143,7 @@ def get_transition_multipole_moment(
         j : occ. MO space
         k : virt. MO space
         """
-        trans_moment = np.einsum("...jk,ijk->i...", multipole_ints_mo, T)
+        trans_moment = np.einsum("...jk,ijk->i...", multipole_ints_mo, T, optimize="greedy")
         return trans_moment
 
     # Transitions between α -> α and β -> β

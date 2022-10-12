@@ -32,17 +32,17 @@ DQTemplate = Template(
 Dipole moments
 --------------
 {{ dip_moms }}
-{%- if quad_moms %}
+{%- if quad_moms is not none%}
 Trace of quadrupole tensor
 --------------------------
 {{ quad_moms }}
-α = {{ "%.2f"|fmt(alpha) }}
+α = {{ "%.2f"|format(alpha) }}
 {% endif %}
-{%- if epots %}
+{%- if epots is not none %}
 Electronic component of electrostatic potential
 -----------------------------------------------
 {{ epots}}
-β = {{ "%.2f"|fmt(beta) }}
+β = {{ "%.2f"|format(beta) }}
 {% endif %}
 
 """
