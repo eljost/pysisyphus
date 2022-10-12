@@ -15,7 +15,7 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("fn")
-    break_group = parser.add_mutually_exclusive_group(required=True)
+    break_group = parser.add_mutually_exclusive_group(required=False)
     break_group.add_argument(
         "--bonds",
         type=int,
@@ -94,7 +94,8 @@ def run():
         trans_metal_atoms = get_tm_indices(geom.atoms)
         rm_bonds_from = set(trans_metal_atoms)
     else:
-        raise Exception("How did I get here?")
+        rm_bonds = list()
+        print("Detecting fragments without bond removal.")
 
     if rm_bonds_from:
         rm_atoms = [geom.atoms[i] for i in rm_bonds_from]
@@ -102,8 +103,6 @@ def run():
         print(f"Delete all bonds involving atoms: {rm_str}")
         rm_bonds = [bond for bond in bonds if rm_bonds_from & set(bond)]
     print()
-
-    assert rm_bonds
 
     print(f"{len(rm_bonds)} bond(s) to be deleted:")
     for i, bond in enumerate(rm_bonds):
@@ -133,6 +132,7 @@ def run():
     coords3d = geom.coords3d
     xyzs = list()
     frags_compressed = list()
+    print("Last item in ranges of compressed notation is exclusive!")
     for i, frag in enumerate(fragments):
         compressed = compress(frag, check=True)
         frags_compressed.append(compressed)
