@@ -591,3 +591,19 @@ def cache_arrays(sources, dest):
         return wrapped_func
 
     return cache_decorator
+
+
+def estimate(gen, elems):
+    tot_dur = 0.0
+    for i in range(1, elems+1):
+        start = time.time()
+        elem = next(gen)
+        dur = time.time() - start
+        tot_dur += dur
+        ran_ratio = i / elems
+        elems_left = elems - i
+        dur_per_elem = tot_dur / i
+        est_dur = dur_per_elem * elems_left
+        est_dur_min = est_dur / 60
+        print(f"{ran_ratio: >8.2%} finished ... {est_dur_min: >8.2f} min left")
+        yield elem
