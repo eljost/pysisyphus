@@ -352,6 +352,18 @@ class Shells:
         sorted_shells = sorted(self.shells, key=lambda shell: shell.center_ind)
         return it.groupby(sorted_shells, key=lambda shell: shell.center_ind)
 
+    def fragment_ao_map(self, fragments):
+        frag_map = dict()
+        for i, frag in enumerate(fragments):
+            for center_ind in frag:
+                frag_map[center_ind] = i
+
+        frag_ao_map = dict()
+        for i, ao_center in enumerate(self.sph_ao_centers):
+            frag_ind = frag_map[ao_center]
+            frag_ao_map.setdefault(frag_ind, list()).append(i)
+        return frag_ao_map
+
     def as_gau_gbs(self) -> str:
         def dfmt(num):
             return f"{num: 12.10e}".replace("e", "D")

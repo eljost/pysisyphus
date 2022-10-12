@@ -1,7 +1,16 @@
-from typing import Iterable, List, Optional, Sequence, Tuple
+# [1] https://doi.org/10.1016/j.ccr.2018.01.019
+#     Quantitative wave function analysis for excited states
+#     of transition metal complexes
+#     Mai et al., 2018
+
+import itertools as it
+from functools import partial
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
+
+from pysisyphus.wavefunction.wavefunction import Wavefunction
 
 
 def norm_ci_coeffs(
@@ -35,7 +44,7 @@ def norm_ci_coeffs(
         Y = Ya.reshape(nstates, -1)
         target_norm = restricted_norm
     X_norms, Y_norms = [np.linalg.norm(mat, axis=1) for mat in (X, Y)]
-    ci_norms = X_norms ** 2 - Y_norms ** 2
+    ci_norms = X_norms**2 - Y_norms**2
     N = np.sqrt(target_norm / ci_norms)
     X *= N[:, None]
     Y *= N[:, None]
@@ -77,6 +86,75 @@ def get_state_to_state_transition_density(
     T_ab[:occ, :occ] = -hole
     T_ab[occ:, occ:] = electron
     return T_ab
+
+
+def ct_numbers(
+    C: NDArray[float], occ: int, Ts: NDArray[float], nfrags: int, frag_ao_map: Dict
+) -> NDArray[float]:
+    frag_inds = list(range(nfrags))
+    T_full = np.zeros_like(C)
+    u, _, vh = np.linalg.svd(C)
+    lowdin = u @ vh  # (PQ^T) in eq. (17) of [1]
+
+    omegas = list()
+    for T_mo in Ts:
+        T = T_full.copy()
+        T[:occ, occ:] = T_mo
+        Torth = lowdin @ T @ lowdin.T  # eq. (17) in [1]
+        Torth2 = Torth**2
+        state_omegas = list()
+        # Pairs of fragments
+        for i, j in it.product(frag_inds, frag_inds):
+            aos_i = frag_ao_map[i]
+            aos_j = frag_ao_map[j]
+            om_ij = Torth2[aos_i][:, aos_j].sum()  # eq. (16) in [1]
+            state_omegas.append(om_ij)
+        omegas.append(state_omegas)
+    return np.array(omegas)
+
+
+def ct_numbers_for_states(
+    wf: Wavefunction,
+    frags: List[List[int]],
+    Ta: NDArray[float],
+    Tb: Optional[NDArray[float]] = None,
+):
+    """
+    Charge-Transfer number for a given wavefunction and fragments.
+
+    Parameters
+    ----------
+    wf
+        Wavefunction object.
+    frags
+        List of lists of integers, containing the atom indices of the respective
+        fragments.
+    Ta
+        Alpha-spin transition density matrices of shape (nstates, occ_a, virt_a).
+    Tb
+        Beta-spin transition density matrices of shape (nstates, occ_a, virt_a).
+
+    Returns
+    -------
+    omegas
+        Array of shape (nstates, len(frags)**2), containing the charge-transfer
+        numbers of every state.
+    """
+    shells = wf.shells
+    frag_ao_map = shells.fragment_ao_map(frags)
+    nfrags = len(frags)
+
+    occ_a, occ_b = wf.occ
+    Ca, Cb = wf.C
+
+    ctn = partial(ct_numbers, nfrags=nfrags, frag_ao_map=frag_ao_map)
+    om_a = ctn(Ca, occ_a, Ta)
+    if Tb is None:
+        om_b = om_a
+    else:
+        om_b = ctn(Cb, occ_b, Tb)
+    omegas = om_a + om_b
+    return omegas
 
 
 def mo_inds_from_tden(
@@ -235,8 +313,8 @@ def rAB(
     # is only formulated for closed-shell cases. Here, we exclude this factor and expect
     # that closed-shell/open-shell transition density matrices are normalized differently,
     # e.g. as done in 'norm_ci_coeffs'
-    tA = alphaA ** 2 - betaA ** 2
-    tB = alphaB ** 2 - betaB ** 2
+    tA = alphaA**2 - betaA**2
+    tB = alphaB**2 - betaB**2
 
     rXAB = r_diff(XPA, XB, tB)  # r_X^A->B
     rYAB = r_diff(YPA, YB, tB)  # r_Y^A->B
