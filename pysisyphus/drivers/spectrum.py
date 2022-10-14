@@ -17,9 +17,9 @@ C_CM = C * 100  # Speed of light in cm/s
 M_E_G = M_E * 1000  # Electron mass in gram
 NM2CM = 1e7  # Nanometer to centimeter
 PREFACTOR = (  # Prefactor in eq. (5) of [1]
-    np.sqrt(np.pi) * NA * Q_E_ESU ** 2 / (1e3 * np.log(10) * C_CM ** 2 * M_E_G)
+    np.sqrt(np.pi) * NA * Q_E_ESU**2 / (1e3 * np.log(10) * C_CM**2 * M_E_G)
 ) / NM2CM
-_04EV = 0.4 / AU2EV
+_04EV = 0.4 / AU2EV  # in Hartree
 # Factor used in converting energy in Hartree to wavelength
 _AU2NM = PLANCK * C * 1e9 / AU2J
 
@@ -59,6 +59,12 @@ def au2nm(au):
     return _AU2NM / au
 
 
+def get_grid(resolution, exc_ens, padding, min_, max_):
+    from_ = min(min_, int(exc_ens.min() - padding))
+    to_ = max(max_, int(exc_ens.max() + padding))
+    return np.arange(from_, to_ + resolution, step=resolution)
+
+
 def homogeneous_broadening(
     exc_ens: NDArray[float],
     osc_strengths: NDArray[float],
@@ -73,16 +79,12 @@ def homogeneous_broadening(
     extinction coefficients in l mol cm⁻¹."""
     exc_ens_nm = au2nm(exc_ens)
     if from_to is None:
-        from_ = min(300, int(exc_ens_nm.min() - 100))
-        to_ = max(900, int(exc_ens_nm.max() + 100))
-    else:
-        from_, to_ = from_to
-
-    nm = np.arange(from_, to_ + resolution, step=resolution)
+        from_to = np.array((exc_ens_nm[0], exc_ens_nm[-1]))
+    nm = get_grid(resolution, from_to, padding=100, min_=300, max_=900)
     stddev_nm = au2nm(stddev)
 
     quot = stddev_nm * (1 / nm[None, :] - (1 / exc_ens_nm[:, None]))
-    exp_ = np.exp(-(quot ** 2))
+    exp_ = np.exp(-(quot**2))
     epsilon = PREFACTOR * osc_strengths[:, None] * stddev_nm * exp_
     epsilon = epsilon.sum(axis=0)
     return nm, epsilon
@@ -99,6 +101,48 @@ def spectrum_from_ens_fosc(exc_ens, fosc, **kwargs):
         epsilon=epsilon,
     )
     return spectrum
+
+
+def homogeneous_broadening_eV(
+    exc_ens: NDArray[float],
+    osc_strengths: NDArray[float],
+    resolution: float = 0.05,
+    stddev: float = 0.4,
+    from_to=None,
+) -> NDArray[float]:
+    """
+    Homogeneous broadening of stick spectra as outlined in eq. (5) and (6)
+    of https://doi.org/10.1063/1.4948471.
+
+    Parameters
+    ----------
+    exc_ens
+        Excitation energies in Hartree.
+    osc_strengths
+        Unitless oscillator strengths.
+    resolution
+        Resolution of broadened spectra in eV.
+    stddev
+        Standard deviation, sigma in eq. (6).
+    from_to
+        Limits for abscissa of spectrum in eV.
+
+    Returns
+    -------
+    eV
+        Spectral grid in eV.
+    epsilon
+        Molar extinction coefficient.
+    """
+    exc_ens_eV = exc_ens * AU2EV
+    if from_to is None:
+        from_to = np.array((exc_ens_eV[0], exc_ens_eV[-1]))
+    eV = get_grid(resolution, from_to, padding=2, min_=0, max_=5)
+    epsilon = (osc_strengths / (3.7922e33 * 4 * 2.926e-39 * np.sqrt(np.pi) * stddev))[
+        None, :
+    ] * np.exp(-(((eV[None, :] - exc_ens_eV) / stddev) ** 2))
+    epsilon = epsilon.sum(axis=0)
+    return eV, epsilon
 
 
 def plot_spectrum(nm, epsilon, exc_ens_nm=None, fosc=None, show=False):
