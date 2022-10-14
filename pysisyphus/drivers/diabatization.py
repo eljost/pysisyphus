@@ -101,6 +101,7 @@ def plot_dia_res(dia_res, show=False):
     for i, cpls in enumerate(couplings.T):
         from_to = "".join([str(_) for _ in keys[i]])
         ax1.plot(cpls, "o-", label=f"$|D_{{{from_to}}}|$")
+    ax1.axhline(0.0, ls="--", c="k")
     ax1.legend()
 
     fig.tight_layout()

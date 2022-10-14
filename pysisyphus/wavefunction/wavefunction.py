@@ -236,9 +236,9 @@ class Wavefunction:
         if self.unrestricted:
             raise Exception("Fix density matrix construction!")
         P = np.diag(occupations)
-        dP_oo = -np.einsum("ia,ja->ij", trans_dens, trans_dens)
+        dP_oo = np.einsum("ia,ja->ij", trans_dens, trans_dens)
         dP_vv = np.einsum("ia,ic->ac", trans_dens, trans_dens)
-        P[:occ, :occ] += 2 * dP_oo
+        P[:occ, :occ] -= 2 * dP_oo
         P[occ:, occ:] += 2 * dP_vv
         C, _ = self.C
         # The density matric is currently still in the MO basis. Transform

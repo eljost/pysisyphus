@@ -126,10 +126,14 @@ def get_transition_multipole_moment(
     def get_trans_moment(
         C: NDArray[float], occ: int, T: NDArray[float]
     ) -> NDArray[float]:
-        # Transform AO integrals to MO basis
+        # Transform AO integrals to MO basis.
+        # Excited state to excited state transition densities will span all
+        # molecular orbitals.
         if full:
             C_occ = C
             C_virt = C
+        # Ground state to excited state transition density matrices will be
+        # of shape (occ, virt).
         else:
             C_occ = C[:, :occ]
             C_virt = C[:, occ:]
