@@ -76,7 +76,7 @@ def eval_pgtos(xyz, center, exponents, cart_powers):
 
     xa, ya, za = (xyz - center).T
     # Indepdendent of Cartesian powers, but dependent on contraction degree
-    exp_term = np.exp(-exponents[:, None] * (xa ** 2 + ya ** 2 + za ** 2))
+    exp_term = np.exp(-exponents[:, None] * (xa**2 + ya**2 + za**2))
     # Indepdendent of contraction degree, but dependent on Cartesian powers
     xpow, ypow, zpow = cart_powers.T
     prefac = xa ** xpow[:, None] * ya ** ypow[:, None] * za ** zpow[:, None]
@@ -341,6 +341,9 @@ class Shells:
             center = mol.bas_coord(bas_id)
             coeffs = mol.bas_ctr_coeff(bas_id).flatten()
             exps = mol.bas_exp(bas_id)
+            assert (
+                coeffs.size == exps.size
+            ), "General contractions are not yet supported."
             center_ind = mol.bas_atom(bas_id)
             atom_symbol = mol.atom_symbol(center_ind)
             atomic_num = ATOMIC_NUMBERS[atom_symbol.lower()]
@@ -511,15 +514,16 @@ class Shells:
                     continue
                 shell_shape = (a_size, b_size)
                 shape = (components, *shell_shape)
-                qp = func(La, Lb, aa[:, None], A, bb[None, :], B, **kwargs)
-                qp = qp.reshape(*shape, len(aa), len(bb))
-                qp *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
-                qp = qp.sum(axis=(3, 4)).reshape(shape)
+                ints_ = func(La, Lb, aa[:, None], A, bb[None, :], B, **kwargs)
+                ints_ = ints_.reshape(*shape, len(aa), len(bb))  # 5d
+                # import pdb; pdb.set_trace()  # fmt: skip
+                ints_ *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
+                ints_ = ints_.sum(axis=(3, 4))
                 b_slice = slice(b_ind, b_ind + b_size)
-                integrals[:, a_slice, b_slice] = qp
+                integrals[:, a_slice, b_slice] = ints_
                 # Fill up the lower tringular part of the matrix
                 if symmetric:
-                    integrals[:, b_slice, a_slice] = np.transpose(qp, axes=(0, 2, 1))
+                    integrals[:, b_slice, a_slice] = np.transpose(ints_, axes=(0, 2, 1))
                 b_ind += b_size
             a_ind += a_size
 
@@ -591,7 +595,7 @@ class Shells:
         """
         return R < (
             sqrt(a + b)
-            * sqrt(log(10 ** k * pi ** (3 / 2) / (a + b) ** (3 / 2)))
+            * sqrt(log(10**k * pi ** (3 / 2) / (a + b) ** (3 / 2)))
             / (sqrt(a) * sqrt(b))
         )
 

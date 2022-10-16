@@ -11,6 +11,17 @@
 #     LIBRETA: Computerized Optimization and Code Synthesis for
 #     Electron Repulsion Integral Evaluation
 #     Jun Zhang
+# [4] https://doi.org/10.1039/B413539C
+#     Efficient evaluation of three-center two-electron integrals over Gaussian functions
+#     Ahlrichs, 2004
+# [5] EVALUATING MANY-ELECTRON MOLECULAR INTEGRALS FOR QUANTUM CHEMISTRY
+#     James Christopher Womack, PhD Thesis
+# [6] https://doi.org/10.1063/1.4983393
+#     Efficient evaluation of three-center Coulomb integrals
+#     Samu, Kállay, 2017
+# [7] https://arxiv.org/pdf/2210.03192.pdf
+#     Memory-Efficient Recursive Evaluation of 3-Center Gaussian Integrals
+#     Asadchev, Valeev, 2022
 
 import argparse
 import functools
@@ -41,7 +52,7 @@ from sympy.printing.numpy import NumPyPrinter
 from sympy.printing.c import C99CodePrinter
 
 try:
-    from pysisyphus.config import L_MAX
+    from pysisyphus.config import L_MAX, L_AUX_MAX
 except ModuleNotFoundError:
     L_MAX = 4
 
@@ -198,10 +209,10 @@ class CartGTO3d(Function):
     @classmethod
     @functools.cache
     def eval(cls, i, j, k, a, Xa, Ya, Za):
-        Xa2 = Xa ** 2
-        Ya2 = Ya ** 2
-        Za2 = Za ** 2
-        return (Xa ** i) * (Ya ** j) * (Za ** k) * exp(-a * (Xa2 + Ya2 + Za2))
+        Xa2 = Xa**2
+        Ya2 = Ya**2
+        Za2 = Za**2
+        return (Xa**i) * (Ya**j) * (Za**k) * exp(-a * (Xa2 + Ya2 + Za2))
 
 
 class CartGTOShell(Function):
@@ -241,7 +252,7 @@ class Multipole1d(Function):
         if i.is_zero and j.is_zero and e.is_zero:
             X = A - B
             mu = a * b / p
-            return sqrt(pi / p) * exp(-mu * X ** 2)
+            return sqrt(pi / p) * exp(-mu * X**2)
         # Decrement i
         elif i.is_positive:
             X = P - A
@@ -328,7 +339,7 @@ class Kinetic1d(Function):
         # Base case
         if i == 0 and j == 0:
             X = P - A
-            return (a - 2 * a ** 2 * (X ** 2 + 1 / (2 * p))) * Overlap1d(
+            return (a - 2 * a**2 * (X**2 + 1 / (2 * p))) * Overlap1d(
                 i, j, a, b, A, B
             )
         # Decrement i
@@ -450,6 +461,193 @@ class CoulombShell(Function):
             for La, Lb in shell_iter((La_tot, Lb_tot))
         ]
         # print(Coulomb.eval.cache_info())
+        return exprs
+
+
+class ThreeCenterTwoElectronBase(Function):
+    """
+    https://pubs.rsc.org/en/content/articlelanding/2004/CP/b413539c
+
+    There is an error in the base case (00|0). One must divide by
+    sqrt(eta + gamma), not multiply.
+    """
+
+    @classmethod
+    @functools.cache
+    def eval(cls, ia, ja, ka, ib, jb, kb, ic, jc, kc, N, a, b, c, A, B, C):
+        ang_moms = np.array((ia, ja, ka, ib, jb, kb, ic, jc, kc), dtype=int)
+        ang_moms2d = ang_moms.reshape(-1, 3)
+        if any([am < 0 for am in ang_moms]):
+            return 0
+
+        p = a + b
+        P = (a * A + b * B) / p
+        mu = (a * b) / p
+        X_PC = P - C
+
+        rho = p * c / (p + c)
+
+        def recur(N, *inds):
+            """Simple wrapper to pass all required arguments.
+
+            Here we don't use ThreeCenterTwoElectronBase, but the derived classes,
+            that provide the 'aux_vrr' attribute, to distinguish between the different
+            vertical recursion relations."""
+            return cls(*inds, N, a, b, c, A, B, C)
+
+        def recur_hrr(cart_ind):
+            """Horizontal recursion relation to transfer angular momentum in bra.
+
+            (a, b+1_i|c) = (a + 1_i,b|c) + X_AB (ab|c)
+            """
+            assert N == 0
+            incr_ang_moms = ang_moms2d.copy()
+            incr_ang_moms[0, cart_ind] += 1  # Increase in left orbital
+            incr_ang_moms[1, cart_ind] -= 1  # Decrease in right orbital
+
+            decr_ang_moms = ang_moms2d.copy()
+            decr_ang_moms[1, cart_ind] -= 1  # Decrease in right orbital
+
+            incr_ang_moms = incr_ang_moms.flatten()
+            decr_ang_moms = decr_ang_moms.flatten()
+
+            AB_dir = (A - B)[cart_ind]
+
+            return recur(N, *incr_ang_moms) + AB_dir * recur(N, *decr_ang_moms)
+
+        def recur_vrr(cart_ind):
+            assert (ib, jb, kb) == (0, 0, 0)
+            assert (ic, jc, kc) == (0, 0, 0)
+
+            decr_a = ang_moms2d.copy()
+            decr_a[0, cart_ind] -= 1  # Decrease in bra left orbital
+            decr_aa = decr_a.copy()
+            decr_aa[0, cart_ind] -= 1  # Decrease in bra left orbital again
+
+            PA_dir = (P - A)[cart_ind]
+            PC_dir = (P - C)[cart_ind]
+            ai = (ia, ja, ka)[cart_ind] - 1
+            _2p = 2 * p
+
+            decr_a = decr_a.flatten()
+            decr_aa = decr_aa.flatten()
+
+            return (
+                PA_dir * recur(N, *decr_a)
+                - rho / p * PC_dir * recur(N + 1, *decr_a)
+                + ai / _2p * (recur(N, *decr_aa) - rho / p * recur(N + 1, *decr_aa))
+            )
+
+        def recur_vrr_aux(cart_ind):
+            decr_c = ang_moms2d.copy()
+            decr_c[2, cart_ind] -= 1
+
+            decr_cc = decr_c.copy()
+            decr_cc[2, cart_ind] -= 1
+
+            decr_ac = decr_c.copy()
+            decr_ac[0, cart_ind] -= 1
+
+            decr_bc = decr_c.copy()
+            decr_bc[1, cart_ind] -= 1
+
+            PC_dir = (P - C)[cart_ind]
+            la = (ia, ja, ka)[cart_ind]
+            lb = (ib, jb, kb)[cart_ind]
+            lc = (ic, jc, kc)[cart_ind] - 1
+
+            decr_c = decr_c.flatten()
+            decr_cc = decr_cc.flatten()
+            decr_ac = decr_ac.flatten()
+            decr_bc = decr_bc.flatten()
+
+            return (
+                p / (p + c) * PC_dir * recur(N + 1, *decr_c)
+                + lc
+                / (2 * c)
+                * (recur(N, *decr_cc) - p / (p + c) * recur(N + 1, *decr_cc))
+                + la / (2 * (p + c)) * recur(N + 1, *decr_ac)
+                + lb / (2 * (p + c)) * recur(N + 1, *decr_bc)
+            )
+
+        def recur_vrr_aux_sph(cart_ind):
+            assert (ib, jb, kb) == (0, 0, 0)
+            decr_c = ang_moms2d.copy()
+            decr_c[2, cart_ind] -= 1
+            decr_ac = decr_c.copy()
+            decr_ac[0, cart_ind] -= 1
+            La = (ia, ja, ka)[cart_ind]
+            PC_dir = (P - C)[cart_ind]
+            return (
+                rho
+                / c
+                * (
+                    PC_dir * recur(N + 1, *decr_c.flatten())
+                    + La / (2 * p) * recur(N + 1, *decr_ac.flatten())
+                )
+            )
+
+        recur_vrr_aux_funcs = {
+            "cart": recur_vrr_aux,
+            "sph": recur_vrr_aux_sph,
+        }
+        recur_vrr_aux_func = recur_vrr_aux_funcs[cls.aux_vrr]
+
+        # Base case
+        if (ang_moms == 0).all():
+            X_AB = A - B
+            r2_PC = X_PC.dot(X_PC)
+            r2_AB = X_AB.dot(X_AB)
+            chi = rho * r2_PC
+            K = exp(-mu * r2_AB)
+            return 2 * pi**2.5 / sqrt(p + c) / (p * c) * K * boys(N, chi)
+        elif ib > 0:
+            return recur_hrr(0)
+        elif jb > 0:
+            return recur_hrr(1)
+        elif kb > 0:
+            return recur_hrr(2)
+        elif ic > 0:
+            return recur_vrr_aux_func(0)
+        elif jc > 0:
+            return recur_vrr_aux_func(1)
+        elif kc > 0:
+            return recur_vrr_aux_func(2)
+        elif ia > 0:
+            return recur_vrr(0)
+        elif ja > 0:
+            return recur_vrr(1)
+        elif ka > 0:
+            return recur_vrr(2)
+
+
+class ThreeCenterTwoElectron(ThreeCenterTwoElectronBase):
+    aux_vrr = "cart"
+
+
+class ThreeCenterTwoElectronSph(ThreeCenterTwoElectronBase):
+    aux_vrr = "sph"
+
+
+class ThreeCenterTwoElectronShell(Function):
+    @classmethod
+    def eval(cls, La_tot, Lb_tot, Lc_tot, a, b, c, A, B, C):
+        exprs = [
+            ThreeCenterTwoElectron(*La, *Lb, *Lc, 0, a, b, c, A, B, C)
+            for La, Lb, Lc in shell_iter((La_tot, Lb_tot, Lc_tot))
+        ]
+        # print(ThreeCenterTwoElectron.eval.cache_info())
+        return exprs
+
+
+class ThreeCenterTwoElectronSphShell(Function):
+    @classmethod
+    def eval(cls, La_tot, Lb_tot, Lc_tot, a, b, c, A, B, C):
+        exprs = [
+            ThreeCenterTwoElectronSph(*La, *Lb, *Lc, 0, a, b, c, A, B, C)
+            for La, Lb, Lc in shell_iter((La_tot, Lb_tot, Lc_tot))
+        ]
+        # print(ThreeCenterTwoElectron.eval.cache_info())
         return exprs
 
 
@@ -862,15 +1060,36 @@ def write_file(out_dir, name, rendered):
     print(f"Wrote '{out_name}'.")
 
 
-def write_render(ints_Ls, args, name, doc_func, out_dir, comment="", c=True):
+def write_render(
+    ints_Ls,
+    args,
+    name,
+    doc_func,
+    out_dir,
+    comment="",
+    py_kwargs=None,
+    c=True,
+    c_kwargs=None,
+):
+    if py_kwargs is None:
+        py_kwargs = {}
+    if c_kwargs is None:
+        c_kwargs = {}
     ints_Ls = list(ints_Ls)
     # Python
-    py_rendered = render_py_funcs(ints_Ls, args, name, doc_func, comment=comment)
+    py_rendered = render_py_funcs(
+        ints_Ls, args, name, doc_func, comment=comment, **py_kwargs
+    )
     write_file(out_dir, f"{name}.py", py_rendered)
     # C
     if c:
         c_rendered, h_rendered = render_c_funcs(
-            ints_Ls, args, name, doc_func, comment=comment
+            ints_Ls,
+            args,
+            name,
+            doc_func,
+            comment=comment,
+            **c_kwargs,
         )
         write_file(out_dir, f"{name}.c", c_rendered)
         write_file(out_dir, f"{name}.h", h_rendered)
@@ -884,6 +1103,12 @@ def parse_args(args):
         default=L_MAX,
         type=int,
         help="Generate 1e-integrals up to this maximum angular momentum.",
+    )
+    parser.add_argument(
+        "--lauxmax",
+        default=L_AUX_MAX,
+        type=int,
+        help="Maximum angular moment for integrals using auxiliary functions.",
     )
     parser.add_argument(
         "--write",
@@ -903,6 +1128,7 @@ def run():
     args = parse_args(sys.argv[1:])
 
     l_max = args.lmax
+    l_aux_max = args.lauxmax
     out_dir = Path(args.out_dir if not args.write else ".")
     try:
         os.mkdir(out_dir)
@@ -927,6 +1153,8 @@ def run():
     B, B_map = get_map("B", center_B)
     C, C_map = get_map("C", center_C)
     D, D_map = get_map("D", center_D)
+
+    boys_import = ("from pysisyphus.wavefunction.ints.boys import boys",)
 
     #################
     # Cartesian GTO #
@@ -1136,8 +1364,6 @@ def run():
         shell_b = L_MAP[Lb_tot]
         return f"Cartesian ({shell_a}{shell_b}) 1-electron Coulomb integral."
 
-    boys_import = ("from pysisyphus.wavefunction.ints.boys import boys",)
-
     coulomb_ints_Ls = gen_integral_exprs(
         lambda La_tot, Lb_tot: CoulombShell(
             La_tot, Lb_tot, a, b, center_A, center_B, center_C
@@ -1155,6 +1381,39 @@ def run():
     )
     # TODO: handle add_args and Boys function in C
     write_file(out_dir, "coulomb3d.py", coulomb_rendered)
+    print()
+
+    #################################################
+    # Three-center two-electron repulsion integrals #
+    #################################################
+
+    def _3center2el_doc_func(L_tots):
+        La_tot, Lb_tot, Lc_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        shell_c = L_MAP[Lc_tot]
+        return (
+            f"Cartesian ({shell_a}{shell_b}|{shell_c}) "
+            "three-center two-electron repulsion integral."
+        )
+
+    _3center2el_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot, Lc_tot: ThreeCenterTwoElectronShell(
+            La_tot, Lb_tot, Lc_tot, a, b, c, center_A, center_B, center_C
+        ),
+        (l_max, l_max, l_aux_max),
+        "_3center2el3d",
+        (A_map, B_map, C_map),
+    )
+    write_render(
+        _3center2el_ints_Ls,
+        (a, A, b, B, c, C),
+        "_3center2el3d",
+        _3center2el_doc_func,
+        out_dir,
+        c=False,
+        py_kwargs={"add_imports": boys_import},
+    )
     print()
 
     ####################################
@@ -1232,6 +1491,72 @@ def run():
     # )
     # write_file(out_dir, "eri.py", eri_rendered)
     # print()
+
+
+def run():
+    args = parse_args(sys.argv[1:])
+
+    l_max = args.lmax
+    l_aux_max = args.lauxmax
+    out_dir = Path(args.out_dir if not args.write else ".")
+    try:
+        os.mkdir(out_dir)
+    except FileExistsError:
+        pass
+
+    # Cartesian basis function centers A and B.
+    center_A = get_center("A")
+    center_B = get_center("B")
+    center_C = get_center("C")
+    center_D = get_center("D")
+    center_R = get_center("R")
+    Xa, Ya, Za = symbols("Xa Ya Za")
+
+    # Orbital exponents a, b, c, d.
+    a, b, c, d = symbols("a b c d", real=True)
+
+    # These maps will be used to convert {Ax, Ay, ...} to array quantities
+    # in the generated code. This way an iterable/np.ndarray can be used as
+    # function argument instead of (Ax, Ay, Az, Bx, By, Bz).
+    A, A_map = get_map("A", center_A)
+    B, B_map = get_map("B", center_B)
+    C, C_map = get_map("C", center_C)
+    D, D_map = get_map("D", center_D)
+
+    boys_import = ("from pysisyphus.wavefunction.ints.boys import boys",)
+
+    #################################################
+    # Three-center two-electron repulsion integrals #
+    #################################################
+
+    def _3center2el_doc_func(L_tots):
+        La_tot, Lb_tot, Lc_tot = L_tots
+        shell_a = L_MAP[La_tot]
+        shell_b = L_MAP[Lb_tot]
+        shell_c = L_MAP[Lc_tot]
+        return (
+            f"Cartesian ({shell_a}{shell_b}|{shell_c}) "
+            "three-center two-electron repulsion integral."
+        )
+
+    _3center2el_ints_Ls = gen_integral_exprs(
+        lambda La_tot, Lb_tot, Lc_tot: ThreeCenterTwoElectronShell(
+            La_tot, Lb_tot, Lc_tot, a, b, c, center_A, center_B, center_C
+        ),
+        (l_max, l_max, l_aux_max),
+        "_3center2el3d",
+        (A_map, B_map, C_map),
+    )
+    write_render(
+        _3center2el_ints_Ls,
+        (a, A, b, B, c, C),
+        "_3center2el3d",
+        _3center2el_doc_func,
+        out_dir,
+        c=False,
+        py_kwargs={"add_imports": boys_import},
+    )
+    print()
 
 
 if __name__ == "__main__":
