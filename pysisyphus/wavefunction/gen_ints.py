@@ -39,6 +39,7 @@ import numpy as np
 from sympy import (
     cse,
     exp,
+    Expr,
     Function,
     IndexedBase,
     Matrix,
@@ -223,54 +224,94 @@ class CartGTOShell(Function):
         return exprs
 
 
-class Multipole1d(Function):
+class TwoCenter1d(Expr):
+    def __new__(self, a, A, b, B, C=None):
+        self.a = a
+        self.A = A
+        self.b = b
+        self.B = B
+        self.C = C
+        return super().__new__(self, a, A, b, B, C)
+
+    @property
+    def p(self):
+        """Total exponent p."""
+        return self.a + self.b
+
+    @property
+    def mu(self):
+        """Reduced exponent mu."""
+        return self.a * self.b / self.p
+
+    @property
+    def AB(self):
+        """Relative coordinate/Gaussian separation X_AB."""
+        return self.A - self.B
+
+    @property
+    def P(self):
+        """Center-of-charge coordinate."""
+        return (self.a * self.A + self.b * self.B) / self.p
+
+    @property
+    def PA(self):
+        """Relative coordinate/Gaussian separation X_PA."""
+        return self.P - self.A
+
+    @property
+    def PB(self):
+        """Relative coordinate/Gaussian separation X_PB."""
+        return self.P - self.B
+
+    @property
+    def PC(self):
+        """Relative coordinate/Gaussian separation X_PC."""
+        return self.P - self.C
+
+    @property
+    def K(self):
+        return exp(-self.mu * self.AB**2)
+
+
+class Multipole1d(TwoCenter1d):
     """1d multipole-moment integral of order 'e', between primitive 1d Gaussians
     Ga = G_i(a, r, A) and Gb = G_j(b, r, B) with Cartesian quantum number i and j,
     exponents a and b, centered at A (B). The origin of the multipole expansion is
     at C.
     """
 
-    @classmethod
     @functools.cache
-    def eval(cls, i, j, a, b, A, B, e, C):
-        if i.is_negative or j.is_negative or e.is_negative:
+    def eval(self, i, j, e):
+        ang_moms = (i, j, e)
+        if any([_ < 0 for _ in ang_moms]):
             return 0
 
-        p = a + b
-        P = (a * A + b * B) / p
+        recur = self.eval
 
-        def recur(i, j, e):
-            """Simple wrapper to pass all required arguments."""
-            return Multipole1d(i, j, a, b, A, B, e, C)
-
-        def recur_rel(i, j, e, X):
-            return X * recur(i, j, e) + 1 / (2 * p) * (
+        def vrr(i, j, e, X):
+            return X * recur(i, j, e) + 1 / (2 * self.p) * (
                 i * recur(i - 1, j, e) + j * recur(i, j - 1, e) + e * recur(i, j, e - 1)
             )
 
         # Base case
-        if i.is_zero and j.is_zero and e.is_zero:
-            X = A - B
-            mu = a * b / p
-            return sqrt(pi / p) * exp(-mu * X**2)
+        if all([_ == 0 for _ in ang_moms]):
+            return sqrt(pi / self.p) * self.K
         # Decrement i
         elif i.is_positive:
-            X = P - A
-            return recur_rel(i - 1, j, e, X)
+            return vrr(i - 1, j, e, self.PA)
         # Decrement j
         elif j.is_positive:
-            X = P - B
-            return recur_rel(i, j - 1, e, X)
+            return vrr(i, j - 1, e, self.PB)
         elif e.is_positive:
-            X = P - C
-            return recur_rel(i, j, e - 1, X)
+            return vrr(i, j, e - 1, self.PC)
 
 
 class Multipole3d(Function):
     @classmethod
     def eval(cls, La, Lb, a, b, A, B, Le, C):
         x, y, z = [
-            Multipole1d(La[i], Lb[i], a, b, A[i], B[i], Le[i], C[i]) for i in range(3)
+            Multipole1d(a, A[i], b, B[i], C[i]).eval(La[i], Lb[i], Le[i])
+            for i in range(3)
         ]
         return x * y * z
 
@@ -297,10 +338,9 @@ class DiagQuadrupole3dShell(Function):
         return exprs
 
 
-class Overlap1d(Function):
-    @classmethod
-    def eval(cls, i, j, a, b, A, B):
-        return Multipole1d(i, j, a, b, A, B, 0, (0.0, 0.0, 0.0))
+class Overlap1d(TwoCenter1d):
+    def eval(self, i, j):
+        return Multipole1d(self.a, self.A, self.b, self.B).eval(i, j, 0)
 
 
 class Overlap3dShell(Function):
@@ -314,55 +354,45 @@ class Overlap3dShell(Function):
         return exprs
 
 
-class Kinetic1d(Function):
-    @classmethod
+class Kinetic1d(TwoCenter1d):
+
     @functools.cache
-    def eval(cls, i, j, a, b, A, B):
+    def eval(self, i, j):
         if i < 0 or j < 0:
             return 0
 
-        p = a + b
-        P = (a * A + b * B) / p
-
-        def recur(i, j):
-            """Simple wrapper to pass all required arguments."""
-            return Kinetic1d(i, j, a, b, A, B)
+        recur = self.eval
 
         def recur_rel(i, j, X):
-            return X * recur(i, j) + 1 / (2 * p) * (
+            return X * recur(i, j) + 1 / (2 * self.p) * (
                 i * recur(i - 1, j) + j * recur(i, j - 1)
             )
 
         def recur_ovlp(i, j):
-            return Overlap1d(i, j, a, b, A, B)
+            return Overlap1d(self.a, self.A, self.b, self.B).eval(i, j)
 
         # Base case
         if i == 0 and j == 0:
-            X = P - A
-            return (a - 2 * a**2 * (X**2 + 1 / (2 * p))) * Overlap1d(
-                i, j, a, b, A, B
-            )
+            return (self.a - 2 * self.a**2 * (self.PA**2 + 1 / (2 * self.p))) * recur_ovlp(i, j)
         # Decrement i
         elif i > 0:
-            X = P - A
             # Eq. (9.3.41)
-            return recur_rel(i - 1, j, X) + b / p * (
-                2 * a * recur_ovlp(i, j) - i * recur_ovlp(i - 2, j)
+            return recur_rel(i - 1, j, self.PA) + self.b / self.p * (
+                2 * self.a * recur_ovlp(i, j) - i * recur_ovlp(i - 2, j)
             )
         # Decrement j
         elif j > 0:
-            X = P - B
             # Eq. (9.3.41)
-            return recur_rel(i, j - 1, X) + a / p * (
-                2 * b * recur_ovlp(i, j) - j * recur_ovlp(i, j - 2)
+            return recur_rel(i, j - 1, self.PB) + self.a / self.p * (
+                2 * self.b * recur_ovlp(i, j) - j * recur_ovlp(i, j - 2)
             )
 
 
 class Kinetic3d(Function):
     @classmethod
     def eval(cls, La, Lb, a, b, A, B):
-        Tx, Ty, Tz = [Kinetic1d(La[i], Lb[i], a, b, A[i], B[i]) for i in range(3)]
-        Sx, Sy, Sz = [Overlap1d(La[i], Lb[i], a, b, A[i], B[i]) for i in range(3)]
+        Tx, Ty, Tz = [Kinetic1d(a, A[i], b, B[i]).eval(La[i], Lb[i]) for i in range(3)]
+        Sx, Sy, Sz = [Overlap1d(a, A[i], b, B[i]).eval(La[i], Lb[i]) for i in range(3)]
         return Tx * Sy * Sz + Sx * Ty * Sz + Sx * Sy * Tz
 
 
@@ -380,25 +410,18 @@ class Kinetic3dShell(Function):
 boys = Function("boys")
 
 
-class Coulomb(Function):
+class Coulomb(TwoCenter1d):
     """Nucleus at C."""
 
-    @classmethod
     @functools.cache
-    def eval(cls, i, k, m, j, l, n, N, a, b, A, B, C):
+    def eval(self, i, k, m, j, l, n, N):
         ang_moms = (i, k, m, j, l, n)
         if any([am < 0 for am in ang_moms]):
             return 0
 
-        p = a + b
-        P = (a * A + b * B) / p
-        mu = (a * b) / p
-        X_AB = A - B
-        X_PC = P - C
-
         def recur(N, *inds):
             """Simple wrapper to pass all required arguments."""
-            return Coulomb(*inds, N, a, b, A, B, C)
+            return self.eval(*inds, N)#, a, b, A, B, C)
 
         def decr(to_decr, decr_ind):
             one = np.zeros(3, dtype=int)
@@ -411,10 +434,10 @@ class Coulomb(Function):
             ket = np.array((j, l, n), dtype=int)
 
             if to_decr == "bra":
-                X = P - A
+                X = self.PA
                 bra[decr_ind] -= 1
             else:
-                X = P - B
+                X = self.PB
                 ket[decr_ind] -= 1
 
             bra_decr = bra - one
@@ -422,23 +445,21 @@ class Coulomb(Function):
 
             return (
                 X[decr_ind] * recur(N, *bra, *ket)
-                - X_PC[decr_ind] * recur(N + 1, *bra, *ket)
+                - self.PC[decr_ind] * recur(N + 1, *bra, *ket)
                 + 1
-                / (2 * p)
+                / (2 * self.p)
                 * Ni(bra)
                 * (recur(N, *bra_decr, *ket) - recur(N + 1, *bra_decr, *ket))
                 + 1
-                / (2 * p)
+                / (2 * self.p)
                 * Ni(ket)
                 * (recur(N, *bra, *ket_decr) - recur(N + 1, *bra, *ket_decr))
             )
 
         # Base case
         if all([am == 0 for am in ang_moms]):
-            r2_PC = X_PC.dot(X_PC)
-            r2_AB = X_AB.dot(X_AB)
-            K = exp(-mu * r2_AB)
-            return 2 * pi / p * K * boys(N, p * r2_PC)
+            K = exp(-self.mu * self.AB.dot(self.AB))
+            return 2 * pi / self.p * K * boys(N, self.p * self.PC.dot(self.PC))
         elif i > 0:
             return decr("bra", 0)
         elif j > 0:
@@ -457,7 +478,8 @@ class CoulombShell(Function):
     @classmethod
     def eval(cls, La_tot, Lb_tot, a, b, A, B, C=(0.0, 0.0, 0.0)):
         exprs = [
-            Coulomb(*La, *Lb, 0, a, b, A, B, C)
+            # Coulomb(*La, *Lb, 0, a, b, A, B, C)
+            Coulomb(a, A, b, B, C).eval(*La, *Lb, 0)
             for La, Lb in shell_iter((La_tot, Lb_tot))
         ]
         # print(Coulomb.eval.cache_info())
@@ -952,13 +974,15 @@ def gen_integral_exprs(
     for L_tots in it.product(*ranges):
         time_str = time.strftime("%H:%M:%S")
         start = time.time()
-        print(f"{time_str} - Generating {L_tots} {kind} ... ", end="")
+        print(f"{time_str} - Generating {L_tots} {kind}")
         sys.stdout.flush()
         # Generate actual expressions
         exprs = int_func(*L_tots)
+        print("\t... generated expressions")
 
         # Common subexpression elimination
         repls, reduced = cse(list(exprs))
+        print("\t... did common subexpression elimination")
 
         for i, red in enumerate(reduced):
             reduced[i] = functools.reduce(
@@ -972,7 +996,7 @@ def gen_integral_exprs(
             )
 
         dur = time.time() - start
-        print(f"finished in {dur: >8.2f} s!")
+        print(f"\t... finished in {dur: >8.2f} s!")
         sys.stdout.flush()
         yield (repls, reduced), L_tots
 
@@ -1140,7 +1164,7 @@ def run():
     center_B = get_center("B")
     center_C = get_center("C")
     center_D = get_center("D")
-    center_R = get_center("R")
+    # center_R = get_center("R")
     Xa, Ya, Za = symbols("Xa Ya Za")
 
     # Orbital exponents a, b, c, d.
@@ -1491,72 +1515,6 @@ def run():
     # )
     # write_file(out_dir, "eri.py", eri_rendered)
     # print()
-
-
-def run():
-    args = parse_args(sys.argv[1:])
-
-    l_max = args.lmax
-    l_aux_max = args.lauxmax
-    out_dir = Path(args.out_dir if not args.write else ".")
-    try:
-        os.mkdir(out_dir)
-    except FileExistsError:
-        pass
-
-    # Cartesian basis function centers A and B.
-    center_A = get_center("A")
-    center_B = get_center("B")
-    center_C = get_center("C")
-    center_D = get_center("D")
-    center_R = get_center("R")
-    Xa, Ya, Za = symbols("Xa Ya Za")
-
-    # Orbital exponents a, b, c, d.
-    a, b, c, d = symbols("a b c d", real=True)
-
-    # These maps will be used to convert {Ax, Ay, ...} to array quantities
-    # in the generated code. This way an iterable/np.ndarray can be used as
-    # function argument instead of (Ax, Ay, Az, Bx, By, Bz).
-    A, A_map = get_map("A", center_A)
-    B, B_map = get_map("B", center_B)
-    C, C_map = get_map("C", center_C)
-    D, D_map = get_map("D", center_D)
-
-    boys_import = ("from pysisyphus.wavefunction.ints.boys import boys",)
-
-    #################################################
-    # Three-center two-electron repulsion integrals #
-    #################################################
-
-    def _3center2el_doc_func(L_tots):
-        La_tot, Lb_tot, Lc_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        shell_c = L_MAP[Lc_tot]
-        return (
-            f"Cartesian ({shell_a}{shell_b}|{shell_c}) "
-            "three-center two-electron repulsion integral."
-        )
-
-    _3center2el_ints_Ls = gen_integral_exprs(
-        lambda La_tot, Lb_tot, Lc_tot: ThreeCenterTwoElectronShell(
-            La_tot, Lb_tot, Lc_tot, a, b, c, center_A, center_B, center_C
-        ),
-        (l_max, l_max, l_aux_max),
-        "_3center2el3d",
-        (A_map, B_map, C_map),
-    )
-    write_render(
-        _3center2el_ints_Ls,
-        (a, A, b, B, c, C),
-        "_3center2el3d",
-        _3center2el_doc_func,
-        out_dir,
-        c=False,
-        py_kwargs={"add_imports": boys_import},
-    )
-    print()
 
 
 if __name__ == "__main__":
