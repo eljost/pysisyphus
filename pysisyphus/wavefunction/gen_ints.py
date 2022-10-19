@@ -355,7 +355,6 @@ class Overlap3dShell(Function):
 
 
 class Kinetic1d(TwoCenter1d):
-
     @functools.cache
     def eval(self, i, j):
         if i < 0 or j < 0:
@@ -373,7 +372,9 @@ class Kinetic1d(TwoCenter1d):
 
         # Base case
         if i == 0 and j == 0:
-            return (self.a - 2 * self.a**2 * (self.PA**2 + 1 / (2 * self.p))) * recur_ovlp(i, j)
+            return (
+                self.a - 2 * self.a**2 * (self.PA**2 + 1 / (2 * self.p))
+            ) * recur_ovlp(i, j)
         # Decrement i
         elif i > 0:
             # Eq. (9.3.41)
@@ -421,7 +422,7 @@ class Coulomb(TwoCenter1d):
 
         def recur(N, *inds):
             """Simple wrapper to pass all required arguments."""
-            return self.eval(*inds, N)#, a, b, A, B, C)
+            return self.eval(*inds, N)  # , a, b, A, B, C)
 
         def decr(to_decr, decr_ind):
             one = np.zeros(3, dtype=int)
@@ -981,7 +982,7 @@ def gen_integral_exprs(
         print("\t... generated expressions")
 
         # Common subexpression elimination
-        repls, reduced = cse(list(exprs))
+        repls, reduced = cse(list(exprs), order="none")
         print("\t... did common subexpression elimination")
 
         for i, red in enumerate(reduced):
@@ -1184,271 +1185,279 @@ def run():
     # Cartesian GTO #
     #################
 
-    def cart_gto_doc_func(L_tot):
-        (La_tot,) = L_tot
-        shell_a = L_MAP[La_tot]
-        return (
-            f"3D Cartesian {shell_a}-Gaussian shell.\n\n"
-            "Exponent a, centered at A, evaluated at (Xa, Ya, Za) + A."
-        )
+    def cart_gto():
+        def cart_gto_doc_func(L_tot):
+            (La_tot,) = L_tot
+            shell_a = L_MAP[La_tot]
+            return (
+                f"3D Cartesian {shell_a}-Gaussian shell.\n\n"
+                "Exponent a, centered at A, evaluated at (Xa, Ya, Za) + A."
+            )
 
-    # This code can evaluate multiple points at a time
-    cart_gto_Ls = gen_integral_exprs(
-        lambda La_tot: CartGTOShell(La_tot, a, Xa, Ya, Za),
-        (l_max,),
-        "cart_gto",
-    )
-    cart_gto_rendered = render_py_funcs(
-        cart_gto_Ls, (a, Xa, Ya, Za), "cart_gto3d", cart_gto_doc_func
-    )
-    write_file(out_dir, "gto3d.py", cart_gto_rendered)
-    print()
+        # This code can evaluate multiple points at a time
+        cart_gto_Ls = gen_integral_exprs(
+            lambda La_tot: CartGTOShell(La_tot, a, Xa, Ya, Za),
+            (l_max,),
+            "cart_gto",
+        )
+        cart_gto_rendered = render_py_funcs(
+            cart_gto_Ls, (a, Xa, Ya, Za), "cart_gto3d", cart_gto_doc_func
+        )
+        write_file(out_dir, "gto3d.py", cart_gto_rendered)
+        print()
 
     #####################
     # Overlap integrals #
     #####################
 
-    def ovlp_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return f"Cartesian 3D ({shell_a}{shell_b}) overlap integral."
+    def overlap():
+        def ovlp_doc_func(L_tots):
+            La_tot, Lb_tot = L_tots
+            shell_a = L_MAP[La_tot]
+            shell_b = L_MAP[Lb_tot]
+            return f"Cartesian 3D ({shell_a}{shell_b}) overlap integral."
 
-    ovlp_ints_Ls = gen_integral_exprs(
-        lambda La_tot, Lb_tot: Overlap3dShell(La_tot, Lb_tot, a, b, center_A, center_B),
-        (l_max, l_max),
-        "overlap",
-        (A_map, B_map),
-    )
-    write_render(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func, out_dir, c=True)
-    print()
+        ovlp_ints_Ls = gen_integral_exprs(
+            lambda La_tot, Lb_tot: Overlap3dShell(La_tot, Lb_tot, a, b, center_A, center_B),
+            (l_max, l_max),
+            "overlap",
+            (A_map, B_map),
+        )
+        write_render(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func, out_dir, c=True)
+        print()
 
     ###########################
     # Dipole moment integrals #
     ###########################
 
-    def dipole_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return (
-            f"Cartesian 3D ({shell_a}{shell_b}) dipole moment integrals.\n"
-            "The origin is at C."
+    def dipole():
+        def dipole_doc_func(L_tots):
+            La_tot, Lb_tot = L_tots
+            shell_a = L_MAP[La_tot]
+            shell_b = L_MAP[Lb_tot]
+            return (
+                f"Cartesian 3D ({shell_a}{shell_b}) dipole moment integrals.\n"
+                "The origin is at C."
+            )
+
+        dipole_comment = """
+        Dipole integrals are given in the order:
+        for bf_a in basis_functions_a:
+            for bf_b in basis_functions_b:
+                for cart_dir in (x, y, z):
+                    dipole_integrals(bf_a, bf_b, cart_dir)
+
+        So for <s_a|μ|s_b> it will be:
+
+            <s_a|x|s_b>
+            <s_a|y|s_b>
+            <s_a|z|s_b>
+        """
+
+        dipole_ints_Ls = gen_integral_exprs(
+            lambda La_tot, Lb_tot: Multipole3dShell(
+                La_tot, Lb_tot, a, b, center_A, center_B, 1, center_C
+            ),
+            (l_max, l_max),
+            "dipole moment",
+            (A_map, B_map, C_map),
         )
-
-    dipole_comment = """
-    Dipole integrals are given in the order:
-    for bf_a in basis_functions_a:
-        for bf_b in basis_functions_b:
-            for cart_dir in (x, y, z):
-                dipole_integrals(bf_a, bf_b, cart_dir)
-
-    So for <s_a|μ|s_b> it will be:
-
-        <s_a|x|s_b>
-        <s_a|y|s_b>
-        <s_a|z|s_b>
-    """
-
-    dipole_ints_Ls = gen_integral_exprs(
-        lambda La_tot, Lb_tot: Multipole3dShell(
-            La_tot, Lb_tot, a, b, center_A, center_B, 1, center_C
-        ),
-        (l_max, l_max),
-        "dipole moment",
-        (A_map, B_map, C_map),
-    )
-    write_render(
-        dipole_ints_Ls,
-        (a, A, b, B, C),
-        "dipole3d",
-        dipole_doc_func,
-        out_dir,
-        comment=dipole_comment,
-        c=True,
-    )
-    print()
+        write_render(
+            dipole_ints_Ls,
+            (a, A, b, B, C),
+            "dipole3d",
+            dipole_doc_func,
+            out_dir,
+            comment=dipole_comment,
+            c=True,
+        )
+        print()
 
     ###########################################
     # Diagonal of quadrupole moment integrals #
     ###########################################
 
-    def diag_quadrupole_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return (
-            f"Cartesian 3D ({shell_a}{shell_b}) quadrupole moment integrals\n"
-            "for operators x², y² and z². The origin is at C."
+    def diag_quadrupole():
+        def diag_quadrupole_doc_func(L_tots):
+            La_tot, Lb_tot = L_tots
+            shell_a = L_MAP[La_tot]
+            shell_b = L_MAP[Lb_tot]
+            return (
+                f"Cartesian 3D ({shell_a}{shell_b}) quadrupole moment integrals\n"
+                "for operators x², y² and z². The origin is at C."
+            )
+
+        diag_quadrupole_comment = """
+        Diagonal of the quadrupole moment matrix with operators x², y², z².
+
+        for rr in (xx, yy, zz):
+            for bf_a in basis_functions_a:
+                for bf_b in basis_functions_b:
+                        quadrupole_integrals(bf_a, bf_b, rr)
+        """
+
+        diag_quadrupole_ints_Ls = gen_integral_exprs(
+            lambda La_tot, Lb_tot: DiagQuadrupole3dShell(
+                La_tot, Lb_tot, a, b, center_A, center_B, center_C
+            ),
+            (l_max, l_max),
+            "diag quadrupole moment",
+            (A_map, B_map, C_map),
         )
-
-    diag_quadrupole_comment = """
-    Diagonal of the quadrupole moment matrix with operators x², y², z².
-
-    for rr in (xx, yy, zz):
-        for bf_a in basis_functions_a:
-            for bf_b in basis_functions_b:
-                    quadrupole_integrals(bf_a, bf_b, rr)
-    """
-
-    diag_quadrupole_ints_Ls = gen_integral_exprs(
-        lambda La_tot, Lb_tot: DiagQuadrupole3dShell(
-            La_tot, Lb_tot, a, b, center_A, center_B, center_C
-        ),
-        (l_max, l_max),
-        "diag quadrupole moment",
-        (A_map, B_map, C_map),
-    )
-    write_render(
-        diag_quadrupole_ints_Ls,
-        (a, A, b, B, C),
-        "diag_quadrupole3d",
-        diag_quadrupole_doc_func,
-        out_dir,
-        comment=diag_quadrupole_comment,
-        c=True,
-    )
-    print()
+        write_render(
+            diag_quadrupole_ints_Ls,
+            (a, A, b, B, C),
+            "diag_quadrupole3d",
+            diag_quadrupole_doc_func,
+            out_dir,
+            comment=diag_quadrupole_comment,
+            c=True,
+        )
+        print()
 
     ###############################
     # Quadrupole moment integrals #
     ###############################
 
-    def quadrupole_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return (
-            f"Cartesian 3D ({shell_a}{shell_b}) quadrupole moment integrals.\n"
-            "The origin is at C."
+    def quadrupole():
+        def quadrupole_doc_func(L_tots):
+            La_tot, Lb_tot = L_tots
+            shell_a = L_MAP[La_tot]
+            shell_b = L_MAP[Lb_tot]
+            return (
+                f"Cartesian 3D ({shell_a}{shell_b}) quadrupole moment integrals.\n"
+                "The origin is at C."
+            )
+
+        quadrupole_comment = """
+        Quadrupole integrals contain the upper triangular part of the symmetric
+        3x3 quadrupole matrix.
+
+        / xx xy xz \\
+        |    yy yz |
+        \       zz /
+        """
+
+        quadrupole_ints_Ls = gen_integral_exprs(
+            lambda La_tot, Lb_tot: Multipole3dShell(
+                La_tot, Lb_tot, a, b, center_A, center_B, 2, center_C
+            ),
+            (l_max, l_max),
+            "quadrupole moment",
+            (A_map, B_map, C_map),
         )
 
-    quadrupole_comment = """
-    Quadrupole integrals contain the upper triangular part of the symmetric
-    3x3 quadrupole matrix.
-
-    / xx xy xz \\
-    |    yy yz |
-    \       zz /
-    """
-
-    quadrupole_ints_Ls = gen_integral_exprs(
-        lambda La_tot, Lb_tot: Multipole3dShell(
-            La_tot, Lb_tot, a, b, center_A, center_B, 2, center_C
-        ),
-        (l_max, l_max),
-        "quadrupole moment",
-        (A_map, B_map, C_map),
-    )
-
-    write_render(
-        quadrupole_ints_Ls,
-        (a, A, b, B, C),
-        "quadrupole3d",
-        quadrupole_doc_func,
-        out_dir,
-        comment=quadrupole_comment,
-        c=True,
-    )
-    print()
+        write_render(
+            quadrupole_ints_Ls,
+            (a, A, b, B, C),
+            "quadrupole3d",
+            quadrupole_doc_func,
+            out_dir,
+            comment=quadrupole_comment,
+            c=True,
+        )
+        print()
 
     ############################
     # Kinetic energy integrals #
     ############################
 
-    def kinetic_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return f"Cartesian 3D ({shell_a}{shell_b}) kinetic energy integral."
+    def kinetic():
+        def kinetic_doc_func(L_tots):
+            La_tot, Lb_tot = L_tots
+            shell_a = L_MAP[La_tot]
+            shell_b = L_MAP[Lb_tot]
+            return f"Cartesian 3D ({shell_a}{shell_b}) kinetic energy integral."
 
-    kinetic_ints_Ls = gen_integral_exprs(
-        lambda La_tot, Lb_tot: Kinetic3dShell(La_tot, Lb_tot, a, b, center_A, center_B),
-        (l_max, l_max),
-        "kinetic",
-        (A_map, B_map),
-    )
-    write_render(
-        kinetic_ints_Ls,
-        (a, A, b, B),
-        "kinetic3d",
-        kinetic_doc_func,
-        out_dir,
-        c=True,
-    )
-    print()
+        kinetic_ints_Ls = gen_integral_exprs(
+            lambda La_tot, Lb_tot: Kinetic3dShell(La_tot, Lb_tot, a, b, center_A, center_B),
+            (l_max, l_max),
+            "kinetic",
+            (A_map, B_map),
+        )
+        write_render(
+            kinetic_ints_Ls,
+            (a, A, b, B),
+            "kinetic3d",
+            kinetic_doc_func,
+            out_dir,
+            c=True,
+        )
+        print()
 
     #########################
     # 1el Coulomb Integrals #
     #########################
 
-    def coulomb_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return f"Cartesian ({shell_a}{shell_b}) 1-electron Coulomb integral."
+    def coulomb():
+        def coulomb_doc_func(L_tots):
+            La_tot, Lb_tot = L_tots
+            shell_a = L_MAP[La_tot]
+            shell_b = L_MAP[Lb_tot]
+            return f"Cartesian ({shell_a}{shell_b}) 1-electron Coulomb integral."
 
-    coulomb_ints_Ls = gen_integral_exprs(
-        lambda La_tot, Lb_tot: CoulombShell(
-            La_tot, Lb_tot, a, b, center_A, center_B, center_C
-        ),
-        (l_max, l_max),
-        "coulomb3d",
-        (A_map, B_map, C_map),
-    )
-    coulomb_rendered = render_py_funcs(
-        coulomb_ints_Ls,
-        (a, A, b, B, C),
-        "coulomb3d",
-        coulomb_doc_func,
-        add_imports=boys_import,
-    )
-    # TODO: handle add_args and Boys function in C
-    write_file(out_dir, "coulomb3d.py", coulomb_rendered)
-    print()
+        coulomb_ints_Ls = gen_integral_exprs(
+            lambda La_tot, Lb_tot: CoulombShell(
+                La_tot, Lb_tot, a, b, center_A, center_B, center_C
+            ),
+            (l_max, l_max),
+            "coulomb3d",
+            (A_map, B_map, C_map),
+        )
+        coulomb_rendered = render_py_funcs(
+            coulomb_ints_Ls,
+            (a, A, b, B, C),
+            "coulomb3d",
+            coulomb_doc_func,
+            add_imports=boys_import,
+        )
+        # TODO: handle add_args and Boys function in C
+        write_file(out_dir, "coulomb3d.py", coulomb_rendered)
+        print()
 
     #################################################
     # Three-center two-electron repulsion integrals #
     #################################################
 
-    def _3center2el_doc_func(L_tots):
-        La_tot, Lb_tot, Lc_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        shell_c = L_MAP[Lc_tot]
-        return (
-            f"Cartesian ({shell_a}{shell_b}|{shell_c}) "
-            "three-center two-electron repulsion integral."
-        )
+    def _3center2electron():
+        def _3center2el_doc_func(L_tots):
+            La_tot, Lb_tot, Lc_tot = L_tots
+            shell_a = L_MAP[La_tot]
+            shell_b = L_MAP[Lb_tot]
+            shell_c = L_MAP[Lc_tot]
+            return (
+                f"Cartesian ({shell_a}{shell_b}|{shell_c}) "
+                "three-center two-electron repulsion integral."
+            )
 
-    _3center2el_ints_Ls = gen_integral_exprs(
-        lambda La_tot, Lb_tot, Lc_tot: ThreeCenterTwoElectronShell(
-            La_tot, Lb_tot, Lc_tot, a, b, c, center_A, center_B, center_C
-        ),
-        (l_max, l_max, l_aux_max),
-        "_3center2el3d",
-        (A_map, B_map, C_map),
-    )
-    write_render(
-        _3center2el_ints_Ls,
-        (a, A, b, B, c, C),
-        "_3center2el3d",
-        _3center2el_doc_func,
-        out_dir,
-        c=False,
-        py_kwargs={"add_imports": boys_import},
-    )
-    print()
+        _3center2el_ints_Ls = gen_integral_exprs(
+            lambda La_tot, Lb_tot, Lc_tot: ThreeCenterTwoElectronShell(
+                La_tot, Lb_tot, Lc_tot, a, b, c, center_A, center_B, center_C
+            ),
+            (l_max, l_max, l_aux_max),
+            "_3center2el3d",
+            (A_map, B_map, C_map),
+        )
+        write_render(
+            _3center2el_ints_Ls,
+            (a, A, b, B, c, C),
+            "_3center2el3d",
+            _3center2el_doc_func,
+            out_dir,
+            c=False,
+            py_kwargs={"add_imports": boys_import},
+        )
+        print()
 
     ####################################
     # Spin-orbit interaction integrals #
     ####################################
 
-    def so1el_doc_func(L_tots):
-        La_tot, Lb_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        return f"Cartesian ({shell_a}{shell_b}) 1-electron spin-orbit-interaction integral."
+    # def so1el_doc_func(L_tots):
+    # La_tot, Lb_tot = L_tots
+    # shell_a = L_MAP[La_tot]
+    # shell_b = L_MAP[Lb_tot]
+    # return f"Cartesian ({shell_a}{shell_b}) 1-electron spin-orbit-interaction integral."
 
     # I think this is still faulty!
     # so1el_ints_Ls = gen_integral_exprs(
@@ -1474,16 +1483,16 @@ def run():
     # 2el Coulomb Integrals #
     #########################
 
-    def eri_doc_func(L_tots):
-        La_tot, Lb_tot, Lc_tot, Ld_tot = L_tots
-        shell_a = L_MAP[La_tot]
-        shell_b = L_MAP[Lb_tot]
-        shell_c = L_MAP[Lc_tot]
-        shell_d = L_MAP[Ld_tot]
-        return (
-            f"Cartesian [{shell_a}{shell_b}|{shell_c}{shell_d}] "
-            "2-electron electron repulsion integral."
-        )
+    # def eri_doc_func(L_tots):
+    # La_tot, Lb_tot, Lc_tot, Ld_tot = L_tots
+    # shell_a = L_MAP[La_tot]
+    # shell_b = L_MAP[Lb_tot]
+    # shell_c = L_MAP[Lc_tot]
+    # shell_d = L_MAP[Ld_tot]
+    # return (
+    # f"Cartesian [{shell_a}{shell_b}|{shell_c}{shell_d}] "
+    # "2-electron electron repulsion integral."
+    # )
 
     # I think this is still faulty!
     # eri_ints_Ls = gen_integral_exprs(
@@ -1515,6 +1524,15 @@ def run():
     # )
     # write_file(out_dir, "eri.py", eri_rendered)
     # print()
+
+    cart_gto()
+    overlap()
+    dipole()
+    diag_quadrupole()
+    quadrupole()
+    kinetic()
+    coulomb()
+    _3center2electron()
 
 
 if __name__ == "__main__":

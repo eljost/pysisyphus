@@ -13,7 +13,7 @@ import scipy as sp
 from scipy.special import factorial2
 
 
-from pysisyphus.config import L_MAX
+from pysisyphus.config import L_MAX, L_AUX_MAX
 from pysisyphus.elem_data import (
     ATOMIC_NUMBERS,
     INV_ATOMIC_NUMBERS,
@@ -36,6 +36,7 @@ from pysisyphus.wavefunction.ints import (
     ovlp3d,
     quadrupole3d,
 )
+from pysisyphus.wavefunction.devel_ints import _3center2el3d
 
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
@@ -159,7 +160,11 @@ def get_map(module, func_base_name, Ls_num=2):
     func_map = dict()
     for ls in it.product(*[Ls for _ in range(Ls_num)]):
         ls_str = "".join([str(l) for l in ls])
-        func_map[ls] = getattr(module, f"{func_base_name}_{ls_str}")
+        # TODO: remove this try/except block
+        try:
+            func_map[ls] = getattr(module, f"{func_base_name}_{ls_str}")
+        except AttributeError:
+            pass
     return func_map
 
 
@@ -172,6 +177,7 @@ QPMmap = get_map(quadrupole3d, "quadrupole3d")  # Quadrupole moments integrals
 DQPMmap = get_map(
     diag_quadrupole3d, "diag_quadrupole3d"
 )  # Diagonal quadrupole moments integrals
+_3c2elMap = get_map(_3center2el3d, "_3center2el3d", Ls_num=3)
 
 
 def cart_gto(l_tot, a, Xa, Ya, Za):
@@ -214,6 +220,13 @@ def diag_quadrupole(la_tot, lb_tot, a, A, b, B, C):
     """Wrapper for diagonal entries of quadratic moment integrals."""
     func = DQPMmap[(la_tot, lb_tot)]
     return func(a, A, b, B, C)
+
+
+
+def _3center2electron(la_tot, lb_tot, lc_tot, a, A, b, B, c, C):
+    """Wrapper for 3-center-2-electron integrals."""
+    func = _3c2elMap[(la_tot, lb_tot, lc_tot)]
+    return func(a, A, b, B, c, C)
 
 
 Ordering = Literal["native", "pysis"]
@@ -561,6 +574,57 @@ class Shells:
             "ij,...jk,kl->...il", PC_a, int_matrix, PC_b.T, optimize="greedy"
         )
         return int_matrix_sph
+
+    def get_3c2el_ints_cart(self, shells_aux):
+        shells_a = self
+        cart_bf_num_a = shells_a.cart_bf_num
+        cart_bf_num_aux = shells_aux.cart_bf_num
+
+        integrals = np.zeros((cart_bf_num_a, cart_bf_num_a, cart_bf_num_aux))
+        symmetric = True
+
+        a_ind = 0
+        b_skipped = 0
+        for i, shell_a in enumerate(shells_a):
+            La, A, dA, aa = shell_a.as_tuple()
+            a_size = get_shell_shape(La)[0]
+            a_slice = slice(a_ind, a_ind + a_size)
+            b_ind = b_skipped
+            if symmetric:
+                b_skipped += a_size
+            else:
+                i = 0
+            for shell_b in shells_a[i:]:
+                Lb, B, dB, bb = shell_b.as_tuple()
+                b_size = get_shell_shape(Lb)[0]
+                b_slice = slice(b_ind, b_ind + b_size)
+                dAB = (
+                    dA[:, None, None, :, None, None]
+                    * dB[None, :None, None, None, :, None]
+                )
+                c_ind = 0
+                for k, shell_c in enumerate(shells_aux):
+                    Lc, C, dC, cc = shell_c.as_tuple()
+                    c_size = get_shell_shape(Lc)[0]
+                    c_slice = slice(c_ind, c_ind + c_size)
+                    shape = (a_size, b_size, c_size)
+                    # func = _3center2electron(La, Lb, Lc, a)
+                    # func = map_[(La, Lb, Lc)]
+                    ints_ = _3center2electron(
+                        La, Lb, Lc, aa[:, None, None], A, bb[None, :, None], B, cc[None, None, :], C
+                    )
+                    ints_ = ints_.reshape(*shape, len(aa), len(bb), len(cc))  # 6D
+                    ints_ *= dAB * dC[None, None, :, None, None, :]
+                    ints_ = ints_.sum(axis=(3, 4, 5))
+                    integrals[a_slice, b_slice, c_slice] = ints_
+                    if symmetric:
+                        integrals[b_slice, a_slice, c_slice] = np.transpose(
+                            ints_, axes=(1, 0, 2)
+                        )
+                    c_ind += c_size
+                b_ind += b_size
+            a_ind += a_size
+        return integrals
 
     #####################
     # Overlap integrals #
