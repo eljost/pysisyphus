@@ -67,6 +67,18 @@ L_MAP = {
     5: "h",
 }
 
+KEYS = (
+    "cgto",
+    "ovlp",
+    "dpm",
+    "dqpm",
+    "qpm",
+    "kin",
+    "coul",
+    "3c2e",
+    "3c2e_sph",
+)
+
 
 def make_py_func(repls, reduced, args=None, name=None, doc_str=""):
     if args is None:
@@ -997,7 +1009,7 @@ def gen_integral_exprs(
             )
 
         dur = time.time() - start
-        print(f"\t... finished in {dur: >8.2f} s!")
+        print(f"\t... finished in {dur: >8.2f} s")
         sys.stdout.flush()
         yield (repls, reduced), L_tots
 
@@ -1016,7 +1028,11 @@ def render_py_funcs(exprs_Ls, args, base_name, doc_func, add_imports=None, comme
         doc_str = doc_func(L_tots)
         doc_str += "\n\nGenerated code; DO NOT modify by hand!"
         name = base_name + "_" + "".join(str(l) for l in L_tots)
+        print(f"Rendering '{name}' ... ", end="")
+        start = time.time()
         py_func = make_py_func(repls, reduced, args=args, name=name, doc_str=doc_str)
+        dur = time.time() - start
+        print(f"finished in {dur: >8.2f} s")
         py_funcs.append(py_func)
     py_funcs_joined = "\n\n".join(py_funcs)
 
@@ -1145,6 +1161,13 @@ def parse_args(args):
         default="devel_ints",
         help="Directory, where the generated integrals are written.",
     )
+    keys_str = f"({', '.join(KEYS)})"
+    parser.add_argument(
+        "--keys",
+        nargs="+",
+        help=f"Generate only certain expressions. Possible keys are: {keys_str}. "
+        "If not given, all expressions are generated.",
+    )
 
     return parser.parse_args()
 
@@ -1155,6 +1178,9 @@ def run():
     l_max = args.lmax
     l_aux_max = args.lauxmax
     out_dir = Path(args.out_dir if not args.write else ".")
+    keys = args.keys
+    if keys is None:
+        keys = list()
     try:
         os.mkdir(out_dir)
     except FileExistsError:
@@ -1218,12 +1244,16 @@ def run():
             return f"Cartesian 3D ({shell_a}{shell_b}) overlap integral."
 
         ovlp_ints_Ls = gen_integral_exprs(
-            lambda La_tot, Lb_tot: Overlap3dShell(La_tot, Lb_tot, a, b, center_A, center_B),
+            lambda La_tot, Lb_tot: Overlap3dShell(
+                La_tot, Lb_tot, a, b, center_A, center_B
+            ),
             (l_max, l_max),
             "overlap",
             (A_map, B_map),
         )
-        write_render(ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func, out_dir, c=True)
+        write_render(
+            ovlp_ints_Ls, (a, A, b, B), "ovlp3d", ovlp_doc_func, out_dir, c=True
+        )
         print()
 
     ###########################
@@ -1370,7 +1400,9 @@ def run():
             return f"Cartesian 3D ({shell_a}{shell_b}) kinetic energy integral."
 
         kinetic_ints_Ls = gen_integral_exprs(
-            lambda La_tot, Lb_tot: Kinetic3dShell(La_tot, Lb_tot, a, b, center_A, center_B),
+            lambda La_tot, Lb_tot: Kinetic3dShell(
+                La_tot, Lb_tot, a, b, center_A, center_B
+            ),
             (l_max, l_max),
             "kinetic",
             (A_map, B_map),
@@ -1442,6 +1474,39 @@ def run():
             _3center2el_ints_Ls,
             (a, A, b, B, c, C),
             "_3center2el3d",
+            _3center2el_doc_func,
+            out_dir,
+            c=False,
+            py_kwargs={"add_imports": boys_import},
+        )
+        print()
+
+    def _3center2electron_sph():
+        def _3center2el_doc_func(L_tots):
+            La_tot, Lb_tot, Lc_tot = L_tots
+            shell_a = L_MAP[La_tot]
+            shell_b = L_MAP[Lb_tot]
+            shell_c = L_MAP[Lc_tot]
+            return (
+                f"Cartesian ({shell_a}{shell_b}|{shell_c}) "
+                "three-center two-electron repulsion integral for conversion to "
+                "spherical harmonics.\nUses Ahlrichs' vertical recursion relation, "
+                "that leaves out some terms, that cancel\nwhen convertig to "
+                "spherical harmonics."
+            )
+
+        _3center2el_ints_Ls = gen_integral_exprs(
+            lambda La_tot, Lb_tot, Lc_tot: ThreeCenterTwoElectronSphShell(
+                La_tot, Lb_tot, Lc_tot, a, b, c, center_A, center_B, center_C
+            ),
+            (l_max, l_max, l_aux_max),
+            "_3center2el3d_sph",
+            (A_map, B_map, C_map),
+        )
+        write_render(
+            _3center2el_ints_Ls,
+            (a, A, b, B, c, C),
+            "_3center2el3d_sph",
             _3center2el_doc_func,
             out_dir,
             c=False,
@@ -1525,14 +1590,21 @@ def run():
     # write_file(out_dir, "eri.py", eri_rendered)
     # print()
 
-    cart_gto()
-    overlap()
-    dipole()
-    diag_quadrupole()
-    quadrupole()
-    kinetic()
-    coulomb()
-    _3center2electron()
+    funcs = {
+        "cgto": cart_gto,  # Cartesian Gaussian-type-orbital for density evaluation
+        "ovlp": overlap,  # Overlap integrals
+        "dpm": dipole,  # Linear moment (dipole) integrals
+        "dqpm": diag_quadrupole,  # Diagonal part of the quadrupole tensor
+        "qpm": quadrupole,  # Quadratic moment (quadrupole) integrals
+        "kin": kinetic,  # Kinetic energy integrals
+        "coul": coulomb,  # 1-electron Coulomb integrals
+        "3c2e": _3center2electron,  # 3-center-2-electron integrals for density fitting (DF)
+        "3c2e_sph": _3center2electron_sph,  # Spherical 3-center-2-electron integrals for DF
+    }
+    if len(keys) == 0:
+        keys = funcs.keys()
+    for key in keys:
+        funcs[key]()
 
 
 if __name__ == "__main__":

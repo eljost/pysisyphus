@@ -222,7 +222,6 @@ def diag_quadrupole(la_tot, lb_tot, a, A, b, B, C):
     return func(a, A, b, B, C)
 
 
-
 def _3center2electron(la_tot, lb_tot, lc_tot, a, A, b, B, c, C):
     """Wrapper for 3-center-2-electron integrals."""
     func = _3c2elMap[(la_tot, lb_tot, lc_tot)]
@@ -603,15 +602,21 @@ class Shells:
                     * dB[None, :None, None, None, :, None]
                 )
                 c_ind = 0
-                for k, shell_c in enumerate(shells_aux):
+                for shell_c in shells_aux:
                     Lc, C, dC, cc = shell_c.as_tuple()
                     c_size = get_shell_shape(Lc)[0]
                     c_slice = slice(c_ind, c_ind + c_size)
                     shape = (a_size, b_size, c_size)
-                    # func = _3center2electron(La, Lb, Lc, a)
-                    # func = map_[(La, Lb, Lc)]
                     ints_ = _3center2electron(
-                        La, Lb, Lc, aa[:, None, None], A, bb[None, :, None], B, cc[None, None, :], C
+                        La,
+                        Lb,
+                        Lc,
+                        aa[:, None, None],
+                        A,
+                        bb[None, :, None],
+                        B,
+                        cc[None, None, :],
+                        C,
                     )
                     ints_ = ints_.reshape(*shape, len(aa), len(bb), len(cc))  # 6D
                     ints_ *= dAB * dC[None, None, :, None, None, :]
