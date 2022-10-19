@@ -155,12 +155,12 @@ class Shell:
 Ls = list(range(L_MAX + 1))
 
 
-def get_map(module, func_base_name, Ls_num=2):
+def get_map(module, func_base_name, Ls=(L_MAX, L_MAX)):
     """Return dict that holds the different integrals functions."""
     func_map = dict()
-    for ls in it.product(*[Ls for _ in range(Ls_num)]):
+    L_ranges = [range(L) for L in Ls]
+    for ls in it.product(*L_ranges):
         ls_str = "".join([str(l) for l in ls])
-        # TODO: remove this try/except block
         try:
             func_map[ls] = getattr(module, f"{func_base_name}_{ls_str}")
         except AttributeError:
@@ -168,7 +168,7 @@ def get_map(module, func_base_name, Ls_num=2):
     return func_map
 
 
-CGTOmap = get_map(gto3d, "cart_gto3d", Ls_num=1)  # Cartesian GTO shells
+CGTOmap = get_map(gto3d, "cart_gto3d", Ls=(L_MAX,))  # Cartesian GTO shells
 Smap = get_map(ovlp3d, "ovlp3d")  # Overlap integrals
 Tmap = get_map(kinetic3d, "kinetic3d")  # Kinetic energy integrals
 Vmap = get_map(coulomb3d, "coulomb3d")  # 1el Coulomb integrals
@@ -177,7 +177,7 @@ QPMmap = get_map(quadrupole3d, "quadrupole3d")  # Quadrupole moments integrals
 DQPMmap = get_map(
     diag_quadrupole3d, "diag_quadrupole3d"
 )  # Diagonal quadrupole moments integrals
-_3c2elMap = get_map(_3center2el3d, "_3center2el3d", Ls_num=3)
+_3c2elMap = get_map(_3center2el3d, "_3center2el3d", Ls=(L_MAX, L_MAX, L_AUX_MAX))
 
 
 def cart_gto(l_tot, a, Xa, Ya, Za):
