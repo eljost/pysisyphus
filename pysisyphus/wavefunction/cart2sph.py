@@ -99,8 +99,12 @@ def cart2sph_coeffs_for(l: int, real: bool = True) -> NDArray:
     return C.T  # Return w/ shape (sph., cart.)
 
 
-def cart2sph_coeffs(l_max: int, **kwargs) -> Dict[int, NDArray]:
+def cart2sph_coeffs(l_max: int, zero_small=False, zero_thresh=1e-14, **kwargs) -> Dict[int, NDArray]:
     coeffs = {l: cart2sph_coeffs_for(l, **kwargs) for l in range(l_max + 1)}
+    if zero_small:
+        for c in coeffs.values():
+            mask = np.abs(c) <= zero_thresh
+            c[mask] = 0.0
     return coeffs
 
 
