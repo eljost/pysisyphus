@@ -35,8 +35,9 @@ from pysisyphus.wavefunction.ints import (
     kinetic3d,
     ovlp3d,
     quadrupole3d,
+    _3center2el3d,
+    _3center2el3d_sph,
 )
-from pysisyphus.wavefunction.devel_ints import _3center2el3d
 
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
@@ -178,6 +179,7 @@ DQPMmap = get_map(
     diag_quadrupole3d, "diag_quadrupole3d"
 )  # Diagonal quadrupole moments integrals
 _3c2elMap = get_map(_3center2el3d, "_3center2el3d", Ls=(L_MAX, L_MAX, L_AUX_MAX))
+_3c2elSphMap = get_map(_3center2el3d_sph, "_3center2el3d_sph", Ls=(L_MAX, L_MAX, L_AUX_MAX))
 
 
 def cart_gto(l_tot, a, Xa, Ya, Za):
@@ -225,6 +227,12 @@ def diag_quadrupole(la_tot, lb_tot, a, A, b, B, C):
 def _3center2electron(la_tot, lb_tot, lc_tot, a, A, b, B, c, C):
     """Wrapper for 3-center-2-electron integrals."""
     func = _3c2elMap[(la_tot, lb_tot, lc_tot)]
+    return func(a, A, b, B, c, C)
+
+
+def _3center2electron_sph(la_tot, lb_tot, lc_tot, a, A, b, B, c, C):
+    """Wrapper for 3-center-2-electron integrals."""
+    func = _3c2elSphMap[(la_tot, lb_tot, lc_tot)]
     return func(a, A, b, B, c, C)
 
 
@@ -528,7 +536,6 @@ class Shells:
                 shape = (components, *shell_shape)
                 ints_ = func(La, Lb, aa[:, None], A, bb[None, :], B, **kwargs)
                 ints_ = ints_.reshape(*shape, len(aa), len(bb))  # 5d
-                # import pdb; pdb.set_trace()  # fmt: skip
                 ints_ *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
                 ints_ = ints_.sum(axis=(3, 4))
                 b_slice = slice(b_ind, b_ind + b_size)
@@ -574,7 +581,7 @@ class Shells:
         )
         return int_matrix_sph
 
-    def get_3c2el_ints_cart(self, shells_aux):
+    def get_3c2el_ints_cart(self, shells_aux, int_func=_3center2electron):
         shells_a = self
         cart_bf_num_a = shells_a.cart_bf_num
         cart_bf_num_aux = shells_aux.cart_bf_num
@@ -599,7 +606,7 @@ class Shells:
                 b_slice = slice(b_ind, b_ind + b_size)
                 dAB = (
                     dA[:, None, None, :, None, None]
-                    * dB[None, :None, None, None, :, None]
+                    * dB[None, :, None, None, :, None]
                 )
                 c_ind = 0
                 for shell_c in shells_aux:
@@ -607,7 +614,7 @@ class Shells:
                     c_size = get_shell_shape(Lc)[0]
                     c_slice = slice(c_ind, c_ind + c_size)
                     shape = (a_size, b_size, c_size)
-                    ints_ = _3center2electron(
+                    ints_ = int_func(
                         La,
                         Lb,
                         Lc,
@@ -630,6 +637,16 @@ class Shells:
                 b_ind += b_size
             a_ind += a_size
         return integrals
+
+    def get_3c2el_ints_sph(self, shells_aux):
+        int_matrix = self.get_3c2el_ints_cart(shells_aux, int_func=_3center2electron_sph)
+
+        PC_a = self.reorder_c2s_coeffs
+        PC_c = shells_aux.reorder_c2s_coeffs
+        int_matrix_sph = np.einsum(
+            "ij,jlm,nl,om->ino", PC_a, int_matrix, PC_a, PC_c, optimize="greedy"
+        )
+        return int_matrix_sph
 
     #####################
     # Overlap integrals #

@@ -61,7 +61,7 @@ from sympy.codegen.ast import Assignment
 from sympy.printing.numpy import NumPyPrinter
 from sympy.printing.c import C99CodePrinter
 
-from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
+# from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
 try:
     from pysisyphus.config import L_MAX, L_AUX_MAX
@@ -1038,26 +1038,33 @@ def gen_integral_exprs(
         exprs = int_func(*L_tots)
         print("\t... generated expressions")
         sys.stdout.flush()
-        if sph:
-            exprs = cart2spherical(L_tots, exprs)
-            print("\t... did Cartesian -> Spherical conversion")
-            sys.stdout.flush()
+        # if sph:
+            # exprs = cart2spherical(L_tots, exprs)
+            # print("\t... did Cartesian -> Spherical conversion")
+            # sys.stdout.flush()
 
         # Common subexpression elimination
         repls, reduced = cse(list(exprs), order="none")
         print("\t... did common subexpression elimination")
 
-        for i, red in enumerate(reduced):
-            red = red.evalf()
-            reduced[i] = functools.reduce(
-                lambda red, map_: red.xreplace(map_), maps, red
-            )
-
+        # Replacement expressions, used to form the reduced expressions.
         for i, (lhs, rhs) in enumerate(repls):
             rhs = rhs.evalf()
             # Replace occurences of Ax, Ay, Az, ... with A[0], A[1], A[2], ...
             rhs = functools.reduce(lambda rhs, map_: rhs.xreplace(map_), maps, rhs)
             repls[i] = (lhs, rhs)
+
+        # Reduced expression, i.e., the final integrals/expressions.
+        for i, red in enumerate(reduced):
+            red = red.evalf()
+            reduced[i] = functools.reduce(
+                lambda red, map_: red.xreplace(map_), maps, red
+            )
+        # Carry out Cartesian-to-spherical transformation, if requested.
+        if sph:
+            reduced = cart2spherical(L_tots, reduced)
+            print("\t... did Cartesian -> Spherical conversion")
+            sys.stdout.flush()
 
         dur = datetime.now() - start
         print(f"\t... finished in {str(dur)} h")
@@ -1237,8 +1244,11 @@ def run():
     except FileExistsError:
         pass
 
-    global CART2SPH
-    CART2SPH = cart2sph_coeffs(max(l_max, l_aux_max), zero_small=True)
+    try:
+        global CART2SPH
+        CART2SPH = cart2sph_coeffs(max(l_max, l_aux_max), zero_small=True)
+    except NameError:
+        print("cart2sph_coeffs import is deactivated or pysisyphus is not installed.")
 
     # Cartesian basis function centers A and B.
     center_A = get_center("A")
@@ -1556,7 +1566,7 @@ def run():
             (l_max, l_max, l_aux_max),
             "_3center2el3d_sph",
             (A_map, B_map, C_map),
-            sph=True,
+            sph=False,
         )
         write_render(
             _3center2el_ints_Ls,
