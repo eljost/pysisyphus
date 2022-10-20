@@ -35,6 +35,7 @@ from pysisyphus.wavefunction.ints import (
     kinetic3d,
     ovlp3d,
     quadrupole3d,
+    _2center2el3d,
     _3center2el3d,
     _3center2el3d_sph,
 )
@@ -178,8 +179,11 @@ QPMmap = get_map(quadrupole3d, "quadrupole3d")  # Quadrupole moments integrals
 DQPMmap = get_map(
     diag_quadrupole3d, "diag_quadrupole3d"
 )  # Diagonal quadrupole moments integrals
+_2c2elMap = get_map(_2center2el3d, "_2center2el3d", Ls=(L_AUX_MAX, L_AUX_MAX))
 _3c2elMap = get_map(_3center2el3d, "_3center2el3d", Ls=(L_MAX, L_MAX, L_AUX_MAX))
-_3c2elSphMap = get_map(_3center2el3d_sph, "_3center2el3d_sph", Ls=(L_MAX, L_MAX, L_AUX_MAX))
+_3c2elSphMap = get_map(
+    _3center2el3d_sph, "_3center2el3d_sph", Ls=(L_MAX, L_MAX, L_AUX_MAX)
+)
 
 
 def cart_gto(l_tot, a, Xa, Ya, Za):
@@ -222,6 +226,12 @@ def diag_quadrupole(la_tot, lb_tot, a, A, b, B, C):
     """Wrapper for diagonal entries of quadratic moment integrals."""
     func = DQPMmap[(la_tot, lb_tot)]
     return func(a, A, b, B, C)
+
+
+def _2center2electron(la_tot, lb_tot, a, A, b, B):
+    """Wrapper for 2-center-2-electron integrals."""
+    func = _2c2elMap[(la_tot, lb_tot)]
+    return func(a, A, b, B)
 
 
 def _3center2electron(la_tot, lb_tot, lc_tot, a, A, b, B, c, C):
@@ -581,6 +591,9 @@ class Shells:
         )
         return int_matrix_sph
 
+    def get_2c2el_ints_cart(self):
+        return self.get_1el_ints_cart(_2center2electron)
+
     def get_3c2el_ints_cart(self, shells_aux, int_func=_3center2electron):
         shells_a = self
         cart_bf_num_a = shells_a.cart_bf_num
@@ -605,8 +618,7 @@ class Shells:
                 b_size = get_shell_shape(Lb)[0]
                 b_slice = slice(b_ind, b_ind + b_size)
                 dAB = (
-                    dA[:, None, None, :, None, None]
-                    * dB[None, :, None, None, :, None]
+                    dA[:, None, None, :, None, None] * dB[None, :, None, None, :, None]
                 )
                 c_ind = 0
                 for shell_c in shells_aux:
@@ -639,7 +651,9 @@ class Shells:
         return integrals
 
     def get_3c2el_ints_sph(self, shells_aux):
-        int_matrix = self.get_3c2el_ints_cart(shells_aux, int_func=_3center2electron_sph)
+        int_matrix = self.get_3c2el_ints_cart(
+            shells_aux, int_func=_3center2electron_sph
+        )
 
         PC_a = self.reorder_c2s_coeffs
         PC_c = shells_aux.reorder_c2s_coeffs

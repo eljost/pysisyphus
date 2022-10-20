@@ -512,6 +512,92 @@ class CoulombShell(Function):
         return exprs
 
 
+class TwoCenterTwoElectron(Function):
+    @classmethod
+    @functools.cache
+    def eval(cls, ia, ja, ka, ib, jb, kb, N, a, b, A, B):
+        ang_moms = np.array((ia, ja, ka, ib, jb, kb), dtype=int)
+        ang_moms2d = ang_moms.reshape(-1, 3)
+        if any([am < 0 for am in ang_moms]):
+            return 0
+
+        p = a + b
+        P = (a * A + b * B) / p
+        mu = (a * b) / p
+
+        def recur(N, *inds):
+            return cls(*inds, N, a, b, A, B)
+
+        def vrr(bra_or_ket, cart_ind):
+            assert bra_or_ket in ("bra", "ket")
+
+            if bra_or_ket == "bra":
+                ind1 = 0
+                ind2 = 1
+            else:
+                ind1 = 1
+                ind2 = 0
+            exps = (a, b)
+            X = (P - A, P - B)[ind1][cart_ind]
+
+            l1 = ang_moms2d[ind1, cart_ind] - 1
+            exp1 = exps[ind1]
+            decr1 = ang_moms2d.copy()
+            decr1[ind1, cart_ind] -= 1
+            decr11 = decr1.copy()
+            decr11[ind1, cart_ind] -= 1
+
+            l2 = ang_moms2d[ind2, cart_ind]
+            exp2 = exps[ind2]
+            decr12 = ang_moms2d.copy()
+            decr12[ind1, cart_ind] -= 1
+            decr12[ind2, cart_ind] -= 1
+
+            decr1 = decr1.flatten()
+            decr11 = decr11.flatten()
+            decr12 = decr12.flatten()
+
+            return (
+                X * recur(N + 1, *decr1)
+                + l1
+                / (2 * exp1)
+                * (recur(N, *decr11) - exp2 / p * recur(N + 1, *decr11))
+                + l2 / (2 * p) * recur(N + 1, *decr12)
+            )
+
+        # vrr_bra = functools.partial(vrr, bra_or_ket="bra")
+        vrr_bra = functools.partial(vrr, "bra")
+        vrr_ket = functools.partial(vrr, "ket")
+
+        # Base case
+        if (ang_moms == 0).all():
+            AB = A - B
+            return 2 * pi**2.5 / sqrt(p) / (a * b) * boys(N, mu * AB.dot(AB))
+        elif ia > 0:
+            return vrr_bra(0)
+        elif ja > 0:
+            return vrr_bra(1)
+        elif ka > 0:
+            return vrr_bra(2)
+        elif ib > 0:
+            return vrr_ket(0)
+        elif jb > 0:
+            return vrr_ket(1)
+        elif kb > 0:
+            return vrr_ket(2)
+
+
+class TwoCenterTwoElectronShell(Function):
+    @classmethod
+    def eval(cls, La_tot, Lb_tot, a, b, A, B):
+        exprs = [
+            TwoCenterTwoElectron(*La, *Lb, 0, a, b, A, B)
+            for La, Lb in shell_iter((La_tot, Lb_tot))
+        ]
+        # print(TwoCenterTwoElectron.eval.cache_info())
+        return exprs
+
+
 class ThreeCenterTwoElectronBase(Function):
     """
     https://pubs.rsc.org/en/content/articlelanding/2004/CP/b413539c
@@ -1039,9 +1125,9 @@ def gen_integral_exprs(
         print("\t... generated expressions")
         sys.stdout.flush()
         # if sph:
-            # exprs = cart2spherical(L_tots, exprs)
-            # print("\t... did Cartesian -> Spherical conversion")
-            # sys.stdout.flush()
+        # exprs = cart2spherical(L_tots, exprs)
+        # print("\t... did Cartesian -> Spherical conversion")
+        # sys.stdout.flush()
 
         # Common subexpression elimination
         repls, reduced = cse(list(exprs), order="none")
@@ -1511,6 +1597,44 @@ def run():
         write_file(out_dir, "coulomb3d.py", coulomb_rendered)
         print()
 
+    ###############################################
+    # Two-center two-electron repulsion integrals #
+    ###############################################
+
+    def _2center2electron():
+        def _2center2el_doc_func(L_tots):
+            La_tot, Lb_tot = L_tots
+            shell_a = L_MAP[La_tot]
+            shell_b = L_MAP[Lb_tot]
+            return (
+                f"Cartesian ({shell_a}|{shell_b}) "
+                "two-center two-electron repulsion integral."
+            )
+
+        _2center2el_ints_Ls = gen_integral_exprs(
+            lambda La_tot, Lb_tot: TwoCenterTwoElectronShell(
+                La_tot,
+                Lb_tot,
+                a,
+                b,
+                center_A,
+                center_B,
+            ),
+            (l_aux_max, l_aux_max),
+            "_2center2el3d",
+            (A_map, B_map),
+        )
+        write_render(
+            _2center2el_ints_Ls,
+            (a, A, b, B),
+            "_2center2el3d",
+            _2center2el_doc_func,
+            out_dir,
+            c=False,
+            py_kwargs={"add_imports": boys_import},
+        )
+        print()
+
     #################################################
     # Three-center two-electron repulsion integrals #
     #################################################
@@ -1663,8 +1787,10 @@ def run():
         "qpm": quadrupole,  # Quadratic moment (quadrupole) integrals
         "kin": kinetic,  # Kinetic energy integrals
         "coul": coulomb,  # 1-electron Coulomb integrals
-        "3c2e": _3center2electron,  # 3-center-2-electron integrals for density fitting (DF)
-        "3c2e_sph": _3center2electron_sph,  # Spherical 3-center-2-electron integrals for DF
+        # Integrals for density fitting
+        "2c2e": _2center2electron,  # 2-center-2-electron integrals for DF
+        "3c2e": _3center2electron,  # 3-center-2-electron integrals for density fitting
+        "3c2e_sph": _3center2electron_sph,  # 3c2el for spherical transformation for DF
     }
     if len(keys) == 0:
         keys = funcs.keys()
