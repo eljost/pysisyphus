@@ -1,11 +1,12 @@
 import numpy as np
 
 try:
-    from pyscf import gto, scf
+    from pyscf import gto, scf, df
     from pyscf.dft import numint
     from pyscf.tools import cubegen
 except ModuleNotFoundError:
     pass
+import pytest
 
 from pysisyphus.wavefunction import Shells
 from pysisyphus.testing import using
@@ -65,3 +66,65 @@ def test_quadrupole_ints():
     np.testing.assert_allclose(
         pysis_dquad, pysis_quad[[0, 1, 2], [0, 1, 2]], atol=1e-14
     )
+
+
+@using("pyscf")
+@pytest.fixture
+def mol_auxmol():
+
+    mol = gto.Mole()
+    mol.atom = "He 0 0 0"
+    basis = {
+        "He": gto.basis.parse(
+            """
+    He    S
+         1.0 1.0
+         2.0 1.0
+    He    P
+         1.0 1.0
+         2.0 1.0
+    """
+        )
+    }
+    mol.basis = basis
+    mol.build()
+    auxbasis = {
+        "He": gto.basis.parse(
+            """
+    He    S
+         1.0 1.0
+         4.0 1.0
+         5.0 1.0
+    He    D
+         4.0 1.0
+         5.0 1.0
+    """
+        )
+    }
+    auxmol = df.make_auxmol(mol, auxbasis)
+    return (mol, auxmol)
+
+
+def test_2c2e(mol_auxmol):
+    _, auxmol = mol_auxmol
+    int2c = auxmol.intor("int2c2e_cart")
+    # Cartesian d-Orbitals are not normalized in pyscf
+    S_aux = auxmol.intor("int1e_ovlp_cart")
+    N_aux = 1 / np.diag(S_aux) ** 0.5
+    NaNa = N_aux[:, None] * N_aux[None, :]
+
+    aux_shells = Shells.from_pyscf_mol(auxmol)
+    integrals = aux_shells.get_2c2el_ints_cart()
+
+    np.testing.assert_allclose(integrals, int2c * NaNa)
+
+
+def test_3c2e(mol_auxmol):
+    mol, auxmol = mol_auxmol
+    int3c = df.incore.aux_e2(mol, auxmol, "int3c2e_sph")
+
+    shells = Shells.from_pyscf_mol(mol)
+    aux_shells = Shells.from_pyscf_mol(auxmol)
+    integrals = shells.get_3c2el_ints_sph(aux_shells)
+
+    np.testing.assert_allclose(integrals, int3c, atol=1e-12)

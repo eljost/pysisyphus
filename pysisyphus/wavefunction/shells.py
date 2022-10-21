@@ -154,13 +154,10 @@ class Shell:
         return self.__str__()
 
 
-Ls = list(range(L_MAX + 1))
-
-
 def get_map(module, func_base_name, Ls=(L_MAX, L_MAX)):
     """Return dict that holds the different integrals functions."""
     func_map = dict()
-    L_ranges = [range(L) for L in Ls]
+    L_ranges = [range(L+1) for L in Ls]
     for ls in it.product(*L_ranges):
         ls_str = "".join([str(l) for l in ls])
         try:
