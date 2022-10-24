@@ -93,7 +93,7 @@ KEYS = (
 ONE_THRESH = 1e-14
 
 
-def make_py_func(repls, reduced, args=None, name=None, doc_str=""):
+def make_py_func(repls, reduced, args=None, name=None, doc_str="", return_array=True):
     if args is None:
         args = list()
     # Generate random name, if no name was supplied
@@ -110,6 +110,10 @@ def make_py_func(repls, reduced, args=None, name=None, doc_str=""):
     assignments = [Assignment(lhs, rhs) for lhs, rhs in repls]
     py_lines = [print_func(as_) for as_ in assignments]
     return_val = print_func(reduced)
+    try:
+        n_return_vals = len(reduced)
+    except TypeError:
+        n_return_vals = 1
 
     tpl = Template(
         """
@@ -122,8 +126,12 @@ def make_py_func(repls, reduced, args=None, name=None, doc_str=""):
         {{ line }}
         {% endfor %}
 
+        {% if return_array %}
         # {{ n_return_vals }} item(s)
         return numpy.array({{ return_val }})
+        {% else %}
+        return {{ return_val }}
+        {% endif %}
     """,
         trim_blocks=True,
         lstrip_blocks=True,
@@ -135,7 +143,8 @@ def make_py_func(repls, reduced, args=None, name=None, doc_str=""):
             args=args,
             py_lines=py_lines,
             return_val=return_val,
-            n_return_vals=len(reduced),
+            n_return_vals=n_return_vals,
+            return_array=return_array,
             doc_str=doc_str,
         )
     ).strip()
