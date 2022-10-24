@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import numpy as np
 
@@ -7,18 +8,23 @@ from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.wavefunction import Shell, Shells
 
 
-def basis_from_file(name):
-    basis_path = BASIS_LIB_DIR / f"{name}.json"
+def basis_from_json(name):
+    basis_path = Path(name).with_suffix(".json")
+    if not basis_path.is_absolute():
+        basis_path = BASIS_LIB_DIR / basis_path
+
     with open(basis_path) as handle:
         data = json.load(handle)
     elements = data["elements"]
     return elements
 
 
-def shells_with_basis(atoms, coords, basis=None, name=None, **kwargs):
+def shells_with_basis(atoms, coords, basis=None, name=None, shells_cls=None, **kwargs):
     assert (basis is not None) or (name is not None)
+    if shells_cls is None:
+        shells_cls = Shells
     if name is not None:
-        basis = basis_from_file(name)
+        basis = basis_from_json(name)
 
     coords3d = np.reshape(coords, (len(atoms), 3))
     shells = list()
@@ -27,7 +33,7 @@ def shells_with_basis(atoms, coords, basis=None, name=None, **kwargs):
         basis_shells = basis[Zs]["electron_shells"]
         for bshell in basis_shells:
             L = bshell["angular_momentum"]
-            assert len(L) == 1
+            assert len(L) == 1  # Disallow SP shells for now.
             L = L[0]
             exponents = bshell["exponents"]
             for coeffs in bshell["coefficients"]:
@@ -40,7 +46,7 @@ def shells_with_basis(atoms, coords, basis=None, name=None, **kwargs):
                     center_ind=i,
                 )
                 shells.append(shell)
-    shells = Shells(shells, **kwargs)
+    shells = shells_cls(shells, **kwargs)
     return shells
 
 

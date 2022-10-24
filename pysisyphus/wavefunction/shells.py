@@ -101,12 +101,12 @@ class Shell:
         self.L = get_l(L)
         self.center = np.array(center, dtype=float)  # (x, y, z), 1d array
         # Contraction coefficients, 2d array, shape (bfs in shell, number of primitives)
-        self.org_coeffs = np.array(coeffs)
+        self.org_coeffs = np.array(coeffs, dtype=float)
         self.coeffs = np.atleast_2d(self.org_coeffs.copy())
         self.exps = np.array(exps, dtype=float)  # Orbital exponents, 1d array
         assert self.coeffs.shape[1] == self.exps.size
-        self.center_ind = center_ind
-        self.atomic_num = atomic_num
+        self.center_ind = int(center_ind)
+        self.atomic_num = int(atomic_num)
 
         # Store original copy of contraction coefficients
         self.coeffs_org = self.coeffs.copy()
@@ -157,7 +157,7 @@ class Shell:
 def get_map(module, func_base_name, Ls=(L_MAX, L_MAX)):
     """Return dict that holds the different integrals functions."""
     func_map = dict()
-    L_ranges = [range(L+1) for L in Ls]
+    L_ranges = [range(L + 1) for L in Ls]
     for ls in it.product(*L_ranges):
         ls_str = "".join([str(l) for l in ls])
         try:
@@ -247,7 +247,7 @@ Ordering = Literal["native", "pysis"]
 
 
 class Shells:
-    sph_Ps = {l: np.eye(2 * l + 1) for l in range(L_MAX)}
+    sph_Ps = {l: np.eye(2 * l + 1) for l in range(L_MAX + 1)}
 
     def __init__(
         self,
@@ -327,11 +327,15 @@ class Shells:
     def cart_bf_num(self):
         return sum([shell.size() for shell in self.shells])
 
-    def from_basis(self, name, **kwargs):
+    def from_basis(self, name, shells_cls=None, **kwargs):
         from pysisyphus.wavefunction.Basis import shells_with_basis
 
         atoms, coords3d = self.atoms_coords3d
-        return shells_with_basis(atoms, coords3d, name=name, **kwargs)
+        if shells_cls is None:
+            shells_cls = type(self)
+        return shells_with_basis(
+            atoms, coords3d, name=name, shells_cls=shells_cls, **kwargs
+        )
 
     @staticmethod
     @file_or_str(".in")
@@ -590,6 +594,9 @@ class Shells:
 
     def get_2c2el_ints_cart(self):
         return self.get_1el_ints_cart(_2center2electron)
+
+    def get_2c2el_ints_sph(self):
+        return self.get_1el_ints_sph(_2center2electron)
 
     def get_3c2el_ints_cart(self, shells_aux, int_func=_3center2electron):
         shells_a = self
