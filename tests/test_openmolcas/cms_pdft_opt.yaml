@@ -1,0 +1,25 @@
+geom:
+ type: redund
+ fn: |
+  4
+  
+  C	-1.0398336639	 0.0	    0.0
+  S	 0.6002429216	 0.0	    0.0
+  H -1.6321592382	-0.94139864	0.0
+  H	-1.6321592382	 0.94139864	0.0
+calc:
+ type: openmolcas
+ basis: cc-pvdz
+ charge: 0
+ mult: 1
+ inporb: /home/johannes/tmp/359_cmspdft/359_cmspdft.RasOrb
+ rasscf:
+  ciroot: 3 3 1
+  mdrlxroot: 2
+  cmsi:
+ mcpdft:
+  ksdft: t:pbe
+  grad:
+  mspdft:
+opt:
+ thresh: gau
