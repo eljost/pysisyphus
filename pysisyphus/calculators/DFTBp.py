@@ -51,6 +51,42 @@ class DFTBp(OverlapCalculator):
             "N": "p",
             "O": "p",
         },
+        "3ob": {
+            "Br": "d",
+            "C": "p",
+            "Ca": "p",
+            "Cl": "d",
+            "F": "p",
+            "H": "s",
+            "I": "d",
+            "K": "p",
+            "Mg": "p",
+            "N": "p",
+            "Na": "p",
+            "O": "p",
+            "P": "d",
+            "S": "d",
+            "Zn": "d",
+        },
+    }
+    hubbard_derivs = {
+        "3ob": {
+            "Br": -0.0573,
+            "Mg": -0.0200,
+            "C": -0.1492,
+            "N": -0.1535,
+            "Ca": -0.0340,
+            "Na": -0.0454,
+            "Cl": -0.0697,
+            "O": -0.1575,
+            "F": -0.1623,
+            "P": -0.1400,
+            "H": -0.1857,
+            "S": -0.1100,
+            "I": -0.0433,
+            "Zn": -0.0300,
+            "K": -0.0339,
+        },
     }
 
     def __init__(self, parameter, *args, slakos=None, root=None, **kwargs):
@@ -104,6 +140,17 @@ class DFTBp(OverlapCalculator):
                 {{ atom }} = "{{ ang_mom }}"
                {%- endfor %}
               }
+              {% if parameter == "3ob" %}
+                ThirdOrderFull = Yes
+                HubbardDerivs {
+                {% for atom, hd in hubbard_derivs -%}
+                 {{ atom }} = {{ hd }}
+                {% endfor %}
+                }
+                HCorrection = Damping {
+                 Exponent = 4.00
+                }
+              {% endif %}
             }
 
             ExcitedState {
@@ -185,7 +232,8 @@ class DFTBp(OverlapCalculator):
         if self.root:
             analysis.extend(("WriteEigenvectors = Yes", "EigenvectorsAsText = Yes"))
         ang_moms = self.max_ang_moms[self.parameter]
-        max_ang_moms = [(atom, ang_moms[atom]) for atom in set(atoms)]
+        unique_atoms = set(atoms)
+        max_ang_moms = [(atom, ang_moms[atom]) for atom in unique_atoms]
 
         # spinpol = (
         # "{}"
@@ -194,6 +242,11 @@ class DFTBp(OverlapCalculator):
         # )
         spinpol = "{}"
         es_forces = calc_type == "forces"
+        try:
+            param_hubbard_derivs = self.hubbard_derivs[self.parameter]
+            hubbard_derivs = [(atom, param_hubbard_derivs[atom]) for atom in unique_atoms]
+        except KeyError:
+            hubbard_derivs = list()
 
         inp = self.dftb_tpl.render(
             gen_geom_fn=self.gen_geom_fn,
@@ -202,6 +255,7 @@ class DFTBp(OverlapCalculator):
             slakos_prefix=self.slakos_prefix,
             parameter=self.parameter,
             max_ang_moms=max_ang_moms,
+            hubbard_derivs=hubbard_derivs,
             excited_state_str=self.get_excited_state_str(self.root, es_forces),
             analysis=analysis,
         )

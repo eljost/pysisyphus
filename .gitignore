@@ -175,6 +175,8 @@ version.py
 !tests/test_orca/orca_tddft_triplets.out
 !tests/test_orca/fail_term.orca.out
 !tests/test_orca/orca_tddft_triplets.out
+!tests/test_openmolcas/cms_pdft_opt.yaml
+!tests/test_openmolcas/cms_pdft_opt.RasOrb
 !tests/test_point_charges/methane_control_path/*
 !tests/test_xtb/xtb_pass.out
 !tests/test_xtb/xtb_crash.out

@@ -9,8 +9,9 @@ calc:
  mult: 1
  basis: ano-rcc-vdzp
  inporb: butadien_vdzp.RasOrb
- roots: 5
- mdrlxroot: 2
+ rasscf:
+  ciroot: 5 5 1
+  mdrlxroot: 2
 assert:
  opt.is_converged: True
  opt.cur_cycle: 6

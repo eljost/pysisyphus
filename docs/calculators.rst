@@ -93,6 +93,25 @@ Gaussian16
 
 OpenMolcas
 ----------
+Pysisyphus currently supports energy and gradient calculations utilizing the
+`&rasscf` and/or the `&mcpdft` sections. Neither analytical nor numerical Hessians are
+yet implemented for the OpenMolcas-calculator.
+
+Two keywords are always required: `inporb` and `basis`, with the former pointing
+to a `.RasOrb` file and the latter containing the selected atomic orbital basis, e.g.,
+`ano-rcc-vdzp`.
+Additional input for the `&gateway`, `&rasscf` and `&mcpdft` sections can be given
+via the respective keyword(s).
+
+Due to restrictions of the current design, simple keywords
+that don't take further arguments as `cmsi` in `&rasscf` or `grad` and `mspdft` in
+`&mcpdft` still must be given with a trailing colon. See below for an example.
+
+
+.. literalinclude :: ../tests/test_openmolcas/cms_pdft_opt.yaml
+   :language: yaml
+   :caption: Optimization using compressed-multi-state PDFT.
+
 .. automodule:: pysisyphus.calculators.OpenMolcas
     :members:
     :undoc-members:

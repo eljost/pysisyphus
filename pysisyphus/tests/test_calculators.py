@@ -163,8 +163,13 @@ def test_h2o_openmolcas(this_dir):
         "inporb": this_dir / "h2o_input.RasOrb",
         "charge": 0,
         "mult": 1,
-        "roots": 2,
-        "mdrlxroot": 1,
+        "rasscf": {
+            "ciroot": "2 2 1",
+            "mdrlxroot": 1,
+        },
+        "gateway": {
+            "ricd": None,
+        },
     }
     calc = OpenMolcas(**kwargs)
     geom.set_calculator(calc)
