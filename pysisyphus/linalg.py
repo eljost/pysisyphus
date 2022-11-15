@@ -326,3 +326,32 @@ def pivoted_cholesky(A: NDArray, tol: float = -1.0):
     L[np.triu_indices(N, k=1)] = 0
     L[:, rank:] = 0
     return L, piv, rank
+
+
+def matrix_power(mat, p, thresh=1e-12):
+    w, v = np.linalg.eigh(mat)
+    assert (w > 0.0).all(), (
+        "matrix_power must be called with a (semi)-positive-definite matrix!"
+    )
+    mask = np.abs(w) > thresh
+    w_pow = w[mask]**p
+    v_mask = v[:, mask]
+    return v_mask @ np.diag(w_pow) @ v_mask.T
+
+
+def sym_mat_from_triu(arr, data):
+    nrows, ncols = arr.shape
+    assert nrows == ncols
+    triu = np.triu_indices(nrows)
+    tril1 = np.tril_indices(nrows, k=-1)
+    arr[triu] = data
+    arr[tril1] = arr.T[tril1]
+
+
+def sym_mat_from_tril(arr, data):
+    nrows, ncols = arr.shape
+    assert nrows == ncols
+    tril = np.tril_indices(nrows)
+    arr[tril] = data
+    triu1 = np.triu_indices(nrows, k=1)
+    arr[triu1] = arr.T[triu1]

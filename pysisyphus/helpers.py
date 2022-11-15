@@ -118,7 +118,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
 
     if iterable and org_fn.startswith("pubchem:"):
         geom = (geom,)
-    if iterable and (ext in (".trj", "")) and index is None:
+    if iterable and (ext in (".trj", ".fchk", "")) and index is None:
         geom = tuple(geom)
     elif iterable:
         geom = (geom,)

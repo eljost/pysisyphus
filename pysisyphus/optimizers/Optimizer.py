@@ -111,7 +111,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         geometry: Geometry,
         thresh: Thresh = "gau_loose",
         max_step: float = 0.04,
-        max_cycles: int = 100,
+        max_cycles: int = 150,
         min_step_norm: float = 1e-8,
         assert_min_step: bool = True,
         rms_force: Optional[float] = None,

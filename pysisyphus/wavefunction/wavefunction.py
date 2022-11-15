@@ -61,6 +61,7 @@ class Wavefunction:
         self.shells = shells
 
         self._masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
+        self._densities = dict()
 
     @property
     def atom_num(self):
@@ -83,6 +84,42 @@ class Wavefunction:
         return self.C.shape[1]
 
     @staticmethod
+    def from_file(fn, **kwargs):
+        path = Path(fn)
+
+        from_funcs = {
+            ".json": Wavefunction.from_orca_json,
+            ".fchk": Wavefunction.from_fchk,
+        }
+        from_funcs_for_str = (
+            # ORCA
+            ("Molden file created by orca_2mkl", Wavefunction.from_orca_molden),
+            # OpenMolcas
+            # ("[N_Atoms]", Wavefunction.from_molden),  # seems buggy right now
+        )
+        try:
+            from_func = from_funcs[path.suffix]
+        except KeyError:
+            # Search for certain strings in the file
+            with open(fn) as handle:
+                text = handle.read()
+            for key, func in from_funcs_for_str:
+                if key in text:
+                    from_func = func
+                    break
+            else:
+                raise Exception("Could not determine file format!")
+        return from_func(fn, **kwargs)
+
+    @staticmethod
+    @file_or_str(".molden", ".molden.input")
+    def from_molden(text, **kwargs):
+        from pysisyphus.io.molden import wavefunction_from_molden
+
+        wf = wavefunction_from_molden(text, **kwargs)
+        return wf
+
+    @staticmethod
     @file_or_str(".json")
     def from_orca_json(text):
         from pysisyphus.io.orca import wavefunction_from_json
@@ -96,6 +133,14 @@ class Wavefunction:
         from pysisyphus.io.orca import wavefunction_from_molden
 
         wf = wavefunction_from_molden(text)
+        return wf
+
+    @staticmethod
+    @file_or_str(".molden", ".molden.input")
+    def from_fchk(text, **kwargs):
+        from pysisyphus.io.fchk import wavefunction_from_fchk
+
+        wf = wavefunction_from_fchk(text, **kwargs)
         return wf
 
     @property
@@ -118,7 +163,7 @@ class Wavefunction:
         """
         Eqs. (2.25) and (2.26) in [3].
         """
-        trans_dens *= 2 ** 0.5 / 2
+        trans_dens *= 2**0.5 / 2
         occ_a, occ_b = self.occ
         assert occ_a == occ_b
         occ = occ_a
@@ -133,6 +178,73 @@ class Wavefunction:
         # The density matric is currently still in the MO basis. Transform
         # it to the AO basis and return.
         return C @ P @ C.T
+
+    def store_density(self, P, name, ao_or_mo="ao"):
+        assert P.ndim == 2, "Handling of alpha/beta densities is not yet implemented!"
+        if ao_or_mo == "mo":
+            C, _ = self.C
+            P_ao = C @ P @ C.T
+        elif ao_or_mo == "ao":
+            P_ao = P.copy()
+        self._densities[name] = P_ao
+
+    def get_density(self, name):
+        return self._densities[name]
+
+    def eval_density(self, coords3d, P=None):
+        if P is None:
+            P = self.P_tot
+        spherical = self.bf_type == BFType.PURE_SPHERICAL
+        vals = self.shells.eval(coords3d, spherical=spherical)
+        rho = np.einsum(
+            "uv,iu,iv->i", P, vals, vals, optimize=["einsum_path", (0, 1), (0, 1)]
+        )
+        return rho
+
+    def eval_esp(self, coords3d, with_nuc=True):
+        charges = np.ones(1)  # Assume positive charge of 1 e
+        esp = np.zeros(len(coords3d))
+        nuc_coords3d = self.coords3d
+        Pa, Pb = self.P
+        for i, c3d in enumerate(coords3d):
+            V = self.get_V(c3d[None, :], charges)  # 1el Coulomb integrals
+            el = np.einsum("uv,uv->", Pa, V)
+            if self.unrestricted:
+                el += np.einsum("uv,uv->", Pb, V)
+            else:
+                el *= 2.0
+            if with_nuc:
+                nuc = (
+                    self.nuc_charges
+                    / np.linalg.norm(nuc_coords3d - c3d[None, :], axis=1)
+                ).sum()
+            else:
+                nuc = 0.0
+            esp[i] = el + nuc
+        return esp
+
+    @property
+    def ao_centers(self) -> List[int]:
+        return list(
+            {
+                BFType.CARTESIAN: lambda: self.shells.cart_ao_centers,
+                BFType.PURE_SPHERICAL: lambda: self.shells.sph_ao_centers,
+            }[self.bf_type]()
+        )
+
+    @property
+    def ao_center_map(self) -> dict[int, List[int]]:
+        ao_center_map = dict()
+        for i, aoc in enumerate(self.ao_centers):
+            ao_center_map.setdefault(aoc, list()).append(i)
+        return ao_center_map
+
+    def as_geom(self, **kwargs):
+        return Geometry(self.atoms, self.coords, **kwargs)
+
+    #####################
+    # Overlap Integrals #
+    #####################
 
     @property
     def S(self):
@@ -270,7 +382,7 @@ class Wavefunction:
 
         trans_dens_a = atleast_3d(trans_dens_a)
         if trans_dens_b is None:
-            trans_dens_a = 1 / 2 ** 0.5 * trans_dens_a
+            trans_dens_a = 1 / 2**0.5 * trans_dens_a
             trans_dens_b = trans_dens_a
         trans_dens_b = atleast_3d(trans_dens_b)
 
@@ -307,7 +419,7 @@ class Wavefunction:
         exc_ens = np.atleast_1d(exc_ens)
         if trans_moms.ndim == 1:
             trans_moms = trans_moms[None, :]
-        fosc = 2 / 3 * exc_ens * (trans_moms ** 2).sum(axis=1)
+        fosc = 2 / 3 * exc_ens * (trans_moms**2).sum(axis=1)
         return fosc
 
     def as_geom(self):
