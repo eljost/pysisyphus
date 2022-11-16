@@ -104,7 +104,7 @@ class MOPAC(Calculator):
         )
         return inp
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         calc_type = "energy"
         inp = self.prepare_input(atoms, coords, calc_type)
         # with open("inp.mop", "w") as handle:
@@ -113,17 +113,20 @@ class MOPAC(Calculator):
         results = self.run(inp, calc="energy")
         return results
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         calc_type = "gradient"
         inp = self.prepare_input(atoms, coords, calc_type, opt=True)
         results = self.run(inp, calc="grad")
         return results
 
-    def get_hessian(self, atoms, coords):
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
         calc_type = "hessian"
         inp = self.prepare_input(atoms, coords, calc_type, opt=True)
         results = self.run(inp, calc="hessian")
         return results
+
+    def run_calculation(self, atoms, coords, **prepare_kwargs):
+        return self.get_energy(atoms, coords, **prepare_kwargs)
 
     def read_aux(self, path):
         with open(path / self.aux_fn) as handle:

@@ -19,6 +19,7 @@ __all__ = [
     "LennardJones",
     "MOPAC",
     "MultiCalc",
+    "OBabel",
     "ONIOM",
     "OpenMolcas",
     "ORCA",
@@ -53,6 +54,7 @@ from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.calculators.MultiCalc import MultiCalc
 from pysisyphus.calculators.MOPAC import MOPAC
 from pysisyphus.calculators.Psi4 import Psi4
+from pysisyphus.calculators.OBabel import OBabel
 from pysisyphus.calculators.ONIOMv2 import ONIOM
 from pysisyphus.calculators.OpenMolcas import OpenMolcas
 from pysisyphus.calculators.ORCA import ORCA

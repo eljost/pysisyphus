@@ -88,6 +88,7 @@ CALC_DICT = {
     "ipiserver": IPIServer,
     "mopac": MOPAC,
     "multi": MultiCalc,
+    "obabel": OBabel,
     "oniom": ONIOM,
     "openmolcas": OpenMolcas,
     "orca": ORCA,

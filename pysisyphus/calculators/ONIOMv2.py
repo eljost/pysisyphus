@@ -32,6 +32,8 @@ import scipy.sparse as sparse
 from pysisyphus.calculators import (
     Composite,
     Gaussian16,
+    MOPAC,
+    OBabel,
     OpenMolcas,
     ORCA,
     ORCA5,
@@ -52,6 +54,8 @@ CALC_DICT = {
     "composite": Composite,
     "g16": Gaussian16,
     "openmolcas": OpenMolcas.OpenMolcas,
+    "mopac": MOPAC,
+    "obabel": OBabel,
     "orca": ORCA.ORCA,
     "orca5": ORCA5.ORCA5,
     "psi4": Psi4,
