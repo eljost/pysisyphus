@@ -47,6 +47,9 @@ def get_opt_kwargs(opt_key, layer_ind, thresh):
         opt_kwargs = {
             "type": "rfo",
             "thresh": "never",
+            # "prefix": "model",
+            # "dump": True,
+            # "h5_group_name": "model_opt",
         }
     else:
         if opt_key is None:
@@ -54,10 +57,11 @@ def get_opt_kwargs(opt_key, layer_ind, thresh):
 
         opt_kwargs = {
             "type": opt_key,
-            "max_cycles": 1_000,
+            "max_cycles": 1_500,
             "thresh": thresh,
-            "overachieve_factor": 5,
-            "prefix": f"layer_{layer_ind:02d}",
+            "overachieve_factor": 3,
+            # "prefix": f"layer_{layer_ind:02d}",
+            # "dump": True,
         }
         try:
             opt_kwargs.update(opt_defaults[opt_key])
@@ -210,8 +214,10 @@ class Layers:
                 layer_opt_kwargs = opt_kwargs
                 layer_opt_cls = opt_cls
 
-                def get_opt(geom):
-                    opt = layer_opt_cls(geom, **layer_opt_kwargs)
+                def get_opt(geom, **kwargs):
+                    kwargs_ = layer_opt_kwargs.copy()
+                    kwargs_.update(kwargs)
+                    opt = layer_opt_cls(geom, **kwargs_)
                     return opt
 
                 return get_opt
@@ -221,7 +227,7 @@ class Layers:
             if i == 0:
                 model_opt = get_opt(geom0)
 
-                def get_opt(geom):
+                def get_opt(geom, **kwargs):
                     return model_opt
 
             self.opt_getters.append(get_opt)
@@ -318,7 +324,8 @@ class LayerOpt(Optimizer):
             print(highlight_text(f"Layer {i}", level=1))
             is_last_layer = i == self.layer_num - 1
             geom = get_geom(coords3d_cur)
-            opt = get_opt(geom)
+            prefix = f"mc{self.cur_cycle:03d}"
+            opt = get_opt(geom, prefix=prefix, h5_group_name=f"{prefix}_opt")
             if is_last_layer:
                 if self.cur_cycle == 0:
                     opt.prepare_opt()
@@ -346,7 +353,7 @@ class LayerOpt(Optimizer):
         self.forces.append(cart_forces.copy())
 
         # Also store relevant quantities in the optimizer of the last layer, so
-        # stuff like Hessian updates are possible. These quantities are usually
+        # things like Hessian updates are possible. These quantities are usually
         # stored in the big optimization-loop in Optimizer.run(). As run() is
         # never called for the last optimizer we have to store them manually.
         opt.coords.append(geom.coords.copy())
