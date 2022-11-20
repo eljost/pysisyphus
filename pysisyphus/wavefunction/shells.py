@@ -97,7 +97,17 @@ def eval_shell(xyz, center, cart_powers, contr_coeffs, exponents):
 
 
 class Shell:
-    def __init__(self, L, center, coeffs, exps, center_ind=None, atomic_num=None):
+    def __init__(
+        self,
+        L,
+        center,
+        coeffs,
+        exps,
+        center_ind=None,
+        atomic_num=None,
+        shell_index=None,
+        index=None,
+    ):
         self.L = get_l(L)
         self.center = np.array(center, dtype=float)  # (x, y, z), 1d array
         # Contraction coefficients, 2d array, shape (bfs in shell, number of primitives)
@@ -107,6 +117,10 @@ class Shell:
         assert self.coeffs.shape[1] == self.exps.size
         self.center_ind = int(center_ind)
         self.atomic_num = int(atomic_num)
+        if shell_index is not None:
+            self.shell_index = shell_index
+        if index is not None:
+            self.index = index
 
         # Store original copy of contraction coefficients
         self.coeffs_org = self.coeffs.copy()
@@ -126,7 +140,7 @@ class Shell:
         return Ns, np.array(norm_coeffs)
 
     def as_tuple(self):
-        return self.L, self.center, self.coeffs, self.exps
+        return self.L, self.center, self.coeffs, self.exps, self.index, self.size
 
     def exps_coeffs_iter(self):
         return zip(self.exps, self.coeffs)
@@ -139,9 +153,32 @@ class Shell:
     def cart_powers(self):
         return np.array(canonical_order(self.L), dtype=int)
 
+    @property
     def size(self):
+        """Number of cartesian basis functions in the shell."""
+        return self.cart_size
+
+    @property
+    def cart_size(self):
+        """Number of cartesian basis functions in the shell."""
         L = self.L
         return (L + 1) * (L + 2) // 2
+
+    @property
+    def index(self) -> int:
+        return self._index
+
+    @index.setter
+    def index(self, index: int):
+        self._index = int(index)
+
+    @property
+    def shell_index(self) -> int:
+        return self._shell_index
+
+    @shell_index.setter
+    def shell_index(self, shell_index: int):
+        self._shell_index = shell_index
 
     def __str__(self):
         try:
@@ -270,6 +307,15 @@ class Shells:
         """
         assert ordering in ("pysis", "native")
 
+        # Now that we have all Shell objects, we can set their starting indices
+        index = 0
+        shell_index = 0
+        for shell in self.shells:
+            shell.shell_index = shell_index
+            shell.index = index
+            index += shell.size
+            shell_index += 1
+
         try:
             self.cart_Ps = permut_for_order(self.cart_order)
         except AttributeError:
@@ -295,6 +341,10 @@ class Shells:
     def print_shells(self):
         for shell in self.shells:
             print(shell)
+
+    def as_tuple(self):
+        # Ls, centers, contr_coeffs, exponents, indices, sizes
+        return zip(*[shell.as_tuple() for shell in self.shells])
 
     @property
     def l_max(self):
@@ -325,7 +375,7 @@ class Shells:
 
     @property
     def cart_bf_num(self):
-        return sum([shell.size() for shell in self.shells])
+        return sum([shell.size for shell in self.shells])
 
     def from_basis(self, name, shells_cls=None, **kwargs):
         from pysisyphus.wavefunction.Basis import shells_with_basis
@@ -468,7 +518,7 @@ class Shells:
             center = coords3d[center_ind]
             Xa, Ya, Za = (xyz - center).T
             for shell in shells:
-                L_tot, _, contr_coeffs, exponents = shell.as_tuple()
+                L_tot, _, contr_coeffs, exponents, *_ = shell.as_tuple()
                 # shape (nbfs in shell, number of primitives, number of points)
                 vals = cart_gto(L_tot, exponents[:, None], Xa, Ya, Za)
                 vals *= contr_coeffs[..., None]
@@ -487,7 +537,7 @@ class Shells:
             precontr = self.P_cart.T
 
         for shell in self.shells:
-            _, center, contr_coeffs, exponents = shell.as_tuple()
+            _, center, contr_coeffs, exponents, *_ = shell.as_tuple()
             cart_powers = shell.cart_powers
             vals = eval_shell(xyz, center, cart_powers, contr_coeffs, exponents)
             all_vals.append(vals)
@@ -521,41 +571,35 @@ class Shells:
         if (not self.screen) or (screen_func is None):
             screen_func = lambda *args: True
 
-        a_ind = 0
-        b_skipped = 0
         for i, shell_a in enumerate(shells_a):
-            La, A, dA, aa = shell_a.as_tuple()
-            a_size = get_shell_shape(La)[0]
+            La, A, dA, ax, a_ind, a_size = shell_a.as_tuple()
             a_slice = slice(a_ind, a_ind + a_size)
-            b_ind = b_skipped
-            if symmetric:
-                b_skipped += a_size
             # When we don't deal with symmetric matrices we have to iterate over
             # all other basis functions in shells_b, so we reset i to 0.
-            else:
+            if not symmetric:
                 i = 0
-            a_min_exp = aa.min()  # Minimum exponent used for screening
+            a_min_exp = ax.min()  # Minimum exponent used for screening
             for shell_b in shells_b[i:]:
-                Lb, B, dB, bb = shell_b.as_tuple()
-                b_min_exp = bb.min()  # Minimum exponent used for screening
+                Lb, B, dB, bx, b_ind, b_size = shell_b.as_tuple()
+                # Screen shell pair
+                b_min_exp = bx.min()  # Minimum exponent used for screening
                 R_ab = np.linalg.norm(A - B)  # Shell center distance
                 b_size = get_shell_shape(Lb)[0]
                 if not screen_func(a_min_exp, b_min_exp, R_ab):
-                    b_ind += b_size
                     continue
                 shell_shape = (a_size, b_size)
                 shape = (components, *shell_shape)
-                ints_ = func(La, Lb, aa[:, None], A, bb[None, :], B, **kwargs)
-                ints_ = ints_.reshape(*shape, len(aa), len(bb))  # 5d
+                ints_ = func(La, Lb, ax[:, None], A, bx[None, :], B, **kwargs)
+                ints_ = ints_.reshape(*shape, len(ax), len(bx))  # 5d
                 ints_ *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
                 ints_ = ints_.sum(axis=(3, 4))
                 b_slice = slice(b_ind, b_ind + b_size)
                 integrals[:, a_slice, b_slice] = ints_
                 # Fill up the lower tringular part of the matrix
+                # TODO: this is probably better done outside of this loop, after
+                # everything is calculated...
                 if symmetric:
                     integrals[:, b_slice, a_slice] = np.transpose(ints_, axes=(0, 2, 1))
-                b_ind += b_size
-            a_ind += a_size
 
         # Return plain 2d array if components is set to 0, i.e., remove first axis.
         if is_2d:
@@ -606,42 +650,34 @@ class Shells:
         integrals = np.zeros((cart_bf_num_a, cart_bf_num_a, cart_bf_num_aux))
         symmetric = True
 
-        a_ind = 0
-        b_skipped = 0
         for i, shell_a in enumerate(shells_a):
-            La, A, dA, aa = shell_a.as_tuple()
-            a_size = get_shell_shape(La)[0]
+            La, A, dA, ax, a_ind, a_size = shell_a.as_tuple()
             a_slice = slice(a_ind, a_ind + a_size)
-            b_ind = b_skipped
-            if symmetric:
-                b_skipped += a_size
-            else:
+            if not symmetric:
                 i = 0
             for shell_b in shells_a[i:]:
-                Lb, B, dB, bb = shell_b.as_tuple()
-                b_size = get_shell_shape(Lb)[0]
+                Lb, B, dB, bx, b_ind, b_size = shell_b.as_tuple()
                 b_slice = slice(b_ind, b_ind + b_size)
                 dAB = (
                     dA[:, None, None, :, None, None] * dB[None, :, None, None, :, None]
                 )
                 c_ind = 0
                 for shell_c in shells_aux:
-                    Lc, C, dC, cc = shell_c.as_tuple()
-                    c_size = get_shell_shape(Lc)[0]
+                    Lc, C, dC, cx, c_ind, c_size = shell_c.as_tuple()
                     c_slice = slice(c_ind, c_ind + c_size)
                     shape = (a_size, b_size, c_size)
                     ints_ = int_func(
                         La,
                         Lb,
                         Lc,
-                        aa[:, None, None],
+                        ax[:, None, None],
                         A,
-                        bb[None, :, None],
+                        bx[None, :, None],
                         B,
-                        cc[None, None, :],
+                        cx[None, None, :],
                         C,
                     )
-                    ints_ = ints_.reshape(*shape, len(aa), len(bb), len(cc))  # 6D
+                    ints_ = ints_.reshape(*shape, len(ax), len(bx), len(cx))  # 6D
                     ints_ *= dAB * dC[None, None, :, None, None, :]
                     ints_ = ints_.sum(axis=(3, 4, 5))
                     integrals[a_slice, b_slice, c_slice] = ints_
@@ -649,9 +685,6 @@ class Shells:
                         integrals[b_slice, a_slice, c_slice] = np.transpose(
                             ints_, axes=(1, 0, 2)
                         )
-                    c_ind += c_size
-                b_ind += b_size
-            a_ind += a_size
         return integrals
 
     def get_3c2el_ints_sph(self, shells_aux):
