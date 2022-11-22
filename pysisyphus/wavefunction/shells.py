@@ -44,34 +44,51 @@ from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
 
 def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
-    """Norm of primitive GTOs and corresponding coefficients to normalize them.
-
+    """Norm of primitive GTOs, as well as contracted GTOs.
     Based on a function, originally published by Joshua Goings here:
-
         https://joshuagoings.com/2017/04/28/integrals/
+    and the Valeev paper:
+        https://arxiv.org/pdf/2007.12057.pdf .
     """
+
     coeffs = np.atleast_2d(coeffs)
-    L = sum(lmn)
+    L = sum(lmn)  # Angular momentum of the shell.
     fact2l, fact2m, fact2n = [factorial2(2 * _ - 1) for _ in lmn]
 
-    # Normalize primitives.
-    norm = np.sqrt(
-        np.power(2, 2 * L + 1.5)
-        * np.power(exps, L + 1.5)
-        / fact2l
-        / fact2m
-        / fact2n
-        / np.power(np.pi, 1.5)
+    """
+    Norms of primitve Gaussians with L = l + m + n and exponent α.
+    (
+        2**(2*L + 1.5) * α**(L + 1.5) π**(-3/2)
+        / ((2*l - 1)!! * (2*m - 1)!! * (2*n - 1)!!)
+    )**(1/2)
+    = (
+        2**(2*L) α**L
+        / ((2*l - 1)!! * (2*m - 1)!! * (2*n - 1)!!)
+    )**(1/2) * (α/π)**(3/4) * 2**(3/4)
+    = (
+        (2**2)*L * α**L
+        / ((2*l - 1)!! * (2*m - 1)!! * (2*n - 1)!!)
+    )**(1/2) * (α/π)**(3/4) * 2**(3/4)
+    = (
+        (4*α)**L
+        / ((2*l - 1)!! * (2*m - 1)!! * (2*n - 1)!!)
+    )**(1/2) * (α/π)**(3/4) * 2**(3/4)
+
+    equal to the product (1 / I_x * I_y * I_z)**(1/2) in
+    Eq. (2.9) in the Valeev paper.
+    """
+    pgto_norm = np.sqrt(
+        2 ** (2 * L + 1.5) * exps ** (L + 1.5) / fact2l / fact2m / fact2n / np.pi**1.5
     )
 
-    # Normalize the contracted basis functions (CGBFs)
-    # Eq. 1.44 of Valeev integral whitepaper.
-    prefactor = np.power(np.pi, 1.5) * fact2l * fact2m * fact2n / np.power(2.0, L)
-
-    N = (coeffs.T * coeffs / np.power(exps[:, None] + exps[None, :], L + 1.5)).sum()
-    N *= prefactor
-    N = 1 / np.sqrt(N)
-    return N, norm
+    # Norms of contracted gaussians.
+    #
+    # 'prefactor' is the first term in Eq. (2.25) in the Valeev paper.
+    prefactor = np.pi**1.5 * fact2l * fact2m * fact2n / 2.0**L
+    cgto_norm = (coeffs.T * coeffs / (exps[:, None] + exps[None, :]) ** (L + 1.5)).sum()
+    cgto_norm *= prefactor
+    cgto_norm = 1 / np.sqrt(cgto_norm)
+    return cgto_norm, pgto_norm
 
 
 def eval_pgtos(xyz, center, exponents, cart_powers):
@@ -125,8 +142,8 @@ class Shell:
         # Store original copy of contraction coefficients
         self.coeffs_org = self.coeffs.copy()
         # Compute norms and multiply them onto the contraction coefficients
-        _, norm_coeffs = self.get_norms()
-        self.coeffs = self.coeffs * norm_coeffs
+        cgto_norms, pgto_norm = self.get_norms()
+        self.coeffs = self.coeffs * pgto_norm
 
     def get_norms(self, coeffs=None):
         """Shape (nbfs, nprimitives).
@@ -136,8 +153,10 @@ class Shell:
         if coeffs is None:
             coeffs = self.coeffs
         lmns = canonical_order(self.L)
-        Ns, norm_coeffs = zip(*[normalize(lmn, coeffs, self.exps) for lmn in lmns])
-        return Ns, np.array(norm_coeffs)
+        cgto_norm, pgto_norm = zip(*[normalize(lmn, coeffs, self.exps) for lmn in lmns])
+        pgto_norm = np.array(pgto_norm)
+        cgto_norm = np.array(cgto_norm)
+        return cgto_norm, pgto_norm
 
     def as_tuple(self):
         return self.L, self.center, self.coeffs, self.exps, self.index, self.size
