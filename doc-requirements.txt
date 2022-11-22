@@ -103,7 +103,7 @@ partd==1.2.0
     # via dask
 pathlib2==2.3.7.post1
     # via fabric
-pillow==9.0.1
+pillow==9.3.0
     # via matplotlib
 psutil==5.9.0
     # via

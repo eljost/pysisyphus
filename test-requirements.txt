@@ -100,7 +100,7 @@ partd==1.2.0
     # via dask
 pathlib2==2.3.6
     # via fabric
-pillow==9.0.1
+pillow==9.3.0
     # via matplotlib
 pint==0.18
     # via qcelemental
