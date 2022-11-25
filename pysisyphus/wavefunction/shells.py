@@ -116,11 +116,11 @@ def eval_shell(xyz, center, cart_powers, contr_coeffs, exponents):
 class Shell:
     def __init__(
         self,
-        L,
-        center,
-        coeffs,
-        exps,
-        center_ind=None,
+        L: int,
+        center: NDArray[float],
+        coeffs: NDArray[float],
+        exps: NDArray[float],
+        center_ind: int,
         atomic_num=None,
         shell_index=None,
         index=None,
@@ -133,6 +133,8 @@ class Shell:
         self.exps = np.array(exps, dtype=float)  # Orbital exponents, 1d array
         assert self.coeffs.shape[1] == self.exps.size
         self.center_ind = int(center_ind)
+        if atomic_num is None:
+            atomic_num = -1
         self.atomic_num = int(atomic_num)
         if shell_index is not None:
             self.shell_index = shell_index
@@ -144,6 +146,7 @@ class Shell:
         # Compute norms and multiply them onto the contraction coefficients
         cgto_norms, pgto_norm = self.get_norms()
         self.coeffs = self.coeffs * pgto_norm
+        # self.coeffs = self.org_coeffs[None, :] * cgto_norms[:, None]
 
     def get_norms(self, coeffs=None):
         """Shape (nbfs, nprimitives).
@@ -364,6 +367,61 @@ class Shells:
     def as_tuple(self):
         # Ls, centers, contr_coeffs, exponents, indices, sizes
         return zip(*[shell.as_tuple() for shell in self.shells])
+
+    @property
+    def cart_size(self):
+        """Number of cartesian basis functions in the shell."""
+        return sum([shell.cart_size for shell in self.shells])
+
+    def as_arrays(self, fortran=False):
+        """Similar to the approach in libcint."""
+        # bas_centers
+        # One entry per shell, integer array.
+        #   center_ind, pointer to center coordinates in bas_data (3 floats)
+        bas_centers = list()
+        # bas_spec
+        # One entry per shell, integer array.
+        #   shell_ind, total angmom, N_pgto, N_cgto, \
+        #   pointer to contraction coefficients and exponents in bas_data \
+        #   (2*N_pgto floats)
+        bas_spec = list()
+        # bas_data
+        # Float array. Starts with 3 * N_centers floats, containing the center
+        # coordinates. Continues with alternating contraction coefficient and
+        # orbital exponent data.
+        bas_data = list()
+        pointer = 1 if fortran else 0
+
+        shells = self.shells
+        # Store center data, i.e., where the basis functions are located.
+        for shell in shells:
+            center_ind = shell.center_ind
+            bas_data.extend(shell.center)  # Store coordinates
+            atomic_num = shell.atomic_num
+            if atomic_num is None:
+                atomic_num = -1
+            bas_centers.append((center_ind, atomic_num, pointer))
+            pointer += 3
+
+        # Store contraction coefficients and primitive exponents.
+        for shell_ind, shell in enumerate(self.shells):
+            # L, center, coeffs, exponents, index, size = shell.as_tuple()
+            L, _, _, exponents, _, _ = shell.as_tuple()
+            contr_coeffs = shell.org_coeffs
+            nprim = len(contr_coeffs)
+            # ncontr is hardcoded to 1 for now, as there are no special functions
+            # to handle general contractions.
+            ncontr = 1
+            bas_spec.append((shell_ind, L, nprim, ncontr, pointer))
+            bas_data.extend(contr_coeffs)
+            pointer += nprim
+            bas_data.extend(exponents)
+            pointer += nprim
+
+        bas_centers = np.array(bas_centers, dtype=int)
+        bas_spec = np.array(bas_spec, dtype=int)
+        bas_data = np.array(bas_data, dtype=float)
+        return bas_centers, bas_spec, bas_data
 
     @property
     def l_max(self):
