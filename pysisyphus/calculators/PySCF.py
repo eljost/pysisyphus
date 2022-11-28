@@ -4,7 +4,6 @@ import shutil
 import numpy as np
 import pyscf
 from pyscf import gto, grad, lib, hessian, tddft, qmmm
-from pyscf.dft import xcfun
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.helpers import geom_loader
@@ -106,7 +105,6 @@ class PySCF(OverlapCalculator):
             driver = _get_driver()
             mf = driver(mol)
             mf.xc = self.xc
-            mf._numint.libxc = xcfun
             self.set_scf_params(mf)
             self.build_grid(mf)
         elif mol and (step == "scf"):
