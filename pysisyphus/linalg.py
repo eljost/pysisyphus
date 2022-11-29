@@ -1,5 +1,5 @@
 from math import cos, sin, sqrt
-from typing import Callable, Literal, Tuple
+from typing import Callable, Literal, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -326,6 +326,41 @@ def pivoted_cholesky(A: NDArray, tol: float = -1.0):
     L[np.triu_indices(N, k=1)] = 0
     L[:, rank:] = 0
     return L, piv, rank
+
+
+def pivoted_cholesky2(A: NDArray[float], tol: Optional[float]=None, m_max: int = 0):
+    """https://doi.org/10.1016/j.apnum.2011.10.001"""
+
+    R = np.zeros_like(A)
+    m = 0
+    n = len(A)
+    # Decompose to max rank.
+    if tol is None:
+        tol = 0.
+    assert tol >= 0., f"{tol=} must be >= 0.0!"
+    if m_max == 0:
+        m_max = n
+    assert 0 <= m_max <= n, f"{m_max=} must fullfil (0 <= m_max <= {n=})!"
+    d = np.diag(A).copy()  # Diagonal
+    error = np.linalg.norm(A, ord="nuc")
+    piv = np.arange(n, dtype=int)
+    while True:
+        # Stop when error is sufficiently small or we are at max rank.
+        # while (error > tol) or (m_max and m < m_max):
+        if (error <= tol) or (m_max and (m == m_max)):
+              break
+        i = m + d[piv[m:]].argmax()
+        piv[m], piv[i] = piv[i], piv[m]
+        R[m, piv[m]] = np.sqrt(d[piv[m]])
+        for i in range(m + 1, n):
+            j = np.arange(m)
+            sum_ = (R[j, piv[m]] * R[j, piv[i]]).sum()
+            R[m, piv[i]] = (A[piv[m], piv[i]] - sum_) / R[m, piv[m]]
+            d[piv[i]] -= R[m, piv[i]]**2
+        error = d[m+1:].sum()
+        m += 1
+    # R.T @ R == A
+    return R, piv, m
 
 
 def matrix_power(mat, p, thresh=1e-12):
