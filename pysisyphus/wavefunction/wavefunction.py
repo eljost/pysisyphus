@@ -4,7 +4,7 @@
 
 import operator
 from pathlib import Path
-from typing import Literal, List, Optional, Tuple
+from typing import Dict, Literal, List, Optional, Tuple
 import warnings
 
 import numpy as np
@@ -277,7 +277,7 @@ class Wavefunction:
         )
 
     @property
-    def ao_center_map(self) -> dict[int, List[int]]:
+    def ao_center_map(self) -> Dict[int, List[int]]:
         ao_center_map = dict()
         for i, aoc in enumerate(self.ao_centers):
             ao_center_map.setdefault(aoc, list()).append(i)
