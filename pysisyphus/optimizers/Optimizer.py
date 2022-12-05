@@ -91,6 +91,7 @@ class ConvInfo:
     rms_force_converged: bool
     max_step_converged: bool
     rms_step_converged: bool
+    desired_eigval_structure: bool
 
     def get_convergence(self):
         return (
@@ -99,6 +100,7 @@ class ConvInfo:
             self.rms_force_converged,
             self.max_step_converged,
             self.rms_step_converged,
+            self.desired_eigval_structure,
         )
 
     def is_converged(self):
@@ -126,6 +128,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         reparam_check_rms: bool = True,
         reparam_when: Optional[Literal["before", "after"]] = "after",
         overachieve_factor: float = 0.0,
+        check_eigval_structure: bool = False,
         restart_info=None,
         check_coord_diffs: bool = True,
         coord_diff_thresh: float = 0.01,
@@ -193,6 +196,10 @@ class Optimizer(metaclass=abc.ABCMeta):
             Signal convergence when max(forces) and rms(forces) fall below the
             chosen threshold, divided by this factor. Convergence of max(step) and
             rms(step) is ignored.
+        check_eigval_structure
+            Check the eigenvalues of the modes we maximize along. Convergence requires
+            them to be negative. Useful if TS searches are started from geometries close
+            to a minimum.
         restart_info
             Restart information. Undocumented.
         check_coord_diffs
@@ -234,6 +241,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.reparam_when = reparam_when
         assert self.reparam_when in ("after", "before", None)
         self.overachieve_factor = float(overachieve_factor)
+        self.check_eigval_structure = check_eigval_structure
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
 
@@ -506,11 +514,31 @@ class Optimizer(metaclass=abc.ABCMeta):
             "max_step_converged": check("max_step_thresh"),
             "rms_step_converged": check("rms_step_thresh"),
         }
+        # For TS optimizations we also try to check the eigenvalue structure of the
+        # Hessian. A saddle point of order n must have exatcly only n significant negative
+        # eigenvalues. We try to check this below.
+        #
+        # Currently, this is not totally strict,
+        # as only the values in self.ts_mode_eigvals are checked but actually all eigenvalues
+        # would have to be checked.
+        try:
+            desired_eigval_structure = ((
+                # Acutally all eigenvalues would have to be checked, but currently they are
+                # not stored anywhere.
+                self.ts_mode_eigvals < self.small_eigval_thresh
+            ).sum() == len(self.roots)) and self.check_eigval_structure
+            # We can't prepend the check_eigval_structure, as the short-circuit evaluation would
+            # prevent checking for self.ts_mode_eigvals, which would prevent AttributeError to
+            # be raised.
+        except AttributeError:
+            desired_eigval_structure = True
+        convergence["desired_eigval_structure"] = desired_eigval_structure
         conv_info = ConvInfo(self.cur_cycle, **convergence)
 
-        # Check if force convergence is overachieved
+        # Check if force convergence is overachieved. If the eigenvalue-structure is
+        # checked, a wrong structure will prevent overachieved convergence.
         overachieved = False
-        if overachieve_factor > 0:
+        if overachieve_factor > 0 and desired_eigval_structure:
             max_thresh = self.convergence["max_force_thresh"] / overachieve_factor
             rms_thresh = self.convergence["rms_force_thresh"] / overachieve_factor
             max_ = max_force < max_thresh
@@ -683,12 +711,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         _ = self.geometry.forces
         cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
-        rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
+        rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
         int_str = ""
         if self.geometry.coord_type not in ("cart", "cartesian", "mwcartesian"):
             int_forces = self.geometry.forces
             max_int_forces = np.abs(int_forces).max()
-            rms_int_forces = np.sqrt(np.mean(int_forces ** 2))
+            rms_int_forces = np.sqrt(np.mean(int_forces**2))
             int_str = f"""
             \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
             \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""
