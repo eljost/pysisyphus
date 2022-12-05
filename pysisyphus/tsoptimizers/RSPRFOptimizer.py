@@ -14,7 +14,6 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
 class RSPRFOptimizer(TSHessianOptimizer):
-
     def optimize(self):
         energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
@@ -22,10 +21,16 @@ class RSPRFOptimizer(TSHessianOptimizer):
         # Transform gradient to eigensystem of hessian
         gradient_trans = eigvecs.T.dot(gradient)
         # Minimize energy along all modes, except the TS-mode
-        min_indices = [i for i in range(gradient_trans.size) if i != self.root]
+        min_indices = [i for i in range(gradient_trans.size) if i not in self.roots]
+        # Maximize energy along all requested modes.
+        max_indices = [i for i in range(gradient_trans.size) if i in self.roots]
         # Get line search steps, if requested.
         ip_step_trans, gradient_trans = self.step_and_grad_from_line_search(
-            energy, gradient_trans, eigvecs, min_indices
+            energy,
+            gradient_trans,
+            eigvecs,
+            min_indices,
+            max_indices,
         )
 
         """In the RS-(P)RFO method we have to scale the matrices with alpha.
@@ -56,12 +61,11 @@ class RSPRFOptimizer(TSHessianOptimizer):
             # Maximize energy along the chosen TS mode. The matrix is hardcoded
             # as 2x2, so only first-order saddle point searches are supported.
             H_aug_max = self.get_augmented_hessian(
-                eigvals[[self.root]], gradient_trans[[self.root]], alpha
+                eigvals[max_indices], gradient_trans[max_indices], alpha
             )
             step_max, eigval_max, nu_max, self.prev_eigvec_max = self.solve_rfo(
                 H_aug_max, "max", prev_eigvec=self.prev_eigvec_max
             )
-            step_max = step_max[0]
 
             # Minimize energy along all modes, but the TS mode.
             H_aug_min = self.get_augmented_hessian(
@@ -88,12 +92,12 @@ class RSPRFOptimizer(TSHessianOptimizer):
 
             # As of Eq. (8a) of [4] max_eigval and min_eigval also
             # correspond to:
-            # max_eigval = -forces_trans[self.root] * max_step
+            # max_eigval = -forces_trans[max_indices].dot(max_step)
             # min_eigval = -forces_trans[min_indices].dot(min_step)
 
             # Create the full PRFO step
             step = np.zeros_like(gradient_trans)
-            step[self.root] = step_max
+            step[max_indices] = step_max
             step[min_indices] = step_min
             step_norm = np.linalg.norm(step)
             self.log(f"norm(step)={step_norm:.6f}")
@@ -115,9 +119,11 @@ class RSPRFOptimizer(TSHessianOptimizer):
             dstep2_dalpha_max = (
                 2
                 * eigval_max
-                / (1 + step_max ** 2 * alpha)
-                * gradient_trans[self.root] ** 2
-                / (eigvals[self.root] - eigval_max * alpha) ** 3
+                / (1 + step_max.dot(step_max) ** 2 * alpha)
+                * np.sum(
+                    *gradient_trans[max_indices] ** 2
+                    / (eigvals[max_indices] - eigval_max * alpha) ** 3
+                )
             )
             # min subspace
             dstep2_dalpha_min = (
@@ -132,7 +138,7 @@ class RSPRFOptimizer(TSHessianOptimizer):
             dstep2_dalpha = dstep2_dalpha_max + dstep2_dalpha_min
             # Update alpha
             alpha_step = (
-                2 * (self.trust_radius * step_norm - step_norm ** 2) / dstep2_dalpha
+                2 * (self.trust_radius * step_norm - step_norm**2) / dstep2_dalpha
             )
             alpha += alpha_step
 
