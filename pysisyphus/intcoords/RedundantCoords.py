@@ -60,6 +60,7 @@ class RedundantCoords:
         constrain_prims=None,
         freeze_atoms=None,
         freeze_atoms_exclude=False,
+        internals_with_frozen=False,
         define_for=None,
         bonds_only=False,
         check_bends=True,
@@ -92,6 +93,7 @@ class RedundantCoords:
             freeze_atoms = list()
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
         self.freeze_atoms_exclude = freeze_atoms_exclude
+        self.internals_with_frozen = internals_with_frozen
         self.define_for = define_for
         # Constrain primitives
         if constrain_prims is None:
@@ -542,6 +544,7 @@ class RedundantCoords:
             hybrid=self.hybrid,
             hbond_angles=self.hbond_angles,
             freeze_atoms=self.freeze_atoms if self.freeze_atoms_exclude else None,
+            internals_with_frozen=self.internals_with_frozen,
             define_for=self.define_for,
             rm_for_frag=self.rm_for_frag,
             logger=self.logger,

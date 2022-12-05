@@ -642,6 +642,7 @@ def setup_redundant(
     hbond_angles=False,
     freeze_atoms=None,
     define_for=None,
+    internals_with_frozen=False,
     rm_for_frag: Optional[set] = None,
     logger=None,
 ):
@@ -654,23 +655,27 @@ def setup_redundant(
     if rm_for_frag is None:
         rm_for_frag = set()
 
-    rm_for_frag
-
     log(
         logger,
         f"Detecting primitive internals for {len(atoms)} atoms.\n"
         f"Excluding {len(freeze_atoms)} frozen atoms from the internal coordinate setup.",
     )
-    # By default all atomes are used to generate coordinates
+
+    # Mask array. By default all atomes are used to generate internal coordinates.
     use_atoms = np.ones_like(atoms, dtype=bool)
     # Only use atoms in 'define_for' to generate internal coordinates
     if define_for:
         use_atoms[:] = False  # Disable/mask all others
         use_atoms[define_for] = True
-    else:
+    # If not explicitly enabled, don't form internal coordinates containing frozen atoms.
+    # With 'internals_with_frozen', the bonds will be filtered for bonds, containing
+    # at most one frozen atom.
+    elif not internals_with_frozen:
         use_atoms[freeze_atoms] = False
+    freeze_atom_set = set(freeze_atoms)
     atoms = [atom for mobile, atom in zip(use_atoms, atoms) if mobile]
     coords3d = coords3d[use_atoms]
+
     # Maps (different) indices of mobile atoms back to their original indices
     freeze_map = {
         sub_ind: org_ind for sub_ind, org_ind in enumerate(np.where(use_atoms)[0])
@@ -695,6 +700,8 @@ def setup_redundant(
         return_cdm=True,
         return_cbm=True,
     )
+    if internals_with_frozen:
+        bonds = [bond for bond in bonds if len(set(bond) & freeze_atom_set) <= 1]
     bonds = [tuple(bond) for bond in bonds]
     bonds = keep_coords(bonds, Stretch)
     bonds = [bond for bond in bonds if rm_for_frag.isdisjoint(set(bond))]
@@ -705,7 +712,7 @@ def setup_redundant(
     ]
     # Check for unbonded single atoms and create fragments for them.
     bonded_set = set(tuple(np.ravel(bonds)))
-    unbonded_set = set(range(len(atoms))) - bonded_set
+    unbonded_set = set(range(len(atoms))) - bonded_set - freeze_atom_set
     log(
         logger,
         f"Merging bonded atoms yielded {len(fragments)} fragment(s) and "
