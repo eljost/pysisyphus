@@ -1898,7 +1898,7 @@ def print_header():
 888       "Y88P"       O         \_/     "Y88P"  888           \_/              
             |                         x           |                      \|/
    X        |                        xox          O                     --X--
-            O                         x                                  /|\\
+            O                         x                                  /|\
 """
     now = datetime.datetime.now()
     today = now.date()

@@ -116,8 +116,8 @@ def test_mullerbrown_string(double_damp, ref_cycle):
 
 @pytest.mark.parametrize(
     "double_damp, ref_cycle", [
-        (False, 42),
-        (True, 42),
+        (False, 75),
+        (True, 48),
     ]
 )
 def test_energy_reparametrization(double_damp, ref_cycle):

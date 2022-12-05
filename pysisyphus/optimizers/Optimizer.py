@@ -521,17 +521,19 @@ class Optimizer(metaclass=abc.ABCMeta):
         # Currently, this is not totally strict,
         # as only the values in self.ts_mode_eigvals are checked but actually all eigenvalues
         # would have to be checked.
-        try:
-            desired_eigval_structure = ((
-                # Acutally all eigenvalues would have to be checked, but currently they are
-                # not stored anywhere.
-                self.ts_mode_eigvals < self.small_eigval_thresh
-            ).sum() == len(self.roots)) and self.check_eigval_structure
-            # We can't prepend the check_eigval_structure, as the short-circuit evaluation would
-            # prevent checking for self.ts_mode_eigvals, which would prevent AttributeError to
-            # be raised.
-        except AttributeError:
-            desired_eigval_structure = True
+        desired_eigval_structure = True
+        if self.check_eigval_structure:
+            try:
+                desired_eigval_structure = (
+                    # Acutally all eigenvalues would have to be checked, but
+                    # currently they are not stored anywhere.
+                    self.ts_mode_eigvals
+                    < self.small_eigval_thresh
+                ).sum() == len(self.roots)
+            except AttributeError:
+                self.log(
+                    "Skipping check of eigenvalue structure, as information is unavailable."
+                )
         convergence["desired_eigval_structure"] = desired_eigval_structure
         conv_info = ConvInfo(self.cur_cycle, **convergence)
 
