@@ -34,51 +34,51 @@ RS-P-RFO, TRIM).
 .. code:: yaml
 
     tsopt:
-     type: rsirfo|rsprfo|trim       # Optimization algorithm
+     type: rsirfo|rsprfo|trim         # Optimization algorithm
 
-     do_hess: True                  # Calculate the hessian at the final geometry
-                                    # after the optimization.
+     do_hess: True                    # Calculate the hessian at the final geometry
+                                      # after the optimization.
 
-     hessian_recalc: 1              # Recalculate the exact hessian every n-th cylce
-                                    # Very costly but a small number like 5 may be a good
-                                    # idea.
+     hessian_recalc: 1                # Recalculate the exact hessian every n-th cylce
+                                      # Very costly but a small number like 5 may be a good
+                                      # idea.
 
-     prim_coord: [BOND, 3, 18]      # Select the mode to follow uphill by overlap with
-                                    # this primitive internal coordinate. Expects exactly
-                                    # one typed primitive.
+     prim_coord: [BOND, 3, 18]        # Select the mode to follow uphill by overlap with
+                                      # this primitive internal coordinate. Expects exactly
+                                      # one typed primitive.
 
-    rx_mode: [[[BOND, 3, 18], 1]]   # Select initial mode based on overlaps with a
-                                    # constructed mode. Can be seen as generalization of
-                                    # prim_coord. Expects a list of pairs, with each pair
-                                    # comprising a typed primitive and a phase factor.
-                                    #
-                                    # See examples/{05,06}... for examples.
+    rx_modes: [[[[BOND, 3, 18], 1]]]  # Select initial mode based on overlaps with a
+                                      # constructed mode(s). Can be seen as generalization of
+                                      # prim_coord. Expects a a list of (lists of pairs, with each
+                                      # pair comprising a typed primitive and a phase factor).
+                                      #
+                                      # See examples/tsopt/{05..,06..} for examples.
 
-     #rx_coords: [[BOND, 3, 18],]   # Obtain initial mode by modifying a model Hessian.  Has
-                                    # to be used with 'hess_init: swart|fischer|lindh|xtb'
-                                    # to avoid calculation of exact hessian.
-                                    # Also requires 'redund' or 'dlc' to work.
+     #rx_coords: [[BOND, 3, 18],]     # Obtain initial mode by modifying a model Hessian.  Has
+                                      # to be used with 'hess_init: swart|fischer|lindh|xtb'
+                                      # to avoid calculation of exact hessian.
+                                      # Also requires 'redund' or 'dlc' to work.
 
-     #root: 0                       # Follow the n-th imaginary mode uphill, minimize
-                                    # along the others.
+     #root: 0                         # Follow the n-th imaginary mode uphill, minimize
+                                      # along the others.
 
-     #hessian_init: calc            # Initial hessian is calculated exactly.
+     #hessian_init: calc              # Initial hessian is calculated exactly.
 
-     #hessian_update: bofill        # Bofill hessian-update. Should not be modified for
-                                    # TS optimizations.
+     #hessian_update: bofill          # Bofill hessian-update. Should not be modified for
+                                      # TS optimizations.
 
-     #hessian_ref: [path]           # Expects a path to a precalculated hessian at any
-                                    # level of theory. The emode to maximize along is selected
-                                    # by highest overlap with imaginary mode from the reference
-                                    # hessian.
+     #hessian_ref: [path]             # Expects a path to a precalculated hessian at any
+                                      # level of theory. The emode to maximize along is selected
+                                      # by highest overlap with imaginary mode from the reference
+                                      # hessian.
 
 
-     #max_micro_cycles: 50          # No. of micro cycles for the RS-variants. Does not apply
-                                    # to TRIM.
+     #max_micro_cycles: 50            # No. of micro cycles for the RS-variants. Does not apply
+                                      # to TRIM.
 
-     #trust_radius: 0.3             # Initial trust radius.
-     #trust_max: 1.0                # Max. trust radius
-     #trust_min: 0.1                # Min. trust radius
+     #trust_radius: 0.3               # Initial trust radius.
+     #trust_max: 1.0                  # Max. trust radius
+     #trust_min: 0.1                  # Min. trust radius
     calc:
      type: xtb
      pal: 4
@@ -87,13 +87,13 @@ RS-P-RFO, TRIM).
     geom:
      type: redund
      fn: shaked.geom_000.xyz
-     add_prims: [[24, 20], ]        # If using internal coordinates ALWAYS check the coordinates
-                                    # that pysisyphus generates (pysistrj [xyz] --internals). If
-                                    # some important (reaction) coordinates appears to be missing
-                                    # define them manually. In this example
-                                    # we add a bond. If additional internal coordinates can
-                                    # derived from the added primitives pysisyphus will do
-                                    # it.
+     add_prims: [[24, 20], ]          # If using internal coordinates ALWAYS check the coordinates
+                                      # that pysisyphus generates (pysistrj [xyz] --internals). If
+                                      # some important (reaction) coordinates appears to be missing
+                                      # define them manually. In this example
+                                      # we add a bond. If additional internal coordinates can
+                                      # derived from the added primitives pysisyphus will do
+                                      # it.
 
 Second-derivative-free TS optimization can be done using the `Dimer` method. Attached
 you can find a sample input.

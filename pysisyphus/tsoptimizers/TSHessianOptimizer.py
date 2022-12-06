@@ -24,7 +24,7 @@ class TSHessianOptimizer(HessianOptimizer):
         roots: Optional[List[int]] = None,
         root: int = 0,
         hessian_ref: Optional[str] = None,
-        rx_mode=None,
+        rx_modes=None,
         prim_coord=None,
         rx_coords=None,
         hessian_init: HessInit = "calc",
@@ -57,12 +57,12 @@ class TSHessianOptimizer(HessianOptimizer):
             Index of imaginary mode to maximize along. Shortcut for 'roots' with only one root.
         hessian_ref
             Filename pointing to a pysisyphus HDF5 Hessian.
-        rx_mode : iterable of (typed_prim, phase_factor)
-            Select initial root by overlap with a mode constructed from the given
-            typed primitives.
+        rx_modes : iterable of (iterable of (typed_prim, phase_factor))
+            Select initial root(s) by overlap with a modes constructed from the given
+            typed primitives with respective phase factors.
         prim_coord : typed_prim
             Select initial root/imaginary mode by overlap with this internal coordinate.
-            Shortcut for 'rx_mode' with only one internal coordinate.
+            Shortcut for 'rx_modes' with only one internal coordinate.
         rx_coords : iterable of (typed_prim)
             Construct imaginary mode comprising the given typed prims by modifying
             a model Hessian.
@@ -143,15 +143,15 @@ class TSHessianOptimizer(HessianOptimizer):
         except (ValueError, TypeError) as err:
             self.log(f"No reference Hessian provided.")
 
-        # Construct initial imaginary mode from the given inputs while respecting
-        # the given weight/phase factors.
-        self.rx_mode = rx_mode
-
         # Select initial root according to highest contribution of 'prim_coord'
         if prim_coord is not None:
-            self.log("'prim_coord' given. Overwriting/setting 'rx_mode'.")
-            rx_mode = [[prim_coord, 1.0]]
+            self.log("'prim_coord' given. Overwriting/setting 'rx_modes'.")
+            rx_modes = [[[prim_coord, 1.0]]]
         self.prim_coord = prim_coord
+
+        # Construct initial imaginary mode from the given inputs while respecting
+        # the given weight/phase factors.
+        self.rx_modes = rx_modes
 
         # Construct initial imaginary mode according the primitive internals in
         # 'rx_coords' by modifying a model Hessian.
@@ -248,7 +248,9 @@ class TSHessianOptimizer(HessianOptimizer):
             self.log(f"\t{ovlp_str}")
 
             root = np.abs(overlaps).argmax()
-            self.roots = [root, ]
+            self.roots = [
+                root,
+            ]
             print(
                 "Highest overlap between reference TS mode and "
                 f"eigenvector {self.root:02d}."
@@ -256,28 +258,32 @@ class TSHessianOptimizer(HessianOptimizer):
             used_str = "overlap with reference TS mode"
         # Construct an approximate initial mode according to user input
         # and calculate overlaps with the current eigenvectors.
-        elif self.rx_mode is not None:
+        elif self.rx_modes is not None:
             self.log(f"Constructing reference mode, according to user input")
             assert self.geometry.coord_type != "cart"
-            mode = np.zeros_like(self.geometry.coords)
             int_ = self.geometry.internal
-            for typed_prim, val in self.rx_mode:
-                typed_prim = normalize_prim_input(typed_prim)[0]
-                ind = int_.get_index_of_typed_prim(typed_prim)
-                mode[ind] = val
-                self.log(f"\tIndex {ind} (coordinate {typed_prim}) set to {val:.4f}")
-            mode /= np.linalg.norm(mode)
-            mode_str = np.array2string(mode, precision=2)
-            self.log(f"Final, normalized, reference mode: {mode_str}")
+            modes = list()
+            for i, rx_mode in enumerate(self.rx_modes):
+                mode = np.zeros_like(self.geometry.coords)
+                for typed_prim, val in rx_mode:
+                    typed_prim = normalize_prim_input(typed_prim)[0]
+                    ind = int_.get_index_of_typed_prim(typed_prim)
+                    mode[ind] = val
+                    self.log(
+                        f"\tIndex {ind} (coordinate {typed_prim}) set to {val:.4f}"
+                    )
+                mode /= np.linalg.norm(mode)
+                modes.append(mode)
+                mode_str = np.array2string(mode, precision=2)
+                self.log(f"Normalized reference mode {i:02d}: {mode_str}")
 
             # Calculate overlaps in non-redundant subspace by zeroing overlaps
             # in the redundant subspace.
             small_inds = np.abs(eigvals) < self.small_eigval_thresh
             # Take absolute value, because sign of eigenvectors is ambiguous.
-            ovlps = np.abs(np.einsum("ij,i->j", eigvecs, mode))
-            ovlps[small_inds] = 0.0
-            root = np.argmax(ovlps)
-            self.roots = [root, ]
+            ovlps = np.abs(np.einsum("ij,ki->kj", eigvecs, modes))
+            ovlps[:, small_inds] = 0.0
+            self.roots = ovlps.argmax(axis=1)
             used_str = "overlap with user-generated mode"
         else:
             used_str = f"root(s)={self.roots}"

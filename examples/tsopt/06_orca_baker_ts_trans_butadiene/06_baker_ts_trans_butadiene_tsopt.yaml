@@ -30,7 +30,7 @@ tsopt:
  # mode that corresponds to a simple torsion.
  #
  # After all, root 9 will be selected.
- rx_mode: [[[DIHEDRAL, 2, 0, 1, 3], 1]]
+ rx_modes: [[[[DIHEDRAL, 2, 0, 1, 3], 1]]]
  do_hess: True
 assert:
- ts_geom.energy: -154.05046
+ ts_geom.energy: -154.050455732882

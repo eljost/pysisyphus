@@ -121,7 +121,7 @@ class RSPRFOptimizer(TSHessianOptimizer):
                 * eigval_max
                 / (1 + step_max.dot(step_max) ** 2 * alpha)
                 * np.sum(
-                    *gradient_trans[max_indices] ** 2
+                    gradient_trans[max_indices] ** 2
                     / (eigvals[max_indices] - eigval_max * alpha) ** 3
                 )
             )

@@ -29,7 +29,7 @@ tsopt:
  # that are broken in the dissociation.
  #
  # After all, root 15 will be selected.
- rx_mode: [[[BOND, 0, 2], 1], [[BOND, 1, 3], 1]]
+ rx_modes: [[[[BOND, 0, 2], 1], [[BOND, 1, 3], 1]]]
  do_hess: True
 assert:
- ts_geom.energy: -292.81026
+ ts_geom.energy: -292.810257068862
