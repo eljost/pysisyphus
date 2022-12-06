@@ -189,4 +189,5 @@ version.py
 !tests/test_wavefunction/h2o2/*
 !tests/test_wavefunction/h2o2_anion/*
 !tests/test_wavefunction/pyrrole/*
+!tests/test_psf/step1_pdbreader.psf
 !pysisyphus/wf_library/*
