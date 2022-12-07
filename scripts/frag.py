@@ -34,6 +34,12 @@ def parse_args(args):
         action="store_true",
         help="Break all bonds involving transition metal atoms.",
     )
+    parser.add_argument(
+        "--filter",
+        type=int,
+        nargs="+",
+        help="Report only fragments containing the given atom indices."
+    )
     return parser.parse_args(args)
 
 
@@ -74,6 +80,8 @@ def run():
     args = parse_args(sys.argv[1:])
 
     geom = geom_loader(args.fn)
+    filter = set(args.filter)
+    import pdb; pdb.set_trace()  # fmt: skip
 
     # Determine bond topology
     bonds = get_bond_sets(geom.atoms, geom.coords3d).tolist()
@@ -132,12 +140,13 @@ def run():
     coords3d = geom.coords3d
     xyzs = list()
     frags_compressed = list()
-    print("Last item in ranges of compressed notation is exclusive!")
+    print("Last item in compressed ranges is exclusive! Counting starts at 0.")
     for i, frag in enumerate(fragments):
         compressed = compress(frag, check=True)
         frags_compressed.append(compressed)
         sop = "s" if len(frag) > 1 else ""
-        print(f"{len(frag)} atom{sop}, compressed:\n\t{compressed}")
+        if len(filter) == 0 or set(frag) & filter:
+            print(f"{len(frag)} atom{sop}, compressed:\n\t{compressed}")
         frag_atoms = dummy_atoms.copy()
         for j in frag:
             frag_atoms[j] = atoms[j]

@@ -1274,12 +1274,12 @@ class Geometry:
             comment = self.comment
         return make_xyz_str(atoms, cart_coords.reshape((-1, 3)), comment)
 
-    def dump_xyz(self, fn, cart_coords=None):
+    def dump_xyz(self, fn, cart_coords=None, **kwargs):
         fn = str(fn)
         if not fn.lower().endswith(".xyz"):
             fn = fn + ".xyz"
         with open(fn, "w") as handle:
-            handle.write(self.as_xyz(cart_coords=cart_coords))
+            handle.write(self.as_xyz(cart_coords=cart_coords, **kwargs))
 
     def get_subgeom(self, indices, coord_type="cart", sort=False):
         """Return a Geometry containing a subset of the current Geometry.
