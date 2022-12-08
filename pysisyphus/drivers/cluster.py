@@ -227,4 +227,18 @@ def cluster_from_psf_pdb(psf_fn, pdb_fn, within_resid, within_dist):
         geom.atoms + link_atoms, np.concatenate((geom.coords3d, link_coords3d), axis=0)
     )
     print("Created satured geometry with link atoms.")
-    return sat_geom, sum([res.charge for res in residues])
+
+    # Determine backbone atoms and/or link atoms and report their indices, so they can
+    # be restrained in subsequent RMSD-biased optimizations.
+    backbone_names = {"CA", "C", "O", "N"}  # HN, HA not included
+    i = 0
+    backbone_inds = list()
+    for res in residues:
+        for atom in res.atoms:
+            if atom.name in backbone_names:
+                backbone_inds.append(i)
+                print(f"{res.name}{res.id}, {atom.element}{atom.id}, type={atom.name}")
+            i += 1
+    backbone_inds = np.array(backbone_inds, dtype=int)
+
+    return sat_geom, sum([res.charge for res in residues]), backbone_inds

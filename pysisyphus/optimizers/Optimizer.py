@@ -71,7 +71,8 @@ def get_data_model(geometry, is_cos, max_cycles):
 
 
 CONV_THRESHS = {
-    #              max_force, rms_force, max_step, rms_step
+    #                max_force, rms_force, max_step, rms_step
+    "nwchem_loose": (4.5e-3, 3.0e-3, 5.4e-3, 3.6e-3),
     "gau_loose": (2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3),
     "gau": (4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3),
     "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
@@ -586,7 +587,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         if (self.cur_cycle > 1) and (self.cur_cycle % 10 == 0):
             self.table.print_sep()
 
-        marks = [False, *conv_info.get_convergence(), False]
+        # desired_eigval_structure is also returned, but currently not reported.
+        marks = [False, *conv_info.get_convergence()[:-1], False]
         try:
             cycle_time = self.cycle_times[-1]
         except IndexError:
