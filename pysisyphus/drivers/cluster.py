@@ -128,25 +128,28 @@ def residues_from_psf(psf_data, atoms, coords3d, atom_map):
 
 
 def residues_within_com_dist(
-    atoms, coords3d, atom_map, psf_data, within_resid, within_dist
+    # atoms, coords3d, atom_map, psf_data, within_resid, within_dist
+    atoms,
+    coords3d,
+    atom_map,
+    residues,
+    within_resid,
+    within_dist,
 ):
-
-    residuesd = residues_from_psf(psf_data, atoms, coords3d, atom_map)
-
-    coms = {key: res.com for key, res in residuesd.items()}
+    coms = {key: res.com for key, res in residues.items()}
 
     def within(resid, com_dist):
         ref_com = coms[resid]
         res_ids_below_dist = [
             key
-            for key, res in residuesd.items()
+            for key, res in residues.items()
             if np.linalg.norm(coms[res.key] - ref_com) <= com_dist
         ]
         return res_ids_below_dist
 
-    within_cys = within(within_resid, within_dist)
-    wresidues = [residuesd[resid] for resid in within_cys]
-    return wresidues
+    within_resid = within(within_resid, within_dist)
+    residues_within = [residues[resid] for resid in within_resid]
+    return residues_within
 
 
 def geom_from_residues(residues):
@@ -200,7 +203,9 @@ def link_atoms_for_residues(
     return link_hosts, link_atoms, link_coords3d
 
 
-def cluster_from_psf_pdb(psf_fn, pdb_fn, within_resid, within_dist):
+def cluster_from_psf_pdb(
+    psf_fn, pdb_fn, within_resid=None, within_dist=0.0, ref_residues=None
+):
     atoms, coords, _, atom_map = parse_pdb(pdb_fn)
     coords3d = coords.reshape(-1, 3)
     print("Loaded PDB data.")
@@ -213,15 +218,27 @@ def cluster_from_psf_pdb(psf_fn, pdb_fn, within_resid, within_dist):
     # with open("d.pickle", "rb") as handle:
     # psf_data = pickle.load(handle)
     print("Loaded PSF data.")
+    residues = residues_from_psf(psf_data, atoms, coords3d, atom_map)
 
-    residues = residues_within_com_dist(
-        atoms, coords3d, atom_map, psf_data, within_resid, within_dist
-    )
-    geom = geom_from_residues(residues)
+    # Select according to COM distance
+    if within_resid and within_dist:
+        sel_residues = residues_within_com_dist(
+            atoms, coords3d, atom_map, residues, within_resid, within_dist
+        )
+    # Select residues according to provided ref_residues.
+    elif ref_residues:
+        sel_residues = [residues[ref_res.key] for ref_res in ref_residues]
+    # Or complain!
+    else:
+        raise Exception(
+            "Either 'within_resid' and 'within_dist' or 'residues' must be given!"
+        )
+
+    geom = geom_from_residues(sel_residues)
     print("Create cluster geometry.")
     bonds = np.array(psf_data["nbond"]["inds"], dtype=int).reshape(-1, 2)
     link_hosts, link_atoms, link_coords3d = link_atoms_for_residues(
-        residues, bonds, coords3d, atom_map
+        sel_residues, bonds, coords3d, atom_map
     )
     sat_geom = Geometry(
         geom.atoms + link_atoms, np.concatenate((geom.coords3d, link_coords3d), axis=0)
@@ -233,12 +250,15 @@ def cluster_from_psf_pdb(psf_fn, pdb_fn, within_resid, within_dist):
     backbone_names = {"CA", "C", "O", "N"}  # HN, HA not included
     i = 0
     backbone_inds = list()
-    for res in residues:
+    for res in sel_residues:
         for atom in res.atoms:
             if atom.name in backbone_names:
                 backbone_inds.append(i)
-                print(f"{res.name}{res.id}, {atom.element}{atom.id}, type={atom.name}")
+                print(
+                    f"{res.name}{res.id}, {atom.element}{atom.id}, type={atom.name}, id={i}"
+                )
             i += 1
     backbone_inds = np.array(backbone_inds, dtype=int)
 
-    return sat_geom, sum([res.charge for res in residues]), backbone_inds
+    # return sat_geom, sum([res.charge for res in sel_residues]), backbone_inds
+    return sat_geom, sel_residues, backbone_inds
