@@ -81,7 +81,6 @@ def run():
 
     geom = geom_loader(args.fn)
     filter = set(args.filter)
-    import pdb; pdb.set_trace()  # fmt: skip
 
     # Determine bond topology
     bonds = get_bond_sets(geom.atoms, geom.coords3d).tolist()
@@ -147,6 +146,8 @@ def run():
         sop = "s" if len(frag) > 1 else ""
         if len(filter) == 0 or set(frag) & filter:
             print(f"{len(frag)} atom{sop}, compressed:\n\t{compressed}")
+        else:
+            continue
         frag_atoms = dummy_atoms.copy()
         for j in frag:
             frag_atoms[j] = atoms[j]
