@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
@@ -11,13 +13,15 @@ from pysisyphus.xyzloader import write_geoms_to_trj
 
 
 class Redund(Interpolator):
-    def __init__(self, *args, align=True, **kwargs):
+    def __init__(self, *args, align=True, rebuild_geoms=True, **kwargs):
         super().__init__(*args, align=align, **kwargs)
 
-        self.geoms = [
-            Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
-            for geom in self.geoms
-        ]
+        self.rebuild_geoms = rebuild_geoms
+        if self.rebuild_geoms:
+            self.geoms = [
+                Geometry(geom.atoms, geom.cart_coords, coord_type="redund")
+                for geom in self.geoms
+            ]
 
     def dump_progress(self, geoms, out_fn="redund_interpol_fail.trj"):
         write_geoms_to_trj(geoms, out_fn)
@@ -41,7 +45,6 @@ class Redund(Interpolator):
             print(f"Using supplied primitive internals ({len(typed_prims)}).")
 
         # Recreate geometries with consistent set of internal coordinates
-
         geom1 = Geometry(
             initial_geom.atoms,
             initial_geom.cart_coords,
@@ -120,6 +123,7 @@ class Redund(Interpolator):
                 return restart(new_geom)
 
             geoms.append(new_geom)
+            sys.stdout.flush()
 
         print()
         return geoms[1:]
