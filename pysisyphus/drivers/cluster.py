@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import itertools as it
-from typing import List
+import pickle
+from typing import Dict, List
 
 import numpy as np
 from numpy.typing import NDArray
@@ -111,6 +112,24 @@ class Residue:
         return f"{self.resname}{self.resid}"
 
 
+@dataclass
+class Residues:
+    residues: Dict
+    psf_data: Dict
+
+    def as_geom(self, with_link_atoms=True):
+        geom = geom_from_residues(self.residues)
+        bonds = np.array(self.psf_data["nbond"]["inds"], dtype=int).reshape(-1, 2)
+        if with_link_atoms:
+        link_hosts, link_atoms, link_coords3d = link_atoms_for_residues(
+            self.residues, bonds, coords3d, atom_map
+        )
+        sat_geom = Geometry(
+            geom.atoms + link_atoms, np.concatenate((geom.coords3d, link_coords3d), axis=0)
+        )
+        print("Created satured geometry with link atoms.")
+
+
 def residues_from_psf(psf_data, atoms, coords3d, atom_map):
     psf_atoms = psf_data["atoms"]
     res_key = lambda atom: (atom["segment"], atom["resid"])
@@ -127,27 +146,42 @@ def residues_from_psf(psf_data, atoms, coords3d, atom_map):
     return residues
 
 
-def residues_within_com_dist(
-    # atoms, coords3d, atom_map, psf_data, within_resid, within_dist
-    atoms,
-    coords3d,
-    atom_map,
+def residues_within_dist(
     residues,
     within_resid,
     within_dist,
+    kind="com",
 ):
-    coms = {key: res.com for key, res in residues.items()}
 
-    def within(resid, com_dist):
-        ref_com = coms[resid]
+    def com_within():
+        coms = {key: res.com for key, res in residues.items()}
+        ref_com = coms[within_resid]
         res_ids_below_dist = [
             key
             for key, res in residues.items()
-            if np.linalg.norm(coms[res.key] - ref_com) <= com_dist
+            if np.linalg.norm(coms[res.key] - ref_com) <= within_dist
         ]
         return res_ids_below_dist
 
-    within_resid = within(within_resid, within_dist)
+    def atom_within():
+        ref_res = residues[within_resid]
+        ref_coords3d = ref_res.coords3d
+        res_ids_below_dist = list()
+        for key, res in residues.items():
+            dist_vecs = ref_coords3d[:, None, :] - res.coords3d
+            dists = np.linalg.norm(dist_vecs, axis=2)
+            if (dists <= within_dist).any():
+                res_ids_below_dist.append(key)
+        return res_ids_below_dist
+
+    if kind == "com":
+        within_resid = com_within()
+    elif kind == "atom":
+        within_resid = atom_within()
+        pass
+    else:
+        raise Exception(f"{kind=} is not supported!")
+
     residues_within = [residues[resid] for resid in within_resid]
     return residues_within
 
@@ -203,27 +237,34 @@ def link_atoms_for_residues(
     return link_hosts, link_atoms, link_coords3d
 
 
+def load_psf(psf_fn):
+    if str(psf_fn).lower().endswith(".psf"):
+        psf_data = parse_psf(psf_fn)
+    else:
+        with open(psf_fn, "rb") as handle:
+            psf_data = pickle.load(handle)
+    return psf_data
+
+
+
 def cluster_from_psf_pdb(
-    psf_fn, pdb_fn, within_resid=None, within_dist=0.0, ref_residues=None
+    # psf_fn, pdb_fn, within_resid=None, within_dist=0.0, ref_residues=None, kind="atom,"
+    psf_data, pdb_fn, within_resid=None, within_dist=0.0, ref_residues=None, kind="atom"
 ):
     atoms, coords, _, atom_map = parse_pdb(pdb_fn)
     coords3d = coords.reshape(-1, 3)
     print("Loaded PDB data.")
 
-    # Topology etc. from PSF
-    psf_data = parse_psf(psf_fn)
-    # import pickle
-    # with open("d.pickle", "wb") as handle:
-    # pickle.dump(psf_data, handle)
-    # with open("d.pickle", "rb") as handle:
-    # psf_data = pickle.load(handle)
-    print("Loaded PSF data.")
     residues = residues_from_psf(psf_data, atoms, coords3d, atom_map)
 
     # Select according to COM distance
     if within_resid and within_dist:
-        sel_residues = residues_within_com_dist(
-            atoms, coords3d, atom_map, residues, within_resid, within_dist
+        # sel_residues = residues_within_com_dist(
+        sel_residues = residues_within_dist(
+            residues,
+            within_resid,
+            within_dist,
+            kind=kind,
         )
     # Select residues according to provided ref_residues.
     elif ref_residues:
@@ -246,19 +287,25 @@ def cluster_from_psf_pdb(
     print("Created satured geometry with link atoms.")
 
     # Determine backbone atoms and/or link atoms and report their indices, so they can
-    # be restrained in subsequent RMSD-biased optimizations.
+    # be restrained in subsequent RMSD-biased optimizations. Also report the distance
+    # between their positions and the COM of the reference residue.
     backbone_names = {"CA", "C", "O", "N"}  # HN, HA not included
     i = 0
     backbone_inds = list()
+    backbone_com_dists = list()
+    ref_com = residues[within_resid].com
     for res in sel_residues:
         for atom in res.atoms:
             if atom.name in backbone_names:
                 backbone_inds.append(i)
+                bb_dist = np.linalg.norm(ref_com - atom.coords)
+                backbone_com_dists.append(bb_dist)
                 print(
-                    f"{res.name}{res.id}, {atom.element}{atom.id}, type={atom.name}, id={i}"
+                        f"{res.name: >4s}{res.id: <5d}, {atom.element: >2s}{atom.id: <5d}, "
+                        f"type={atom.name: >4s}, id={i: >5d}, {bb_dist: >8.4f} au"
                 )
             i += 1
     backbone_inds = np.array(backbone_inds, dtype=int)
+    backbone_com_dists = np.array(backbone_com_dists, dtype=float)
 
-    # return sat_geom, sum([res.charge for res in sel_residues]), backbone_inds
-    return sat_geom, sel_residues, backbone_inds
+    return sat_geom, sel_residues, backbone_inds, backbone_com_dists
