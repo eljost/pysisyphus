@@ -112,6 +112,7 @@ class Residue:
         return f"{self.resname}{self.resid}"
 
 
+"""
 @dataclass
 class Residues:
     residues: Dict
@@ -119,15 +120,18 @@ class Residues:
 
     def as_geom(self, with_link_atoms=True):
         geom = geom_from_residues(self.residues)
+        atoms = geom.atoms
+        coords3d = geom.coords3d
         bonds = np.array(self.psf_data["nbond"]["inds"], dtype=int).reshape(-1, 2)
         if with_link_atoms:
-        link_hosts, link_atoms, link_coords3d = link_atoms_for_residues(
-            self.residues, bonds, coords3d, atom_map
-        )
-        sat_geom = Geometry(
-            geom.atoms + link_atoms, np.concatenate((geom.coords3d, link_coords3d), axis=0)
-        )
-        print("Created satured geometry with link atoms.")
+            link_hosts, link_atoms, link_coords3d = link_atoms_for_residues(
+                self.residues, bonds, coords3d, atom_map
+            )
+        atoms += link_atoms
+        coords3d = np.concatenate((coords3d, link_coords3d), axis=0)
+        geom = Geometry(atoms, coords3d)
+        return geom
+"""
 
 
 def residues_from_psf(psf_data, atoms, coords3d, atom_map):
@@ -152,7 +156,6 @@ def residues_within_dist(
     within_dist,
     kind="com",
 ):
-
     def com_within():
         coms = {key: res.com for key, res in residues.items()}
         ref_com = coms[within_resid]
@@ -246,10 +249,14 @@ def load_psf(psf_fn):
     return psf_data
 
 
-
 def cluster_from_psf_pdb(
     # psf_fn, pdb_fn, within_resid=None, within_dist=0.0, ref_residues=None, kind="atom,"
-    psf_data, pdb_fn, within_resid=None, within_dist=0.0, ref_residues=None, kind="atom"
+    psf_data,
+    pdb_fn,
+    within_resid=None,
+    within_dist=0.0,
+    ref_residues=None,
+    kind="atom",
 ):
     atoms, coords, _, atom_map = parse_pdb(pdb_fn)
     coords3d = coords.reshape(-1, 3)
@@ -301,8 +308,8 @@ def cluster_from_psf_pdb(
                 bb_dist = np.linalg.norm(ref_com - atom.coords)
                 backbone_com_dists.append(bb_dist)
                 print(
-                        f"{res.name: >4s}{res.id: <5d}, {atom.element: >2s}{atom.id: <5d}, "
-                        f"type={atom.name: >4s}, id={i: >5d}, {bb_dist: >8.4f} au"
+                    f"{res.name: >4s}{res.id: <5d}, {atom.element: >2s}{atom.id: <5d}, "
+                    f"type={atom.name: >4s}, id={i: >5d}, {bb_dist: >8.4f} au"
                 )
             i += 1
     backbone_inds = np.array(backbone_inds, dtype=int)

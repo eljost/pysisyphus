@@ -10,6 +10,7 @@ from pysisyphus.testing import using
 np.set_printoptions(suppress=True, precision=8)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "XY", ["X", "X+Y", "X-Y"]
 )

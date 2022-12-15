@@ -190,4 +190,5 @@ version.py
 !tests/test_wavefunction/h2o2_anion/*
 !tests/test_wavefunction/pyrrole/*
 !tests/test_psf/step1_pdbreader.psf
+!tests/test_overlap_calculator/benzene/*
 !pysisyphus/wf_library/*

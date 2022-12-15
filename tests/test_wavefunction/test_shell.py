@@ -87,7 +87,7 @@ def mol_auxmol():
         )
     }
     mol.basis = basis
-    mol.build()
+    mol.build(parse_arg=False)
     auxbasis = {
         "He": gto.basis.parse(
             """
