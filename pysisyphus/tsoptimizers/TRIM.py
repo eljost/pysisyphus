@@ -14,7 +14,7 @@ class TRIM(TSHessianOptimizer):
         energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
         self.update_ts_mode(eigvals, eigvecs)
 
-        self.log(f"Signs of eigenvalue and -vector of root {self.root} "
+        self.log(f"Signs of eigenvalue and -vector of root(s) {self.roots} "
                   "will be reversed!")
         # Transform gradient to basis of eigenvectors
         gradient_ = eigvecs.T.dot(gradient)
@@ -22,9 +22,9 @@ class TRIM(TSHessianOptimizer):
         # Construct image function by inverting the signs of the eigenvalue and
         # -vector of the mode to follow uphill.
         eigvals_ = eigvals.copy()
-        eigvals_[self.root] *= -1
+        eigvals_[self.roots] *= -1
         gradient_ = gradient_.copy()
-        gradient_[self.root] *= -1
+        gradient_[self.roots] *= -1
 
         def get_step(mu):
             zetas = -gradient_ / (eigvals_ - mu)

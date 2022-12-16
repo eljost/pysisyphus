@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import h5py
 import numpy as np
@@ -21,11 +21,12 @@ class TSHessianOptimizer(HessianOptimizer):
     def __init__(
         self,
         geometry: Geometry,
+        roots: Optional[List[int]] = None,
         root: int = 0,
         hessian_ref: Optional[str] = None,
+        rx_modes=None,
         prim_coord=None,
         rx_coords=None,
-        rx_mode=None,
         hessian_init: HessInit = "calc",
         hessian_update: HessUpdate = "bofill",
         hessian_recalc_reset: bool = True,
@@ -49,18 +50,22 @@ class TSHessianOptimizer(HessianOptimizer):
         ----------
         geometry
             Geometry to be optimized.
+        roots
+            Indices of modes to maximize along, e.g., to optimize saddle points of 2nd order.
+            Overrides 'root'.
         root
-            Index of imaginary mode to maximize along.
+            Index of imaginary mode to maximize along. Shortcut for 'roots' with only one root.
         hessian_ref
             Filename pointing to a pysisyphus HDF5 Hessian.
+        rx_modes : iterable of (iterable of (typed_prim, phase_factor))
+            Select initial root(s) by overlap with a modes constructed from the given
+            typed primitives with respective phase factors.
         prim_coord : typed_prim
             Select initial root/imaginary mode by overlap with this internal coordinate.
+            Shortcut for 'rx_modes' with only one internal coordinate.
         rx_coords : iterable of (typed_prim)
             Construct imaginary mode comprising the given typed prims by modifying
             a model Hessian.
-        rx_mode : iterable of (typed_prim, phase_factor)
-            Select initial root by overlap with a mode constructed from the given
-            typed primitives.
         hessian_init
             Type of initial model Hessian.
         hessian_update
@@ -105,7 +110,14 @@ class TSHessianOptimizer(HessianOptimizer):
             **kwargs,
         )
 
-        self.root = int(root)
+        if (root is not None) and (roots is None):
+            roots = [
+                root,
+            ]
+        elif roots is None:
+            roots = list()
+        self.roots = roots
+        self.log(f"{self.roots=}")
         self.hessian_ref = hessian_ref
         try:
             with h5py.File(self.hessian_ref, "r") as handle:
@@ -133,8 +145,13 @@ class TSHessianOptimizer(HessianOptimizer):
 
         # Select initial root according to highest contribution of 'prim_coord'
         if prim_coord is not None:
-            prim_coord = normalize_prim_input(prim_coord)[0]
+            self.log("'prim_coord' given. Overwriting/setting 'rx_modes'.")
+            rx_modes = [[[prim_coord, 1.0]]]
         self.prim_coord = prim_coord
+
+        # Construct initial imaginary mode from the given inputs while respecting
+        # the given weight/phase factors.
+        self.rx_modes = rx_modes
 
         # Construct initial imaginary mode according the primitive internals in
         # 'rx_coords' by modifying a model Hessian.
@@ -142,21 +159,33 @@ class TSHessianOptimizer(HessianOptimizer):
             rx_coords = normalize_prim_inputs(rx_coords)
         self.rx_coords = rx_coords
 
-        # Construct initial imaginary mode from the given inputs while respecting
-        # the given weight/phase factors.
-        self.rx_mode = rx_mode
-
         # Bond augmentation is only useful with calculated hessians
         self.augment_bonds = augment_bonds and (self.hessian_init == "calc")
         self.min_line_search = min_line_search
         self.max_line_search = max_line_search
         self.assert_neg_eigval = assert_neg_eigval
 
-        self.ts_mode = None
+        self.ts_modes = list()
         self.max_micro_cycles = max_micro_cycles
         self.prim_contrib_thresh = 0.05
 
         self.alpha0 = 1
+
+    @property
+    def root(self):
+        return self.roots[0]
+
+    @root.setter
+    def root(self, root):
+        raise Exception("Setting 'self.root' is deprecated. Set 'self.roots' instead.")
+
+    @property
+    def roots(self):
+        return self._roots
+
+    @roots.setter
+    def roots(self, roots):
+        self._roots = np.array(roots, dtype=int)
 
     def prepare_opt(self, *args, **kwargs):
         if self.augment_bonds:
@@ -205,45 +234,7 @@ class TSHessianOptimizer(HessianOptimizer):
         self.log("Determining initial TS mode to follow uphill.")
         # Select an initial TS-mode by highest overlap with eigenvectors from
         # reference Hessian.
-        if self.prim_coord:
-            prim_ind = self.geometry.internal.get_index_of_typed_prim(self.prim_coord)
-            if prim_ind is None:
-                raise Exception(f"Primitive internal {self.prim_coord} is not defined!")
-            # Select row of eigenvector-matrix that corresponds to this coordinate
-            prim_row = eigvecs[prim_ind]
-            big_contribs = np.abs(prim_row) > self.prim_contrib_thresh
-            # Only consider negative eigenvalues
-            big_contribs = np.bitwise_and(big_contribs, neg_inds)
-            # Holds the indices of the modes to consider
-            big_inds = np.arange(prim_row.size)[big_contribs]
-            try:
-                max_contrib_ind = big_inds[np.abs(prim_row[big_contribs]).argmax()]
-            except ValueError as err:
-                print(
-                    "No imaginary mode with significant contribution "
-                    f"(>{self.prim_contrib_thresh:.3f}) of primitive internal "
-                    f"{self.prim_coord} found!"
-                )
-                raise err
-            self.root = max_contrib_ind
-
-            contrib_str = "\n".join(
-                [
-                    f"\t{ind:03d}: {contrib:.4f}"
-                    for ind, contrib in zip(big_inds, np.abs(prim_row)[big_contribs])
-                ]
-            )
-
-            self.log(
-                "Highest absolute contribution of primitive internal coordinate "
-                f"{self.prim_coord} in mode {self.root:02d}."
-            )
-            self.log(
-                f"Absolute contributions > {self.prim_contrib_thresh:.04f}"
-                f"\n{contrib_str}"
-            )
-            used_str = f"contribution of primitive coordinate {self.prim_coord}"
-        elif self.hessian_ref is not None:
+        if self.hessian_ref is not None:
             eigvals_ref, eigvecs_ref = np.linalg.eigh(self.hessian_ref)
             self.log_negative_eigenvalues(eigvals_ref, "Reference ")
             assert eigvals_ref[0] < -self.small_eigval_thresh
@@ -256,7 +247,10 @@ class TSHessianOptimizer(HessianOptimizer):
             )
             self.log(f"\t{ovlp_str}")
 
-            self.root = np.abs(overlaps).argmax()
+            root = np.abs(overlaps).argmax()
+            self.roots = [
+                root,
+            ]
             print(
                 "Highest overlap between reference TS mode and "
                 f"eigenvector {self.root:02d}."
@@ -264,54 +258,58 @@ class TSHessianOptimizer(HessianOptimizer):
             used_str = "overlap with reference TS mode"
         # Construct an approximate initial mode according to user input
         # and calculate overlaps with the current eigenvectors.
-        elif self.rx_mode is not None:
+        elif self.rx_modes is not None:
             self.log(f"Constructing reference mode, according to user input")
             assert self.geometry.coord_type != "cart"
-            mode = np.zeros_like(self.geometry.coords)
             int_ = self.geometry.internal
-            for typed_prim, val in self.rx_mode:
-                typed_prim = normalize_prim_input(typed_prim)[0]
-                ind = int_.get_index_of_typed_prim(typed_prim)
-                mode[ind] = val
-                self.log(f"\tIndex {ind} (coordinate {typed_prim}) set to {val:.4f}")
-            mode /= np.linalg.norm(mode)
-            mode_str = np.array2string(mode, precision=2)
-            self.log(f"Final, normalized, reference mode: {mode_str}")
+            modes = list()
+            for i, rx_mode in enumerate(self.rx_modes):
+                mode = np.zeros_like(self.geometry.coords)
+                for typed_prim, val in rx_mode:
+                    typed_prim = normalize_prim_input(typed_prim)[0]
+                    ind = int_.get_index_of_typed_prim(typed_prim)
+                    mode[ind] = val
+                    self.log(
+                        f"\tIndex {ind} (coordinate {typed_prim}) set to {val:.4f}"
+                    )
+                mode /= np.linalg.norm(mode)
+                modes.append(mode)
+                mode_str = np.array2string(mode, precision=2)
+                self.log(f"Normalized reference mode {i:02d}: {mode_str}")
 
             # Calculate overlaps in non-redundant subspace by zeroing overlaps
             # in the redundant subspace.
             small_inds = np.abs(eigvals) < self.small_eigval_thresh
             # Take absolute value, because sign of eigenvectors is ambiguous.
-            ovlps = np.abs(np.einsum("ij,i->j", eigvecs, mode))
-            ovlps[small_inds] = 0.0
-            self.root = np.argmax(ovlps)
+            ovlps = np.abs(np.einsum("ij,ki->kj", eigvecs, modes))
+            ovlps[:, small_inds] = 0.0
+            self.roots = ovlps.argmax(axis=1)
             used_str = "overlap with user-generated mode"
         else:
-            used_str = f"root={self.root}"
+            used_str = f"root(s)={self.roots}"
         self.log(f"Used {used_str} to select inital TS mode.")
 
-        # This is currently commented out, as we can also start from
-        # the convex region of the PES and maximize along a mode with
-        # an initially positive eigenvalue.
+        # Below, some code is found, that checks if the chosen root(s) are a
+        # sensible choice, i.e., if they are negative. Currently, it is commented out,
+        # as we can also start from the convex region of the PES.
         #
         # Check if the selected mode (root) is a sensible choice.
         #
         # small_eigval_thresh is positive and we dont take the absolute value
         # of the eigenvalues. So we multiply small_eigval_thresh to get a
         # negative number.
-        # assert eigvals[self.root] < -self.small_eigval_thresh, (
-        # "Expected negative eigenvalue! Eigenvalue of selected TS-mode "
-        # f"{self.root:02d} is above the the threshold of "
-        # f"{self.small_eigval_thresh:.6e}!"
+        # assert (eigvals[self.roots] < -self.small_eigval_thresh).all(), (
+        # "Expected negative eigenvalue(s)! Eigenvalues of selected TS-modes "
+        # f"are above the the threshold of self.small_eigval_thresh:.6e}!"
         # )
 
         # Select an initial TS-mode by root index. self.root may have been
         # modified by using a reference hessian.
-        self.ts_mode = eigvecs[:, self.root]
-        self.ts_mode_eigval = eigvals[self.root]
+        self.ts_modes = eigvecs[:, self.roots].T
+        self.ts_mode_eigvals = eigvals[self.roots]
         self.log(
-            f"Using root {self.root:02d} with eigenvalue "
-            f"{self.ts_mode_eigval:.6f} as TS mode.\n"
+            f"Using root(s) {self.roots} with eigenvalues "
+            f"{np.array2string(self.ts_mode_eigvals, precision=6)} as TS mode.\n"
         )
 
     def update_ts_mode(self, eigvals, eigvecs):
@@ -322,7 +320,7 @@ class TSHessianOptimizer(HessianOptimizer):
         # When we left the convex region of the PES we only compare to other
         # imaginary modes ... is this a bad idea? Maybe we should use all modes
         # for the overlaps?!
-        if self.ts_mode_eigval < 0 and neg_num > 0:
+        if (self.ts_mode_eigvals < 0).all() and neg_num > 0:
             infix = "imaginary "
             ovlp_eigvecs = eigvecs[:, :neg_num]
             eigvals = eigvals[:neg_num]
@@ -341,16 +339,19 @@ class TSHessianOptimizer(HessianOptimizer):
 
         # Select new TS mode according to biggest overlap with previous TS mode.
         self.log(f"Overlaps of previous TS mode with current {infix}mode(s):")
-        ovlps = np.abs(np.einsum("ij,i->j", ovlp_eigvecs, self.ts_mode))
+        ovlps = np.abs(np.einsum("ij,ki->kj", ovlp_eigvecs, self.ts_modes))
         for i, ovlp in enumerate(ovlps):
-            self.log(f"\t{i:02d}: {ovlp:.6f}")
-        max_ovlp_ind = np.argmax(ovlps)
-        max_ovlp = ovlps[max_ovlp_ind]
-        self.log(f"Highest overlap: {max_ovlp:.6f}, mode {max_ovlp_ind}")
-        self.log(f"Maximizing along TS mode {max_ovlp_ind}.")
-        self.root = max_ovlp_ind
-        self.ts_mode = ovlp_eigvecs.T[self.root]
-        self.ts_mode_eigval = eigvals[self.root]
+            self.log(f"\tTS mode {i:02d}: {np.array2string(ovlp, precision=3)}")
+        max_ovlp_inds = np.argmax(ovlps, axis=1)
+        for i, _ in enumerate(self.ts_modes):
+            max_ovlp_ind = max_ovlp_inds[i].argmax()
+            self.log(
+                f"Mode {i}: highest overlap: {ovlps[i, max_ovlp_ind]:.6f} with mode "
+                f"{max_ovlp_ind}"
+            )
+        self.roots = max_ovlp_inds
+        self.ts_modes = ovlp_eigvecs.T[self.roots]
+        self.ts_mode_eigvals = eigvals[self.roots]
 
     @staticmethod
     def do_line_search(e0, e1, g0, g1, prev_step, maximize, logger=None):
@@ -383,7 +384,12 @@ class TSHessianOptimizer(HessianOptimizer):
         return fit_energy, fit_grad, fit_step
 
     def step_and_grad_from_line_search(
-        self, energy, gradient_trans, eigvecs, min_indices
+        self,
+        energy,
+        gradient_trans,
+        eigvecs,
+        min_indices,
+        max_indices,
     ):
         ip_step = np.zeros_like(gradient_trans)
         ip_gradient_trans = gradient_trans.copy()
@@ -404,15 +410,15 @@ class TSHessianOptimizer(HessianOptimizer):
             max_energy, max_gradient, max_step = self.do_line_search(
                 prev_energy,
                 energy,
-                prev_gradient_trans[self.root],
-                gradient_trans[self.root],
-                prev_step=prev_step_trans[self.root],
+                prev_gradient_trans[max_indices],
+                gradient_trans[max_indices],
+                prev_step=prev_step_trans[max_indices],
                 maximize=True,
                 logger=self.logger,
             )
             if max_gradient is not None:
-                ip_gradient_trans[self.root] = max_gradient
-                ip_step[self.root] = max_step
+                ip_gradient_trans[max_indices] = max_gradient
+                ip_step[max_indices] = max_step
 
         if self.min_line_search and self.cur_cycle > 0:
             # Min subspace

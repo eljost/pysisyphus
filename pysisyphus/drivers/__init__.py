@@ -1,4 +1,5 @@
 from pysisyphus.drivers.afir import run_afir_paths
+from pysisyphus.drivers.diabatization import dq_diabatization_from_run_dict
 from pysisyphus.drivers.opt import run_opt
 from pysisyphus.drivers.scan import relaxed_scan, relaxed_1d_scan
 from pysisyphus.drivers.birkholz import birkholz_interpolation
@@ -13,3 +14,4 @@ from pysisyphus.drivers.rates import (
     wigner_corr,
 )
 from pysisyphus.drivers.replace import replace_atoms
+from pysisyphus.drivers.spectrum import Spectrum

@@ -6,7 +6,7 @@ import os
 import re
 import struct
 import shutil
-import subprocess
+import warnings
 
 import numpy as np
 import pyparsing as pp
@@ -14,6 +14,7 @@ import pyparsing as pp
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.wavefunction import norm_ci_coeffs, Wavefunction
 
 
 def make_sym_mat(table_block):
@@ -52,6 +53,44 @@ def save_orca_pc_file(point_charges, pc_fn, hardness=None):
         header=str(len(point_charges)),
         comments="",
     )
+
+
+def parse_orca_gbw(gbw_fn):
+    """Adapted from
+    https://orcaforum.kofo.mpg.de/viewtopic.php?f=8&t=3299
+
+    The first 5 long int values represent pointers into the file:
+
+    Pointer @+0:  Internal ORCA data structures
+    Pointer @+8:  Geometry
+    Pointer @+16: BasisSet
+    Pointer @+24: Orbitals
+    Pointer @+32: ECP data
+    """
+
+    with open(gbw_fn, "rb") as handle:
+        handle.seek(24)
+        offset = struct.unpack("<q", handle.read(8))[0]
+        handle.seek(offset)
+        operators = struct.unpack("<i", handle.read(4))[0]
+        dimension = struct.unpack("<i", handle.read(4))[0]
+
+        coeffs_fmt = "<" + dimension ** 2 * "d"
+        assert operators == 1, "Unrestricted case is not implemented!"
+
+        for i in range(operators):
+            # print('\nOperator: {}'.format(i))
+            coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension ** 2))
+            occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
+            energies = struct.iter_unpack("<d", handle.read(8 * dimension))
+            irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
+            cores = struct.iter_unpack("<i", handle.read(4 * dimension))
+
+            coeffs = np.array(coeffs).reshape(-1, dimension)
+            energies = np.array([en[0] for en in energies])
+
+        # MOs are returned in columns
+        return coeffs, energies
 
 
 def parse_orca_cis(cis_fn):
@@ -201,7 +240,8 @@ def parse_orca_cis(cis_fn):
     return Xs_a, Ys_a, Xs_b, Ys_b
 
 
-def parse_all_energies(text, triplets=False, do_tddft=False):
+@file_or_str(".log", ".out")
+def parse_orca_all_energies(text, triplets=False, do_tddft=False):
     energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
     energy_mobj = re.search(energy_re, text)
     gs_energy = float(energy_mobj.groups()[0])
@@ -234,7 +274,7 @@ def get_name(text: bytes):
 
 
 @file_or_str(".densities", mode="rb")
-def parse_densities(text: bytes):
+def parse_orca_densities(text: bytes):
     handle = io.BytesIO(text)
 
     # Determine file size
@@ -290,6 +330,18 @@ def parse_densities(text: bytes):
     assert set(dens_dict) <= {"scfp", "scfr", "cisp", "cisr"}
 
     return dens_dict
+
+
+def get_exc_ens_fosc(wf_fn, cis_fn, log_fn):
+    wf = Wavefunction.from_file(wf_fn)
+    Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn)
+    all_energies = parse_orca_all_energies(log_fn, do_tddft=True)
+    Xa, Ya = norm_ci_coeffs(Xa, Ya)
+    exc_ens = all_energies[1:] - all_energies[0]
+    tdens = wf.get_transition_dipole_moment(Xa + Ya)
+    warnings.warn("Only alpha TDM is currently taken into account!")
+    fosc = wf.oscillator_strength(exc_ens, tdens)
+    return exc_ens, fosc
 
 
 class ORCA(OverlapCalculator):
@@ -358,7 +410,8 @@ class ORCA(OverlapCalculator):
             "molden:orca.molden",
             "hess",
             "pcgrad",
-            "densities",
+            "densities:orca.densities",
+            "json",
         )
         self.do_tddft = False
         if "tddft" in self.blocks:
@@ -544,16 +597,15 @@ class ORCA(OverlapCalculator):
     def run_after(self, path):
         # Create .molden file when CDDs are requested
         if self.cdds:
-            cmd = "orca_2mkl orca -molden".split()
-            proc = subprocess.Popen(
-                cmd,
-                cwd=path,
-                universal_newlines=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            proc.wait()
+            cmd = "orca_2mkl orca -molden"
+            self.popen(cmd, cwd=path)
             shutil.copy(path / "orca.molden.input", path / "orca.molden")
+
+        # Will silently fail with ECPs
+        cmd = "orca_2json orca"
+        proc = self.popen(cmd, cwd=path)
+        if (ret := proc.returncode) != 0:
+            self.log(f"orca_2json call failed with return-code {ret}!")
 
     @staticmethod
     @file_or_str(".hess", method=False)
@@ -665,69 +717,17 @@ class ORCA(OverlapCalculator):
 
         return results
 
-    def parse_cis(self, cis):
+    @staticmethod
+    def parse_cis(cis):
         """Simple wrapper of external function.
 
         Currently, only returns Xα and Yα.
         """
         return parse_orca_cis(cis)[:2]
 
-    def parse_gbw(self, gbw_fn):
-        """Adapted from
-        https://orcaforum.kofo.mpg.de/viewtopic.php?f=8&t=3299
-
-        The first 5 long int values represent pointers into the file:
-
-        Pointer @+0:  Internal ORCA data structures
-        Pointer @+8:  Geometry
-        Pointer @+16: BasisSet
-        Pointer @+24: Orbitals
-        Pointer @+32: ECP data
-        """
-
-        with open(gbw_fn, "rb") as handle:
-            handle.seek(24)
-            offset = struct.unpack("<q", handle.read(8))[0]
-            handle.seek(offset)
-            operators = struct.unpack("<i", handle.read(4))[0]
-            dimension = struct.unpack("<i", handle.read(4))[0]
-
-            # print('Offset: {}'.format(offset))
-            # print('Number of Operators: {}'.format(operators))
-            # print('Basis Dimension: {}'.format(dimension))
-
-            coeffs_fmt = "<" + dimension ** 2 * "d"
-
-            assert operators == 1, "Unrestricted case is not implemented!"
-
-            for i in range(operators):
-                # print('\nOperator: {}'.format(i))
-                coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension ** 2))
-                occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
-                energies = struct.iter_unpack("<d", handle.read(8 * dimension))
-                irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
-                cores = struct.iter_unpack("<i", handle.read(4 * dimension))
-
-                coeffs = np.array(coeffs).reshape(-1, dimension).T
-                energies = np.array([en[0] for en in energies])
-
-                # print('Coefficients')
-                # for coef in coefficients:
-                # print('{:16.12f}'.format(*coef))
-                # print('Occupations')
-                # for occupation in occupations:
-                # print('{:16.12f}'.format(*occupation))
-                # print('Energies')
-                # for energy in energies:
-                # print('{:16.12f}'.format(*energy))
-                # print('Irreps')
-                # for irrep in irreps:
-                # print('{}'.format(*irrep))
-                # print('Core')
-                # for core in cores:
-                # print('{}'.format(*core))
-            # MOs are returned in rows
-            return coeffs, energies
+    @staticmethod
+    def parse_gbw(gbw_fn):
+        return parse_orca_gbw(gbw_fn)
 
     @staticmethod
     def set_mo_coeffs_in_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs):
@@ -761,7 +761,7 @@ class ORCA(OverlapCalculator):
         if triplets is None:
             triplets = self.triplets
 
-        return parse_all_energies(text, triplets, self.do_tddft)
+        return parse_orca_all_energies(text, triplets, self.do_tddft)
 
     @staticmethod
     @file_or_str(".out", method=False)
@@ -822,9 +822,9 @@ class ORCA(OverlapCalculator):
         X, Y = self.parse_cis(self.cis)
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
-        mo_coeffs, _ = self.parse_gbw(self.gbw)
+        C, _ = self.parse_gbw(self.gbw)
         all_energies = self.parse_all_energies()
-        return mo_coeffs, X, Y, all_energies
+        return C, X, Y, all_energies
 
     def keep(self, path):
         kept_fns = super().keep(path)

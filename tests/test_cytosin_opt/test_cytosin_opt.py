@@ -97,6 +97,7 @@ def test_cytosin_s1_opt(calc_cls, calc_kwargs, this_dir):
         "ovlp_type": "tden",
         "mos_renorm": True,
         "track": True,
+        "cdds": "render",
     })
     calc = calc_cls(**calc_kwargs)
     geom.set_calculator(calc)
@@ -108,6 +109,7 @@ def test_cytosin_s1_opt(calc_cls, calc_kwargs, this_dir):
         # "trust_max": 0.3,
         "line_search": True,
         "gdiis": True,
+        "dump": True,
     }
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()

@@ -10,6 +10,7 @@ from pysisyphus.testing import using
 np.set_printoptions(suppress=True, precision=8)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "XY", ["X", "X+Y", "X-Y"]
 )
@@ -91,7 +92,7 @@ def test_h2o2_overlaps(XY, calc_cls, calc_kwargs, this_dir):
     calc = calc_cls(**calc_kwargs)
     geom.set_calculator(calc)
 
-    energy = geom.energy
+    geom.energy  # Do a calculation
     # Self overlap ... should yield identity matrix as states are orthogonal
     ovlps = calc.get_tden_overlaps(indices=(0, 0))
     ref_ovlps = np.eye(ovlps.shape[0])

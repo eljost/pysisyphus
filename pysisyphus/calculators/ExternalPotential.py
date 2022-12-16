@@ -1,5 +1,8 @@
 from math import pi
+from typing import Optional
+
 import numpy as np
+from numpy.typing import ArrayLike
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.constants import KB, AU2J
@@ -52,7 +55,7 @@ class HarmonicSphere:
     def calc(self, coords3d, gradient=False):
         c3d_wrt_origin = coords3d - self.origin
         distances = np.linalg.norm(c3d_wrt_origin, axis=1)
-        energies = np.where(distances > self.radius, self.k * distances ** 2, 0.0)
+        energies = np.where(distances > self.radius, self.k * distances**2, 0.0)
         energy = energies.sum()
 
         if not gradient:
@@ -72,7 +75,7 @@ class HarmonicSphere:
     @property
     def surface_area(self):
         """In Bohr**2"""
-        return 4 * pi * self.radius ** 2
+        return 4 * pi * self.radius**2
 
     def instant_pressure(self, coords3d):
         _, gradient = self.calc(coords3d, gradient=True)
@@ -108,7 +111,7 @@ class Restraint:
             # correct_dihedrals always returns a 1d array, even for scalar inputs
             val = correct_dihedrals(val, ref_val)[0]
         diff = val - ref_val
-        pot = force_const * diff ** 2
+        pot = force_const * diff**2
         pot_grad = 2 * force_const * diff * grad
         return pot, pot_grad
 
@@ -130,8 +133,16 @@ class Restraint:
 
 
 class RMSD:
-    def __init__(self, geom: Geometry, k: float, beta: float=0.5):
-        """Restrain to reference geometry.
+    def __init__(
+        self,
+        geom: Geometry,
+        k: float,
+        beta: float = 0.5,
+        atom_indices: Optional[ArrayLike] = None,
+    ):
+        """Restrain based on RMSD with a reference geometry.
+
+        As described in https://doi.org/10.1021/acs.jctc.0c01306, Eq. (5).
 
         Parameters
         ----------
@@ -139,31 +150,47 @@ class RMSD:
         geom:
             Reference geometry for RMSD calculation.
         k:
-            Gaussian height. Should be a negative number if the system under study should
-            stay close to the reference geometry.
+            Gaussian height in units of energy. Should be a negative number if the system
+            under study should stay close to the reference geometry (pulling k).
+            A positive Gaussian height k results in forces that push the system under study
+            away from the reference geometry (pushing k).
         b:
             Gaussian width in inverse units of lengths.
+        atom_indices
+            Optional, numpy array or iterable of integer atom indices. Restricts the RMSD
+            calculation to these atoms. If omitted, all atoms are used.
         """
 
         self.k = k
         self.beta = beta
+        natoms = len(geom.atoms)
+        if atom_indices is None:
+            atom_indices = np.arange(natoms)
+        self.atom_indices = np.array(atom_indices, dtype=int)
+        assert (self.atom_indices.min() >= 0) and (
+            self.atom_indices.max() <= (natoms - 1)
+        ), "Got atom_indices outside the valid range!"
         self.ref_coords3d = geom.coords3d.copy()
+        # print("Using {self.atom_indices.size} of {natoms} atoms for RMSD calculations.")
 
     def calc(self, coords3d, gradient=False):
-        rmsd, grad_ = rmsd_grad(coords3d, self.ref_coords3d)
+        rmsd, grad_ = rmsd_grad(
+            coords3d[self.atom_indices], self.ref_coords3d[self.atom_indices]
+        )
 
         k = self.k
         beta = self.beta
-        energy = k * np.exp(-beta * rmsd ** 2)
+        energy = k * np.exp(-beta * rmsd**2)
 
         if not gradient:
             return energy
 
-        grad = -beta * 2 * grad_ * energy
+        grad = np.zeros_like(self.ref_coords3d)
+        grad[self.atom_indices] = -beta * 2 * grad_ * energy
         return energy, grad.flatten()
 
     def __repr__(self):
-        return f"RMSD(k={self.k:.4f}, beta={self.beta:.6f})"
+        return f"RMSD(k={self.k:.4f}, beta={self.beta:.6f}, {self.atom_indices.size} atoms)"
 
 
 class ExternalPotential(Calculator):
@@ -230,3 +257,7 @@ class ExternalPotential(Calculator):
 
     def get_hessian(self, atoms, coords):
         raise Exception("Hessian is not implemented for ExternalPotential!")
+
+    def __str__(self):
+        pots = ", ".join([str(pot) for pot in self.potentials])
+        return f"ExternalPotential({pots})"

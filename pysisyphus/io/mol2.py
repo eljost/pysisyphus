@@ -1,4 +1,4 @@
-
+import jinja2
 import pyparsing as pp
 import numpy as np
 
@@ -97,3 +97,31 @@ def geom_from_mol2(text, **kwargs):
     atoms, coords = parse_mol2(text)
     geom = Geometry(atoms, coords, **kwargs)
     return geom
+
+
+MOL2_TPL = jinja2.Template(
+    """
+@<TRIPOS>MOLECULE
+{{ mol_name }}
+{{ num_atoms }}
+{{ mol_type }}
+{{ charge_type }}
+
+"""
+)
+
+
+def atoms_coords_to_mol2_string(
+    atoms, coords, mol_name, mol_type="SMALL", charge_type="NO_CHARGES", bonds=None
+):
+    if bonds is not None:
+        num_bonds = len(bonds)
+    num_atoms = len(atoms)
+
+    rendered = MOL2_TPL.render(
+        mol_name=mol_name,
+        num_atoms=num_atoms,
+        mol_type=mol_type,
+        charge_type=charge_type,
+    )
+    print(rendered)

@@ -9,7 +9,7 @@ import numpy as np
 from pysisyphus.elem_data import KNOWN_ATOMS
 from pysisyphus.constants import ANG2BOHR
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers_pure import chunks
+from pysisyphus.helpers_pure import chunks, file_or_str
 from pysisyphus.intcoords.setup_fast import find_bonds
 
 
@@ -26,18 +26,34 @@ def get_parser(widths):
     return parse
 
 
-STRIP_RE = re.compile(r"[\d\s]*")
+STRIP_RE = re.compile(r"[\d\s]*")  # To remove numbers and whitespace
 NAME_MAP = {
-    "hh": "H",
+    "hb": "H",
     "he": "H",
+    "hh": "H",
+    "hd": "H",
+    "hg": "H",
+    "so": "Na",
+}
+FULL_NAME = {
+    " sod",
+    " cla",
+    " cal",
 }
 
 
 def parse_atom_name(name):
     org_name = name
     assert len(name) == 4
-    name = name[:2]
+    name = name.lower()
+    # Cases like " SOD" require special handling. Sticking to the PDB specification (!)
+    # and using only the first two characters would result in S (sulphur).
+    use_full_name = name in FULL_NAME
+    if not use_full_name:
+        name = name[:2]
     stripped = STRIP_RE.sub("", name).lower()
+    if use_full_name:
+        stripped = stripped[:2]
     try:
         mapped = NAME_MAP[stripped]
     except KeyError:
@@ -46,15 +62,15 @@ def parse_atom_name(name):
     return mapped.capitalize()
 
 
-def parse_pdb(fn):
-    with open(fn) as handle:
-        atm_lines = list()
-        for line in handle:
-            if line.startswith("HETATM") or line.startswith("ATOM"):
-                atm_lines.append(line.strip())
-                continue
-            elif line.startswith("MASTER"):
-                master_line = line.strip()
+@file_or_str(".pdb")
+def parse_pdb(text):
+    atm_lines = list()
+    for line in text.split("\n"):
+        if line.startswith("HETATM") or line.startswith("ATOM"):
+            atm_lines.append(line.strip())
+            continue
+        elif line.startswith("MASTER"):
+            master_line = line.strip()
 
     """
         0  Record name
@@ -98,11 +114,12 @@ def parse_pdb(fn):
         master_fields = master_parse(master_line)
     except UnboundLocalError:
         master_fields = None
-        print(f"Warning! No MASTER line found in '{fn}'!")
+        print(f"Warning! No MASTER line found in PDB!")
 
     atoms = list()
     coords = list()
     fragments = {}
+    atom_map = dict()
 
     for i, line in enumerate(atm_lines):
         # Charge is not considered right now ...
@@ -110,30 +127,36 @@ def parse_pdb(fn):
         res_name = fields[4].strip()
         chain = fields[5].strip()
         res_seq = int(fields[6])
-        frag = f"{chain}_{res_seq}_{res_name}"
+        frag = f"{chain}_{res_name}{res_seq}"
 
-        xyz = fields[8:11]
+        xyz = np.array(fields[8:11], dtype=float)
         atom = fields[13].strip()
         if not atom.lower() in KNOWN_ATOMS:
             name = fields[2]
             atom = parse_atom_name(name)
         atoms.append(atom)
         coords.append(xyz)
+        id_ = int(fields[1])
+        atom_map[id_] = i
 
         frag = fragments.setdefault(frag, list())
         frag.append(i)
 
+    # Verification using MASTER record, if present.
     if master_fields is not None:
-        # Verification using MASTER record
         num_coord = int(master_fields[9])
-        assert len(atoms) == num_coord
+        try:
+            assert len(atoms) == num_coord
+        except AssertionError as err:
+            if len(atoms) < 99_999:  # See, e.g., 1HTQ
+                raise err
 
     coords = np.array(coords, dtype=float) * ANG2BOHR
-    return atoms, coords.flatten(), fragments
+    return atoms, coords.flatten(), fragments, atom_map
 
 
 def geom_from_pdb(fn, **kwargs):
-    atoms, coords, fragments = parse_pdb(fn)
+    atoms, coords, fragments, _ = parse_pdb(fn)
     kwargs["fragments"] = fragments
     geom = Geometry(atoms, coords.flatten(), **kwargs)
     return geom

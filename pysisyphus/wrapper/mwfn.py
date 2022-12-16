@@ -111,39 +111,59 @@ def make_cdd(inp_fn, state, log_fn, cwd=None, keep=False, quality=2, prefix="S")
     return new_paths
 
 
-def get_mwfn_exc_str(energies, ci_coeffs, dexc_ci_coeffs=None, thresh=1e-3):
-    assert len(energies) == (len(ci_coeffs) + 1), \
-        "Found too few energies. Is the GS energy missing?"
+def get_mwfn_exc_str(energies, Xa, Ya=None, Xb=None, Yb=None, thresh=1e-3):
+    """Write plain text input for MWFN according to 3.21.
+
+    As of version 3.8 MWFN does not seem to handle this file when spin
+    labels are present, even though it is given as an example in the manual.
+    """
+
+    # We only use the spin label for unrestricted calculations, where Xb is present.
+    spin_a = "A" if (Xb is not None) else ""
+    assert len(energies) == (
+        len(Xa) + 1
+    ), "Found too few energies. Is the GS energy missing?"
     exc_energies = (energies[1:] - energies[0]) * AU2EV
     # states, occ, virt
-    _, occ_mos, _ = ci_coeffs.shape
+    nstates, occ_mos, _ = Xa.shape
 
     exc_str = ""
     mult = 1
     log(f"Using dummy multiplicity={mult} in get_mwfn_exc_str")
-    if dexc_ci_coeffs is None:
-        dexc_ci_coeffs = [None] * ci_coeffs.shape[0]
 
-    def get_exc_lines(ci_coeffs, arrow):
+    def set_default(mat):
+        if mat is None:
+            mat = [None] * nstates
+        return mat
+
+    Ya = set_default(Ya)
+    Xb = set_default(Xb)
+    Yb = set_default(Yb)
+
+    def get_exc_lines(ci_coeffs, arrow, spin=""):
         exc_lines = list()
         for (occ, virt), coeff in np.ndenumerate(ci_coeffs):
             if abs(coeff) < thresh:
                 continue
             occ_mo = occ + 1
             virt_mo = occ_mos + 1 + virt
-            exc_line = f"{occ_mo:>8d} {arrow} {virt_mo}       {coeff: .5f}"
+            exc_line = f"{occ_mo:>8d}{spin} {arrow} {virt_mo}{spin}       {coeff: .5f}"
             exc_lines.append(exc_line)
         return exc_lines
 
-    for root_, (root_ci_coeffs, root_dexc_ci_coeffs, exc_en) in enumerate(
-        zip(ci_coeffs, dexc_ci_coeffs, exc_energies), 1
+    for root_, (xa, ya, xb, yb, exc_en) in enumerate(
+        zip(Xa, Ya, Xb, Yb, exc_energies), 1
     ):
         exc_str += f"Excited State {root_} {mult} {exc_en:.4f}\n"
         # Excitations (X vector)
-        exc_lines = get_exc_lines(root_ci_coeffs, "->")
+        exc_lines = get_exc_lines(xa, "->", spin_a)
         # De-Excitations (Y vector), if present
-        if root_dexc_ci_coeffs is not None:
-            exc_lines += get_exc_lines(root_dexc_ci_coeffs, "<-")
+        if ya is not None:
+            exc_lines += get_exc_lines(ya, "<-", spin_a)
+        if xb is not None:
+            exc_lines += get_exc_lines(xb, "->", "B")
+        if yb is not None:
+            exc_lines += get_exc_lines(yb, "<-", "B")
         exc_str += "\n".join(exc_lines)
         exc_str += "\n\n"
     return exc_str

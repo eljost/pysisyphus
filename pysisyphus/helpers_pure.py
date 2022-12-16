@@ -126,14 +126,18 @@ class OrderedEnum(Enum):
         return self.name
 
 
-def timed(logger):
+def timed(logger=None):
     def decorator(func):
         def wrapper(*args, **kwargs):
             start = time.time()
             result = func(*args, **kwargs)
             end = time.time()
             duration = end - start
-            log(logger, f"Execution of '{func.__name__}' took {duration:.2f} s.")
+            msg = f"Execution of '{func.__name__}' took {duration:.2f} s."
+            if logger is not None:
+                log(logger, msg)
+            else:
+                print(msg)
             return result
 
         return wrapper
@@ -567,3 +571,39 @@ def to_subscript_num(num):
 
 def to_sets(iterable):
     return set([frozenset(i) for i in iterable])
+
+
+def cache_arrays(sources, dest):
+    dest_path = Path(dest).with_suffix(".npz")
+
+    def cache_decorator(func):
+        def wrapped_func(*args, **kwargs):
+            if dest_path.exists():
+                npzfile = np.load(dest_path)
+                arrays = tuple([npzfile[src] for src in sources])
+            else:
+                arrays = func(*args, **kwargs)
+                assert len(arrays) == len(sources)
+                kwds = {src: arr for src, arr in zip(sources, arrays)}
+                np.savez(dest_path, **kwds)
+            return arrays
+
+        return wrapped_func
+
+    return cache_decorator
+
+
+def estimate(gen, elems):
+    tot_dur = 0.0
+    for i in range(1, elems+1):
+        start = time.time()
+        elem = next(gen)
+        dur = time.time() - start
+        tot_dur += dur
+        ran_ratio = i / elems
+        elems_left = elems - i
+        dur_per_elem = tot_dur / i
+        est_dur = dur_per_elem * elems_left
+        est_dur_min = est_dur / 60
+        print(f"{ran_ratio: >8.2%} finished ... {est_dur_min: >8.2f} min left")
+        yield elem

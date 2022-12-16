@@ -14,11 +14,13 @@ class RSIRFOptimizer(TSHessianOptimizer):
 
         self.log(
             "Using projection to construct image potential gradient "
-            f"and hessian for root {self.root}."
+            f"and hessian for root(s) {self.roots}."
         )
-        trans_vec = eigvecs[:, self.root]
         # Projection matrix to construct g* and H*
-        P = np.eye(self.geometry.coords.size) - 2 * np.outer(trans_vec, trans_vec)
+        P = np.eye(self.geometry.coords.size)
+        for root in self.roots:
+            trans_vec = eigvecs[:, root]
+            P -= 2 * np.outer(trans_vec, trans_vec)
         H_star = P.dot(H)
         eigvals_, eigvecs_ = np.linalg.eigh(H_star)
         # Neglect small eigenvalues

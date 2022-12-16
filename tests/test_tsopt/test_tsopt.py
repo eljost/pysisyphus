@@ -73,8 +73,10 @@ def test_hessian_ref(this_dir):
 
 def test_iterative_tsopt():
     geom = geom_loader("lib:hcn_iso_pm6_near_ts.xyz", coord_type="cart")
+
     def calc_getter():
         return PySCF(basis="321g")
+
     opt_kwargs = {
         "thresh": "gau_loose",
     }

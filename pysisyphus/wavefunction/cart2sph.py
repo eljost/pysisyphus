@@ -18,7 +18,30 @@ from scipy.special import binom
 from pysisyphus.wavefunction.helpers import canonical_order
 
 
-def cart2sph_coeff(lx: int, ly: int, lz: int, m: int) -> complex:
+def sph_norm(n: int) -> float:
+    """Eq. (8) in [1] (N), without orbital exponent."""
+    return 1 / sqrt(fact(2 * n + 2) * np.pi**0.5 / (2 ** (2 * n + 3) * fact(n + 1)))
+
+
+def cart_norm(lx: int, ly: int, lz: int) -> float:
+    """Eq. (9) in [1] (Ñ), without orbital exponent."""
+    l = lx + ly + lz
+    return 1 / sqrt(
+        fact(2 * lx)
+        * fact(2 * ly)
+        * fact(2 * lz)
+        * np.pi**1.5
+        / (2 ** (2 * l) * fact(lx) * fact(ly) * fact(lz))
+    )
+
+
+def norm(lx: int, ly: int, lz: int) -> float:
+    # The orbital exponent cancles out in the division.
+    # n = lx + ly + lz
+    return sph_norm(lx + ly + lz) / cart_norm(lx, ly, lz)
+
+
+def cart2sph_coeff(lx: int, ly: int, lz: int, m: int, normalized=True) -> complex:
     """Coefficient to convert Cartesian to spherical harmonics.
 
     Eq. (15) in [1].
@@ -75,19 +98,22 @@ def cart2sph_coeff(lx: int, ly: int, lz: int, m: int) -> complex:
         * fact(lmm)
         / (fact(2 * l) * fact(lx) * fact(ly) * fact(lz) * fact(l + abs(m)))
     )
-    coeff *= 1 / (2 ** l * lfact)
+    coeff *= 1 / (2**l * lfact)
+
+    if not normalized:
+        coeff /= norm(lx, ly, lz)
     return coeff
 
 
-def cart2sph_coeffs_for(l: int, real: bool = True) -> NDArray:
+def cart2sph_coeffs_for(l: int, real: bool = True, **kwargs) -> NDArray:
     all_coeffs = list()
     for lx, ly, lz in canonical_order(l):
         coeffs = list()
         for m in range(-l, l + 1):
-            coeff = cart2sph_coeff(lx, ly, lz, m)
+            coeff = cart2sph_coeff(lx, ly, lz, m, **kwargs)
             # Form linear combination for m != 0 to get real spherical orbitals.
             if real and m != 0:
-                coeff_minus = cart2sph_coeff(lx, ly, lz, -m)
+                coeff_minus = cart2sph_coeff(lx, ly, lz, -m, **kwargs)
                 sign = 1 if m < 0 else -1
                 coeff = (coeff + sign * coeff_minus) / sqrt(sign * 2)
             coeffs.append(coeff)
@@ -99,8 +125,14 @@ def cart2sph_coeffs_for(l: int, real: bool = True) -> NDArray:
     return C.T  # Return w/ shape (sph., cart.)
 
 
-def cart2sph_coeffs(l_max: int, **kwargs) -> Dict[int, NDArray]:
+def cart2sph_coeffs(
+    l_max: int, zero_small=False, zero_thresh=1e-14, **kwargs
+) -> Dict[int, NDArray]:
     coeffs = {l: cart2sph_coeffs_for(l, **kwargs) for l in range(l_max + 1)}
+    if zero_small:
+        for c in coeffs.values():
+            mask = np.abs(c) <= zero_thresh
+            c[mask] = 0.0
     return coeffs
 
 
@@ -116,6 +148,7 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("l_max", type=int, default=3)
+    parser.add_argument("--not-normalized", action="store_true")
 
     return parser.parse_args(args)
 
@@ -124,8 +157,9 @@ def run():
     args = parse_args(sys.argv[1:])
 
     l_max = args.l_max
+    normalized = not args.not_normalized
 
-    Cs = cart2sph_coeffs(l_max)
+    Cs = cart2sph_coeffs(l_max, normalized=normalized)
     for l, C in Cs.items():
         print(f"{l=}")
         print_coeffs(l, C.T)

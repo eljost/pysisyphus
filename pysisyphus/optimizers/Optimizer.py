@@ -71,7 +71,8 @@ def get_data_model(geometry, is_cos, max_cycles):
 
 
 CONV_THRESHS = {
-    #              max_force, rms_force, max_step, rms_step
+    #                max_force, rms_force, max_step, rms_step
+    "nwchem_loose": (4.5e-3, 3.0e-3, 5.4e-3, 3.6e-3),
     "gau_loose": (2.5e-3, 1.7e-3, 1.0e-2, 6.7e-3),
     "gau": (4.5e-4, 3.0e-4, 1.8e-3, 1.2e-3),
     "gau_tight": (1.5e-5, 1.0e-5, 6.0e-5, 4.0e-5),
@@ -91,6 +92,7 @@ class ConvInfo:
     rms_force_converged: bool
     max_step_converged: bool
     rms_step_converged: bool
+    desired_eigval_structure: bool
 
     def get_convergence(self):
         return (
@@ -99,6 +101,7 @@ class ConvInfo:
             self.rms_force_converged,
             self.max_step_converged,
             self.rms_step_converged,
+            self.desired_eigval_structure,
         )
 
     def is_converged(self):
@@ -111,7 +114,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         geometry: Geometry,
         thresh: Thresh = "gau_loose",
         max_step: float = 0.04,
-        max_cycles: int = 100,
+        max_cycles: int = 150,
         min_step_norm: float = 1e-8,
         assert_min_step: bool = True,
         rms_force: Optional[float] = None,
@@ -126,6 +129,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         reparam_check_rms: bool = True,
         reparam_when: Optional[Literal["before", "after"]] = "after",
         overachieve_factor: float = 0.0,
+        check_eigval_structure: bool = False,
         restart_info=None,
         check_coord_diffs: bool = True,
         coord_diff_thresh: float = 0.01,
@@ -193,6 +197,10 @@ class Optimizer(metaclass=abc.ABCMeta):
             Signal convergence when max(forces) and rms(forces) fall below the
             chosen threshold, divided by this factor. Convergence of max(step) and
             rms(step) is ignored.
+        check_eigval_structure
+            Check the eigenvalues of the modes we maximize along. Convergence requires
+            them to be negative. Useful if TS searches are started from geometries close
+            to a minimum.
         restart_info
             Restart information. Undocumented.
         check_coord_diffs
@@ -234,6 +242,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.reparam_when = reparam_when
         assert self.reparam_when in ("after", "before", None)
         self.overachieve_factor = float(overachieve_factor)
+        self.check_eigval_structure = check_eigval_structure
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
 
@@ -356,22 +365,27 @@ class Optimizer(metaclass=abc.ABCMeta):
                 6 * rms_force,
                 4 * rms_force,
             )
-        keys = [
+        keys = keep_keys = [
             "max_force_thresh",
             "rms_force_thresh",
+            "max_step_thresh",
+            "rms_step_thresh",
         ]
+        conv_dict = {k: v for k, v in zip(keys, threshs)}
+
         # Only used gradient information for COS optimizations
-        if not self.is_cos:
-            keys += ["max_step_thresh", "rms_step_thresh"]
+        if self.is_cos:
+            keep_keys = ["max_force_thresh", "rms_force_thresh"]
 
         if rms_force_only:
             self.log("Checking convergence with rms(forces) only!")
-            keys = ["rms_force_thresh"]
+            keep_keys = ["rms_force_thresh"]
         elif max_force_only:
             self.log("Checking convergence with max(forces) only!")
-            keys = ["max_force_thresh"]
+            keep_keys = ["max_force_thresh"]
 
-        conv_dict = {k: v for k, v in zip(keys, threshs)}
+        # The dictionary should only contain pairs that are needed
+        conv_dict = {key: value for key, value in conv_dict.items() if key in keep_keys}
         return conv_dict
 
     def report_conv_thresholds(self):
@@ -501,11 +515,33 @@ class Optimizer(metaclass=abc.ABCMeta):
             "max_step_converged": check("max_step_thresh"),
             "rms_step_converged": check("rms_step_thresh"),
         }
+        # For TS optimizations we also try to check the eigenvalue structure of the
+        # Hessian. A saddle point of order n must have exatcly only n significant negative
+        # eigenvalues. We try to check this below.
+        #
+        # Currently, this is not totally strict,
+        # as only the values in self.ts_mode_eigvals are checked but actually all eigenvalues
+        # would have to be checked.
+        desired_eigval_structure = True
+        if self.check_eigval_structure:
+            try:
+                desired_eigval_structure = (
+                    # Acutally all eigenvalues would have to be checked, but
+                    # currently they are not stored anywhere.
+                    self.ts_mode_eigvals
+                    < self.small_eigval_thresh
+                ).sum() == len(self.roots)
+            except AttributeError:
+                self.log(
+                    "Skipping check of eigenvalue structure, as information is unavailable."
+                )
+        convergence["desired_eigval_structure"] = desired_eigval_structure
         conv_info = ConvInfo(self.cur_cycle, **convergence)
 
-        # Check if force convergence is overachieved
+        # Check if force convergence is overachieved. If the eigenvalue-structure is
+        # checked, a wrong structure will prevent overachieved convergence.
         overachieved = False
-        if overachieve_factor > 0:
+        if overachieve_factor > 0 and desired_eigval_structure:
             max_thresh = self.convergence["max_force_thresh"] / overachieve_factor
             rms_thresh = self.convergence["rms_force_thresh"] / overachieve_factor
             max_ = max_force < max_thresh
@@ -551,7 +587,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         if (self.cur_cycle > 1) and (self.cur_cycle % 10 == 0):
             self.table.print_sep()
 
-        marks = [False, *conv_info.get_convergence(), False]
+        # desired_eigval_structure is also returned, but currently not reported.
+        marks = [False, *conv_info.get_convergence()[:-1], False]
         try:
             cycle_time = self.cycle_times[-1]
         except IndexError:
@@ -678,12 +715,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         _ = self.geometry.forces
         cart_forces = self.geometry.cart_forces
         max_cart_forces = np.abs(cart_forces).max()
-        rms_cart_forces = np.sqrt(np.mean(cart_forces ** 2))
+        rms_cart_forces = np.sqrt(np.mean(cart_forces**2))
         int_str = ""
         if self.geometry.coord_type not in ("cart", "cartesian", "mwcartesian"):
             int_forces = self.geometry.forces
             max_int_forces = np.abs(int_forces).max()
-            rms_int_forces = np.sqrt(np.mean(int_forces ** 2))
+            rms_int_forces = np.sqrt(np.mean(int_forces**2))
             int_str = f"""
             \tmax(forces, internal): {max_int_forces:.6f} hartree/(bohr,rad)
             \trms(forces, internal): {rms_int_forces:.6f} hartree/(bohr,rad)"""

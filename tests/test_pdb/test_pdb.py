@@ -19,7 +19,7 @@ def test_fragment_num(pdb_fn, fragment_num):
 
 def test_get_fragments():
     full_geom = geom_loader("lib:pdbs/1bl8.pdb")
-    geom = full_geom.get_fragments("75_THR")
+    geom = full_geom.get_fragments("THR75")
     # geom.jmol()
 
     assert len(geom.fragments) == 4

@@ -1,9 +1,13 @@
+import warnings
+
 import numpy as np
 
 try:
     from openbabel import openbabel as ob
     from openbabel import pybel
 except ModuleNotFoundError:
+    pass
+except ImportError:
     pass
 
 from pysisyphus.calculators.Calculator import Calculator
@@ -30,7 +34,7 @@ class OBabel(Calculator):
         super().__init__(**kwargs)
 
         if self.charge != 0:
-            print("'charge' keyword is currently ignored!")
+            warnings.warn("'charge' keyword is currently ignored!")
 
         self.ff_name = ff
         avail_ffs = _getplugins(

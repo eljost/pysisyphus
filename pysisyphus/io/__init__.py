@@ -1,6 +1,7 @@
 __all__ = [
     "geom_from_cjson",
     "geom_from_crd",
+    "geom_from_cube",
     "geom_from_fchk",
     "geom_from_hessian",
     "geom_from_mol2",
@@ -16,6 +17,7 @@ __all__ = [
 
 from pysisyphus.io.cjson import geom_from_cjson
 from pysisyphus.io.crd import geom_from_crd, geom_to_crd_str
+from pysisyphus.io.cube import Cube, geom_from_cube, parse_cube
 from pysisyphus.io.fchk import geom_from_fchk
 from pysisyphus.io.hessian import save_hessian, save_third_deriv, geom_from_hessian
 from pysisyphus.io.molden import geoms_from_molden

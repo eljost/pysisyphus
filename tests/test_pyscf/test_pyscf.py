@@ -17,7 +17,7 @@ def test_mulliken_charges():
     geom.set_calculator(calc)
 
     energy = geom.energy
-    assert energy == pytest.approx(-5.789815189924002E+02)
+    assert energy == pytest.approx(-5.789815189924002e02)
 
     charges = calc.parse_charges()
     chrg_ref = """
@@ -29,3 +29,66 @@ def test_mulliken_charges():
     ref_charges = np.array(chrg_ref.strip().split(), dtype=float)
 
     np.testing.assert_allclose(charges, ref_charges, atol=1e-5)
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "pruning, ref_name",
+    (
+        ("nwchem", "nwchem_prune"),
+        ("sg1", "sg1_prune"),
+        ("treutler", "treutler_prune"),
+        pytest.param(None, None, marks=pytest.mark.xfail),
+    ),
+)
+def test_pruning(pruning, ref_name):
+    geom = geom_loader("lib:01_h2o.xyz")
+
+    calc_kwargs = {
+        "basis": "sto3g",
+        "pruning": pruning,
+    }
+    calc = PySCF(**calc_kwargs)
+
+    mol = calc.prepare_input(geom.atoms, geom.coords)
+    mf = calc.get_driver("dft", mol=mol)
+    assert mf.grids.prune.__name__ == ref_name
+
+
+@using("pyscf")
+@pytest.mark.parametrize("grid_level", (0, 3, 9))
+def test_grid_level(grid_level):
+    geom = geom_loader("lib:01_h2o.xyz")
+
+    calc_kwargs = {
+        "basis": "sto3g",
+        "grid_level": grid_level,
+    }
+    calc = PySCF(**calc_kwargs)
+
+    mol = calc.prepare_input(geom.atoms, geom.coords)
+    mf = calc.get_driver("dft", mol=mol)
+    assert grid_level == mf.grids.level
+
+
+@using("pyscf")
+@pytest.mark.parametrize(
+    "unrestricted, expected",
+    (
+        (None, "Restricted"),
+        (False, "Restricted"),
+        (True, "Unrestricted"),
+    ),
+)
+def test_unrestricted(unrestricted, expected):
+    geom = geom_loader("lib:01_h2o.xyz")
+
+    calc_kwargs = {
+        "basis": "sto3g",
+        "unrestricted": unrestricted,
+    }
+    calc = PySCF(**calc_kwargs)
+
+    mol = calc.prepare_input(geom.atoms, geom.coords)
+    mf = calc.get_driver("dft", mol=mol)
+    assert expected in mf.__doc__

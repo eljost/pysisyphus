@@ -4,9 +4,6 @@ import shutil
 import numpy as np
 import pyscf
 from pyscf import gto, grad, lib, hessian, tddft, qmmm
-from pyscf.dft import xcfun
-
-# from pyscf.lib.chkfile import save_mol
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.helpers import geom_loader
@@ -31,6 +28,12 @@ class PySCF(OverlapCalculator):
         "tddft": ("dft", "tddft"),
         "tda": ("dft", "tda"),
     }
+    pruning_method = {
+        "nwchem": pyscf.dft.gen_grid.nwchem_prune,
+        "sg1": pyscf.dft.gen_grid.sg1_prune,
+        "treutler": pyscf.dft.gen_grid.treutler_prune,
+        "none": None,
+    }
 
     def __init__(
         self,
@@ -42,6 +45,9 @@ class PySCF(OverlapCalculator):
         auxbasis=None,
         keep_chk=True,
         verbose=0,
+        unrestricted=None,
+        grid_level=3,
+        pruning="nwchem",
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -64,10 +70,15 @@ class PySCF(OverlapCalculator):
         self.auxbasis = auxbasis
         self.keep_chk = keep_chk
         self.verbose = int(verbose)
+        if unrestricted is None:
+            self.unrestricted = self.mult > 1
+        else:
+            self.unrestricted = unrestricted
+        self.grid_level = int(grid_level)
+        self.pruning = pruning.lower()
 
         self.chkfile = None
         self.out_fn = "pyscf.out"
-        self.unrestricted = self.mult > 1
 
         lib.num_threads(self.pal)
 
@@ -77,26 +88,31 @@ class PySCF(OverlapCalculator):
         geom.set_calculator(PySCF(**kwargs))
         return geom
 
+    def set_scf_params(self, mf):
+        mf.conv_tol = 1e-8
+        mf.max_cycle = 150
+
+    def build_grid(self, mf):
+        mf.grids.level = self.grid_level
+        mf.grids.prune = self.pruning_method[self.pruning]
+        mf.grids.build()
+
     def get_driver(self, step, mol=None, mf=None):
+        def _get_driver():
+            return self.drivers[(step, self.unrestricted)]
+
         if mol and (step == "dft"):
-            driver = self.drivers[(step, self.unrestricted)]
+            driver = _get_driver()
             mf = driver(mol)
             mf.xc = self.xc
-            mf._numint.libxc = xcfun
-            mf.conv_tol = 1e-8
-            mf.max_cycle = 150
-            # TODO: grids
-            # grids = pyscf.dft.gen_grid.Grids(mol)
-            # grids.level = 4
-            # grids.build()
-            # mf.grids = grids
+            self.set_scf_params(mf)
+            self.build_grid(mf)
         elif mol and (step == "scf"):
-            driver = self.drivers[(step, self.unrestricted)]
+            driver = _get_driver()
             mf = driver(mol)
-            mf.conv_tol = 1e-8
-            mf.max_cycle = 150
+            self.set_scf_params(mf)
         elif mf and (step == "mp2"):
-            mp2_mf = self.drivers[(step, self.unrestricted)]
+            mp2_mf = _get_driver()
             mf = mp2_mf(mf)
         elif mf and (step == "tddft"):
             mf = pyscf.tddft.TDDFT(mf)
@@ -253,7 +269,7 @@ class PySCF(OverlapCalculator):
         exc_mf = self.mf
 
         gs_energy = gs_mf.e_tot
-        mo_coeffs = gs_mf.mo_coeff.T
+        C = gs_mf.mo_coeff
 
         first_Y = exc_mf.xy[0][1]
         # In TDA calculations Y is just the integer 0.
@@ -271,7 +287,7 @@ class PySCF(OverlapCalculator):
         all_energies = np.zeros(exc_energies.size + 1)
         all_energies[0] = gs_energy
         all_energies[1:] = exc_energies
-        return mo_coeffs, X, Y, all_energies
+        return C, X, Y, all_energies
 
     def parse_charges(self):
         results = self.mf.analyze(with_meta_lowdin=False)

@@ -43,8 +43,8 @@ def test_anapot_growing_string(keep_last, ref_cycle):
 
 @pytest.mark.parametrize(
     "gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle", [
-        ({"climb": True, "climb_rms": 0.5, }, 21, 4),
-        ({}, 21, 4),
+        ({"climb": True, "climb_rms": 0.5, }, 22, 4),
+        ({}, 22, 5),
     ]
 )
 def test_growing_string_climbing(gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle):
@@ -116,8 +116,8 @@ def test_mullerbrown_string(double_damp, ref_cycle):
 
 @pytest.mark.parametrize(
     "double_damp, ref_cycle", [
-        (False, 42),
-        (True, 42),
+        (False, 75),
+        (True, 48),
     ]
 )
 def test_energy_reparametrization(double_damp, ref_cycle):

@@ -35,7 +35,7 @@ prevents the use of optimizers with some kind of history Conjugate Gradient (CG)
 The optimizer history is reset after each reparametrization and a simple Steepest Descent
 (SD) step is done after reparametrization.
 
-Nudeged Elastic Band
+Nudged Elastic Band
 ====================
 
 No reparametrization takes place in the NEB method. The parallel gradient component

@@ -161,6 +161,7 @@ cur_out
 *.tmp
 *.gbw
 *.chkfile
+pysisyphus/wavefunction/devel_ints/*
 
 version.py
 
@@ -185,7 +186,9 @@ version.py
 !tests/test_rates/peroxyl_r1_h5s/*.h5
 !tests/test_integrals/methane_def2svp_aomix.in
 !tests/test_orca/ref_cis/*.cis
-!tests/test_wavefunction/ch4_3states/*
 !tests/test_wavefunction/h2o2/*
 !tests/test_wavefunction/h2o2_anion/*
+!tests/test_wavefunction/pyrrole/*
+!tests/test_psf/step1_pdbreader.psf
+!tests/test_overlap_calculator/benzene/*
 !pysisyphus/wf_library/*

@@ -15,7 +15,7 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("fn")
-    break_group = parser.add_mutually_exclusive_group(required=True)
+    break_group = parser.add_mutually_exclusive_group(required=False)
     break_group.add_argument(
         "--bonds",
         type=int,
@@ -33,6 +33,12 @@ def parse_args(args):
         "--tmc",
         action="store_true",
         help="Break all bonds involving transition metal atoms.",
+    )
+    parser.add_argument(
+        "--filter",
+        type=int,
+        nargs="+",
+        help="Report only fragments containing the given atom indices."
     )
     return parser.parse_args(args)
 
@@ -74,6 +80,7 @@ def run():
     args = parse_args(sys.argv[1:])
 
     geom = geom_loader(args.fn)
+    filter = set(args.filter)
 
     # Determine bond topology
     bonds = get_bond_sets(geom.atoms, geom.coords3d).tolist()
@@ -94,7 +101,8 @@ def run():
         trans_metal_atoms = get_tm_indices(geom.atoms)
         rm_bonds_from = set(trans_metal_atoms)
     else:
-        raise Exception("How did I get here?")
+        rm_bonds = list()
+        print("Detecting fragments without bond removal.")
 
     if rm_bonds_from:
         rm_atoms = [geom.atoms[i] for i in rm_bonds_from]
@@ -102,8 +110,6 @@ def run():
         print(f"Delete all bonds involving atoms: {rm_str}")
         rm_bonds = [bond for bond in bonds if rm_bonds_from & set(bond)]
     print()
-
-    assert rm_bonds
 
     print(f"{len(rm_bonds)} bond(s) to be deleted:")
     for i, bond in enumerate(rm_bonds):
@@ -133,11 +139,15 @@ def run():
     coords3d = geom.coords3d
     xyzs = list()
     frags_compressed = list()
+    print("Last item in compressed ranges is exclusive! Counting starts at 0.")
     for i, frag in enumerate(fragments):
         compressed = compress(frag, check=True)
         frags_compressed.append(compressed)
         sop = "s" if len(frag) > 1 else ""
-        print(f"{len(frag)} atom{sop}, compressed:\n\t{compressed}")
+        if len(filter) == 0 or set(frag) & filter:
+            print(f"{len(frag)} atom{sop}, compressed:\n\t{compressed}")
+        else:
+            continue
         frag_atoms = dummy_atoms.copy()
         for j in frag:
             frag_atoms[j] = atoms[j]

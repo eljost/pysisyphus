@@ -382,6 +382,15 @@ class Calculator:
         if isinstance(cmd, str):
             cmd = [cmd]
 
+        act_cmd = cmd[0]
+        cmd_availble = shutil.which(act_cmd)
+        if not cmd_availble:
+            print(
+                f"Command '{act_cmd}' could not be found on $PATH! "
+                "Maybe you forgot to make it available?"
+            )
+            return
+
         args = cmd + [self.inp_fn]
         if add_args:
             args.extend(add_args)
@@ -494,6 +503,19 @@ class Calculator:
         entering ``self.keep()`` and ``self.clean()``. Can be used to call
         tools like formchk or ricctools.
         """
+
+    def popen(self, cmd, cwd=None):
+        if isinstance(cmd, str):
+            cmd = cmd.split()
+        proc = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            universal_newlines=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        proc.wait()
+        return proc
 
     def prepare_pattern(self, raw_pat):
         """Prepare globs.

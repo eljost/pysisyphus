@@ -21,6 +21,7 @@ BEND_MIN_DEG = 15
 LB_MIN_DEG = 175
 DIHED_MAX_DEG = 175
 L_MAX = 4
+L_AUX_MAX = 5
 AFIR_RMSD_THRESH = 0.25
 DEFAULTS = {
     # .pysisyphusrc key: command

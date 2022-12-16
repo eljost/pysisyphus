@@ -32,6 +32,7 @@ class XTB(Calculator):
         acc=1.0,
         etemp=None,
         retry_etemp=None,
+        restart=False,
         topo=None,
         topo_update=None,
         quiet=False,
@@ -74,6 +75,7 @@ class XTB(Calculator):
         self.acc = acc
         self.etemp = etemp
         self.retry_etemp = retry_etemp
+        self.restart = restart
         if self.etemp is not None:
             assert (
                 self.retry_etemp is None
@@ -83,6 +85,7 @@ class XTB(Calculator):
         self.quiet = quiet
 
         self.topo_used = 0
+        self.xtbrestart = None
         valid_gfns = (0, 1, 2, "ff")
         assert (
             self.gfn in valid_gfns
@@ -101,6 +104,8 @@ class XTB(Calculator):
             "charges:charges",
             "xcontrol",
         )
+        if self.restart:
+            self.to_keep += ("xtbrestart", )
         if self.quiet:
             self.to_keep = ()
 
@@ -159,6 +164,9 @@ class XTB(Calculator):
             shutil.copy(self.topo, path / "gfnff_topo")
             self.log(f"Using toplogy given in {self.topo}.")
             self.topo_used += 1
+        if self.xtbrestart is not None:
+            shutil.copy(self.xtbrestart, path / "xtbrestart")
+            self.log(f"Using xtbrestart given in {self.xtbrestart}.")
 
     def prepare_add_args(self, xcontrol=None):
         add_args = (
@@ -393,6 +401,10 @@ class XTB(Calculator):
             self.json = kept_fns["json"]
         except KeyError:
             self.log("Skip setting of 'json' file.")
+        try:
+            self.xtbrestart = kept_fns["xtbrestart"]
+        except KeyError:
+            pass
 
     @staticmethod
     @file_or_str(".out")
