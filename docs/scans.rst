@@ -36,8 +36,27 @@ If no `start` value is specified in the `scan:` block,
 then the initial value is used. Specification of `steps` is mandatory, as it determines
 the number of optimizations to carry out.
 If not directly given (`step_size`), a suitable step size is derived from
-an `end` value. Either `end` or `step_size` must be given. The values
-`step_size`, `start`, `end` have to be given in atomic units or radians.
+an `end` value. Either `end` or `step_size` must be given.
+
+The values `step_size`, `start`, `end` *have to be provided in atomic units or radians*.
+When the appropriate YAML constructor is used, inputs can still be in Ångström or degrees.
+The constructor `!angstrom` converts input in Ångström to Bohr and `!deg` converts input
+from degrees to radians. See below for an example.
+
+.. code:: yaml
+
+    [...]
+    scan:
+     type: DIHEDRAL
+     indices: [0, 1, 2, 3]
+     steps: 5
+     step_size: !deg 10.
+    [...]
+
+In the example above, a relaxed scan around a torsion is carried out. In total,
+5 steps of 10 degree each will be taken. By using the YAML constructor `!deg`, the input
+can be given in degrees, instead of radians. Internally, the degrees input is then
+converted to the appropriate unit, in this case radians.
 
 Naive relaxed scan around the equilibrium value of a primitive internal may be affected
 by hysteresis, if the system under study is sufficiently complicated.
