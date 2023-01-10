@@ -21,7 +21,7 @@ def make_sym_mat(table_block):
     mat_size = int(table_block[1])
     # Orca prints blocks of 5 columns
     arr = np.array(table_block[2:], dtype=float)
-    assert arr.size == mat_size ** 2
+    assert arr.size == mat_size**2
     block_size = 5 * mat_size
     cbs = [
         arr[i * block_size : (i + 1) * block_size].reshape(mat_size, -1)
@@ -75,12 +75,12 @@ def parse_orca_gbw(gbw_fn):
         operators = struct.unpack("<i", handle.read(4))[0]
         dimension = struct.unpack("<i", handle.read(4))[0]
 
-        coeffs_fmt = "<" + dimension ** 2 * "d"
+        coeffs_fmt = "<" + dimension**2 * "d"
         assert operators == 1, "Unrestricted case is not implemented!"
 
         for i in range(operators):
             # print('\nOperator: {}'.format(i))
-            coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension ** 2))
+            coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension**2))
             occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
             energies = struct.iter_unpack("<d", handle.read(8 * dimension))
             irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
@@ -129,6 +129,11 @@ def parse_orca_cis(cis_fn):
     b_frozen, b_active, b_occupied, b_virtual = b_header
     a_lenci = a_active * a_virtual
     b_lenci = b_active * b_virtual
+    a_nel = a_frozen + a_active
+    b_nel = b_frozen + b_active
+    if not unrestricted:
+        b_nel = a_nel
+    # expect_mult = a_nel - b_nel + 1
 
     # Loop over states. For non-TDA order is: X+Y of 1, X-Y of 1,
     # X+Y of 2, X-Y of 2, ...
@@ -138,6 +143,7 @@ def parse_orca_cis(cis_fn):
 
     # Flags that may later be set to True
     triplets = False
+    spin_flip = False
     tda = False
     Xs_a = list()
     Ys_a = list()
@@ -176,7 +182,20 @@ def parse_orca_cis(cis_fn):
 
     for ivec in range(nvec):
         # Header of each vector, contains 6 4-byte ints.
-        nele, _, mult, _, iroot, _ = struct.unpack("iiiiii", cis_handle.read(24))
+        ncoeffs, _, mult, _, iroot, _ = struct.unpack("iiiiii", cis_handle.read(24))
+
+        # Check if we deal with a spin-flip calculation. There, excitations are from
+        # α_activate -> β_virtual.
+        if unrestricted and ncoeffs == (a_active * b_virtual):
+            unrestricted = False  # Don't expect β_active -> β_virtual.
+            spin_flip = True
+            a_lenci = ncoeffs
+            a_virtual = b_virtual
+            warnings.warn(
+                "Spin-flip calculation detected. Pysisyphus can parse it, but "
+                "the transition density matrix is not yet handled properly by the "
+                "OverlapCalculator-class or the Wavefunction-class!"
+            )
 
         if prev_mult is None:
             prev_mult = mult
@@ -213,8 +232,11 @@ def parse_orca_cis(cis_fn):
 
         prev_root = iroot
         prev_mult = mult
+    # Verify, that we are at the EOF. We request 1 byte, but we only get 0.
+    assert len(cis_handle.read(1)) == 0
     cis_handle.close()
 
+    # Convert everything to numpy arrays.
     Xs_a, Ys_a, Xs_b, Ys_b = [np.array(_) for _ in (Xs_a, Ys_a, Xs_b, Ys_b)]
 
     def handle_triplets(Xs, Ys):
@@ -746,7 +768,7 @@ class ORCA(OverlapCalculator):
 
         tot_offset = offset + 4 + 4
         start = gbw_bytes[:tot_offset]
-        end = gbw_bytes[tot_offset + 8 * dimension ** 2 :]
+        end = gbw_bytes[tot_offset + 8 * dimension**2 :]
         # Construct new gbw content by replacing the MO coefficients in the middle
         mod_gbw_bytes = start + mo_coeffs.T.tobytes() + end
 
