@@ -188,5 +188,5 @@ zict==2.0.0
     # via distributed
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==60.5.0
+setuptools==65.5.1
     # via distributed
