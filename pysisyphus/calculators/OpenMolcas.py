@@ -52,7 +52,7 @@ class OpenMolcas(Calculator):
         self.mcpdft = mcpdft
         self.track = track
 
-        self.to_keep = ("RasOrb", "out", "in", "JobIph", "rasscf.molden")
+        self.to_keep = ("RasOrb", "out", "in", "JobIph", "rasscf.molden", "rasscf.h5")
         self.jobiph = ""
 
         self.inp_fn = "openmolcas.in"
@@ -206,13 +206,22 @@ class OpenMolcas(Calculator):
             root = self.get_root()
             energy = root_energies[root - 1]
         else:
-            # Energy of root for which gradient was computed
-            energy_regex = r"RASSCF state energy =\s*" + self.float_regex
-            energy = float(re.search(energy_regex, text).groups()[0])
-            # All state average energies
+            # All state average energies, as printed in the RASSCF module.
             root_re = "RASSCF root number.+Total energy.+?" + self.float_regex
             matches = re.findall(root_re, text)
             root_energies = np.array(matches, dtype=float)
+
+            # Energy of root for which gradient was computed. This string will only be present
+            # in RASSI runs.
+            energy_regex = r"RASSCF state energy =\s*" + self.float_regex
+            energy_mobj = re.search(energy_regex, text)
+            try:
+                energy = float(energy_mobj.groups()[0])
+            except AttributeError:
+                self.log(
+                    "Couldn't determine root energy from RASSI. Using energy of first root."
+                )
+                energy = root_energies[0]
         return energy, root_energies
 
     def parse_energy(self, path):
@@ -281,6 +290,19 @@ class OpenMolcas(Calculator):
         if new_root != initial_root:
             self.log("Found a root flip!")
         self.mdrlxroot = new_root
+
+    def get_chkfiles(self):
+        return {
+            "inporb": self.inporb,
+        }
+
+    def set_chkfiles(self, chkfiles):
+        try:
+            inporb = chkfiles["inporb"]
+            self.inporb = inporb
+            self.log(f"Set chkfile '{inporb}' as INPORB.")
+        except KeyError:
+            self.log("Found no INPORB information in chkfiles!")
 
     def __str__(self):
         return "OpenMolcas calculator"
