@@ -18,6 +18,7 @@ _UNIT_MAP = {
     "a0": 1,
     "angstrom": 1 / ANG2BOHR,
     "nm": 1 / BOHR2M * 1e9,
+    "deg": np.pi / 180.0
 }
 _UNITS = list(_UNIT_MAP.keys())
 UNITS = _UNITS
