@@ -165,6 +165,8 @@ def relaxed_1d_scan(
     scan_energies = list()
     scan_xyzs = list()
 
+    trj_handle = open(f"{pref}relaxed_scan.trj", "w")
+
     for cycle, cur_val in enumerate(target_scan_vals):
         opt_kwargs_ = opt_kwargs.copy()
         name = f"{pref}relaxed_scan_{cycle:04d}"
@@ -191,9 +193,9 @@ def relaxed_1d_scan(
         if not opt_result.opt.is_converged:
             print(f"Step {cycle} did not converge. Breaking!")
             break
+        trj_handle.write("\n".join(constr_geom.as_xyz()))
 
-    with open(f"{pref}relaxed_scan.trj", "w") as handle:
-        handle.write("\n".join(scan_xyzs))
+    trj_handle.close()
 
     scan_data = np.stack((scan_vals, scan_energies), axis=1)
     np.savetxt(f"{pref}relaxed_scan.dat", scan_data)
