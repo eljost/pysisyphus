@@ -35,6 +35,7 @@ from pysisyphus.dynamics import (
 )
 from pysisyphus.drivers import (
     relaxed_1d_scan,
+    rigid_1d_scan,
     run_afir_paths,
     run_opt,
     run_precontr,
@@ -653,7 +654,6 @@ def run_md(geom, calc_getter, md_kwargs):
 
 
 def run_scan(geom, calc_getter, scan_kwargs, callback=None):
-    print(highlight_text("Relaxed Scan") + "\n")
     assert (
         geom.coord_type != "cart"
     ), "Internal coordinates are required for coordinate scans."
@@ -665,6 +665,13 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
     end = scan_kwargs.get("end", None)
     step_size = scan_kwargs.get("step_size", None)
     symmetric = scan_kwargs.get("symmetric", False)
+    relaxed = scan_kwargs.get("relaxed", True)
+
+    if not relaxed:
+        assert start is None, "'start' can't be set in rigid scans ('relaxed: False')."
+
+    key = "Relaxed" if relaxed else "Rigid"
+    print(highlight_text(f"{key} Scan") + "\n")
     # The final prim value is determined either as
     #  start + steps*step_size
     # or
@@ -684,7 +691,7 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
     constr_prim = constrain_prims[0]
 
     start_was_none = start is None
-    if start_was_none:
+    if relaxed and start_was_none:
         try:
             constr_ind = geom.internal.get_index_of_typed_prim(constr_prim)
         # Recreate geom with appropriate primitive
@@ -695,14 +702,19 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
         # as they may be reversed. So we fetch the actual typed primitive.
         constr_prim = geom.internal.typed_prims[constr_ind]
         start = geom.coords[constr_ind]
+    elif not relaxed:
+        constr_prim = (type_, *indices)
+        start = 0.0
 
     if step_size is None:
         step_size = (end - start) / steps
     opt_kwargs = scan_kwargs["opt"].copy()
     opt_key = opt_kwargs.pop("type")
 
+    scan_func = relaxed_1d_scan if relaxed else rigid_1d_scan
+
     def wrapper(geom, start, step_size, steps, pref=None):
-        return relaxed_1d_scan(
+        return scan_func(
             geom,
             calc_getter,
             [
@@ -1483,7 +1495,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         print_perf_results(perf_results)
     elif run_dict["afir"]:
         ts_guesses, afir_paths = run_afir_paths(
-            afir_key, geoms, calc_getter, **afir_kwargs,
+            afir_key,
+            geoms,
+            calc_getter,
+            **afir_kwargs,
         )
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:

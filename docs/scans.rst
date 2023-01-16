@@ -1,9 +1,26 @@
-Relaxed Scans
-*************
+Coordinate Scans
+****************
 
-Pysisyphus currently supports 1d-relaxed scans, where one internal
-coordinate is kept frozen, while the remaining ones are relaxed. A sample
-input is given below.
+Pysisyphus supports 1-dimensional relaxed scans, as well as rigid scans for some
+selected coordinates. In relaxed scans, a one internal coordinate is kept frozen,
+while the remaining ones are relaxed/optimized.
+Rigid scans are less readily defined. Similar to relaxed scans, an internal coordinate
+is selected and set to a certain value, but the remaining ones are not optimized.
+Depending on the geometry at hand, other internal coordinates may also change along with
+the scanned coordinate.
+A simple example for this is given by the rotation of the
+two CH:sub:`2` groups around the central bond CC-bond in ethene.
+At every step of the rotation, multiple internal coordinates change (in this case torsions).
+
+Rigid scans are currently possible for rotations around a vector (central bond of a torsion,
+a bond vector or orthogonal to a plane containing a bend; types `TORSION`, `ROT_BOND`, `BEND`). 
+With `type: BOND` the distance between two atoms and their bonding partners can be
+scanned.
+
+Relaxed Scan
+------------
+
+A sample input for a relaxed scan is found below.
 
 .. code:: yaml
 
@@ -26,6 +43,8 @@ input is given below.
      # step_size: 0.4
      # Enable symmetric scan in both directions, starting from the initial coordinates
      # symmetric: False
+     # Set relaxed to False for a rigid scan; relaxed scans are the default.
+     # relaxed: True
      # 
      # By specifying an 'opt' block, the default optimization values, e.g.
      # convergence thresholds can be altered.
@@ -67,3 +86,14 @@ primitive internals (`type`) are found in: :ref:`Types of Primitive Coordinates`
 
 All geometries, including the initial one are written to `relaxed_scan.trj` in the
 current working directory.
+
+
+Rigid Scan
+----------
+
+For rigid scans `relaxed: False` must be set in the YAML input. Currently, four different
+types are possible `TORSION`, `ROT_BOND`, `BEND` and `BOND`. With the first three, rotations
+around a vector are carried out. While `TORSION` and `ROT_BOND` use the (central) bond vector
+of the coordinate, a vector normal to the plane containing the bend is used in `BEND`. The
+step_size input is expected to be in radians. With `type: BOND` the distance between two
+atoms and their bonded partners can be scanned. For an example see `examples/calc/05_rigid_scan/`.

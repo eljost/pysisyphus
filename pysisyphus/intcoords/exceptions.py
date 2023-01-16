@@ -35,3 +35,7 @@ class PrimitiveNotDefinedException(Exception):
     def __init__(self, typed_prim, *args, **kwargs):
         self.typed_prim = typed_prim
         super().__init__(*args, **kwargs)
+
+
+class UnknownPrimTypeException(Exception):
+    pass

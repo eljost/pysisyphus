@@ -3,6 +3,7 @@ import numpy as np
 
 from pysisyphus.drivers.opt import run_opt
 from pysisyphus.helpers_pure import highlight_text
+from pysisyphus.intcoords.rigid import get_stepper
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.TablePrinter import TablePrinter
 
@@ -140,6 +141,7 @@ def relaxed_1d_scan(
     }
     constr_geom = geom.copy(**copy_kwargs)
     constr_ind = constr_geom.internal.get_index_of_typed_prim(constrain_prims[0])
+
     calc = calc_getter()
     # Always return same calculator, so orbitals can be reused etc.
     def _calc_getter():
@@ -201,7 +203,7 @@ def relaxed_1d_scan(
     np.savetxt(f"{pref}relaxed_scan.dat", scan_data)
     scan_vals, scan_energies = scan_data.T
 
-    print(highlight_text(f"Scan summary", level=1))
+    print(highlight_text("Scan summary", level=1))
     col_fmts = "int float float float float".split()
     header = ("Step", f"Target / {unit}", f"Actual / {unit}", f"Δ / {unit}", "E / au")
     table = TablePrinter(header, col_fmts, width=14)
@@ -211,4 +213,63 @@ def relaxed_1d_scan(
     ):
         delta = target - act
         table.print_row((step, target, act, delta, en))
+    return scan_geoms, scan_vals, scan_energies
+
+
+def rigid_1d_scan(
+    geom,
+    calc_getter,
+    constrain_prims,
+    start,
+    step_size,
+    steps,
+    opt_key=None,
+    opt_kwargs=None,
+    pref=None,
+    callback=None,
+):
+    if pref is None:
+        pref = ""
+    else:
+        pref = f"{pref}_"
+
+    geom = geom.copy(coord_type="cartesian")
+    assert len(constrain_prims) == 1
+    typed_prim = constrain_prims[0]
+    stepper = get_stepper(geom.atoms, geom.coords3d, typed_prim, step_size, steps)
+
+    calc = calc_getter()
+
+    scan_vals = list()
+    scan_geoms = list()
+    scan_energies = list()
+    scan_xyzs = list()
+    trj_handle = open(f"{pref}rigid_scan.trj", "w")
+
+    for cycle, (cum_step_size, c3d) in enumerate(stepper()):
+        print(highlight_text(f"{pref}Step {cycle:02d}", level=1))
+        results = calc.get_energy(geom.atoms, c3d)
+        print(results)
+        energy = results["energy"]
+        if callback is not None:
+            callback(energy)
+        scan_xyzs.append(geom.as_xyz(cart_coords=c3d))
+        scan_vals.append(cum_step_size)
+        scan_energies.append(energy)
+        trj_handle.write(scan_xyzs[-1] + "\n")
+    trj_handle.close()
+
+    scan_data = np.stack((scan_vals, scan_energies), axis=1)
+    np.savetxt(f"{pref}rigid_scan.dat", scan_data)
+    scan_vals, scan_energies = scan_data.T
+
+    print(highlight_text("Scan summary", level=1))
+    col_fmts = "int float float".split()
+    header = ("Step",  "Val", "E / au")
+    table = TablePrinter(header, col_fmts, width=14)
+    table.print_header()
+    for step, (val, en) in enumerate(
+        zip(scan_vals, scan_energies)
+    ):
+        table.print_row((step, val, en))
     return scan_geoms, scan_vals, scan_energies

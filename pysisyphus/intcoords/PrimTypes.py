@@ -30,6 +30,7 @@ from pysisyphus.intcoords import (
     Torsion,
     Torsion2,
 )
+from pysisyphus.intcoords.exceptions import UnknownPrimTypeException
 
 
 class PrimTypes(OrderedEnum):
@@ -67,6 +68,8 @@ class PrimTypes(OrderedEnum):
     DUMMY_IMPROPER = 30
     ROBUST_TORSION1 = 31
     ROBUST_TORSION2 = 32
+    # Dummy PrimTypes; used in rigid scans to distinguish stepper functions.
+    _ROT_BOND = 33
 
 
 PrimTypeLike = Union[PrimTypes, str]
@@ -101,6 +104,8 @@ PrimTypeShortcuts = {
     "TRANSLATION": [PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z],
     "ROTATION": [PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C],
     "DIST_FUNC": [PT.DISTANCE_FUNCTION],
+    # Dummy PrimTypes; used in rigid scans to distinguish stepper functions.
+    "ROT_BOND": [PT._ROT_BOND],
 }
 
 # The tuples below can be used to decide whether a given type belongs
@@ -255,11 +260,12 @@ def normalize_prim_input(prim_inp):
 
     # Check if we got a shortcut, e.g, X/Y/Z/XYZ/ATOM etc.
     try:
-        prim_types_ = PrimTypeShortcuts[str(prim_type).upper()]
+        key = str(prim_type).upper()
+        prim_types_ = PrimTypeShortcuts[key]
         return [tuple([prim_type_] + indices) for prim_type_ in prim_types_]
     except KeyError as error:
         print(f"Could not normalize 'prim_inp'={prim_inp}!")
-        raise error
+        raise UnknownPrimTypeException(key)
 
 
 def normalize_prim_inputs(prim_inps):
