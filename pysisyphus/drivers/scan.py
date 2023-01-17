@@ -131,7 +131,6 @@ def relaxed_1d_scan(
         pref = f"{pref}_"
 
     constr_prim = constrain_prims[0]
-    constr_ind = geom.internal.get_index_of_typed_prim(constrain_prims[0])
     copy_kwargs = {
         "coord_type": "redund",
         "coord_kwargs": {
@@ -140,6 +139,7 @@ def relaxed_1d_scan(
         },
     }
     constr_geom = geom.copy(**copy_kwargs)
+    constr_ind = constr_geom.internal.get_index_of_typed_prim(constrain_prims[0])
     calc = calc_getter()
     # Always return same calculator, so orbitals can be reused etc.
     def _calc_getter():

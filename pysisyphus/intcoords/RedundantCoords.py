@@ -269,7 +269,7 @@ class RedundantCoords:
                 key = PrimTypes.TRANSLATION
             elif pt in Cartesians:
                 key = PrimTypes.CARTESIAN
-            return key
+            return (key, *indices)
 
         # Sort by PrimType
         valid_typed_prims.sort(key=tp_sort)
