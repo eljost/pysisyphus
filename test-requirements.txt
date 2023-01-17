@@ -41,7 +41,7 @@ fonttools==4.28.5
     # via matplotlib
 fsspec==2022.1.0
     # via dask
-future==0.18.2
+future==0.18.3
     # via autograd
 h5py==3.6.0
     # via
