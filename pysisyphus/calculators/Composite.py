@@ -15,7 +15,7 @@ try:
     from pysisyphus.calculators import PySCF
 
     CALC_CLASSES["pyscf"] = PySCF.PySCF
-except ModuleNotFoundError:
+except (ModuleNotFoundError, OSError):
     pass
 
 

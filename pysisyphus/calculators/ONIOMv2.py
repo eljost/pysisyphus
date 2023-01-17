@@ -68,7 +68,7 @@ try:
     from pysisyphus.calculators.PySCF import PySCF
 
     CALC_DICT["pyscf"] = PySCF
-except ImportError:
+except (ModuleNotFoundError, ImportError, OSError):
     # print("Error importing PySCF in ONIOMv2")
     pass
 
