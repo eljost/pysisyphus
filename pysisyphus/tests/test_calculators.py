@@ -8,7 +8,6 @@ from pysisyphus.calculators import (
     Gaussian09,
     Gaussian16,
     ORCA,
-    PySCF,
     XTB,
     Psi4,
     OpenMolcas,
@@ -16,7 +15,7 @@ from pysisyphus.calculators import (
 
 try:
     from pysisyphus.calculators.PySCF import PySCF
-except ModuleNotFoundError:
+except (ModuleNotFoundError, OSError):
     # Dummy class so we can keep the PySCF reference in the test_h2o2 test
     class PySCF:
         pass
