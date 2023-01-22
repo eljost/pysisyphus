@@ -6,6 +6,7 @@ from pysisyphus.dynamics.helpers import get_mb_velocities_for_geom
 from pysisyphus.dynamics.mdp import mdp
 from pysisyphus.dynamics.rattle import rattle_closure
 from pysisyphus.dynamics.driver import md
+from pysisyphus.dynamics.wigner import get_wigner_sampler
 
 
 logger = logging.getLogger("dynamics")
