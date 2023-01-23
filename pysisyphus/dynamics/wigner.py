@@ -8,14 +8,70 @@
 #     Barbatti, Sen, 2015
 
 import functools
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 from numpy.typing import NDArray
 
-from pysisyphus.constants import AMU2AU, AMU2KG, BOHR2M, C, HBAR, P_AU
+from pysisyphus.constants import AMU2AU, AMU2KG, BOHR2M, C, HBAR, KB, P_AU, PLANCK
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.Geometry import Geometry, get_trans_rot_projector
+
+
+def get_vib_state(wavenumber: float, temperature: Optional[float] = None) -> int:
+    """Return random vibrational state n for given wavenumber and temperature."""
+    if temperature is None:
+        return 0  # Ground state
+
+    freq = wavenumber * 100 * C  # from cm⁻¹ to s⁻¹
+    vib_en_J = PLANCK * freq  # Energy in J
+    quot = vib_en_J / (KB * temperature)
+    Z = np.exp(-quot / 2) / (1 - np.exp(-quot))  # Partition function
+    _1overZ = 1 / Z
+    # TODO: check for sensible values?
+
+    def get_p(n):
+        """Probability of vibrational state with quantum number n.
+
+        Given by a Boltzmann distribution:
+
+                   exp(-e_n / kT)
+        p_n = ----------------------------
+              sum_{n = 0}^N exp(-e_n / kT)
+
+        for a harmonic oscillator e_n = h * freq * (n + 1/2)
+
+        See also https://chemistry.stackexchange.com/a/61120.
+
+        """
+        return np.exp(-quot * (n + 0.5)) * _1overZ
+
+    # Determine sensible maximum vibrational state n.
+    n = 0
+    probabilities = list()
+    probability_sum = 0.0
+    # 1.0 may never be reached, so we stop earlier.
+    thresh = 0.999999
+    while True:
+        p = get_p(n)
+        probabilities.append(p)
+        probability_sum += p
+        if probability_sum >= thresh:
+            break
+        n += 1
+
+    # Generate random number that is smaller than the current sum.
+    while True:
+        # Sample from the possible interval
+        random_state = np.random.random() * thresh
+        if random_state < probability_sum:
+            break
+
+    cumsum = np.cumsum(probabilities)
+    for n, cs in enumerate(cumsum):
+        if cs >= random_state:
+            break
+    return n
 
 
 def normal_mode_reduced_masses(masses_rep, normal_modes):
