@@ -6,12 +6,24 @@
 #     Effects of different initial condition samplings on photodynamics and
 #     spectrum of pyrrole
 #     Barbatti, Sen, 2015
+# [3] https://doi.org/10.1063/1.453761
+#     The Morse oscillator in position space, momentum space, and phase space
+#     Dahl, Springborg, 1988
+#
+# An interesting paper also seems to be (but i never read it ...)
+#
+# [4] https://doi.org/10.1063/5.0039592
+#     Sampling initial positions and momenta for nuclear trajectories
+#     from quantum mechanical distributions
+#     Yao, Hase, Granucci, Persico
 
 import functools
+from math import exp, pi
 from typing import Callable, Optional
 
 import numpy as np
 from numpy.typing import NDArray
+from numpy.polynomial.laguerre import Laguerre
 
 from pysisyphus.constants import AMU2AU, AMU2KG, BOHR2M, C, HBAR, KB, P_AU, PLANCK
 from pysisyphus.helpers_pure import eigval_to_wavenumber
@@ -83,6 +95,7 @@ def get_wigner_sampler(
     coords3d: NDArray,
     masses: NDArray,
     hessian: NDArray,
+    temperature: Optional[float] = None,
     nu_thresh: float = 5.0,
     stddevs: float = 6.0,
 ) -> Callable:
@@ -105,10 +118,10 @@ def get_wigner_sampler(
     v = v[:, ~small_nu_mask]
     nus = nus[~small_nu_mask]
     assert (nus >= nu_thresh).all(), "Imaginary wavenumbers are not yet handled!"
-    n = len(nus)  # Number of non-zero wavenumbers
+    nnus = len(nus)  # Number of non-zero wavenumbers
 
     # Convert wavenumbers (cm⁻¹) to angular frequency in 1/s
-    ang_freqs = 2 * np.pi * nus * 100 * C
+    ang_freqs = 2 * pi * nus * 100 * C
 
     # Reduced masses in amu and then in kg
     mus_amu = normal_mode_reduced_masses(masses_rep, v)
@@ -126,23 +139,26 @@ def get_wigner_sampler(
     span = 2 * stddevs
 
     def sampler():
-        Qs = np.zeros(n)
-        Ps = np.zeros(n)
-        for i in range(n):
+        Qs = np.zeros(nnus)
+        Ps = np.zeros(nnus)
+        for i in range(nnus):
             qi_quot = q_quot[i]
             pi_quot = p_quot[i]
+            n = get_vib_state(nus[i], temperature)
+            lag_coeffs = np.zeros(n + 1)
+            lag_coeffs[n] = 1.0
+            lag = Laguerre(lag_coeffs)
+            prefact = (-1)**n / pi
             while True:
                 q, p, ref = np.random.random_sample(3)
                 # Map q and p from [0, 1) onto chosen interval [-stddevs, stddevs)
                 q = q * span - stddevs
                 p = p * span - stddevs
-                # Wigner function. Eq. (2) in [2].
-                p_wig = (
-                    1
-                    / np.pi
-                    * np.exp(-(q**2) * qi_quot)
-                    * np.exp(-(p**2) * pi_quot)
-                )
+                r2 = q**2 * qi_quot + p**2 * pi_quot
+                # Wigner function. Eq. (2) in [2] or (28) in [3]. Both equations
+                # differ in the presence or absence of a n! term. Here and in [3]
+                # the n! is absorbed into the Laguerre polynomial.
+                p_wig = prefact * exp(-r2) * lag(2 * r2)
                 if p_wig >= ref:
                     break
             Qs[i] = q
@@ -166,5 +182,5 @@ def get_wigner_sampler(
 
 
 @get_wigner_sampler.register
-def _(geom: Geometry):
-    return get_wigner_sampler(geom.coords3d, geom.masses, geom.hessian)
+def _(geom: Geometry, **kwargs):
+    return get_wigner_sampler(geom.coords3d, geom.masses, geom.hessian, **kwargs)
