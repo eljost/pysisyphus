@@ -70,7 +70,7 @@ let
 in
   buildPythonPackage rec {
     pname = "pysisyphus";
-    version = "0.7.6.post1";
+    version = "0.7.6post2";
 
     nativeBuildInputs = [ makeWrapper setuptools-scm ];
 
@@ -123,7 +123,6 @@ in
     preCheck = ''
       export OMP_NUM_THREADS=1
       export PYSISRC=${pysisrc}
-      cat ${pysisrc}
       export PATH=$PATH:${binSearchPath}
       export OMPI_MCA_rmaps_base_oversubscribe=1
     '';

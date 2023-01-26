@@ -1,11 +1,13 @@
 {
-  description =
-    "Python suite for optimization of stationary points on ground- and excited states PES and determination of reaction paths";
+  description = "Python suite for optimization of stationary points on ground- and excited states PES and determination of reaction paths";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixpkgs-unstable";
 
-    qchem.url = "github:markuskowa/nixos-qchem/master";
+    qchem = {
+      url = "github:markuskowa/nixos-qchem/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     flake-compat = {
       url = "github:edolstra/flake-compat";
@@ -22,116 +24,96 @@
   };
 
   outputs = { self, nixpkgs, qchem, flake-utils, ... }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
-
-      let
-        qchemPkgs = import (qchem.inputs.nixpkgs) {
-          inherit system;
-          overlays = [ qchem.overlays.default ];
-          config = {
-            allowUnfree = true;
-            qchem-config = {
-              optAVX = true;
-              allowEnv = true;
+    flake-utils.lib.eachSystem [ "x86_64-linux" ]
+      (system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ qchem.overlays.default (import ./nix/overlay.nix) ];
+            config = {
+              allowUnfree = true;
+              qchem-config = {
+                optAVX = true;
+                allowEnv = false;
+              };
             };
           };
-        };
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ qchem.overlays.default (import ./nix/overlay.nix) ];
-          config.allowUnfree = true;
-        };
-      in {
+        in
+        {
+          packages = {
+            default = self.packages."${system}".pysisyphus;
 
-        legacyPackages = pkgs;
+            pysisyphus = pkgs.pysisyphus.override { };
 
-        packages = {
-          default = self.packages."${system}".pysisyphus;
-          pysisyphus = pkgs.python3.pkgs.pysisyphus.override {
-            inherit (qchem.packages."${system}") multiwfn xtb molcas psi4 wfoverlap nwchem;
-            inherit (qchemPkgs.qchem) orca turbomole gaussian cfour molpro gamess-us;
+            pysisyphusOrca = self.packages."${system}".pysisyphus.override { enableOrca = true; };
+
+            pysisyphusTurbomole = self.packages."${system}".pysisyphus.override { enableTurbomole = true; };
+
+            pysisyphusFull = self.packages."${system}".pysisyphus.override {
+              enableOrca = true;
+              enableTurbomole = true;
+              enableCfour = true;
+              enableMolpro = true;
+              enableGamess = true;
+            };
+
+            pysisyphusDocker = pkgs.dockerTools.buildImage {
+              name = self.packages."${system}".pysisyphus.pname;
+              tag = self.packages."${system}".pysisyphus.version;
+
+              fromImageName = null;
+              fromImageTag = null;
+
+              copyToRoot = pkgs.buildEnv {
+                name = "image-root";
+                paths = [
+                  # Necessary for interactive usage
+                  pkgs.bashInteractive
+                  pkgs.coreutils
+
+                  # Computational chemistry software
+                  self.packages."${system}".pysisyphus
+                ];
+                pathsToLink = [ "/bin" ];
+              };
+            };
+
+            pysisyphusSingularity = pkgs.singularity-tools.buildImage {
+              name = self.packages."${system}".pysisyphus.name;
+              contents = with pkgs; [ bashInteractive coreutils self.packages."${system}".pysisyphus ];
+
+              # Size of the virtual disk used for building the container.
+              # This is NOT the final disk size.
+              diskSize = 10000;
+
+              # Memory for the virtualisation environment that BUILDS the image.
+              # This is not a runtime parameter of the image.
+              memSize = 6000;
+            };
           };
 
-          pysisyphusLib = self.packages."${system}".pysisyphus;
+          devShells.default =
+            let
+              pythonEnv = pkgs.python3.withPackages (p: with p;
+                [ pip ]
+                ++ p.pysisyphus.nativeBuildInputs
+                ++ p.pysisyphus.buildInputs
+                ++ p.pysisyphus.propagatedBuildInputs
+              );
+            in
+            pkgs.mkShell {
+              buildInputs = [
+                pkgs.nixpkgs-fmt
+                pkgs.black
+                pythonEnv
+              ];
 
-          pysisyphusApp = pkgs.pysisyphus;
+              shellHook = ''
+                export PYSISRC=${pkgs.python3.pkgs.pysisyphus.passthru.pysisrc}
+              '';
+            };
 
-          pysisyphusOrca = pkgs.python3.pkgs.pysisyphus.override { enableOrca = true; };
-          pysisyphusTurbomole = pkgs.python3.pkgs.pysisyphus.override { enableTurbomole = true; };
-          pysisyphusFull = pkgs.python3.pkgs.pysisyphus.override {
-            enableOrca = true;
-            enableTurbomole = true;
-            enableCfour = true;
-            enableMolpro = true;
-            enableGamess = true;
-          };
-
-          pysisyphusDocker = pkgs.dockerTools.buildImage {
-            name = self.packages."${system}".pysisyphus.pname;
-            tag = self.packages."${system}".pysisyphus.version;
-
-            fromImageName = null;
-            fromImageTag = null;
-
-            contents = [
-              # Necessary for interactive usage
-              pkgs.bashInteractive
-              pkgs.coreutils
-
-              # Computational chemistry software
-              self.packages."${system}".pysisyphus
-            ];
-          };
-
-          pysisyphusSingularity =
-            pkgs.runCommand "${self.packages."${system}".pysisyphus.pname}.sif"
-            { } ''
-              cp -r /etc etc
-              touch etc/resolv.conf
-              ${pkgs.bubblewrap}/bin/bwrap \
-                --ro-bind /nix /nix \
-                --ro-bind etc /etc \
-                --ro-bind ${pkgs.bash}/bin /usr/local/bin \
-                --bind . /out \
-                --dev-bind /dev /dev \
-                --proc /proc \
-                --uid 1000 \
-                ${pkgs.singularity}/bin/singularity build /out/${
-                  self.packages."${system}".pysisyphus.pname
-                }.sif docker-archive://${
-                  self.packages."${system}".pysisyphusDocker
-                }
-              cp ${self.packages."${system}".pysisyphus.pname}.sif $out
-            '';
-        };
-
-        defaultPackage = self.packages."${system}".pysisyphusApp;
-
-        defaultApp = {
-          type = "app";
-          program = "${self.packages."${system}".pysisyphusApp}/bin/pysis";
-        };
-
-        devShells.default = let
-          pythonEnv = pkgs.python3.withPackages (p:
-            with p;
-            [ pip ] ++ p.pysisyphus.nativeBuildInputs ++ p.pysisyphus.buildInputs
-            ++ p.pysisyphus.propagatedBuildInputs);
-        in pkgs.mkShell {
-          buildInputs = [ pkgs.black pythonEnv ];
-
-          shellHook = ''
-            export PYSISRC=${pkgs.python3.pkgs.pysisyphus.passthru.pysisrc}
-          '';
-        };
-
-        devShell = self.devShells."${system}".default;
-
-        hydraJobs = {
-          pysisyphus = self.packages.x86_64-linux.pysisyphus;
-        };
-      }) // {
-        overlays.default = import ./nix/overlay.nix;
-        overlay = self.overlays.default;
-      };
+        }) // {
+      overlays.default = import ./nix/overlay.nix;
+    };
 }
