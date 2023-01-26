@@ -139,6 +139,7 @@ class Wavefunction:
         from_funcs_for_str = (
             # ORCA
             ("Molden file created by orca_2mkl", Wavefunction.from_orca_molden),
+            ("[AOMix Format", Wavefunction.from_aomix),
             # OpenMolcas
             # ("[N_Atoms]", Wavefunction.from_molden),  # seems buggy right now
         )
@@ -201,6 +202,14 @@ class Wavefunction:
         from pysisyphus.io.fchk import wavefunction_from_fchk
 
         wf = wavefunction_from_fchk(text, **kwargs)
+        return wf
+
+    @staticmethod
+    @file_or_str(".in")
+    def from_aomix(text, **kwargs):
+        from pysisyphus.io.aomix import wavefunction_from_aomix
+
+        wf = wavefunction_from_aomix(text, **kwargs)
         return wf
 
     @property
@@ -307,6 +316,10 @@ class Wavefunction:
 
     def as_geom(self, **kwargs):
         return Geometry(self.atoms, self.coords, **kwargs)
+
+    @property
+    def is_cartesian(self) -> bool:
+        return self.bf_type == BFType.CARTESIAN
 
     #####################
     # Overlap Integrals #

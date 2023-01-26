@@ -7,6 +7,7 @@ logger.setLevel(logging.DEBUG)
 
 from pysisyphus.wavefunction.shells import (
     get_l,
+    AOMixShells,
     MoldenShells,
     ORCAShells,
     ORCAMoldenShells,

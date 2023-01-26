@@ -468,9 +468,9 @@ class Shells:
     @file_or_str(".in")
     def from_aomix(text):
         # import here, to avoid cyclic imports
-        from pysisyphus.io.aomix import parse_aomix
+        from pysisyphus.io.aomix import shells_from_aomix
 
-        shells = parse_aomix(text)
+        shells = shells_from_aomix(text)
         return shells
 
     @staticmethod
@@ -944,6 +944,32 @@ class Shells:
 
     def __str__(self):
         return f"{self.__class__.__name__}({len(self.shells)} shells, ordering={self.ordering})"
+
+
+class AOMixShells(Shells):
+    cart_order = (
+        ("",),
+        ("x", "y", "z"),
+        ("xx", "yy", "zz", "xy", "xz", "yz"),
+        ("xxx", "yyy", "zzz", "xyy", "xxy", "xxz", "xzz", "yzz", "yyz", "xyz"),
+        (
+            "zzzz",
+            "yzzz",
+            "yyzz",
+            "yyyz",
+            "yyyy",
+            "xzzz",
+            "xyzz",
+            "xyyz",
+            "xyyy",
+            "xxzz",
+            "xxyz",
+            "xxyy",
+            "xxxz",
+            "xxxy",
+            "xxxx",
+        ),
+    )
 
 
 class ORCAShells(Shells):
