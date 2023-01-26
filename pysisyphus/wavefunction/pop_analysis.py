@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
@@ -8,12 +9,47 @@ from pysisyphus.wavefunction.helpers import symmetric_orthogonalization
 from pysisyphus.wavefunction import Wavefunction
 
 
+@dataclass
+class PopAnalysis:
+    # atoms: List[str]
+    # coords3d: NDArray[float]
+    pop_a: NDArray[float]
+    pop_b: NDArray[float]
+    nuc_charges: NDArray[float]
+
+    @property
+    def charges(self):
+        return self.nuc_charges - self.pop_a - self.pop_b
+
+    @property
+    def tot_charge(self):
+        return self.charges.sum()
+
+    @property
+    def spin_pop(self):
+        return np.abs(self.pop_a - self.pop_b)
+
+    @property
+    def alpha_spin_pop(self):
+        spin_pop = self.pop_a - self.pop_b
+        beta_mask = spin_pop < 0.0
+        spin_pop[beta_mask] = 0.0
+        return spin_pop
+
+    @property
+    def beta_spin_pop(self):
+        spin_pop = self.pop_a - self.pop_b
+        alpha_mask = spin_pop > 0.0
+        spin_pop[alpha_mask] = 0.0
+        return np.abs(spin_pop)
+
+
 def mulliken_charges(
     P: Tuple[NDArray[float]],
     S: NDArray[float],
     nuc_charges: NDArray[int],
     ao_centers: List[int],
-) -> NDArray[float]:
+) -> PopAnalysis:
     def mulliken_atom_pops(P: NDArray[float], S: NDArray[float]) -> NDArray[float]:
         ao_populations = np.einsum("ij,ji->i", P, S)
         atom_populations = np.zeros(len(nuc_charges))
@@ -24,8 +60,14 @@ def mulliken_charges(
     atom_populations_a = mulliken_atom_pops(P[0], S)
     atom_populations_b = mulliken_atom_pops(P[1], S)
 
+    # import pdb; pdb.set_trace()  # fmt: skip
     charges = nuc_charges - atom_populations_a - atom_populations_b
-    return charges
+    pop_ana = PopAnalysis(
+        pop_a=atom_populations_a,
+        pop_b=atom_populations_b,
+        nuc_charges=nuc_charges,
+    )
+    return pop_ana
 
 
 def mulliken_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
@@ -62,7 +104,7 @@ def make_iaos(
     return iaos
 
 
-def iao_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
+def iao_charges_from_wf(wf: Wavefunction) -> PopAnalysis:
     """IAO charges.
 
     Extension to ES is described here:
@@ -71,8 +113,10 @@ def iao_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
     S_org = wf.S
     C_occ = wf.C_occ
     minao_shells = wf.shells.from_basis("minao")
-    S_minao = minao_shells.S_sph  # Overlaps in MINAO basis
-    S_cross = wf.S_with_shells(minao_shells)  # Overlap between original and MINAO  basis
+    S_minao = getattr(minao_shells, "S_cart" if wf.is_cartesian else "S_sph")
+    S_cross = wf.S_with_shells(
+        minao_shells
+    )  # Overlap between original and MINAO  basis
 
     def get_iao_P(C_occ: NDArray[float]):
         iaos = make_iaos(C_occ, S_org, S_minao, S_cross)
