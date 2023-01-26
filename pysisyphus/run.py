@@ -583,7 +583,7 @@ def run_calculations(
                     cur_calculator = geom.calculator
                     next_calculator = geoms[i + 1].calculator
                     next_calculator.set_chkfiles(cur_calculator.get_chkfiles())
-                    msg = f"Set chkfiles on calculator {i:{i_fmt}}"
+                    msg = f"Set chkfiles of calculator {i:{i_fmt}} on calculator {i+1:{i_fmt}}"
                 except AttributeError:
                     msg = "Calculator does not support set/get_chkfiles!"
                 print(msg)
