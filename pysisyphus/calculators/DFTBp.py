@@ -1,7 +1,6 @@
 from math import ceil
 from pathlib import Path
 import re
-import shutil
 import textwrap
 
 import jinja2
@@ -44,6 +43,13 @@ def parse_xplusy(text):
 class DFTBp(OverlapCalculator):
 
     conf_key = "dftbp"
+    _set_plans = (
+        "out",
+        "exc_dat",
+        "eigenvec",
+        "xplusy_dat",
+    )
+
     max_ang_moms = {
         "mio-ext": {
             "H": "s",
@@ -109,11 +115,12 @@ class DFTBp(OverlapCalculator):
         self.out_fn = "dftb.out"
         self.to_keep = (
             "dftb_in.hsd",
-            "detailed.out",
+            "out:detailed.out",
             self.gen_geom_fn,
             self.out_fn,
-            "XplusY.DAT",
-            "EXC.DAT",
+            "xplusy_dat:XplusY.DAT",
+            "exc_dat:EXC.DAT",
+            "eigenvec:eigenvec.out",
         )
         self.parser_funcs = {
             "energy": self.parse_energy,
@@ -244,7 +251,9 @@ class DFTBp(OverlapCalculator):
         es_forces = calc_type == "forces"
         try:
             param_hubbard_derivs = self.hubbard_derivs[self.parameter]
-            hubbard_derivs = [(atom, param_hubbard_derivs[atom]) for atom in unique_atoms]
+            hubbard_derivs = [
+                (atom, param_hubbard_derivs[atom]) for atom in unique_atoms
+            ]
         except KeyError:
             hubbard_derivs = list()
 
@@ -261,9 +270,21 @@ class DFTBp(OverlapCalculator):
         )
         return inp, path
 
+    def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
+        if self.track:
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
+                # Redo the calculation with the updated root
+                results = func(atoms, coords, **prepare_kwargs)
+        results["all_energies"] = self.parse_all_energies()
+        return results
+
     def get_energy(self, atoms, coords, **prepare_kwargs):
         inp, path = self.prepare_input(atoms, coords, "energy")
         results = self.run(inp, "energy")
+        results = self.store_and_track(
+            results, self.get_energy, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -273,16 +294,19 @@ class DFTBp(OverlapCalculator):
             "hold": self.track,
         }
         results = self.run(inp, **run_kwargs)
-        if self.track:
-            self.calc_counter += 1
-            self.store_overlap_data(atoms, coords, path)
-            if self.track_root():
-                # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords)
-        try:
-            shutil.rmtree(path)
-        except FileNotFoundError:
-            self.log(f"'{path}' has already been deleted!")
+        results = self.store_and_track(
+            results, self.get_forces, atoms, coords, **prepare_kwargs
+        )
+        # if self.track:
+        # self.calc_counter += 1
+        # self.store_overlap_data(atoms, coords, path)
+        # if self.track_root():
+        # # Redo the calculation with the updated root
+        # results = self.get_forces(atoms, coords)
+        # try:
+        # shutil.rmtree(path)
+        # except FileNotFoundError:
+        # self.log(f"'{path}' has already been deleted!")
         return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
@@ -339,23 +363,44 @@ class DFTBp(OverlapCalculator):
         }
         return results
 
+    def parse_all_energies(self, out_fn=None, exc_dat=None):
+        if out_fn is None:
+            out_fn = self.out
+        if exc_dat is None:
+            try:
+                exc_dat = self.exc_dat
+            except AttributeError:
+                exc_dat = None
+
+        with open(out_fn) as handle:
+            detailed = handle.read()
+
+        gs_energy = self.parse_total_energy(detailed)
+        if (exc_dat is not None) and exc_dat.exists():
+            with open(exc_dat) as handle:
+                exc_dat = handle.read()
+            exc_ens = self.parse_exc_dat(exc_dat)
+            all_energies = np.full(len(exc_ens) + 1, gs_energy)
+            all_energies[1:] += exc_ens
+        else:
+            all_energies = np.array((gs_energy,))
+        return all_energies
+
     def prepare_overlap_data(self, path):
         #
         # Excitation energies
         #
-        with open(path / "detailed.out") as handle:
+        # import pdb; pdb.set_trace()  # fmt: skip
+        # with open(path / "detailed.out") as handle:
+        with open(self.out) as handle:
             detailed = handle.read()
-        gs_energy = self.parse_total_energy(detailed)
-        with open(path / "EXC.DAT") as handle:
-            exc_dat = handle.read()
-        exc_ens = self.parse_exc_dat(exc_dat)
-        all_energies = np.full(len(exc_ens) + 1, gs_energy)
-        all_energies[1:] += exc_ens
+        all_energies = self.parse_all_energies(path)
 
         #
         # MO coefficients
         #
-        with open(path / "eigenvec.out") as handle:
+        # with open(path / "eigenvec.out") as handle:
+        with open(self.eigenvec) as handle:
             eigenvecs = handle.read().strip()
         eigenvecs = eigenvecs.split("Eigenvector")[1:]
 
@@ -373,9 +418,13 @@ class DFTBp(OverlapCalculator):
         mo_num = C.shape[0]
         vir = mo_num - occ
         # X+Y
-        with open(path / "XplusY.DAT") as handle:
+        with open(self.xplusy_dat) as handle:
             xpy_text = handle.read().strip()
         size, states, xpy = parse_xplusy(xpy_text)
-        ci_coeffs = xpy.reshape(states, occ, vir)
+        # As of DFTB+ 22.2, we can only get X+Y, but not X-Y, so we can't reconstruct
+        # the true X and Y vectors.
+        XpY = xpy.reshape(states, occ, vir)
+        X = XpY
+        Y = np.zeros_like(XpY)
         assert size == occ * vir
-        return C, ci_coeffs, all_energies
+        return C, X, Y, all_energies
