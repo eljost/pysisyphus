@@ -369,6 +369,13 @@ def get_exc_ens_fosc(wf_fn, cis_fn, log_fn):
 class ORCA(OverlapCalculator):
 
     conf_key = "orca"
+    _set_plans = (
+        "gbw",
+        "out",
+        "cis",
+        "densities",
+        ("molden", "mwfn_wf"),
+    )
 
     def __init__(
         self,
@@ -847,18 +854,6 @@ class ORCA(OverlapCalculator):
         C, _ = self.parse_gbw(self.gbw)
         all_energies = self.parse_all_energies()
         return C, X, Y, all_energies
-
-    def keep(self, path):
-        kept_fns = super().keep(path)
-        self.gbw = kept_fns["gbw"]
-        self.out = kept_fns["out"]
-        if self.do_tddft:
-            self.cis = kept_fns["cis"]
-            self.densities = kept_fns["densities"]
-        try:
-            self.mwfn_wf = kept_fns["molden"]
-        except KeyError:
-            self.log("Didn't set 'mwfn_wf'. No .molden file in kept_fns.")
 
     def get_chkfiles(self):
         return {

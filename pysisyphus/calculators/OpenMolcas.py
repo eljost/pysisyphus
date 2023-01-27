@@ -13,6 +13,10 @@ from pysisyphus.xyzloader import make_xyz_str
 class OpenMolcas(Calculator):
 
     conf_key = "openmolcas"
+    _set_plans = (
+        ("rasorb", "inporb"),
+        "jobiph",
+    )
 
     def __init__(
         self,
@@ -184,15 +188,6 @@ class OpenMolcas(Calculator):
 
     def get_forces(self, atoms, coords):
         return self.run_calculation(atoms, coords, "grad")
-
-    def keep(self, path):
-        kept_fns = super().keep(path)
-        self.inporb = kept_fns["rasorb"]
-        # Keep references to the .JobIph file to be used in
-        # &rassi to track our root in a state average
-        # calculation.
-        self.jobiph = kept_fns["jobiph"]
-        self.log(f"current JobIph is {self.jobiph}")
 
     def get_root(self):
         ras = self.rasscf

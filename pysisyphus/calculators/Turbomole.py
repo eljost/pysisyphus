@@ -21,6 +21,18 @@ from pysisyphus.calculators.parser import (
 class Turbomole(OverlapCalculator):
 
     conf_key = "turbomole"
+    _set_plans = (
+        "out",
+        "control",
+        "alpha",
+        "beta",
+        "mos",
+        ("ciss_a", "td_vec_fn"),
+        ("sing_a", "td_vec_fn"),
+        "ccres",
+        "exstates",
+        "mwfn_wf",
+    )
 
     def __init__(self, control_path, root=None, double_mol_path=None, **kwargs):
         super().__init__(**kwargs)
@@ -654,31 +666,6 @@ class Turbomole(OverlapCalculator):
         C = parse_turbo_mos(text)
         self.log(f"Reading electronic energies from '{self.out}'.")
         return C, X, Y, all_energies
-
-    def keep(self, path):
-        kept_fns = super().keep(path)
-        self.out = kept_fns["out"]
-        self.control = kept_fns["control"]
-        if self.uhf:
-            self.alpha = kept_fns["alpha"]
-            self.beta = kept_fns["beta"]
-        else:
-            self.mos = kept_fns["mos"]
-        # Maybe copy more files like the vectors from egrad
-        # sing_a, trip_a, dipl_a etc.
-        assert "ucis_a" not in kept_fns, "Implement for UKS TDA"
-        if self.track:
-            if self.td:
-                td_key_present = [
-                    k for k in ("ciss_a", "sing_a", "ucis_a") if k in kept_fns
-                ][0]
-                self.td_vec_fn = kept_fns[td_key_present]
-            elif self.ricc2:
-                self.ccres = kept_fns["ccres"]
-                self.exstates = kept_fns["exstates"]
-            else:
-                raise Exception("Something went wrong!")
-            self.mwfn_wf = kept_fns["mwfn_wf"]
 
     def run_after(self, path):
         # Convert binary CCRE0 files to ASCII for easier parsing

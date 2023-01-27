@@ -17,6 +17,12 @@ from pysisyphus.helpers_pure import file_or_str
 class Gaussian16(OverlapCalculator):
 
     conf_key = "gaussian16"
+    _set_plans = (
+        {"key": "chk", "condition": lambda self: self.keep_chk},
+        "fchk",
+        ("fchk", "mwfn_wf"),
+        "dump_635r",
+    )
 
     def __init__(
         self,
@@ -663,19 +669,6 @@ class Gaussian16(OverlapCalculator):
         charges = np.array(fchk_dict["Mulliken Charges"])
 
         return charges
-
-    def keep(self, path):
-        kept_fns = super().keep(path)
-        if self.keep_chk:
-            self.chk = kept_fns[".chk"]
-        try:
-            self.fchk = kept_fns["fchk"]
-            self.mwfn_wf = self.fchk
-        except KeyError:
-            self.log("No .fchk file found!")
-            return
-        if self.track:
-            self.dump_635r = kept_fns["dump_635r"]
 
     def get_chkfiles(self):
         return {
