@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import warnings
 
 import numpy as np
 import pyparsing as pp
@@ -16,6 +17,7 @@ from pysisyphus.calculators.parser import (
     # parse_turbo_exstates,
     parse_turbo_exstates_re as parse_turbo_exstates,
 )
+from pysisyphus.helpers_pure import file_or_str
 
 
 class Turbomole(OverlapCalculator):
@@ -163,15 +165,17 @@ class Turbomole(OverlapCalculator):
             self.energy_cmd = self.scf_cmd
             self.forces_cmd = get_cmd(second_cmd)
             self.hessian_cmd = get_cmd("aoforce")
-        self.log(f"Prepared commands:")
-        self.log(f"\tEnergy cmd: " + self.energy_cmd)
-        self.log(f"\tForces cmd: " + self.forces_cmd)
-        self.log(f"\tHessian cmd: " + self.hessian_cmd)
+        self.log("Prepared commands:")
+        self.log("\tEnergy cmd: " + self.energy_cmd)
+        self.log("\tForces cmd: " + self.forces_cmd)
+        self.log("\tHessian cmd: " + self.hessian_cmd)
 
-        if self.td or self.ricc2:
-            assert self.root is not None, (
-                "No root set! Either include '$exopt' for TDA/TDDFT or 'geoopt' for ricc2 "
-                "in the control or supply a value for 'root'!"
+        if self.td or self.ricc2 and (self.root is None):
+            self.root = 1
+            warnings.warn(
+                "No root set! Either include '$exopt' for TDA/TDDFT or "
+                "'geoopt' for ricc2 in the control or supply a value for 'root'! "
+                f"Continuing with root={self.root}."
             )
 
     def set_occ_and_mo_nums(self, text):
@@ -184,8 +188,15 @@ class Turbomole(OverlapCalculator):
 
         # Determine number of occupied orbitals
         if not self.uhf:
-            occ_re = r"closed shells\s+(\w)\s*\d+-(\d+)"
-            self.occ_mos = int(re.search(occ_re, text)[2])
+            # Sometimes Turbomole does NOT use a range, but only a single integer,
+            # e.g., for hydrogen (H_2).
+            occ_re = r"closed shells\s+(\w)\s*(\d+)-?(\d*)"
+            occ_mobj = re.search(occ_re, text)
+            occ_mos = occ_mobj[3]
+            if occ_mos == "":
+                occ_mos = occ_mobj[2]
+            self.occ_mos = int(occ_mos)
+
             self.log(f"Found {self.occ_mos} occupied MOs.")
             # Number of spherical basis functions. May be different from CAO
             # Determine number of virtual orbitals
@@ -340,6 +351,7 @@ class Turbomole(OverlapCalculator):
             shutil.rmtree(self.last_run_path)
         except FileNotFoundError:
             self.log(f"'{self.last_run_path}' has already been deleted!")
+        results["all_energies"] = self.parse_all_energies()
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
@@ -473,6 +485,73 @@ class Turbomole(OverlapCalculator):
             "energy": tot_en,
         }
 
+    @staticmethod
+    @file_or_str(".sing_a", ".ciss_a")  # , exact=True)
+    def parse_tddft_tden(text):
+        eigval_re = re.compile(r"(\d+)\s+eigenvalue\s+=\s+([\d\.\-D\+\-]+)")
+        eigvals = eigval_re.findall(text)
+        state_inds, exc_ens = zip(*eigvals)
+        exc_ens = [exc_en.replace("D", "E") for exc_en in exc_ens]
+        return np.array(exc_ens, dtype=float)
+
+    def parse_all_energies(self):
+        # Parse eigenvectors from escf/egrad calculation
+        gs_energy = self.parse_gs_energy()
+        if self.second_cmd in ("escf", "egrad"):
+            exc_energies = Turbomole.parse_tddft_tden(self.td_vec_fn)
+        # Parse eigenvectors from ricc2 calculation
+        elif self.second_cmd == "ricc2":
+            with open(self.exstates) as handle:
+                exstates_text = handle.read()
+            exc_energies_by_model = parse_turbo_exstates(exstates_text)
+            # Drop CCS and take energies from whatever model was used
+            exc_energies = [
+                (model, exc_ens)
+                for model, exc_ens in exc_energies_by_model.items()
+                if model != "CCS"
+            ]
+            assert len(exc_energies) == 1
+            _, exc_energies = exc_energies[0]
+
+        else:
+            exc_energies = np.array()
+
+        if exc_energies.size == 0:
+            all_energies = np.array((gs_energy,))
+        else:
+            all_energies = np.full(len(exc_energies) + 1, gs_energy)
+            all_energies[1:] += exc_energies
+
+        return all_energies
+
+    def parse_ci_coeffs(self):
+        if self.second_cmd in ("escf", "egrad"):
+            with open(self.td_vec_fn) as handle:
+                text = handle.read()
+            ci_coeffs = self.parse_td_vectors(text)
+            ci_coeffs = [cc["vector"] for cc in ci_coeffs]
+        # Parse eigenvectors from ricc2 calculation
+        elif self.second_cmd == "ricc2":
+            ci_coeffs = [self.parse_cc2_vectors(ccre) for ccre in self.ccres]
+
+        ci_coeffs = np.array(ci_coeffs)
+        states = ci_coeffs.shape[0]
+        tden_size = self.occ_mos * self.virt_mos
+        if ci_coeffs.shape[1] == (2 * tden_size):
+            self.log("TDDFT calculation with X and Y vectors present. ")
+            XpY = ci_coeffs[:, :tden_size]
+            XmY = ci_coeffs[:, tden_size:]
+            X = (XpY + XmY) / 2.0
+            Y = XpY - X
+        else:
+            X = ci_coeffs
+            Y = np.zeros_like(X)
+        tden_shape = (states, self.occ_mos, self.virt_mos)
+        X = X.reshape(tden_shape)
+        Y = Y.reshape(tden_shape)
+
+        return X, Y
+
     def parse_force(self, path):
         results = parse_turbo_gradient(path)
         return results
@@ -493,7 +572,7 @@ class Turbomole(OverlapCalculator):
 
         hess_items = [item for item in split if is_float(item)]
         coord_num = int(sqrt(len(hess_items)))
-        assert coord_num ** 2 == len(hess_items)
+        assert coord_num**2 == len(hess_items)
         hessian = np.array(hess_items, dtype=float).reshape(-1, coord_num)
 
         energy = self.parse_energy(path)["energy"]
@@ -571,12 +650,13 @@ class Turbomole(OverlapCalculator):
 
         eigenpairs_full = np.zeros((self.occ_mos, self.virt_mos))
         eigenpairs_full[self.frozen_mos :, :] = coeffs
+        """
         from_inds, to_inds = np.where(np.abs(eigenpairs_full) > 0.1)
-
-        # for i, (from_, to_) in enumerate(zip(from_inds, to_inds)):
-        # sq = eigenpairs_full[from_, to_]**2
-        # print(f"{from_+1:02d} -> {to_+self.occ_mos+1:02d}: {sq:.2%}")
-        # print()
+        for i, (from_, to_) in enumerate(zip(from_inds, to_inds)):
+            sq = eigenpairs_full[from_, to_]**2
+            print(f"{from_+1:02d} -> {to_+self.occ_mos+1:02d}: {sq:.2%}")
+        print()
+        """
 
         return eigenpairs_full
 
@@ -618,48 +698,8 @@ class Turbomole(OverlapCalculator):
         raise Exception("Couldn't parse ground state energy!")
 
     def prepare_overlap_data(self, path):
-        # Parse eigenvectors from escf/egrad calculation
-        gs_energy = self.parse_gs_energy()
-        if self.second_cmd != "ricc2":
-            self.log(f"Reading CI coefficients from '{self.td_vec_fn}'.")
-            with open(self.td_vec_fn) as handle:
-                text = handle.read()
-            ci_coeffs = self.parse_td_vectors(text)
-            exc_energies = [cc["eigenvalue"] for cc in ci_coeffs]
-            ci_coeffs = [cc["vector"] for cc in ci_coeffs]
-            all_energies = np.full(len(exc_energies) + 1, gs_energy)
-            all_energies[1:] += exc_energies
-        # Parse eigenvectors from ricc2 calculation
-        else:
-            ci_coeffs = [self.parse_cc2_vectors(ccre) for ccre in self.ccres]
-            with open(self.exstates) as handle:
-                exstates_text = handle.read()
-            exc_energies_by_model = parse_turbo_exstates(exstates_text)
-            # Drop CCS and take energies from whatever model was used
-            exc_energies = [
-                (model, exc_ens)
-                for model, exc_ens in exc_energies_by_model.items()
-                if model != "CCS"
-            ]
-            assert len(exc_energies) == 1
-            model, exc_energies = exc_energies[0]
-            all_energies = np.full(len(exc_energies) + 1, gs_energy)
-            all_energies[1:] += exc_energies
-            self.log("Parsing of all energies for ricc2 is not yet implemented!")
-
-        ci_coeffs = np.array(ci_coeffs)
-        states = ci_coeffs.shape[0]
-        X_len = self.occ_mos * self.virt_mos
-        if ci_coeffs.shape[1] == (2 * X_len):
-            self.log("TDDFT calculation with X and Y vectors present. ")
-            X = ci_coeffs[:, :X_len]
-            Y = ci_coeffs[:, X_len:]
-        else:
-            X = ci_coeffs
-            Y = np.zeros_like(X)
-        ci_shape = (states, self.occ_mos, self.virt_mos)
-        X = X.reshape(ci_shape)
-        Y = Y.reshape(ci_shape)
+        all_energies = self.parse_all_energies()
+        X, Y = self.parse_ci_coeffs()
         self.log(f"Reading MO coefficients from '{self.mos}'.")
         with open(self.mos) as handle:
             text = handle.read()
