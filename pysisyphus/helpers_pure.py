@@ -189,7 +189,7 @@ def full_expand(to_expand):
     return expanded
 
 
-def file_or_str(*args, method=False, mode="r"):
+def file_or_str(*args, method=False, mode="r", exact=False):
     exts = args
 
     def inner_func(func):
@@ -198,7 +198,9 @@ def file_or_str(*args, method=False, mode="r"):
                 obj = inp
                 inp, *args = args
             p = Path(inp)
-            looks_like_file = exts and (p.suffix in exts)
+            looks_like_file = exts and (
+                (p.suffix in exts) or (exact and p.name in exts)
+            )
             if looks_like_file and p.is_file():
                 with open(p, mode=mode) as handle:
                     inp = handle.read()
@@ -544,7 +546,7 @@ def molecular_volume(
     below_radius = below_radius.sum()
     ratio = below_radius / n_trial
     mol_vol = ratio * box_volume  # a0³ / Molecule
-    mol_vol_ang3 = mol_vol * BOHR2ANG ** 3  # Å³ / Molecule
+    mol_vol_ang3 = mol_vol * BOHR2ANG**3  # Å³ / Molecule
     molar_vol = mol_vol_ang3 * NA * 1e-24  # l/mol
     return mol_vol, mol_vol_ang3, molar_vol
 
@@ -595,7 +597,7 @@ def cache_arrays(sources, dest):
 
 def estimate(gen, elems):
     tot_dur = 0.0
-    for i in range(1, elems+1):
+    for i in range(1, elems + 1):
         start = time.time()
         elem = next(gen)
         dur = time.time() - start
