@@ -408,6 +408,10 @@ _CONV_FUNCS = {
     # First item in value converts to JSON dumpable type,
     # second items converts from JSON to original type.
     "energy": (lambda en: float(en), lambda en: float(en)),
+    "all_energies": (
+        lambda all_energies: all_energies.tolist(),
+        lambda all_energies: np.array(all_energies, dtype=float),
+    ),
     "forces": (
         lambda forces: forces.tolist(),
         lambda forces: np.array(forces, dtype=float).flatten(),
