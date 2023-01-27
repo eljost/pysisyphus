@@ -13,6 +13,7 @@ import numpy as np
 
 from pysisyphus import logger
 from pysisyphus.calculators.Calculator import Calculator
+
 # from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.config import get_cmd
 from pysisyphus.helpers_pure import describe

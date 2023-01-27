@@ -304,9 +304,23 @@ class Gaussian16(OverlapCalculator):
                 results_dict[key] = np.array(res[2:])
         return results_dict
 
+    def parse_all_energies(self):
+        return None
+
+    def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
+        if self.track:
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
+                # Redo the calculation with the updated root
+                results = func(atoms, coords, **prepare_kwargs)
+        results["all_energies"] = self.parse_all_energies()
+        return results
+
     def get_energy(self, atoms, coords, **prepare_kwargs):
         results = self.get_forces(atoms, coords, **prepare_kwargs)
-        del results["forces"]
+        results = self.store_and_track(
+            results, self.get_energy, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -322,11 +336,9 @@ class Gaussian16(OverlapCalculator):
             "calc": "force",
         }
         results = self.run(inp, **kwargs)
-        if self.track:
-            self.store_overlap_data(atoms, coords)
-            if self.track_root():
-                # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords)
+        results = self.store_and_track(
+            results, self.get_forces, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
@@ -335,6 +347,9 @@ class Gaussian16(OverlapCalculator):
             "calc": "hessian",
         }
         results = self.run(inp, **kwargs)
+        results = self.store_and_track(
+            results, self.get_hessian, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def run_stable(self, atoms, coords, **prepare_kwargs):

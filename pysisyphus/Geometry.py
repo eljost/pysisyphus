@@ -63,7 +63,7 @@ def inertia_tensor(coords3d, masses):
                           | xz yz z² |
     """
     x, y, z = coords3d.T
-    squares = np.sum(coords3d ** 2 * masses[:, None], axis=0)
+    squares = np.sum(coords3d**2 * masses[:, None], axis=0)
     I_xx = squares[1] + squares[2]
     I_yy = squares[0] + squares[2]
     I_zz = squares[0] + squares[1]
@@ -244,6 +244,7 @@ class Geometry:
         self._energy = None
         self._forces = None
         self._hessian = None
+        self._all_energies = None
         self.calculator = None
 
         assert (
@@ -511,7 +512,7 @@ class Geometry:
     @property
     def mm_sqrt_inv(self):
         """Inverted square root of the mass matrix."""
-        return np.diag(1 / (self.masses_rep ** 0.5))
+        return np.diag(1 / (self.masses_rep**0.5))
 
     @property
     def coords(self):
@@ -918,6 +919,27 @@ class Geometry:
         self._energy = energy
 
     @property
+    def all_energies(self):
+        """Return energies of all states that were calculated.
+
+        This will also set self.energy, which may NOT be the ground state,
+        but the state correspondig to the 'root' attribute of the calculator."""
+        if self._all_energies is None:
+            results = self.calculator.get_energy(self.atoms, self._coords)
+            self.set_results(results)
+        return self._all_energies
+
+    @all_energies.setter
+    def all_energies(self, all_energies):
+        """Internal wrapper for setting all energies.
+
+        Parameters
+        ----------
+        all_energies : np.array
+        """
+        self._all_energies = all_energies
+
+    @property
     def cart_forces(self):
         if self._forces is None:
             results = self.calculator.get_forces(self.atoms, self._coords)
@@ -1063,7 +1085,7 @@ class Geometry:
         hessian : np.array
             2d array containing the hessian.
         """
-        mm_sqrt = np.diag(self.masses_rep ** 0.5)
+        mm_sqrt = np.diag(self.masses_rep**0.5)
         return mm_sqrt.dot(mw_hessian).dot(mm_sqrt)
 
     def set_h5_hessian(self, fn):
@@ -1216,7 +1238,7 @@ class Geometry:
         self.true_energy = None
         self.true_forces = None
         self.true_hessian = None
-        self.all_energies = None
+        self._all_energies = None
 
     def set_results(self, results):
         """Save the results from a dictionary.

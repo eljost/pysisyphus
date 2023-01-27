@@ -568,6 +568,7 @@ class ORCA(OverlapCalculator):
             if self.track_root():
                 # Redo the calculation with the updated root
                 results = func(atoms, coords, **prepare_kwargs)
+        results["all_energies"] = self.parse_all_energies()
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):

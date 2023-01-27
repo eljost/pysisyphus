@@ -153,6 +153,7 @@ class PySCF(OverlapCalculator):
             if self.track_root():
                 # Redo the calculation with the updated root
                 results = func(atoms, coords, **prepare_kwargs)
+        results["all_energies"] = self.parse_all_energies()
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
@@ -177,7 +178,7 @@ class PySCF(OverlapCalculator):
         if self.root:
             grad_driver.state = self.root
         gradient = grad_driver.kernel()
-        self.log(f"Completed gradient step")
+        self.log("Completed gradient step")
 
         try:
             e_tot = mf._scf.e_tot
@@ -264,11 +265,26 @@ class PySCF(OverlapCalculator):
 
         return mf
 
+    def parse_all_energies(self, exc_mf=None):
+        if exc_mf is None:
+            exc_mf = self.mf
+
+        try:
+            gs_energy = exc_mf._scf.e_tot
+            exc_energies = exc_mf.e_tot
+            all_energies = np.zeros(exc_energies.size + 1)
+            all_energies[0] = gs_energy
+            all_energies[1:] = exc_energies
+        except AttributeError:
+            gs_energy = exc_mf.e_tot
+            all_energies = np.array((gs_energy,))
+
+        return all_energies
+
     def prepare_overlap_data(self, path):
         gs_mf = self.mf._scf
         exc_mf = self.mf
 
-        gs_energy = gs_mf.e_tot
         C = gs_mf.mo_coeff
 
         first_Y = exc_mf.xy[0][1]
@@ -283,10 +299,7 @@ class PySCF(OverlapCalculator):
             X = ci_coeffs[:, 0]
             Y = ci_coeffs[:, 1]
 
-        exc_energies = exc_mf.e_tot
-        all_energies = np.zeros(exc_energies.size + 1)
-        all_energies[0] = gs_energy
-        all_energies[1:] = exc_energies
+        all_energies = self.parse_all_energies(exc_mf)
         return C, X, Y, all_energies
 
     def parse_charges(self):
