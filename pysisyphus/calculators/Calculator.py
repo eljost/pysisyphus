@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from enum import Enum
 import logging
 import os
 from pathlib import Path
@@ -5,6 +7,7 @@ import platform
 import shutil
 import subprocess
 import tempfile
+from typing import Callable, Optional
 
 from natsort import natsorted
 
@@ -15,9 +18,26 @@ from pysisyphus import helpers_pure
 from pysisyphus.helpers import geom_loader
 
 
+KeepKind = Enum("KeepKind", ["ALL", "LATEST", "NONE"])
+
+
+@dataclass
+class SetPlan:
+    key: str
+    name: Optional[str] = None
+    conditions: Callable = lambda: True
+    # success: Optional[Callable] = None
+    fail: Optional[Callable] = None
+
+    def __post_init__(self):
+        if self.name is None:
+            self.name = self.key
+
+
 class Calculator:
 
     conf_key = None
+    _set_plans = []
 
     def __init__(
         self,
@@ -27,6 +47,7 @@ class Calculator:
         base_name="calculator",
         pal=1,
         mem=1000,
+        keep_kind="all",
         check_mem=True,
         retry_calc=1,
         last_calc_cycle=None,
@@ -79,6 +100,7 @@ class Calculator:
         if check_mem:
             mem = helpers_pure.check_mem(int(mem), pal, logger=self.logger)
         self.mem = mem
+        self.keep_kind = KeepKind[keep_kind.upper()]
         # Disasble retries if check_termination method is not implemented
         self.retry_calc = int(retry_calc) if hasattr(self, "check_termination") else 0
         assert self.retry_calc >= 0
@@ -108,6 +130,8 @@ class Calculator:
         self.path_already_prepared = None
         self.last_run_path = None
         self.backup_dir = None
+        self.kept_history = dict()
+        self.build_set_plans()
 
     def get_cmd(self, key="cmd"):
         assert self.conf_key, "'conf_key'-attribute is missing for this calculator!"
@@ -384,7 +408,7 @@ class Calculator:
 
         act_cmd = cmd[0]
         cmd_availble = shutil.which(act_cmd)
-        if not cmd_availble:
+        if (not cmd_availble) and (not shell):
             print(
                 f"Command '{act_cmd}' could not be found on $PATH! "
                 "Maybe you forgot to make it available?"
@@ -452,7 +476,7 @@ class Calculator:
                     try:
                         self.clean_tmp(path)
                     except AttributeError:
-                        self.log(f"'self.clean_path()' not implemented!")
+                        self.log("'self.clean_path()' not implemented!")
                     # Clear tmp_out_fn
                     handle.seek(0)
                     handle.truncate()
@@ -463,7 +487,7 @@ class Calculator:
                             args += self.get_retry_args()
                             added_retry_args = True
                         except AttributeError:
-                            self.log(f"'self.get_retry_args()' not implemented!")
+                            self.log("'self.get_retry_args()' not implemented!")
 
         # Parse results for desired quantities
         try:
@@ -473,6 +497,7 @@ class Calculator:
             results = self.parser_funcs[calc](path, **parser_kwargs)
             if keep:
                 self.keep(path)
+
         except Exception as err:
             print("Crashed input:")
             print(inp)
@@ -557,6 +582,45 @@ class Calculator:
         pattern_key = pattern_key.lower()
         return pattern, multi, pattern_key
 
+    def build_set_plans(self, _set_plans=None):
+        if _set_plans is None:
+            _set_plans = self._set_plans
+
+        set_plans = list()
+        for sp in _set_plans:
+            if type(sp) == SetPlan:
+                set_plans.append(sp)
+                continue
+            if type(sp) == dict:
+                set_plans.append(SetPlan(**sp))
+                continue
+            if type(sp) == str:
+                sp = (sp,)
+            set_plans.append(SetPlan(*sp))
+        self.set_plans = set_plans
+
+    def apply_keep_kind(self):
+        assert self.keep_kind in KeepKind
+
+        # Nothing to do when set to ALL
+        delete_calc_counter = list()
+        if self.keep_kind == KeepKind["LATEST"]:
+            delete_calc_counter.extend(
+                [
+                    self.calc_counter - 1,
+                ]
+                if self.calc_counter > 0
+                else []
+            )
+        elif self.keep_kind == KeepKind["NONE"]:
+            delete_calc_counter.extend(list(self.kept_history.keys()))
+
+        for cycle in delete_calc_counter:
+            self.log(f"Deleting kept files from cycle {cycle}.")
+            for k, f in self.kept_history[cycle].items():
+                os.remove(f)
+            del self.kept_history[cycle]
+
     def keep(self, path):
         """Backup calculation results.
 
@@ -592,7 +656,27 @@ class Calculator:
                     kept_fns[key].append(new_fn)
                 else:
                     kept_fns[key] = new_fn
+        self.kept_history[self.calc_counter] = kept_fns
+        self.apply_keep_kind()
+        try:
+            kept_fns = self.kept_history[self.calc_counter]
+        except KeyError:
+            kept_fns = dict()
+        self.apply_set_plans(kept_fns)
         return kept_fns
+
+    def apply_set_plans(self, kept_fns, set_plans=None):
+        if set_plans is None:
+            set_plans = self.set_plans
+
+        for sp in set_plans:
+            if not sp.conditions():
+                continue
+            try:
+                setattr(self, sp.name, kept_fns[sp.key])
+            except KeyError:
+                if sp.fail is not None:
+                    self.log(sp.fail(sp.key))
 
     def clean(self, path):
         """Delete the temporary directory.
