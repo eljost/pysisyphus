@@ -304,8 +304,31 @@ class Gaussian16(OverlapCalculator):
                 results_dict[key] = np.array(res[2:])
         return results_dict
 
-    def parse_all_energies(self):
-        return None
+    def parse_all_energies(self, fchk=None):
+        if fchk is None:
+            fchk = self.fchk
+        with open(fchk) as handle:
+            text = handle.read()
+
+        float_ = r"([\d\-\+Ee\.]+)"
+        gs_re = re.compile(r"SCF Energy\s+R\s+" + float_)
+        gs_mobj = gs_re.search(text)
+        gs_energy = float(gs_mobj[1])
+        # cis_re = re.compile(r"CIS Energy\s+R\s+" + float_)
+        # cis_mobj = cis_re.search(text)
+        # cis_energy = float(cis_mobj[1])
+        etrans_re = re.compile("ETran state values\s+R\s+N=\s+(\d+)([\d\-\.Ee\-+\s]+)", re.DOTALL)
+        etrans_mobj = etrans_re.search(text)
+        try:
+            etrans = etrans_mobj[2].strip().split()
+            etrans = np.array(etrans, dtype=float).reshape(-1, 16)
+            exc_energies = etrans[:, 0]
+            all_energies = np.zeros(exc_energies.size + 1)
+            all_energies[0] = gs_energy
+            all_energies[1:] = exc_energies
+        except TypeError:
+            all_energies = np.array((gs_energy, ))
+        return all_energies
 
     def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
         if self.track:

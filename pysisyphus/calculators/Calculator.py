@@ -25,7 +25,7 @@ KeepKind = Enum("KeepKind", ["ALL", "LATEST", "NONE"])
 class SetPlan:
     key: str
     name: Optional[str] = None
-    conditions: Callable = lambda: True
+    condition: Callable = lambda obj: True
     # success: Optional[Callable] = None
     fail: Optional[Callable] = None
 
@@ -670,7 +670,7 @@ class Calculator:
             set_plans = self.set_plans
 
         for sp in set_plans:
-            if not sp.conditions():
+            if not sp.condition(self):
                 continue
             try:
                 setattr(self, sp.name, kept_fns[sp.key])
