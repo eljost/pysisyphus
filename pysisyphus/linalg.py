@@ -390,3 +390,15 @@ def sym_mat_from_tril(arr, data):
     arr[tril] = data
     triu1 = np.triu_indices(nrows, k=1)
     arr[triu1] = arr.T[triu1]
+
+
+def multi_component_sym_mat(arr, dim):
+    target_shape = (dim, dim)
+    shape = arr.shape
+    sym = np.zeros((*target_shape, *shape[1:]))
+    triu = np.triu_indices(dim)
+    triu1 = np.triu_indices(dim, k=1)
+    tril1 = np.tril_indices(dim, k=-1)
+    sym[triu] = arr
+    sym[tril1] = sym[triu1]
+    return sym.reshape(*target_shape, *shape[1:])

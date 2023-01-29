@@ -1,5 +1,3 @@
-import numpy
-
 """
 
         Diagonal of the quadrupole moment matrix with operators x², y², z².
@@ -12,8912 +10,11005 @@ import numpy
 """
 
 
-def diag_quadrupole3d_00(a, A, b, B, C):
+import numpy
+
+
+_L_MAX = 4
+
+
+def diag_quadrupole3d_00(ax, da, A, bx, db, B, C):
     """Cartesian 3D (ss) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (a + b) ** (-1.0)
-    x1 = a * b * x0
+    result = numpy.zeros((3, 1, 1), dtype=float)
+
+    x0 = (ax + bx) ** (-1.0)
+    x1 = ax * bx * x0
     x2 = numpy.exp(-x1 * (A[1] - B[1]) ** 2)
     x3 = numpy.exp(-x1 * (A[0] - B[0]) ** 2)
     x4 = 1.77245385090552 * numpy.sqrt(x0)
     x5 = x3 * x4
-    x6 = (2.0 * a + 2.0 * b) ** (-1.0)
+    x6 = 0.5 / (ax + bx)
     x7 = numpy.exp(-x1 * (A[2] - B[2]) ** 2)
-    x8 = 3.14159265358979 * x0 * x7
-    x9 = x2 * x4
-    x10 = x4 * x7
+    x8 = 0.564189583547756
+    x9 = numpy.sqrt(ax**1.5)
+    x10 = numpy.sqrt(bx**1.5)
+    x11 = 2.82842712474619 * da * db * x0 * x10 * x7 * x8 * x9
+    x12 = x2 * x4
+    x13 = x4 * x7
 
     # 3 item(s)
-    return numpy.array(
-        [
-            x2 * x8 * (x5 * x6 + x5 * (x0 * (a * A[0] + b * B[0]) - C[0]) ** 2),
-            x3 * x8 * (x6 * x9 + x9 * (x0 * (a * A[1] + b * B[1]) - C[1]) ** 2),
-            3.14159265358979
-            * x0
-            * x2
-            * x3
-            * (x10 * x6 + x10 * (x0 * (a * A[2] + b * B[2]) - C[2]) ** 2),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x11 * x2 * x5 * (x6 + (-x0 * (ax * A[0] + bx * B[0]) + C[0]) ** 2)
     )
+    result[1, 0, 0] = numpy.sum(
+        x11 * x12 * x3 * (x6 + (-x0 * (ax * A[1] + bx * B[1]) + C[1]) ** 2)
+    )
+    result[2, 0, 0] = numpy.sum(
+        2.82842712474619
+        * da
+        * db
+        * x0
+        * x10
+        * x13
+        * x2
+        * x3
+        * x8
+        * x9
+        * (x6 + (-x0 * (ax * A[2] + bx * B[2]) + C[2]) ** 2)
+    )
+    return result
 
 
-def diag_quadrupole3d_01(a, A, b, B, C):
+def diag_quadrupole3d_01(ax, da, A, bx, db, B, C):
     """Cartesian 3D (sp) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (a + b) ** (-1.0)
-    x1 = -x0 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 1, 3), dtype=float)
+
+    x0 = (ax + bx) ** (-1.0)
+    x1 = -x0 * (ax * A[0] + bx * B[0])
     x2 = -x1 - B[0]
     x3 = -x1 - C[0]
-    x4 = a * b * x0
+    x4 = ax * bx * x0
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
     x6 = 1.77245385090552 * numpy.sqrt(x0)
     x7 = x5 * x6
-    x8 = (2.0 * a + 2.0 * b) ** (-1.0)
+    x8 = 0.5 / (ax + bx)
     x9 = x7 * x8
     x10 = x3**2 * x7 + x9
     x11 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
     x12 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x13 = 3.14159265358979 * x0 * x12
-    x14 = x11 * x13
-    x15 = -x0 * (a * A[1] + b * B[1])
-    x16 = -x15 - B[1]
-    x17 = x10 * x14
-    x18 = -x0 * (a * A[2] + b * B[2])
-    x19 = -x18 - B[2]
-    x20 = -x15 - C[1]
-    x21 = x11 * x6
-    x22 = x21 * x8
-    x23 = x20**2 * x21 + x22
-    x24 = x13 * x5
-    x25 = x23 * x24
-    x26 = -x18 - C[2]
-    x27 = x12 * x6
-    x28 = x27 * x8
-    x29 = x26**2 * x27 + x28
-    x30 = 3.14159265358979 * x0 * x11 * x5
-    x31 = x29 * x30
+    x13 = 0.564189583547756
+    x14 = numpy.sqrt(ax**1.5)
+    x15 = numpy.sqrt(bx**2.5)
+    x16 = 5.65685424949238 * da * db * x0 * x12 * x13 * x14 * x15
+    x17 = x11 * x16
+    x18 = -x0 * (ax * A[1] + bx * B[1])
+    x19 = -x18 - B[1]
+    x20 = x10 * x17
+    x21 = -x0 * (ax * A[2] + bx * B[2])
+    x22 = -x21 - B[2]
+    x23 = -x18 - C[1]
+    x24 = x11 * x6
+    x25 = x24 * x8
+    x26 = x23**2 * x24 + x25
+    x27 = x16 * x5
+    x28 = x26 * x27
+    x29 = -x21 - C[2]
+    x30 = x12 * x6
+    x31 = x30 * x8
+    x32 = x29**2 * x30 + x31
+    x33 = 5.65685424949238 * da * db * x0 * x11 * x13 * x14 * x15 * x5
+    x34 = x32 * x33
 
     # 9 item(s)
-    return numpy.array(
-        [
-            x14 * (x10 * x2 + 2.0 * x3 * x9),
-            x16 * x17,
-            x17 * x19,
-            x2 * x25,
-            x24 * (x16 * x23 + 2.0 * x20 * x22),
-            x19 * x25,
-            x2 * x31,
-            x16 * x31,
-            x30 * (x19 * x29 + 2.0 * x26 * x28),
-        ]
-    )
+    result[0, 0, 0] = numpy.sum(x17 * (x10 * x2 + 2.0 * x3 * x9))
+    result[0, 0, 1] = numpy.sum(x19 * x20)
+    result[0, 0, 2] = numpy.sum(x20 * x22)
+    result[1, 0, 0] = numpy.sum(x2 * x28)
+    result[1, 0, 1] = numpy.sum(x27 * (x19 * x26 + 2.0 * x23 * x25))
+    result[1, 0, 2] = numpy.sum(x22 * x28)
+    result[2, 0, 0] = numpy.sum(x2 * x34)
+    result[2, 0, 1] = numpy.sum(x19 * x34)
+    result[2, 0, 2] = numpy.sum(x33 * (x22 * x32 + 2.0 * x29 * x31))
+    return result
 
 
-def diag_quadrupole3d_02(a, A, b, B, C):
+def diag_quadrupole3d_02(ax, da, A, bx, db, B, C):
     """Cartesian 3D (sd) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 1, 6), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - C[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3**2 * x7
-    x9 = x0 * x7
-    x10 = -x2 - B[0]
-    x11 = 2.0 * x3
-    x12 = x8 + x9
-    x13 = x10 * x12 + x11 * x9
-    x14 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3**2 * x8
+    x10 = x0 * x8
+    x11 = -x2 - B[0]
+    x12 = 2.0 * x3
+    x13 = x10 + x9
+    x14 = x10 * x12 + x11 * x13
     x15 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x16 = 3.14159265358979 * x1 * x15
-    x17 = x14 * x16
-    x18 = -x1 * (a * A[1] + b * B[1])
-    x19 = -x18 - B[1]
-    x20 = x13 * x17
-    x21 = -x1 * (a * A[2] + b * B[2])
-    x22 = -x21 - B[2]
-    x23 = x14 * x6
-    x24 = x0 * x23
-    x25 = x19**2 * x23 + x24
-    x26 = x15 * x6
-    x27 = x0 * x26
-    x28 = x22**2 * x26 + x27
-    x29 = -x18 - C[1]
-    x30 = x23 * x29**2
-    x31 = x24 + x30
-    x32 = x10**2 * x7 + x9
-    x33 = 2.0 * x29
-    x34 = x19 * x31 + x24 * x33
-    x35 = x16 * x5
-    x36 = x34 * x35
-    x37 = -x21 - C[2]
-    x38 = x26 * x37**2
-    x39 = x27 + x38
-    x40 = 3.14159265358979 * x1 * x14 * x5
-    x41 = 2.0 * x37
-    x42 = x22 * x39 + x27 * x41
-    x43 = x40 * x42
+    x16 = numpy.sqrt(ax**1.5)
+    x17 = numpy.sqrt(bx**3.5)
+    x18 = 6.53197264742181 * da * db * x16 * x17
+    x19 = x15 * x18
+    x20 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x21 = 0.564189583547756 * x1
+    x22 = x20 * x21
+    x23 = -x1 * (ax * A[1] + bx * B[1])
+    x24 = -x23 - B[1]
+    x25 = 11.3137084989848 * da * db * x16 * x17
+    x26 = x15 * x25
+    x27 = x14 * x22 * x26
+    x28 = -x1 * (ax * A[2] + bx * B[2])
+    x29 = -x28 - B[2]
+    x30 = x20 * x7
+    x31 = x0 * x30
+    x32 = x24**2 * x30 + x31
+    x33 = 0.318309886183791 * x6
+    x34 = x13 * x33
+    x35 = x26 * x29
+    x36 = x15 * x7
+    x37 = x0 * x36
+    x38 = x18 * (x29**2 * x36 + x37)
+    x39 = x10 + x11**2 * x8
+    x40 = -x23 - C[1]
+    x41 = x30 * x40**2
+    x42 = x31 + x41
+    x43 = x33 * x42
+    x44 = 2.0 * x40
+    x45 = x24 * x42 + x31 * x44
+    x46 = x21 * x5
+    x47 = x26 * x45 * x46
+    x48 = -x28 - C[2]
+    x49 = x36 * x48**2
+    x50 = x37 + x49
+    x51 = x18 * x33 * x50
+    x52 = x22 * x5
+    x53 = 2.0 * x48
+    x54 = x29 * x50 + x37 * x53
+    x55 = x25 * x52 * x54
 
     # 18 item(s)
-    return numpy.array(
-        [
-            x17 * (x0 * (x10 * x11 * x7 + x8 + 3.0 * x9) + x10 * x13),
-            x19 * x20,
-            x20 * x22,
-            x12 * x25 * x26,
-            x12 * x17 * x19 * x22,
-            x12 * x23 * x28,
-            x26 * x31 * x32,
-            x10 * x36,
-            x10 * x22 * x31 * x35,
-            x35 * (x0 * (x19 * x23 * x33 + 3.0 * x24 + x30) + x19 * x34),
-            x22 * x36,
-            x28 * x31 * x7,
-            x23 * x32 * x39,
-            x10 * x19 * x39 * x40,
-            x10 * x43,
-            x25 * x39 * x7,
-            x19 * x43,
-            x40 * (x0 * (x22 * x26 * x41 + 3.0 * x27 + x38) + x22 * x42),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x19 * x22 * (x0 * (3.0 * x10 + x11 * x12 * x8 + x9) + x11 * x14)
     )
+    result[0, 0, 1] = numpy.sum(x24 * x27)
+    result[0, 0, 2] = numpy.sum(x27 * x29)
+    result[0, 0, 3] = numpy.sum(x19 * x32 * x34)
+    result[0, 0, 4] = numpy.sum(x13 * x22 * x24 * x35)
+    result[0, 0, 5] = numpy.sum(x20 * x34 * x38)
+    result[1, 0, 0] = numpy.sum(x19 * x39 * x43)
+    result[1, 0, 1] = numpy.sum(x11 * x47)
+    result[1, 0, 2] = numpy.sum(x11 * x35 * x42 * x46)
+    result[1, 0, 3] = numpy.sum(
+        x19 * x46 * (x0 * (x24 * x30 * x44 + 3.0 * x31 + x41) + x24 * x45)
+    )
+    result[1, 0, 4] = numpy.sum(x29 * x47)
+    result[1, 0, 5] = numpy.sum(x38 * x43 * x5)
+    result[2, 0, 0] = numpy.sum(x20 * x39 * x51)
+    result[2, 0, 1] = numpy.sum(x11 * x24 * x25 * x50 * x52)
+    result[2, 0, 2] = numpy.sum(x11 * x55)
+    result[2, 0, 3] = numpy.sum(x32 * x5 * x51)
+    result[2, 0, 4] = numpy.sum(x24 * x55)
+    result[2, 0, 5] = numpy.sum(
+        x18 * x52 * (x0 * (x29 * x36 * x53 + 3.0 * x37 + x49) + x29 * x54)
+    )
+    return result
 
 
-def diag_quadrupole3d_03(a, A, b, B, C):
+def diag_quadrupole3d_03(ax, da, A, bx, db, B, C):
     """Cartesian 3D (sf) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = 1.77245385090552 * numpy.sqrt(x1)
-    x3 = -x1 * (a * A[0] + b * B[0])
-    x4 = -x3 - B[0]
-    x5 = a * b * x1
-    x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = x4 * x6
-    x8 = x2 * x7
-    x9 = -x3 - C[0]
-    x10 = x2 * x6
-    x11 = x10 * x9
-    x12 = 2.0 * x0
-    x13 = x10 * x9**2
-    x14 = x0 * x10
-    x15 = x13 + x14
-    x16 = x15 * x4
-    x17 = 2.0 * x4
-    x18 = x11 * x12 + x16
-    x19 = x0 * (x11 * x17 + x13 + 3.0 * x14) + x18 * x4
-    x20 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
-    x21 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x22 = 3.14159265358979 * x1 * x21
-    x23 = x20 * x22
-    x24 = -x1 * (a * A[1] + b * B[1])
-    x25 = -x24 - B[1]
-    x26 = x19 * x23
-    x27 = -x1 * (a * A[2] + b * B[2])
-    x28 = -x27 - B[2]
-    x29 = x2 * x20
-    x30 = x0 * x29
-    x31 = x25**2 * x29 + x30
-    x32 = x2 * x21
-    x33 = x0 * x32
-    x34 = x28**2 * x32 + x33
-    x35 = x25 * x29
-    x36 = x12 * x35 + x25 * x31
-    x37 = x28 * x32
-    x38 = x12 * x37 + x28 * x34
-    x39 = -x24 - C[1]
-    x40 = x29 * x39**2
-    x41 = x30 + x40
-    x42 = x10 * x4**2 + x14
-    x43 = x12 * x8 + x4 * x42
-    x44 = x25 * x41
-    x45 = x29 * x39
-    x46 = x12 * x45 + x44
-    x47 = 2.0 * x25
-    x48 = x0 * (3.0 * x30 + x40 + x45 * x47) + x25 * x46
-    x49 = x22 * x7
-    x50 = x22 * x6
-    x51 = -x27 - C[2]
-    x52 = x32 * x51**2
-    x53 = x33 + x52
-    x54 = x28 * x53
-    x55 = x32 * x51
-    x56 = x12 * x55 + x54
-    x57 = 3.14159265358979 * x1 * x20
-    x58 = x57 * x7
-    x59 = 2.0 * x28
-    x60 = x0 * (3.0 * x33 + x52 + x55 * x59) + x28 * x56
-    x61 = x57 * x6
+    result = numpy.zeros((3, 1, 10), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = numpy.sqrt(x1)
+    x3 = 1.77245385090552 * x2
+    x4 = -x1 * (ax * A[0] + bx * B[0])
+    x5 = -x4 - B[0]
+    x6 = ax * bx * x1
+    x7 = numpy.exp(-x6 * (A[0] - B[0]) ** 2)
+    x8 = x5 * x7
+    x9 = x3 * x8
+    x10 = -x4 - C[0]
+    x11 = x3 * x7
+    x12 = x10 * x11
+    x13 = 2.0 * x0
+    x14 = x10**2 * x11
+    x15 = x0 * x11
+    x16 = x14 + x15
+    x17 = x16 * x5
+    x18 = 2.0 * x5
+    x19 = x12 * x13 + x17
+    x20 = x0 * (x12 * x18 + x14 + 3.0 * x15) + x19 * x5
+    x21 = numpy.exp(-x6 * (A[2] - B[2]) ** 2)
+    x22 = da * db * numpy.sqrt(ax**1.5) * numpy.sqrt(bx**4.5)
+    x23 = x21 * x22
+    x24 = 5.84237394672177 * x23
+    x25 = numpy.exp(-x6 * (A[1] - B[1]) ** 2)
+    x26 = 0.564189583547756 * x1
+    x27 = x25 * x26
+    x28 = -x1 * (ax * A[1] + bx * B[1])
+    x29 = -x28 - B[1]
+    x30 = x27 * x29
+    x31 = 13.0639452948436 * x23
+    x32 = x20 * x31
+    x33 = -x1 * (ax * A[2] + bx * B[2])
+    x34 = -x33 - B[2]
+    x35 = 0.318309886183791 * x2
+    x36 = x19 * x35
+    x37 = x25 * x3
+    x38 = x0 * x37
+    x39 = x29**2 * x37 + x38
+    x40 = x31 * x39
+    x41 = 22.6274169979695 * x30
+    x42 = x23 * x34
+    x43 = x22 * x25
+    x44 = x21 * x3
+    x45 = x0 * x44
+    x46 = x34**2 * x44 + x45
+    x47 = 13.0639452948436 * x46
+    x48 = x43 * x47
+    x49 = x29 * x37
+    x50 = x13 * x49 + x29 * x39
+    x51 = x16 * x35
+    x52 = x34 * x44
+    x53 = 5.84237394672177 * x13 * x52 + 5.84237394672177 * x34 * x46
+    x54 = x11 * x5**2 + x15
+    x55 = x13 * x9 + x5 * x54
+    x56 = -x28 - C[1]
+    x57 = x37 * x56**2
+    x58 = x38 + x57
+    x59 = x35 * x58
+    x60 = x29 * x58
+    x61 = x37 * x56
+    x62 = x13 * x61 + x60
+    x63 = x35 * x62
+    x64 = x31 * x54
+    x65 = 2.0 * x29
+    x66 = x0 * (3.0 * x38 + x57 + x61 * x65) + x29 * x62
+    x67 = x31 * x66
+    x68 = x26 * x8
+    x69 = x22 * x8
+    x70 = x26 * x7
+    x71 = x22 * x7
+    x72 = x35 * x43
+    x73 = -x33 - C[2]
+    x74 = x44 * x73**2
+    x75 = x45 + x74
+    x76 = 5.84237394672177 * x75
+    x77 = x54 * x72
+    x78 = 13.0639452948436 * x75
+    x79 = x34 * x75
+    x80 = x44 * x73
+    x81 = x13 * x80 + x79
+    x82 = 13.0639452948436 * x81
+    x83 = 2.0 * x34
+    x84 = x0 * (3.0 * x45 + x74 + x80 * x83) + x34 * x81
+    x85 = 13.0639452948436 * x84
+    x86 = x35 * x71
+    x87 = x27 * x71
 
     # 30 item(s)
-    return numpy.array(
-        [
-            x23
-            * (
-                x0
-                * (4.0 * x0 * x11 + x12 * (x11 + x8) + 2.0 * x16 + x17 * (x14 + x8 * x9))
-                + x19 * x4
-            ),
-            x25 * x26,
-            x26 * x28,
-            x18 * x31 * x32,
-            x18 * x23 * x25 * x28,
-            x18 * x29 * x34,
-            x15 * x32 * x36,
-            x15 * x31 * x37,
-            x15 * x34 * x35,
-            x15 * x29 * x38,
-            x32 * x41 * x43,
-            x32 * x42 * x46,
-            x37 * x41 * x42,
-            x48 * x49,
-            x28 * x46 * x49,
-            x34 * x41 * x8,
-            x50
-            * (
-                x0
-                * (
-                    x12 * (x35 + x45)
-                    + 4.0 * x30 * x39
-                    + 2.0 * x44
-                    + x47 * (x30 + x35 * x39)
-                )
-                + x25 * x48
-            ),
-            x28 * x48 * x50,
-            x10 * x34 * x46,
-            x10 * x38 * x41,
-            x29 * x43 * x53,
-            x35 * x42 * x53,
-            x29 * x42 * x56,
-            x31 * x53 * x8,
-            x25 * x56 * x58,
-            x58 * x60,
-            x10 * x36 * x53,
-            x10 * x31 * x56,
-            x25 * x60 * x61,
-            x61
-            * (
-                x0
-                * (
-                    x12 * (x37 + x55)
-                    + 4.0 * x33 * x51
-                    + 2.0 * x54
-                    + x59 * (x33 + x37 * x51)
-                )
-                + x28 * x60
-            ),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x24
+        * x27
+        * (
+            x0 * (4.0 * x0 * x12 + x13 * (x12 + x9) + 2.0 * x17 + x18 * (x10 * x9 + x15))
+            + x20 * x5
+        )
     )
+    result[0, 0, 1] = numpy.sum(x30 * x32)
+    result[0, 0, 2] = numpy.sum(x27 * x32 * x34)
+    result[0, 0, 3] = numpy.sum(x36 * x40)
+    result[0, 0, 4] = numpy.sum(x19 * x41 * x42)
+    result[0, 0, 5] = numpy.sum(x36 * x48)
+    result[0, 0, 6] = numpy.sum(x24 * x50 * x51)
+    result[0, 0, 7] = numpy.sum(x34 * x40 * x51)
+    result[0, 0, 8] = numpy.sum(x29 * x48 * x51)
+    result[0, 0, 9] = numpy.sum(x43 * x51 * x53)
+    result[1, 0, 0] = numpy.sum(x24 * x55 * x59)
+    result[1, 0, 1] = numpy.sum(x63 * x64)
+    result[1, 0, 2] = numpy.sum(x34 * x59 * x64)
+    result[1, 0, 3] = numpy.sum(x67 * x68)
+    result[1, 0, 4] = numpy.sum(22.6274169979695 * x42 * x62 * x68)
+    result[1, 0, 5] = numpy.sum(x47 * x59 * x69)
+    result[1, 0, 6] = numpy.sum(
+        x24
+        * x70
+        * (
+            x0
+            * (x13 * (x49 + x61) + 4.0 * x38 * x56 + 2.0 * x60 + x65 * (x38 + x49 * x56))
+            + x29 * x66
+        )
+    )
+    result[1, 0, 7] = numpy.sum(x34 * x67 * x70)
+    result[1, 0, 8] = numpy.sum(x47 * x63 * x71)
+    result[1, 0, 9] = numpy.sum(x53 * x59 * x71)
+    result[2, 0, 0] = numpy.sum(x55 * x72 * x76)
+    result[2, 0, 1] = numpy.sum(x29 * x77 * x78)
+    result[2, 0, 2] = numpy.sum(x77 * x82)
+    result[2, 0, 3] = numpy.sum(x35 * x39 * x69 * x78)
+    result[2, 0, 4] = numpy.sum(x41 * x69 * x81)
+    result[2, 0, 5] = numpy.sum(x27 * x69 * x85)
+    result[2, 0, 6] = numpy.sum(x50 * x76 * x86)
+    result[2, 0, 7] = numpy.sum(x39 * x82 * x86)
+    result[2, 0, 8] = numpy.sum(x29 * x85 * x87)
+    result[2, 0, 9] = numpy.sum(
+        5.84237394672177
+        * x87
+        * (
+            x0
+            * (x13 * (x52 + x80) + 4.0 * x45 * x73 + 2.0 * x79 + x83 * (x45 + x52 * x73))
+            + x34 * x84
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_04(a, A, b, B, C):
+def diag_quadrupole3d_04(ax, da, A, bx, db, B, C):
     """Cartesian 3D (sg) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 1, 15), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3**2 * x7
-    x9 = x0 * x7
-    x10 = 3.0 * x9
-    x11 = 2.0 * x3
-    x12 = -x2 - C[0]
-    x13 = x12 * x7
-    x14 = x10 + x11 * x13
-    x15 = 2.0 * x0
-    x16 = x3 * x7
-    x17 = x0 * (x13 + x16)
-    x18 = x3 * (x12 * x16 + x9)
-    x19 = x12**2 * x7
-    x20 = x0 * (x14 + x19)
-    x21 = x19 + x9
-    x22 = x21 * x3
-    x23 = x13 * x15 + x22
-    x24 = x23 * x3
-    x25 = x20 + x24
-    x26 = x0 * (4.0 * x0 * x13 + 2.0 * x17 + 2.0 * x18 + 2.0 * x22) + x25 * x3
-    x27 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
-    x28 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x29 = 3.14159265358979 * x1 * x28
-    x30 = x27 * x29
-    x31 = -x1 * (a * A[1] + b * B[1])
-    x32 = -x31 - B[1]
-    x33 = x26 * x30
-    x34 = -x1 * (a * A[2] + b * B[2])
-    x35 = -x34 - B[2]
-    x36 = x27 * x6
-    x37 = x32**2 * x36
-    x38 = x0 * x36
-    x39 = x37 + x38
-    x40 = x28 * x6
-    x41 = x35**2 * x40
-    x42 = x0 * x40
-    x43 = x41 + x42
-    x44 = x32 * x36
-    x45 = x15 * x44 + x32 * x39
-    x46 = x35 * x40
-    x47 = x15 * x46 + x35 * x43
-    x48 = 3.0 * x38
-    x49 = x0 * (3.0 * x37 + x48) + x32 * x45
-    x50 = 3.0 * x42
-    x51 = x0 * (3.0 * x41 + x50) + x35 * x47
-    x52 = -x31 - C[1]
-    x53 = x36 * x52**2
-    x54 = x38 + x53
-    x55 = x8 + x9
-    x56 = x15 * x16 + x3 * x55
-    x57 = x0 * (x10 + 3.0 * x8) + x3 * x56
-    x58 = x32 * x54
-    x59 = x36 * x52
-    x60 = x15 * x59 + x58
-    x61 = 2.0 * x32
-    x62 = x48 + x59 * x61
-    x63 = x0 * (x53 + x62)
-    x64 = x32 * x60
-    x65 = x63 + x64
-    x66 = x0 * (x44 + x59)
-    x67 = x32 * (x38 + x44 * x52)
-    x68 = x0 * (4.0 * x38 * x52 + 2.0 * x58 + 2.0 * x66 + 2.0 * x67) + x32 * x65
-    x69 = x29 * x5
-    x70 = x68 * x69
-    x71 = -x34 - C[2]
-    x72 = x40 * x71**2
-    x73 = x42 + x72
-    x74 = x35 * x73
-    x75 = x40 * x71
-    x76 = x15 * x75 + x74
-    x77 = 2.0 * x35
-    x78 = x50 + x75 * x77
-    x79 = x0 * (x72 + x78)
-    x80 = x35 * x76
-    x81 = x79 + x80
-    x82 = 3.14159265358979 * x1 * x27 * x5
-    x83 = x0 * (x46 + x75)
-    x84 = x35 * (x42 + x46 * x71)
-    x85 = x0 * (4.0 * x42 * x71 + 2.0 * x74 + 2.0 * x83 + 2.0 * x84) + x35 * x81
-    x86 = x82 * x85
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3**2 * x8
+    x10 = x0 * x8
+    x11 = 3.0 * x10
+    x12 = 2.0 * x3
+    x13 = -x2 - C[0]
+    x14 = x13 * x8
+    x15 = x11 + x12 * x14
+    x16 = 2.0 * x0
+    x17 = x3 * x8
+    x18 = x0 * (x14 + x17)
+    x19 = x3 * (x10 + x13 * x17)
+    x20 = x13**2 * x8
+    x21 = x0 * (x15 + x20)
+    x22 = x10 + x20
+    x23 = x22 * x3
+    x24 = x14 * x16 + x23
+    x25 = x24 * x3
+    x26 = x21 + x25
+    x27 = 2.0 * x0 * (2.0 * x0 * x14 + x18 + x19 + x23) + x26 * x3
+    x28 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x29 = 4.41641957979107 * x28
+    x30 = 0.564189583547756
+    x31 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
+    x32 = da * db * numpy.sqrt(ax**1.5) * numpy.sqrt(bx**5.5)
+    x33 = x31 * x32
+    x34 = x1 * x30 * x33
+    x35 = -x1 * (ax * A[1] + bx * B[1])
+    x36 = -x35 - B[1]
+    x37 = 11.6847478934435 * x36
+    x38 = x28 * x37
+    x39 = x27 * x34
+    x40 = -x1 * (ax * A[2] + bx * B[2])
+    x41 = -x40 - B[2]
+    x42 = 11.6847478934435 * x41
+    x43 = x28 * x7
+    x44 = x36**2 * x43
+    x45 = x0 * x43
+    x46 = x44 + x45
+    x47 = 15.084944665313 * x46
+    x48 = 0.318309886183791 * x6
+    x49 = x26 * x48
+    x50 = 26.1278905896872 * x41
+    x51 = x28 * x32
+    x52 = x31 * x7
+    x53 = x41**2 * x52
+    x54 = x0 * x52
+    x55 = x53 + x54
+    x56 = 15.084944665313 * x55
+    x57 = x36 * x43
+    x58 = x16 * x57 + x36 * x46
+    x59 = x33 * x48
+    x60 = 11.6847478934435 * x24
+    x61 = 26.1278905896872 * x24
+    x62 = x48 * x51
+    x63 = x41 * x52
+    x64 = x16 * x63 + x41 * x55
+    x65 = x48 * x64
+    x66 = 3.0 * x45
+    x67 = 4.41641957979107 * x0 * (3.0 * x44 + x66) + 4.41641957979107 * x36 * x58
+    x68 = x22 * x32
+    x69 = x48 * x68
+    x70 = x31 * x69
+    x71 = 0.179587122125167
+    x72 = x55 * x71
+    x73 = 3.0 * x54
+    x74 = x0 * (3.0 * x53 + x73) + x41 * x64
+    x75 = x10 + x9
+    x76 = x16 * x17 + x3 * x75
+    x77 = x0 * (x11 + 3.0 * x9) + x3 * x76
+    x78 = -x35 - C[1]
+    x79 = x43 * x78**2
+    x80 = x45 + x79
+    x81 = 4.41641957979107 * x80
+    x82 = x36 * x80
+    x83 = x43 * x78
+    x84 = x16 * x83 + x82
+    x85 = 11.6847478934435 * x84
+    x86 = x59 * x76
+    x87 = x32 * x75
+    x88 = 15.084944665313 * x87
+    x89 = 2.0 * x36
+    x90 = x66 + x83 * x89
+    x91 = x0 * (x79 + x90)
+    x92 = x36 * x84
+    x93 = x91 + x92
+    x94 = x48 * x93
+    x95 = 26.1278905896872 * x84
+    x96 = 11.6847478934435 * x3
+    x97 = x0 * (x57 + x83)
+    x98 = x36 * (x45 + x57 * x78)
+    x99 = 2.0 * x0 * (2.0 * x45 * x78 + x82 + x97 + x98) + x36 * x93
+    x100 = x34 * x5
+    x101 = x100 * x99
+    x102 = x32 * x5
+    x103 = x102 * x48
+    x104 = x103 * x3
+    x105 = x102 * x65
+    x106 = -x40 - C[2]
+    x107 = x106**2 * x52
+    x108 = x107 + x54
+    x109 = x108 * x48
+    x110 = x37 * x51
+    x111 = x108 * x41
+    x112 = x106 * x52
+    x113 = x111 + x112 * x16
+    x114 = 11.6847478934435 * x113
+    x115 = x28 * x48
+    x116 = 26.1278905896872 * x113
+    x117 = 2.0 * x41
+    x118 = x112 * x117 + x73
+    x119 = x0 * (x107 + x118)
+    x120 = x113 * x41
+    x121 = x119 + x120
+    x122 = x103 * x108
+    x123 = x1 * x30
+    x124 = x0 * (x112 + x63)
+    x125 = x41 * (x106 * x63 + x54)
+    x126 = 2.0 * x0 * (2.0 * x106 * x54 + x111 + x124 + x125) + x121 * x41
+    x127 = x123 * x126 * x5
 
     # 45 item(s)
-    return numpy.array(
-        [
-            x30
-            * (
-                x0 * (x11 * (x17 + x18) + x15 * (x14 + x8) + 3.0 * x20 + 3.0 * x24)
-                + x26 * x3
-            ),
-            x32 * x33,
-            x33 * x35,
-            x25 * x39 * x40,
-            x25 * x30 * x32 * x35,
-            x25 * x36 * x43,
-            x23 * x40 * x45,
-            x23 * x39 * x46,
-            x23 * x43 * x44,
-            x23 * x36 * x47,
-            x21 * x40 * x49,
-            x21 * x45 * x46,
-            x21 * x39 * x43,
-            x21 * x44 * x47,
-            x21 * x36 * x51,
-            x40 * x54 * x57,
-            x40 * x56 * x60,
-            x46 * x54 * x56,
-            x40 * x55 * x65,
-            x46 * x55 * x60,
-            x43 * x54 * x55,
-            x3 * x70,
-            x3 * x35 * x65 * x69,
-            x16 * x43 * x60,
-            x16 * x47 * x54,
-            x69
-            * (
-                x0 * (x15 * (x37 + x62) + x61 * (x66 + x67) + 3.0 * x63 + 3.0 * x64)
-                + x32 * x68
-            ),
-            x35 * x70,
-            x43 * x65 * x7,
-            x47 * x60 * x7,
-            x51 * x54 * x7,
-            x36 * x57 * x73,
-            x44 * x56 * x73,
-            x36 * x56 * x76,
-            x39 * x55 * x73,
-            x44 * x55 * x76,
-            x36 * x55 * x81,
-            x16 * x45 * x73,
-            x16 * x39 * x76,
-            x3 * x32 * x81 * x82,
-            x3 * x86,
-            x49 * x7 * x73,
-            x45 * x7 * x76,
-            x39 * x7 * x81,
-            x32 * x86,
-            x82
-            * (
-                x0 * (x15 * (x41 + x78) + x77 * (x83 + x84) + 3.0 * x79 + 3.0 * x80)
-                + x35 * x85
-            ),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x29
+        * x34
+        * (x0 * (x12 * (x18 + x19) + x16 * (x15 + x9) + 3.0 * x21 + 3.0 * x25) + x27 * x3)
     )
+    result[0, 0, 1] = numpy.sum(x38 * x39)
+    result[0, 0, 2] = numpy.sum(x28 * x39 * x42)
+    result[0, 0, 3] = numpy.sum(x33 * x47 * x49)
+    result[0, 0, 4] = numpy.sum(x26 * x28 * x34 * x36 * x50)
+    result[0, 0, 5] = numpy.sum(x49 * x51 * x56)
+    result[0, 0, 6] = numpy.sum(x58 * x59 * x60)
+    result[0, 0, 7] = numpy.sum(x41 * x46 * x59 * x61)
+    result[0, 0, 8] = numpy.sum(x36 * x55 * x61 * x62)
+    result[0, 0, 9] = numpy.sum(x51 * x60 * x65)
+    result[0, 0, 10] = numpy.sum(x67 * x70)
+    result[0, 0, 11] = numpy.sum(x42 * x58 * x70)
+    result[0, 0, 12] = numpy.sum(x47 * x68 * x72)
+    result[0, 0, 13] = numpy.sum(x38 * x65 * x68)
+    result[0, 0, 14] = numpy.sum(x29 * x69 * x74)
+    result[1, 0, 0] = numpy.sum(x59 * x77 * x81)
+    result[1, 0, 1] = numpy.sum(x85 * x86)
+    result[1, 0, 2] = numpy.sum(x42 * x80 * x86)
+    result[1, 0, 3] = numpy.sum(x31 * x88 * x94)
+    result[1, 0, 4] = numpy.sum(x31 * x41 * x48 * x87 * x95)
+    result[1, 0, 5] = numpy.sum(x72 * x80 * x88)
+    result[1, 0, 6] = numpy.sum(x101 * x96)
+    result[1, 0, 7] = numpy.sum(x100 * x3 * x50 * x93)
+    result[1, 0, 8] = numpy.sum(x104 * x55 * x95)
+    result[1, 0, 9] = numpy.sum(x105 * x80 * x96)
+    result[1, 0, 10] = numpy.sum(
+        4.41641957979107
+        * x100
+        * (
+            x0 * (x16 * (x44 + x90) + x89 * (x97 + x98) + 3.0 * x91 + 3.0 * x92)
+            + x36 * x99
+        )
+    )
+    result[1, 0, 11] = numpy.sum(x101 * x42)
+    result[1, 0, 12] = numpy.sum(x102 * x56 * x94)
+    result[1, 0, 13] = numpy.sum(x105 * x85)
+    result[1, 0, 14] = numpy.sum(x103 * x74 * x81)
+    result[2, 0, 0] = numpy.sum(x109 * x29 * x32 * x77)
+    result[2, 0, 1] = numpy.sum(x109 * x110 * x76)
+    result[2, 0, 2] = numpy.sum(x114 * x62 * x76)
+    result[2, 0, 3] = numpy.sum(x108 * x47 * x71 * x87)
+    result[2, 0, 4] = numpy.sum(x115 * x116 * x36 * x87)
+    result[2, 0, 5] = numpy.sum(x115 * x121 * x88)
+    result[2, 0, 6] = numpy.sum(x122 * x58 * x96)
+    result[2, 0, 7] = numpy.sum(x104 * x116 * x46)
+    result[2, 0, 8] = numpy.sum(26.1278905896872 * x121 * x123 * x3 * x36 * x5 * x51)
+    result[2, 0, 9] = numpy.sum(x127 * x51 * x96)
+    result[2, 0, 10] = numpy.sum(x122 * x67)
+    result[2, 0, 11] = numpy.sum(x103 * x114 * x58)
+    result[2, 0, 12] = numpy.sum(x103 * x121 * x47)
+    result[2, 0, 13] = numpy.sum(x110 * x127)
+    result[2, 0, 14] = numpy.sum(
+        x102
+        * x123
+        * x29
+        * (
+            x0 * (x117 * (x124 + x125) + 3.0 * x119 + 3.0 * x120 + x16 * (x118 + x53))
+            + x126 * x41
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_10(a, A, b, B, C):
+def diag_quadrupole3d_10(ax, da, A, bx, db, B, C):
     """Cartesian 3D (ps) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (a + b) ** (-1.0)
-    x1 = -x0 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 3, 1), dtype=float)
+
+    x0 = (ax + bx) ** (-1.0)
+    x1 = -x0 * (ax * A[0] + bx * B[0])
     x2 = -x1 - A[0]
     x3 = -x1 - C[0]
-    x4 = a * b * x0
+    x4 = ax * bx * x0
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
     x6 = 1.77245385090552 * numpy.sqrt(x0)
     x7 = x5 * x6
-    x8 = (2.0 * a + 2.0 * b) ** (-1.0)
+    x8 = 0.5 / (ax + bx)
     x9 = x7 * x8
     x10 = x3**2 * x7 + x9
     x11 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
     x12 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x13 = 3.14159265358979 * x0 * x12
-    x14 = x11 * x13
-    x15 = -x0 * (a * A[1] + b * B[1])
-    x16 = -x15 - A[1]
-    x17 = x10 * x14
-    x18 = -x0 * (a * A[2] + b * B[2])
-    x19 = -x18 - A[2]
-    x20 = -x15 - C[1]
-    x21 = x11 * x6
-    x22 = x21 * x8
-    x23 = x20**2 * x21 + x22
-    x24 = x13 * x5
-    x25 = x23 * x24
-    x26 = -x18 - C[2]
-    x27 = x12 * x6
-    x28 = x27 * x8
-    x29 = x26**2 * x27 + x28
-    x30 = 3.14159265358979 * x0 * x11 * x5
-    x31 = x29 * x30
+    x13 = 0.564189583547756
+    x14 = numpy.sqrt(ax**2.5)
+    x15 = numpy.sqrt(bx**1.5)
+    x16 = 5.65685424949238 * da * db * x0 * x12 * x13 * x14 * x15
+    x17 = x11 * x16
+    x18 = -x0 * (ax * A[1] + bx * B[1])
+    x19 = -x18 - A[1]
+    x20 = x10 * x17
+    x21 = -x0 * (ax * A[2] + bx * B[2])
+    x22 = -x21 - A[2]
+    x23 = -x18 - C[1]
+    x24 = x11 * x6
+    x25 = x24 * x8
+    x26 = x23**2 * x24 + x25
+    x27 = x16 * x5
+    x28 = x26 * x27
+    x29 = -x21 - C[2]
+    x30 = x12 * x6
+    x31 = x30 * x8
+    x32 = x29**2 * x30 + x31
+    x33 = 5.65685424949238 * da * db * x0 * x11 * x13 * x14 * x15 * x5
+    x34 = x32 * x33
 
     # 9 item(s)
-    return numpy.array(
-        [
-            x14 * (x10 * x2 + 2.0 * x3 * x9),
-            x16 * x17,
-            x17 * x19,
-            x2 * x25,
-            x24 * (x16 * x23 + 2.0 * x20 * x22),
-            x19 * x25,
-            x2 * x31,
-            x16 * x31,
-            x30 * (x19 * x29 + 2.0 * x26 * x28),
-        ]
-    )
+    result[0, 0, 0] = numpy.sum(x17 * (x10 * x2 + 2.0 * x3 * x9))
+    result[0, 1, 0] = numpy.sum(x19 * x20)
+    result[0, 2, 0] = numpy.sum(x20 * x22)
+    result[1, 0, 0] = numpy.sum(x2 * x28)
+    result[1, 1, 0] = numpy.sum(x27 * (x19 * x26 + 2.0 * x23 * x25))
+    result[1, 2, 0] = numpy.sum(x22 * x28)
+    result[2, 0, 0] = numpy.sum(x2 * x34)
+    result[2, 1, 0] = numpy.sum(x19 * x34)
+    result[2, 2, 0] = numpy.sum(x33 * (x22 * x32 + 2.0 * x29 * x31))
+    return result
 
 
-def diag_quadrupole3d_11(a, A, b, B, C):
+def diag_quadrupole3d_11(ax, da, A, bx, db, B, C):
     """Cartesian 3D (pp) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 3, 3), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - C[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3**2 * x7
-    x9 = x0 * x7
-    x10 = -x2 - B[0]
-    x11 = x10 * x7
-    x12 = 2.0 * x3
-    x13 = -x2 - A[0]
-    x14 = x8 + x9
-    x15 = x12 * x9
-    x16 = x10 * x14 + x15
-    x17 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
-    x18 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x19 = 3.14159265358979 * x1 * x18
-    x20 = x17 * x19
-    x21 = -x1 * (a * A[1] + b * B[1])
-    x22 = -x21 - B[1]
-    x23 = x20 * (x13 * x14 + x15)
-    x24 = -x1 * (a * A[2] + b * B[2])
-    x25 = -x24 - B[2]
-    x26 = -x21 - A[1]
-    x27 = x16 * x20
-    x28 = x0 * x6
-    x29 = x17 * x28
-    x30 = x17 * x6
-    x31 = x22 * x30
-    x32 = x26 * x31 + x29
-    x33 = x18 * x6
-    x34 = x14 * x20
-    x35 = -x24 - A[2]
-    x36 = x18 * x28
-    x37 = x25 * x33
-    x38 = x35 * x37 + x36
-    x39 = -x21 - C[1]
-    x40 = x30 * x39**2
-    x41 = x29 + x40
-    x42 = x11 * x13 + x9
-    x43 = 2.0 * x39
-    x44 = x29 * x43
-    x45 = x22 * x41 + x44
-    x46 = x19 * x5
-    x47 = x45 * x46
-    x48 = x41 * x46
-    x49 = x46 * (x26 * x41 + x44)
-    x50 = -x24 - C[2]
-    x51 = x33 * x50**2
-    x52 = x36 + x51
-    x53 = 3.14159265358979 * x1 * x17 * x5
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3**2 * x8
+    x10 = x0 * x8
+    x11 = -x2 - B[0]
+    x12 = x11 * x8
+    x13 = 2.0 * x3
+    x14 = -x2 - A[0]
+    x15 = x10 + x9
+    x16 = x10 * x13
+    x17 = x11 * x15 + x16
+    x18 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x19 = 0.564189583547756
+    x20 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
+    x21 = 11.3137084989848 * da * db * numpy.sqrt(ax**2.5) * numpy.sqrt(bx**2.5)
+    x22 = x20 * x21
+    x23 = x1 * x19 * x22
+    x24 = x18 * x23
+    x25 = -x1 * (ax * A[1] + bx * B[1])
+    x26 = -x25 - B[1]
+    x27 = x24 * (x14 * x15 + x16)
+    x28 = -x1 * (ax * A[2] + bx * B[2])
+    x29 = -x28 - B[2]
+    x30 = -x25 - A[1]
+    x31 = x17 * x24
+    x32 = x0 * x7
+    x33 = x18 * x32
+    x34 = x18 * x7
+    x35 = x26 * x34
+    x36 = x30 * x35 + x33
+    x37 = 0.318309886183791 * x6
+    x38 = x15 * x37
+    x39 = x15 * x24
+    x40 = -x28 - A[2]
+    x41 = x20 * x32
+    x42 = x20 * x7
+    x43 = x29 * x42
+    x44 = x21 * (x40 * x43 + x41)
+    x45 = x10 + x12 * x14
+    x46 = -x25 - C[1]
+    x47 = x34 * x46**2
+    x48 = x33 + x47
+    x49 = x37 * x48
+    x50 = 2.0 * x46
+    x51 = x33 * x50
+    x52 = x26 * x48 + x51
+    x53 = x23 * x5
     x54 = x52 * x53
-    x55 = 2.0 * x50
-    x56 = x36 * x55
-    x57 = x25 * x52 + x56
-    x58 = x53 * x57
-    x59 = x53 * (x35 * x52 + x56)
+    x55 = x48 * x53
+    x56 = x53 * (x30 * x48 + x51)
+    x57 = x18 * x21
+    x58 = -x28 - C[2]
+    x59 = x42 * x58**2
+    x60 = x41 + x59
+    x61 = x37 * x60
+    x62 = x1 * x19 * x5 * x57
+    x63 = x60 * x62
+    x64 = 2.0 * x58
+    x65 = x41 * x64
+    x66 = x29 * x60 + x65
+    x67 = x62 * x66
+    x68 = x62 * (x40 * x60 + x65)
 
     # 27 item(s)
-    return numpy.array(
-        [
-            x20 * (x0 * (x11 * x12 + x8 + 3.0 * x9) + x13 * x16),
-            x22 * x23,
-            x23 * x25,
-            x26 * x27,
-            x14 * x32 * x33,
-            x25 * x26 * x34,
-            x27 * x35,
-            x22 * x34 * x35,
-            x14 * x30 * x38,
-            x33 * x41 * x42,
-            x13 * x47,
-            x13 * x25 * x48,
-            x10 * x49,
-            x46 * (x0 * (3.0 * x29 + x31 * x43 + x40) + x26 * x45),
-            x25 * x49,
-            x10 * x35 * x48,
-            x35 * x47,
-            x38 * x41 * x7,
-            x30 * x42 * x52,
-            x13 * x22 * x54,
-            x13 * x58,
-            x10 * x26 * x54,
-            x32 * x52 * x7,
-            x26 * x58,
-            x10 * x59,
-            x22 * x59,
-            x53 * (x0 * (3.0 * x36 + x37 * x55 + x51) + x35 * x57),
-        ]
-    )
+    result[0, 0, 0] = numpy.sum(x24 * (x0 * (3.0 * x10 + x12 * x13 + x9) + x14 * x17))
+    result[0, 0, 1] = numpy.sum(x26 * x27)
+    result[0, 0, 2] = numpy.sum(x27 * x29)
+    result[0, 1, 0] = numpy.sum(x30 * x31)
+    result[0, 1, 1] = numpy.sum(x22 * x36 * x38)
+    result[0, 1, 2] = numpy.sum(x29 * x30 * x39)
+    result[0, 2, 0] = numpy.sum(x31 * x40)
+    result[0, 2, 1] = numpy.sum(x26 * x39 * x40)
+    result[0, 2, 2] = numpy.sum(x18 * x38 * x44)
+    result[1, 0, 0] = numpy.sum(x22 * x45 * x49)
+    result[1, 0, 1] = numpy.sum(x14 * x54)
+    result[1, 0, 2] = numpy.sum(x14 * x29 * x55)
+    result[1, 1, 0] = numpy.sum(x11 * x56)
+    result[1, 1, 1] = numpy.sum(x53 * (x0 * (3.0 * x33 + x35 * x50 + x47) + x30 * x52))
+    result[1, 1, 2] = numpy.sum(x29 * x56)
+    result[1, 2, 0] = numpy.sum(x11 * x40 * x55)
+    result[1, 2, 1] = numpy.sum(x40 * x54)
+    result[1, 2, 2] = numpy.sum(x44 * x49 * x5)
+    result[2, 0, 0] = numpy.sum(x45 * x57 * x61)
+    result[2, 0, 1] = numpy.sum(x14 * x26 * x63)
+    result[2, 0, 2] = numpy.sum(x14 * x67)
+    result[2, 1, 0] = numpy.sum(x11 * x30 * x63)
+    result[2, 1, 1] = numpy.sum(x21 * x36 * x5 * x61)
+    result[2, 1, 2] = numpy.sum(x30 * x67)
+    result[2, 2, 0] = numpy.sum(x11 * x68)
+    result[2, 2, 1] = numpy.sum(x26 * x68)
+    result[2, 2, 2] = numpy.sum(x62 * (x0 * (3.0 * x41 + x43 * x64 + x59) + x40 * x66))
+    return result
 
 
-def diag_quadrupole3d_12(a, A, b, B, C):
+def diag_quadrupole3d_12(ax, da, A, bx, db, B, C):
     """Cartesian 3D (pd) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = 1.77245385090552 * numpy.sqrt(x1)
-    x3 = -x1 * (a * A[0] + b * B[0])
-    x4 = -x3 - B[0]
-    x5 = a * b * x1
-    x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = x4 * x6
-    x8 = x2 * x7
-    x9 = -x3 - C[0]
-    x10 = x2 * x6
-    x11 = x10 * x9
-    x12 = 2.0 * x0
-    x13 = x10 * x9**2
-    x14 = x0 * x10
-    x15 = x13 + x14
-    x16 = x15 * x4
-    x17 = 2.0 * x4
-    x18 = -x3 - A[0]
-    x19 = x0 * (x11 * x17 + x13 + 3.0 * x14)
-    x20 = x11 * x12
-    x21 = x16 + x20
-    x22 = x19 + x21 * x4
-    x23 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
-    x24 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x25 = 3.14159265358979 * x1 * x24
-    x26 = x23 * x25
-    x27 = -x1 * (a * A[1] + b * B[1])
-    x28 = -x27 - B[1]
-    x29 = x26 * (x18 * x21 + x19)
-    x30 = -x1 * (a * A[2] + b * B[2])
-    x31 = -x30 - B[2]
-    x32 = x15 * x18 + x20
-    x33 = x2 * x23
-    x34 = x0 * x33
-    x35 = x28**2 * x33 + x34
-    x36 = x2 * x24
-    x37 = x35 * x36
-    x38 = x26 * x31
-    x39 = x0 * x36
-    x40 = x31**2 * x36 + x39
-    x41 = x33 * x40
-    x42 = -x27 - A[1]
-    x43 = x22 * x26
-    x44 = x28 * x33
-    x45 = x34 + x42 * x44
-    x46 = x12 * x44 + x35 * x42
-    x47 = x31 * x36
-    x48 = -x30 - A[2]
-    x49 = x39 + x47 * x48
-    x50 = x12 * x47 + x40 * x48
-    x51 = x10 * x4**2 + x14
-    x52 = x12 * x8 + x18 * x51
-    x53 = -x27 - C[1]
-    x54 = x33 * x53**2
-    x55 = x34 + x54
-    x56 = x36 * x55
-    x57 = x28 * x55
-    x58 = x33 * x53
-    x59 = x12 * x58
-    x60 = x57 + x59
-    x61 = x14 + x18 * x8
-    x62 = 2.0 * x28
-    x63 = x0 * (3.0 * x34 + x54 + x58 * x62)
-    x64 = x28 * x60 + x63
-    x65 = x25 * x6
-    x66 = x64 * x65
-    x67 = x31 * x65
-    x68 = x10 * x40
-    x69 = x42 * x55 + x59
-    x70 = x42 * x60 + x63
-    x71 = x25 * x7
-    x72 = -x30 - C[2]
-    x73 = x36 * x72**2
-    x74 = x39 + x73
-    x75 = x33 * x74
-    x76 = x31 * x74
-    x77 = x36 * x72
-    x78 = x12 * x77
+    result = numpy.zeros((3, 3, 6), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = numpy.sqrt(x1)
+    x3 = 1.77245385090552 * x2
+    x4 = -x1 * (ax * A[0] + bx * B[0])
+    x5 = -x4 - B[0]
+    x6 = ax * bx * x1
+    x7 = numpy.exp(-x6 * (A[0] - B[0]) ** 2)
+    x8 = x5 * x7
+    x9 = x3 * x8
+    x10 = -x4 - C[0]
+    x11 = x3 * x7
+    x12 = x10 * x11
+    x13 = 2.0 * x0
+    x14 = x10**2 * x11
+    x15 = x0 * x11
+    x16 = x14 + x15
+    x17 = x16 * x5
+    x18 = 2.0 * x5
+    x19 = -x4 - A[0]
+    x20 = x0 * (x12 * x18 + x14 + 3.0 * x15)
+    x21 = x12 * x13
+    x22 = x17 + x21
+    x23 = x20 + x22 * x5
+    x24 = numpy.exp(-x6 * (A[2] - B[2]) ** 2)
+    x25 = da * db * numpy.sqrt(ax**2.5) * numpy.sqrt(bx**3.5)
+    x26 = x24 * x25
+    x27 = 13.0639452948436 * x26
+    x28 = numpy.exp(-x6 * (A[1] - B[1]) ** 2)
+    x29 = 0.564189583547756 * x1
+    x30 = x28 * x29
+    x31 = x27 * x30
+    x32 = -x1 * (ax * A[1] + bx * B[1])
+    x33 = -x32 - B[1]
+    x34 = x30 * x33
+    x35 = 22.6274169979695 * x26
+    x36 = x35 * (x19 * x22 + x20)
+    x37 = -x1 * (ax * A[2] + bx * B[2])
+    x38 = -x37 - B[2]
+    x39 = x30 * x38
+    x40 = x16 * x19 + x21
+    x41 = 0.318309886183791 * x2
+    x42 = x40 * x41
+    x43 = x28 * x3
+    x44 = x0 * x43
+    x45 = x33**2 * x43 + x44
+    x46 = x27 * x45
+    x47 = x34 * x35
+    x48 = x24 * x3
+    x49 = x0 * x48
+    x50 = x38**2 * x48 + x49
+    x51 = x25 * x28
+    x52 = 13.0639452948436 * x51
+    x53 = x50 * x52
+    x54 = -x32 - A[1]
+    x55 = x23 * x31
+    x56 = 22.6274169979695 * x41
+    x57 = x22 * x56
+    x58 = x33 * x43
+    x59 = x44 + x54 * x58
+    x60 = x26 * x59
+    x61 = x13 * x58 + x45 * x54
+    x62 = x16 * x41
+    x63 = x16 * x56
+    x64 = -x37 - A[2]
+    x65 = x38 * x48
+    x66 = x49 + x64 * x65
+    x67 = x51 * x66
+    x68 = x13 * x65 + x50 * x64
+    x69 = x11 * x5**2 + x15
+    x70 = x13 * x9 + x19 * x69
+    x71 = -x32 - C[1]
+    x72 = x43 * x71**2
+    x73 = x44 + x72
+    x74 = x27 * x41
+    x75 = x73 * x74
+    x76 = x33 * x73
+    x77 = x43 * x71
+    x78 = x13 * x77
     x79 = x76 + x78
-    x80 = x10 * x74
-    x81 = 3.14159265358979 * x1 * x23
-    x82 = x6 * x81
-    x83 = x28 * x82
-    x84 = 2.0 * x31
-    x85 = x0 * (3.0 * x39 + x73 + x77 * x84)
-    x86 = x31 * x79 + x85
-    x87 = x82 * x86
-    x88 = x7 * x81
-    x89 = x48 * x74 + x78
-    x90 = x48 * x79 + x85
+    x80 = x56 * x79
+    x81 = x15 + x19 * x9
+    x82 = x26 * x81
+    x83 = x56 * x73
+    x84 = 2.0 * x33
+    x85 = x0 * (3.0 * x44 + x72 + x77 * x84)
+    x86 = x33 * x79 + x85
+    x87 = x29 * x7
+    x88 = x27 * x87
+    x89 = x86 * x88
+    x90 = x38 * x87
+    x91 = x35 * x79
+    x92 = x25 * x7
+    x93 = 13.0639452948436 * x92
+    x94 = x41 * x93
+    x95 = x50 * x94
+    x96 = x54 * x73 + x78
+    x97 = x35 * (x54 * x79 + x85)
+    x98 = x29 * x8
+    x99 = x25 * x8
+    x100 = -x37 - C[2]
+    x101 = x100**2 * x48
+    x102 = x101 + x49
+    x103 = x41 * x52
+    x104 = x102 * x103
+    x105 = x51 * x81
+    x106 = x102 * x56
+    x107 = x102 * x38
+    x108 = x100 * x48
+    x109 = x108 * x13
+    x110 = x107 + x109
+    x111 = x110 * x56
+    x112 = x102 * x94
+    x113 = x34 * x92
+    x114 = 22.6274169979695 * x110
+    x115 = 2.0 * x38
+    x116 = x0 * (x101 + x108 * x115 + 3.0 * x49)
+    x117 = x110 * x38 + x116
+    x118 = x30 * x93
+    x119 = x117 * x118
+    x120 = x30 * x99
+    x121 = x102 * x64 + x109
+    x122 = 22.6274169979695 * x110 * x64 + 22.6274169979695 * x116
 
     # 54 item(s)
-    return numpy.array(
-        [
-            x26
-            * (
-                x0
-                * (4.0 * x0 * x11 + x12 * (x11 + x8) + 2.0 * x16 + x17 * (x14 + x8 * x9))
-                + x18 * x22
-            ),
-            x28 * x29,
-            x29 * x31,
-            x32 * x37,
-            x28 * x32 * x38,
-            x32 * x41,
-            x42 * x43,
-            x21 * x36 * x45,
-            x21 * x38 * x42,
-            x15 * x36 * x46,
-            x15 * x45 * x47,
-            x15 * x41 * x42,
-            x43 * x48,
-            x21 * x26 * x28 * x48,
-            x21 * x33 * x49,
-            x15 * x37 * x48,
-            x15 * x44 * x49,
-            x15 * x33 * x50,
-            x52 * x56,
-            x36 * x60 * x61,
-            x47 * x55 * x61,
-            x18 * x66,
-            x18 * x60 * x67,
-            x18 * x55 * x68,
-            x36 * x51 * x69,
-            x70 * x71,
-            x31 * x69 * x71,
-            x65
-            * (
-                x0
-                * (
-                    x12 * (x44 + x58)
-                    + 4.0 * x34 * x53
-                    + 2.0 * x57
-                    + x62 * (x34 + x44 * x53)
-                )
-                + x42 * x64
-            ),
-            x67 * x70,
-            x68 * x69,
-            x48 * x51 * x56,
-            x48 * x60 * x71,
-            x49 * x55 * x8,
-            x48 * x66,
-            x10 * x49 * x60,
-            x10 * x50 * x55,
-            x52 * x75,
-            x44 * x61 * x74,
-            x33 * x61 * x79,
-            x18 * x35 * x80,
-            x18 * x79 * x83,
-            x18 * x87,
-            x42 * x51 * x75,
-            x45 * x74 * x8,
-            x42 * x79 * x88,
-            x46 * x80,
-            x10 * x45 * x79,
-            x42 * x87,
-            x33 * x51 * x89,
-            x28 * x88 * x89,
-            x88 * x90,
-            x10 * x35 * x89,
-            x83 * x90,
-            x82
-            * (
-                x0
-                * (
-                    x12 * (x47 + x77)
-                    + 4.0 * x39 * x72
-                    + 2.0 * x76
-                    + x84 * (x39 + x47 * x72)
-                )
-                + x48 * x86
-            ),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x31
+        * (
+            x0 * (4.0 * x0 * x12 + x13 * (x12 + x9) + 2.0 * x17 + x18 * (x10 * x9 + x15))
+            + x19 * x23
+        )
     )
+    result[0, 0, 1] = numpy.sum(x34 * x36)
+    result[0, 0, 2] = numpy.sum(x36 * x39)
+    result[0, 0, 3] = numpy.sum(x42 * x46)
+    result[0, 0, 4] = numpy.sum(x38 * x40 * x47)
+    result[0, 0, 5] = numpy.sum(x42 * x53)
+    result[0, 1, 0] = numpy.sum(x54 * x55)
+    result[0, 1, 1] = numpy.sum(x57 * x60)
+    result[0, 1, 2] = numpy.sum(x22 * x35 * x39 * x54)
+    result[0, 1, 3] = numpy.sum(x27 * x61 * x62)
+    result[0, 1, 4] = numpy.sum(x38 * x60 * x63)
+    result[0, 1, 5] = numpy.sum(x53 * x54 * x62)
+    result[0, 2, 0] = numpy.sum(x55 * x64)
+    result[0, 2, 1] = numpy.sum(x22 * x47 * x64)
+    result[0, 2, 2] = numpy.sum(x57 * x67)
+    result[0, 2, 3] = numpy.sum(x46 * x62 * x64)
+    result[0, 2, 4] = numpy.sum(x33 * x63 * x67)
+    result[0, 2, 5] = numpy.sum(x52 * x62 * x68)
+    result[1, 0, 0] = numpy.sum(x70 * x75)
+    result[1, 0, 1] = numpy.sum(x80 * x82)
+    result[1, 0, 2] = numpy.sum(x38 * x82 * x83)
+    result[1, 0, 3] = numpy.sum(x19 * x89)
+    result[1, 0, 4] = numpy.sum(x19 * x90 * x91)
+    result[1, 0, 5] = numpy.sum(x19 * x73 * x95)
+    result[1, 1, 0] = numpy.sum(x69 * x74 * x96)
+    result[1, 1, 1] = numpy.sum(x97 * x98)
+    result[1, 1, 2] = numpy.sum(x35 * x38 * x96 * x98)
+    result[1, 1, 3] = numpy.sum(
+        x88
+        * (
+            x0
+            * (x13 * (x58 + x77) + 4.0 * x44 * x71 + 2.0 * x76 + x84 * (x44 + x58 * x71))
+            + x54 * x86
+        )
+    )
+    result[1, 1, 4] = numpy.sum(x90 * x97)
+    result[1, 1, 5] = numpy.sum(x95 * x96)
+    result[1, 2, 0] = numpy.sum(x64 * x69 * x75)
+    result[1, 2, 1] = numpy.sum(x64 * x91 * x98)
+    result[1, 2, 2] = numpy.sum(x66 * x83 * x99)
+    result[1, 2, 3] = numpy.sum(x64 * x89)
+    result[1, 2, 4] = numpy.sum(x66 * x80 * x92)
+    result[1, 2, 5] = numpy.sum(x68 * x73 * x94)
+    result[2, 0, 0] = numpy.sum(x104 * x70)
+    result[2, 0, 1] = numpy.sum(x105 * x106 * x33)
+    result[2, 0, 2] = numpy.sum(x105 * x111)
+    result[2, 0, 3] = numpy.sum(x112 * x19 * x45)
+    result[2, 0, 4] = numpy.sum(x113 * x114 * x19)
+    result[2, 0, 5] = numpy.sum(x119 * x19)
+    result[2, 1, 0] = numpy.sum(x104 * x54 * x69)
+    result[2, 1, 1] = numpy.sum(x106 * x59 * x99)
+    result[2, 1, 2] = numpy.sum(x114 * x120 * x54)
+    result[2, 1, 3] = numpy.sum(x112 * x61)
+    result[2, 1, 4] = numpy.sum(x111 * x59 * x92)
+    result[2, 1, 5] = numpy.sum(x119 * x54)
+    result[2, 2, 0] = numpy.sum(x103 * x121 * x69)
+    result[2, 2, 1] = numpy.sum(22.6274169979695 * x121 * x34 * x99)
+    result[2, 2, 2] = numpy.sum(x120 * x122)
+    result[2, 2, 3] = numpy.sum(x121 * x45 * x94)
+    result[2, 2, 4] = numpy.sum(x113 * x122)
+    result[2, 2, 5] = numpy.sum(
+        x118
+        * (
+            x0
+            * (
+                4.0 * x100 * x49
+                + 2.0 * x107
+                + x115 * (x100 * x65 + x49)
+                + x13 * (x108 + x65)
+            )
+            + x117 * x64
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_13(a, A, b, B, C):
+def diag_quadrupole3d_13(ax, da, A, bx, db, B, C):
     """Cartesian 3D (pf) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 3, 10), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3**2 * x7
-    x9 = x0 * x7
-    x10 = 3.0 * x9
-    x11 = 2.0 * x3
-    x12 = -x2 - C[0]
-    x13 = x12 * x7
-    x14 = x10 + x11 * x13
-    x15 = 2.0 * x0
-    x16 = x3 * x7
-    x17 = x0 * (x13 + x16)
-    x18 = x3 * (x12 * x16 + x9)
-    x19 = x12**2 * x7
-    x20 = x0 * (x14 + x19)
-    x21 = x19 + x9
-    x22 = x21 * x3
-    x23 = x13 * x15
-    x24 = x22 + x23
-    x25 = x24 * x3
-    x26 = -x2 - A[0]
-    x27 = x0 * (4.0 * x0 * x13 + 2.0 * x17 + 2.0 * x18 + 2.0 * x22)
-    x28 = x20 + x25
-    x29 = x27 + x28 * x3
-    x30 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3**2 * x8
+    x10 = x0 * x8
+    x11 = 3.0 * x10
+    x12 = 2.0 * x3
+    x13 = -x2 - C[0]
+    x14 = x13 * x8
+    x15 = x11 + x12 * x14
+    x16 = 2.0 * x0
+    x17 = x3 * x8
+    x18 = x0 * (x14 + x17)
+    x19 = x3 * (x10 + x13 * x17)
+    x20 = x13**2 * x8
+    x21 = x0 * (x15 + x20)
+    x22 = x10 + x20
+    x23 = x22 * x3
+    x24 = x14 * x16
+    x25 = x23 + x24
+    x26 = x25 * x3
+    x27 = -x2 - A[0]
+    x28 = 2.0 * x0 * (2.0 * x0 * x14 + x18 + x19 + x23)
+    x29 = x21 + x26
+    x30 = x28 + x29 * x3
     x31 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x32 = 3.14159265358979 * x1 * x31
-    x33 = x30 * x32
-    x34 = -x1 * (a * A[1] + b * B[1])
-    x35 = -x34 - B[1]
-    x36 = x33 * (x26 * x28 + x27)
-    x37 = -x1 * (a * A[2] + b * B[2])
-    x38 = -x37 - B[2]
-    x39 = x20 + x24 * x26
-    x40 = x30 * x6
-    x41 = x35**2 * x40
-    x42 = x0 * x40
-    x43 = x41 + x42
-    x44 = x31 * x6
-    x45 = x43 * x44
-    x46 = x33 * x38
-    x47 = x38**2 * x44
-    x48 = x0 * x44
-    x49 = x47 + x48
-    x50 = x40 * x49
-    x51 = x21 * x26 + x23
-    x52 = x35 * x40
-    x53 = x15 * x52
-    x54 = x35 * x43 + x53
-    x55 = x44 * x54
-    x56 = x38 * x44
-    x57 = x15 * x56
-    x58 = x38 * x49 + x57
-    x59 = x40 * x58
-    x60 = -x34 - A[1]
-    x61 = x29 * x33
-    x62 = x42 + x52 * x60
-    x63 = x43 * x60 + x53
-    x64 = 3.0 * x42
-    x65 = x0 * (3.0 * x41 + x64) + x54 * x60
-    x66 = -x37 - A[2]
-    x67 = x48 + x56 * x66
-    x68 = x49 * x66 + x57
-    x69 = 3.0 * x48
-    x70 = x0 * (3.0 * x47 + x69) + x58 * x66
-    x71 = x8 + x9
-    x72 = x15 * x16
-    x73 = x3 * x71 + x72
-    x74 = x0 * (x10 + 3.0 * x8) + x26 * x73
-    x75 = -x34 - C[1]
-    x76 = x40 * x75**2
-    x77 = x42 + x76
-    x78 = x44 * x77
-    x79 = x26 * x71 + x72
-    x80 = x35 * x77
-    x81 = x40 * x75
-    x82 = x15 * x81
-    x83 = x80 + x82
-    x84 = x44 * x83
-    x85 = 2.0 * x35
-    x86 = x64 + x81 * x85
-    x87 = x0 * (x76 + x86)
-    x88 = x35 * x83
-    x89 = x87 + x88
-    x90 = x16 * x26 + x9
-    x91 = x0 * (x52 + x81)
-    x92 = x35 * (x42 + x52 * x75)
-    x93 = x0 * (4.0 * x42 * x75 + 2.0 * x80 + 2.0 * x91 + 2.0 * x92)
-    x94 = x35 * x89 + x93
-    x95 = x32 * x5
-    x96 = x94 * x95
-    x97 = x38 * x95
-    x98 = x49 * x7
-    x99 = x58 * x7
-    x100 = x60 * x77 + x82
-    x101 = x60 * x83 + x87
-    x102 = x95 * (x60 * x89 + x93)
-    x103 = -x37 - C[2]
-    x104 = x103**2 * x44
-    x105 = x104 + x48
-    x106 = x105 * x40
-    x107 = x105 * x38
-    x108 = x103 * x44
-    x109 = x108 * x15
-    x110 = x107 + x109
-    x111 = x110 * x40
-    x112 = 2.0 * x38
-    x113 = x108 * x112 + x69
-    x114 = x0 * (x104 + x113)
-    x115 = x110 * x38
+    x32 = da * db * numpy.sqrt(ax**2.5) * numpy.sqrt(bx**4.5)
+    x33 = 11.6847478934435 * x32
+    x34 = x31 * x33
+    x35 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x36 = 0.564189583547756 * x1
+    x37 = x35 * x36
+    x38 = x34 * x37
+    x39 = -x1 * (ax * A[1] + bx * B[1])
+    x40 = -x39 - B[1]
+    x41 = x37 * x40
+    x42 = 26.1278905896872 * x32
+    x43 = x31 * x42
+    x44 = x43 * (x27 * x29 + x28)
+    x45 = -x1 * (ax * A[2] + bx * B[2])
+    x46 = -x45 - B[2]
+    x47 = x37 * x46
+    x48 = x21 + x25 * x27
+    x49 = 0.318309886183791 * x6
+    x50 = x48 * x49
+    x51 = x35 * x7
+    x52 = x40**2 * x51
+    x53 = x0 * x51
+    x54 = x52 + x53
+    x55 = x43 * x54
+    x56 = 45.2548339959391 * x32
+    x57 = x31 * x46
+    x58 = x56 * x57
+    x59 = x31 * x7
+    x60 = x46**2 * x59
+    x61 = x0 * x59
+    x62 = x60 + x61
+    x63 = x35 * x42
+    x64 = x62 * x63
+    x65 = x49 * (x22 * x27 + x24)
+    x66 = x40 * x51
+    x67 = x16 * x66
+    x68 = x40 * x54 + x67
+    x69 = x34 * x68
+    x70 = x46 * x59
+    x71 = x16 * x70
+    x72 = x46 * x62 + x71
+    x73 = x33 * x35
+    x74 = x72 * x73
+    x75 = -x39 - A[1]
+    x76 = x30 * x38
+    x77 = x53 + x66 * x75
+    x78 = x43 * x49
+    x79 = x29 * x43
+    x80 = x54 * x75 + x67
+    x81 = x78 * x80
+    x82 = x25 * x49
+    x83 = x56 * x77
+    x84 = 3.0 * x53
+    x85 = x0 * (3.0 * x52 + x84) + x68 * x75
+    x86 = x22 * x49
+    x87 = 0.179587122125167 * x42
+    x88 = x22 * x87
+    x89 = -x45 - A[2]
+    x90 = x61 + x70 * x89
+    x91 = x49 * x63
+    x92 = x56 * x90
+    x93 = x35 * x40
+    x94 = x62 * x89 + x71
+    x95 = 3.0 * x61
+    x96 = x0 * (3.0 * x60 + x95) + x72 * x89
+    x97 = x10 + x9
+    x98 = x16 * x17
+    x99 = x3 * x97 + x98
+    x100 = x0 * (x11 + 3.0 * x9) + x27 * x99
+    x101 = -x39 - C[1]
+    x102 = x101**2 * x51
+    x103 = x102 + x53
+    x104 = x34 * x49
+    x105 = x103 * x104
+    x106 = x103 * x40
+    x107 = x101 * x51
+    x108 = x107 * x16
+    x109 = x106 + x108
+    x110 = x27 * x97 + x98
+    x111 = x110 * x78
+    x112 = 2.0 * x40
+    x113 = x107 * x112 + x84
+    x114 = x0 * (x102 + x113)
+    x115 = x109 * x40
     x116 = x114 + x115
-    x117 = x105 * x7
-    x118 = x110 * x7
-    x119 = 3.14159265358979 * x1 * x30 * x5
-    x120 = x116 * x119
-    x121 = x0 * (x108 + x56)
-    x122 = x38 * (x103 * x56 + x48)
-    x123 = x0 * (4.0 * x103 * x48 + 2.0 * x107 + 2.0 * x121 + 2.0 * x122)
-    x124 = x116 * x38 + x123
-    x125 = x119 * x124
-    x126 = x105 * x66 + x109
-    x127 = x110 * x66 + x114
-    x128 = x119 * (x116 * x66 + x123)
+    x117 = x10 + x17 * x27
+    x118 = x117 * x49
+    x119 = x103 * x87
+    x120 = x0 * (x107 + x66)
+    x121 = x40 * (x101 * x66 + x53)
+    x122 = 2.0 * x0 * (2.0 * x101 * x53 + x106 + x120 + x121)
+    x123 = x116 * x40 + x122
+    x124 = x36 * x5
+    x125 = x124 * x34
+    x126 = x123 * x125
+    x127 = x124 * x43
+    x128 = x116 * x127
+    x129 = x49 * x5
+    x130 = x129 * x42
+    x131 = x130 * x62
+    x132 = x129 * x33
+    x133 = x132 * x72
+    x134 = x103 * x75 + x108
+    x135 = x109 * x75 + x114
+    x136 = x78 * x97
+    x137 = x127 * (x116 * x75 + x122)
+    x138 = x129 * x3
+    x139 = x130 * x94
+    x140 = -x45 - C[2]
+    x141 = x140**2 * x59
+    x142 = x141 + x61
+    x143 = x49 * x73
+    x144 = x142 * x143
+    x145 = x110 * x91
+    x146 = x142 * x46
+    x147 = x140 * x59
+    x148 = x147 * x16
+    x149 = x146 + x148
+    x150 = x142 * x87
+    x151 = 2.0 * x46
+    x152 = x147 * x151 + x95
+    x153 = x0 * (x141 + x152)
+    x154 = x149 * x46
+    x155 = x153 + x154
+    x156 = x132 * x142
+    x157 = x130 * x149
+    x158 = x37 * x5
+    x159 = x158 * x42
+    x160 = x155 * x159
+    x161 = x0 * (x147 + x70)
+    x162 = x46 * (x140 * x70 + x61)
+    x163 = 2.0 * x0 * (2.0 * x140 * x61 + x146 + x161 + x162)
+    x164 = x155 * x46 + x163
+    x165 = x158 * x33
+    x166 = x164 * x165
+    x167 = x91 * x97
+    x168 = x142 * x89 + x148
+    x169 = x149 * x89 + x153
+    x170 = x130 * x54
+    x171 = x159 * (x155 * x89 + x163)
 
     # 90 item(s)
-    return numpy.array(
-        [
-            x33
-            * (
-                x0 * (x11 * (x17 + x18) + x15 * (x14 + x8) + 3.0 * x20 + 3.0 * x25)
-                + x26 * x29
-            ),
-            x35 * x36,
-            x36 * x38,
-            x39 * x45,
-            x35 * x39 * x46,
-            x39 * x50,
-            x51 * x55,
-            x43 * x51 * x56,
-            x49 * x51 * x52,
-            x51 * x59,
-            x60 * x61,
-            x28 * x44 * x62,
-            x28 * x46 * x60,
-            x24 * x44 * x63,
-            x24 * x56 * x62,
-            x24 * x50 * x60,
-            x21 * x44 * x65,
-            x21 * x56 * x63,
-            x21 * x49 * x62,
-            x21 * x59 * x60,
-            x61 * x66,
-            x28 * x33 * x35 * x66,
-            x28 * x40 * x67,
-            x24 * x45 * x66,
-            x24 * x52 * x67,
-            x24 * x40 * x68,
-            x21 * x55 * x66,
-            x21 * x43 * x67,
-            x21 * x52 * x68,
-            x21 * x40 * x70,
-            x74 * x78,
-            x79 * x84,
-            x56 * x77 * x79,
-            x44 * x89 * x90,
-            x56 * x83 * x90,
-            x49 * x77 * x90,
-            x26 * x96,
-            x26 * x89 * x97,
-            x26 * x83 * x98,
-            x26 * x77 * x99,
-            x100 * x44 * x73,
-            x101 * x44 * x71,
-            x100 * x56 * x71,
-            x102 * x3,
-            x101 * x3 * x97,
-            x100 * x16 * x49,
-            x95
-            * (
-                x0 * (x15 * (x41 + x86) + x85 * (x91 + x92) + 3.0 * x87 + 3.0 * x88)
-                + x60 * x94
-            ),
-            x102 * x38,
-            x101 * x98,
-            x100 * x99,
-            x66 * x73 * x78,
-            x66 * x71 * x84,
-            x67 * x71 * x77,
-            x3 * x66 * x89 * x95,
-            x16 * x67 * x83,
-            x16 * x68 * x77,
-            x66 * x96,
-            x67 * x7 * x89,
-            x68 * x7 * x83,
-            x7 * x70 * x77,
-            x106 * x74,
-            x105 * x52 * x79,
-            x111 * x79,
-            x105 * x43 * x90,
-            x110 * x52 * x90,
-            x116 * x40 * x90,
-            x117 * x26 * x54,
-            x118 * x26 * x43,
-            x120 * x26 * x35,
-            x125 * x26,
-            x106 * x60 * x73,
-            x105 * x62 * x71,
-            x111 * x60 * x71,
-            x105 * x16 * x63,
-            x110 * x16 * x62,
-            x120 * x3 * x60,
-            x117 * x65,
-            x118 * x63,
-            x116 * x62 * x7,
-            x125 * x60,
-            x126 * x40 * x73,
-            x126 * x52 * x71,
-            x127 * x40 * x71,
-            x126 * x16 * x43,
-            x119 * x127 * x3 * x35,
-            x128 * x3,
-            x126 * x54 * x7,
-            x127 * x43 * x7,
-            x128 * x35,
-            x119
-            * (
-                x0 * (x112 * (x121 + x122) + 3.0 * x114 + 3.0 * x115 + x15 * (x113 + x47))
-                + x124 * x66
-            ),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x38
+        * (
+            x0 * (x12 * (x18 + x19) + x16 * (x15 + x9) + 3.0 * x21 + 3.0 * x26)
+            + x27 * x30
+        )
     )
+    result[0, 0, 1] = numpy.sum(x41 * x44)
+    result[0, 0, 2] = numpy.sum(x44 * x47)
+    result[0, 0, 3] = numpy.sum(x50 * x55)
+    result[0, 0, 4] = numpy.sum(x41 * x48 * x58)
+    result[0, 0, 5] = numpy.sum(x50 * x64)
+    result[0, 0, 6] = numpy.sum(x65 * x69)
+    result[0, 0, 7] = numpy.sum(x46 * x55 * x65)
+    result[0, 0, 8] = numpy.sum(x40 * x64 * x65)
+    result[0, 0, 9] = numpy.sum(x65 * x74)
+    result[0, 1, 0] = numpy.sum(x75 * x76)
+    result[0, 1, 1] = numpy.sum(x29 * x77 * x78)
+    result[0, 1, 2] = numpy.sum(x47 * x75 * x79)
+    result[0, 1, 3] = numpy.sum(x25 * x81)
+    result[0, 1, 4] = numpy.sum(x57 * x82 * x83)
+    result[0, 1, 5] = numpy.sum(x64 * x75 * x82)
+    result[0, 1, 6] = numpy.sum(x34 * x85 * x86)
+    result[0, 1, 7] = numpy.sum(x22 * x46 * x81)
+    result[0, 1, 8] = numpy.sum(x62 * x77 * x88)
+    result[0, 1, 9] = numpy.sum(x74 * x75 * x86)
+    result[0, 2, 0] = numpy.sum(x76 * x89)
+    result[0, 2, 1] = numpy.sum(x41 * x79 * x89)
+    result[0, 2, 2] = numpy.sum(x29 * x90 * x91)
+    result[0, 2, 3] = numpy.sum(x55 * x82 * x89)
+    result[0, 2, 4] = numpy.sum(x82 * x92 * x93)
+    result[0, 2, 5] = numpy.sum(x25 * x91 * x94)
+    result[0, 2, 6] = numpy.sum(x69 * x86 * x89)
+    result[0, 2, 7] = numpy.sum(x54 * x88 * x90)
+    result[0, 2, 8] = numpy.sum(x40 * x63 * x86 * x94)
+    result[0, 2, 9] = numpy.sum(x73 * x86 * x96)
+    result[1, 0, 0] = numpy.sum(x100 * x105)
+    result[1, 0, 1] = numpy.sum(x109 * x111)
+    result[1, 0, 2] = numpy.sum(x103 * x111 * x46)
+    result[1, 0, 3] = numpy.sum(x116 * x117 * x78)
+    result[1, 0, 4] = numpy.sum(x109 * x118 * x58)
+    result[1, 0, 5] = numpy.sum(x117 * x119 * x62)
+    result[1, 0, 6] = numpy.sum(x126 * x27)
+    result[1, 0, 7] = numpy.sum(x128 * x27 * x46)
+    result[1, 0, 8] = numpy.sum(x109 * x131 * x27)
+    result[1, 0, 9] = numpy.sum(x103 * x133 * x27)
+    result[1, 1, 0] = numpy.sum(x104 * x134 * x99)
+    result[1, 1, 1] = numpy.sum(x135 * x136)
+    result[1, 1, 2] = numpy.sum(x134 * x136 * x46)
+    result[1, 1, 3] = numpy.sum(x137 * x3)
+    result[1, 1, 4] = numpy.sum(x124 * x135 * x3 * x58)
+    result[1, 1, 5] = numpy.sum(x131 * x134 * x3)
+    result[1, 1, 6] = numpy.sum(
+        x125
+        * (
+            x0 * (x112 * (x120 + x121) + 3.0 * x114 + 3.0 * x115 + x16 * (x113 + x52))
+            + x123 * x75
+        )
+    )
+    result[1, 1, 7] = numpy.sum(x137 * x46)
+    result[1, 1, 8] = numpy.sum(x131 * x135)
+    result[1, 1, 9] = numpy.sum(x133 * x134)
+    result[1, 2, 0] = numpy.sum(x105 * x89 * x99)
+    result[1, 2, 1] = numpy.sum(x109 * x136 * x89)
+    result[1, 2, 2] = numpy.sum(x119 * x90 * x97)
+    result[1, 2, 3] = numpy.sum(x128 * x3 * x89)
+    result[1, 2, 4] = numpy.sum(x109 * x138 * x92)
+    result[1, 2, 5] = numpy.sum(x103 * x139 * x3)
+    result[1, 2, 6] = numpy.sum(x126 * x89)
+    result[1, 2, 7] = numpy.sum(x116 * x130 * x90)
+    result[1, 2, 8] = numpy.sum(x109 * x139)
+    result[1, 2, 9] = numpy.sum(x103 * x132 * x96)
+    result[2, 0, 0] = numpy.sum(x100 * x144)
+    result[2, 0, 1] = numpy.sum(x142 * x145 * x40)
+    result[2, 0, 2] = numpy.sum(x145 * x149)
+    result[2, 0, 3] = numpy.sum(x117 * x150 * x54)
+    result[2, 0, 4] = numpy.sum(x118 * x149 * x56 * x93)
+    result[2, 0, 5] = numpy.sum(x117 * x155 * x91)
+    result[2, 0, 6] = numpy.sum(x156 * x27 * x68)
+    result[2, 0, 7] = numpy.sum(x157 * x27 * x54)
+    result[2, 0, 8] = numpy.sum(x160 * x27 * x40)
+    result[2, 0, 9] = numpy.sum(x166 * x27)
+    result[2, 1, 0] = numpy.sum(x144 * x75 * x99)
+    result[2, 1, 1] = numpy.sum(x150 * x77 * x97)
+    result[2, 1, 2] = numpy.sum(x149 * x167 * x75)
+    result[2, 1, 3] = numpy.sum(x130 * x142 * x3 * x80)
+    result[2, 1, 4] = numpy.sum(x138 * x149 * x83)
+    result[2, 1, 5] = numpy.sum(x160 * x3 * x75)
+    result[2, 1, 6] = numpy.sum(x156 * x85)
+    result[2, 1, 7] = numpy.sum(x157 * x80)
+    result[2, 1, 8] = numpy.sum(x130 * x155 * x77)
+    result[2, 1, 9] = numpy.sum(x166 * x75)
+    result[2, 2, 0] = numpy.sum(x143 * x168 * x99)
+    result[2, 2, 1] = numpy.sum(x167 * x168 * x40)
+    result[2, 2, 2] = numpy.sum(x167 * x169)
+    result[2, 2, 3] = numpy.sum(x168 * x170 * x3)
+    result[2, 2, 4] = numpy.sum(x158 * x169 * x3 * x40 * x56)
+    result[2, 2, 5] = numpy.sum(x171 * x3)
+    result[2, 2, 6] = numpy.sum(x132 * x168 * x68)
+    result[2, 2, 7] = numpy.sum(x169 * x170)
+    result[2, 2, 8] = numpy.sum(x171 * x40)
+    result[2, 2, 9] = numpy.sum(
+        x165
+        * (
+            x0 * (x151 * (x161 + x162) + 3.0 * x153 + 3.0 * x154 + x16 * (x152 + x60))
+            + x164 * x89
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_14(a, A, b, B, C):
+def diag_quadrupole3d_14(ax, da, A, bx, db, B, C):
     """Cartesian 3D (pg) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 3, 15), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3 * x7
-    x9 = -x2 - C[0]
-    x10 = x7 * x9
-    x11 = x0 * (x10 + x8)
-    x12 = x0 * x7
-    x13 = x3 * (x12 + x8 * x9)
-    x14 = x3**2 * x7
-    x15 = x12 + x14
-    x16 = x15 * x3
-    x17 = 2.0 * x0
-    x18 = x17 * x8
-    x19 = x16 + x18
-    x20 = 3.0 * x12
-    x21 = 2.0 * x3
-    x22 = x10 * x21 + x20
-    x23 = x0 * (x14 + x22)
-    x24 = x3 * (x11 + x13)
-    x25 = x7 * x9**2
-    x26 = x12 + x25
-    x27 = x26 * x3
-    x28 = x0 * (2.0 * x11 + 4.0 * x12 * x9 + 2.0 * x13 + 2.0 * x27)
-    x29 = x0 * (x22 + x25)
-    x30 = x10 * x17
-    x31 = x27 + x30
-    x32 = x3 * x31
-    x33 = x29 + x32
-    x34 = x3 * x33
-    x35 = -x2 - A[0]
-    x36 = x0 * (2.0 * x23 + 2.0 * x24 + 3.0 * x29 + 3.0 * x32)
-    x37 = x28 + x34
-    x38 = x3 * x37 + x36
-    x39 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3 * x8
+    x10 = -x2 - C[0]
+    x11 = x10 * x8
+    x12 = x0 * (x11 + x9)
+    x13 = x0 * x8
+    x14 = x3 * (x10 * x9 + x13)
+    x15 = x3**2 * x8
+    x16 = x13 + x15
+    x17 = x16 * x3
+    x18 = 2.0 * x0
+    x19 = x18 * x9
+    x20 = x17 + x19
+    x21 = 3.0 * x13
+    x22 = 2.0 * x3
+    x23 = x11 * x22 + x21
+    x24 = x0 * (x15 + x23)
+    x25 = x3 * (x12 + x14)
+    x26 = x10**2 * x8
+    x27 = x13 + x26
+    x28 = x27 * x3
+    x29 = 2.0 * x0 * (2.0 * x10 * x13 + x12 + x14 + x28)
+    x30 = x0 * (x23 + x26)
+    x31 = x11 * x18
+    x32 = x28 + x31
+    x33 = x3 * x32
+    x34 = x30 + x33
+    x35 = x3 * x34
+    x36 = -x2 - A[0]
+    x37 = x0 * (2.0 * x24 + 2.0 * x25 + 3.0 * x30 + 3.0 * x33)
+    x38 = x29 + x35
+    x39 = x3 * x38 + x37
     x40 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x41 = 3.14159265358979 * x1 * x40
-    x42 = x39 * x41
-    x43 = -x1 * (a * A[1] + b * B[1])
-    x44 = -x43 - B[1]
-    x45 = x42 * (x35 * x37 + x36)
-    x46 = -x1 * (a * A[2] + b * B[2])
-    x47 = -x46 - B[2]
-    x48 = x28 + x33 * x35
-    x49 = x39 * x6
-    x50 = x44**2 * x49
-    x51 = x0 * x49
-    x52 = x50 + x51
-    x53 = x40 * x6
-    x54 = x52 * x53
-    x55 = x42 * x47
-    x56 = x47**2 * x53
-    x57 = x0 * x53
-    x58 = x56 + x57
-    x59 = x49 * x58
-    x60 = x29 + x31 * x35
-    x61 = x44 * x52
-    x62 = x44 * x49
-    x63 = x17 * x62
-    x64 = x61 + x63
-    x65 = x53 * x64
-    x66 = x47 * x53
-    x67 = x47 * x58
-    x68 = x17 * x66
-    x69 = x67 + x68
-    x70 = x49 * x69
-    x71 = x26 * x35 + x30
-    x72 = 3.0 * x51
-    x73 = x0 * (3.0 * x50 + x72)
-    x74 = x44 * x64 + x73
-    x75 = x53 * x74
-    x76 = 3.0 * x57
-    x77 = x0 * (3.0 * x56 + x76)
-    x78 = x47 * x69 + x77
-    x79 = x49 * x78
-    x80 = -x43 - A[1]
-    x81 = x38 * x42
-    x82 = x51 + x62 * x80
-    x83 = x52 * x80 + x63
-    x84 = x64 * x80 + x73
-    x85 = x0 * (8.0 * x44 * x51 + 4.0 * x61) + x74 * x80
-    x86 = -x46 - A[2]
-    x87 = x57 + x66 * x86
-    x88 = x58 * x86 + x68
-    x89 = x69 * x86 + x77
-    x90 = x0 * (8.0 * x47 * x57 + 4.0 * x67) + x78 * x86
-    x91 = x0 * (3.0 * x14 + x20)
-    x92 = x19 * x3 + x91
-    x93 = x0 * (8.0 * x12 * x3 + 4.0 * x16) + x35 * x92
-    x94 = -x43 - C[1]
-    x95 = x49 * x94**2
-    x96 = x51 + x95
-    x97 = x53 * x96
-    x98 = x19 * x35 + x91
-    x99 = x44 * x96
-    x100 = x49 * x94
-    x101 = x100 * x17
-    x102 = x101 + x99
-    x103 = x102 * x53
-    x104 = x15 * x35 + x18
-    x105 = 2.0 * x44
-    x106 = x100 * x105 + x72
-    x107 = x0 * (x106 + x95)
-    x108 = x102 * x44
-    x109 = x107 + x108
-    x110 = x109 * x53
-    x111 = x0 * (x100 + x62)
-    x112 = x44 * (x51 + x62 * x94)
-    x113 = x0 * (2.0 * x111 + 2.0 * x112 + 4.0 * x51 * x94 + 2.0 * x99)
-    x114 = x109 * x44
-    x115 = x113 + x114
-    x116 = x12 + x35 * x8
-    x117 = x0 * (x106 + x50)
-    x118 = x44 * (x111 + x112)
-    x119 = x0 * (3.0 * x107 + 3.0 * x108 + 2.0 * x117 + 2.0 * x118)
-    x120 = x115 * x44 + x119
-    x121 = x41 * x5
-    x122 = x120 * x121
-    x123 = x121 * x47
-    x124 = x58 * x7
-    x125 = x69 * x7
-    x126 = x7 * x78
-    x127 = x101 + x80 * x96
-    x128 = x102 * x80 + x107
-    x129 = x109 * x80 + x113
-    x130 = x121 * (x115 * x80 + x119)
-    x131 = -x46 - C[2]
-    x132 = x131**2 * x53
-    x133 = x132 + x57
-    x134 = x133 * x49
-    x135 = x133 * x47
-    x136 = x131 * x53
-    x137 = x136 * x17
-    x138 = x135 + x137
-    x139 = x138 * x49
-    x140 = 2.0 * x47
-    x141 = x136 * x140 + x76
-    x142 = x0 * (x132 + x141)
-    x143 = x138 * x47
-    x144 = x142 + x143
-    x145 = x144 * x49
-    x146 = x0 * (x136 + x66)
-    x147 = x47 * (x131 * x66 + x57)
-    x148 = x0 * (4.0 * x131 * x57 + 2.0 * x135 + 2.0 * x146 + 2.0 * x147)
-    x149 = x144 * x47
-    x150 = x148 + x149
-    x151 = x133 * x7
-    x152 = x138 * x7
-    x153 = x144 * x7
-    x154 = 3.14159265358979 * x1 * x39 * x5
-    x155 = x150 * x154
-    x156 = x0 * (x141 + x56)
-    x157 = x47 * (x146 + x147)
-    x158 = x0 * (3.0 * x142 + 3.0 * x143 + 2.0 * x156 + 2.0 * x157)
-    x159 = x150 * x47 + x158
-    x160 = x154 * x159
-    x161 = x133 * x86 + x137
-    x162 = x138 * x86 + x142
-    x163 = x144 * x86 + x148
-    x164 = x154 * (x150 * x86 + x158)
+    x41 = da * db * numpy.sqrt(ax**2.5) * numpy.sqrt(bx**5.5)
+    x42 = x40 * x41
+    x43 = 8.83283915958214 * x42
+    x44 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x45 = 0.564189583547756 * x1
+    x46 = x44 * x45
+    x47 = x43 * x46
+    x48 = -x1 * (ax * A[1] + bx * B[1])
+    x49 = -x48 - B[1]
+    x50 = x46 * x49
+    x51 = 23.3694957868871 * x42
+    x52 = x51 * (x36 * x38 + x37)
+    x53 = -x1 * (ax * A[2] + bx * B[2])
+    x54 = -x53 - B[2]
+    x55 = x46 * x54
+    x56 = x29 + x34 * x36
+    x57 = x42 * x56
+    x58 = x44 * x7
+    x59 = x49**2 * x58
+    x60 = x0 * x58
+    x61 = x59 + x60
+    x62 = 30.169889330626 * x61
+    x63 = 0.318309886183791 * x6
+    x64 = x62 * x63
+    x65 = x40 * x7
+    x66 = x54**2 * x65
+    x67 = x0 * x65
+    x68 = x66 + x67
+    x69 = 30.169889330626 * x63
+    x70 = x41 * x44
+    x71 = x69 * x70
+    x72 = x68 * x71
+    x73 = x49 * x61
+    x74 = x49 * x58
+    x75 = x18 * x74
+    x76 = x73 + x75
+    x77 = 23.3694957868871 * x76
+    x78 = x63 * (x30 + x32 * x36)
+    x79 = x42 * x78
+    x80 = 52.2557811793745 * x61
+    x81 = x70 * x78
+    x82 = 52.2557811793745 * x49
+    x83 = x54 * x68
+    x84 = x54 * x65
+    x85 = x18 * x84
+    x86 = x83 + x85
+    x87 = 23.3694957868871 * x86
+    x88 = x27 * x36 + x31
+    x89 = x63 * x88
+    x90 = 3.0 * x60
+    x91 = x0 * (3.0 * x59 + x90)
+    x92 = x49 * x76 + x91
+    x93 = x43 * x92
+    x94 = x42 * x54
+    x95 = 0.179587122125167 * x41
+    x96 = x68 * x95
+    x97 = 3.0 * x67
+    x98 = x0 * (3.0 * x66 + x97)
+    x99 = x54 * x86 + x98
+    x100 = 8.83283915958214 * x70
+    x101 = x100 * x99
+    x102 = -x48 - A[1]
+    x103 = x39 * x47
+    x104 = x102 * x74 + x60
+    x105 = 23.3694957868871 * x63
+    x106 = x105 * x42
+    x107 = x38 * x51
+    x108 = x102 * x61 + x75
+    x109 = x42 * x69
+    x110 = 52.2557811793745 * x104
+    x111 = x42 * x63
+    x112 = x111 * x54
+    x113 = x102 * x76 + x91
+    x114 = x106 * x113
+    x115 = 52.2557811793745 * x32
+    x116 = x63 * x70
+    x117 = 4.0 * x0 * (2.0 * x49 * x60 + x73) + x102 * x92
+    x118 = x27 * x63
+    x119 = 30.169889330626 * x96
+    x120 = x27 * x95
+    x121 = -x53 - A[2]
+    x122 = x121 * x84 + x67
+    x123 = x105 * x70
+    x124 = x116 * x82
+    x125 = x121 * x68 + x85
+    x126 = x122 * x95
+    x127 = x121 * x86 + x98
+    x128 = x123 * x127
+    x129 = 4.0 * x0 * (2.0 * x54 * x67 + x83) + x121 * x99
+    x130 = x0 * (3.0 * x15 + x21)
+    x131 = x130 + x20 * x3
+    x132 = 4.0 * x0 * (2.0 * x13 * x3 + x17) + x131 * x36
+    x133 = -x48 - C[1]
+    x134 = x133**2 * x58
+    x135 = x134 + x60
+    x136 = x43 * x63
+    x137 = x135 * x136
+    x138 = x135 * x49
+    x139 = x133 * x58
+    x140 = x139 * x18
+    x141 = x138 + x140
+    x142 = x130 + x20 * x36
+    x143 = x106 * x142
+    x144 = 2.0 * x49
+    x145 = x139 * x144 + x90
+    x146 = x0 * (x134 + x145)
+    x147 = x141 * x49
+    x148 = x146 + x147
+    x149 = x16 * x36 + x19
+    x150 = 52.2557811793745 * x141
+    x151 = x0 * (x139 + x74)
+    x152 = x49 * (x133 * x74 + x60)
+    x153 = 2.0 * x0 * (2.0 * x133 * x60 + x138 + x151 + x152)
+    x154 = x148 * x49
+    x155 = x153 + x154
+    x156 = x13 + x36 * x9
+    x157 = 52.2557811793745 * x112
+    x158 = x135 * x95
+    x159 = x0 * (x145 + x59)
+    x160 = x49 * (x151 + x152)
+    x161 = x0 * (3.0 * x146 + 3.0 * x147 + 2.0 * x159 + 2.0 * x160)
+    x162 = x155 * x49 + x161
+    x163 = x45 * x5
+    x164 = x163 * x43
+    x165 = x162 * x164
+    x166 = x163 * x51
+    x167 = x155 * x166
+    x168 = x41 * x5
+    x169 = x168 * x69
+    x170 = x169 * x68
+    x171 = x168 * x63
+    x172 = x171 * x87
+    x173 = 8.83283915958214 * x171
+    x174 = x173 * x99
+    x175 = x102 * x135 + x140
+    x176 = x102 * x141 + x146
+    x177 = 23.3694957868871 * x20
+    x178 = x111 * x177
+    x179 = x102 * x148 + x153
+    x180 = 30.169889330626 * x16
+    x181 = x111 * x180
+    x182 = x166 * (x102 * x155 + x161)
+    x183 = x171 * x3
+    x184 = 52.2557811793745 * x183
+    x185 = x105 * x168
+    x186 = x127 * x185
+    x187 = -x53 - C[2]
+    x188 = x187**2 * x65
+    x189 = x188 + x67
+    x190 = x100 * x63
+    x191 = x189 * x190
+    x192 = x123 * x142
+    x193 = x189 * x54
+    x194 = x187 * x65
+    x195 = x18 * x194
+    x196 = x193 + x195
+    x197 = x189 * x95
+    x198 = 2.0 * x54
+    x199 = x194 * x198 + x97
+    x200 = x0 * (x188 + x199)
+    x201 = x196 * x54
+    x202 = x200 + x201
+    x203 = x196 * x95
+    x204 = x0 * (x194 + x84)
+    x205 = x54 * (x187 * x84 + x67)
+    x206 = 2.0 * x0 * (2.0 * x187 * x67 + x193 + x204 + x205)
+    x207 = x202 * x54
+    x208 = x206 + x207
+    x209 = x173 * x189
+    x210 = x171 * x77
+    x211 = x168 * x64
+    x212 = x168 * x46
+    x213 = 23.3694957868871 * x212
+    x214 = x208 * x213
+    x215 = x0 * (x199 + x66)
+    x216 = x54 * (x204 + x205)
+    x217 = x0 * (3.0 * x200 + 3.0 * x201 + 2.0 * x215 + 2.0 * x216)
+    x218 = x208 * x54 + x217
+    x219 = 8.83283915958214 * x212
+    x220 = x218 * x219
+    x221 = x116 * x177
+    x222 = x116 * x180
+    x223 = x113 * x185
+    x224 = x121 * x189 + x195
+    x225 = x121 * x196 + x200
+    x226 = x121 * x202 + x206
+    x227 = x213 * (x121 * x208 + x217)
 
     # 135 item(s)
-    return numpy.array(
-        [
-            x42
+    result[0, 0, 0] = numpy.sum(
+        x47
+        * (
+            x0
             * (
-                x0
-                * (
-                    x17 * (3.0 * x11 + 3.0 * x13 + x19)
-                    + x21 * (x23 + x24)
-                    + 4.0 * x28
-                    + 4.0 * x34
-                )
-                + x35 * x38
-            ),
-            x44 * x45,
-            x45 * x47,
-            x48 * x54,
-            x44 * x48 * x55,
-            x48 * x59,
-            x60 * x65,
-            x52 * x60 * x66,
-            x58 * x60 * x62,
-            x60 * x70,
-            x71 * x75,
-            x64 * x66 * x71,
-            x52 * x58 * x71,
-            x62 * x69 * x71,
-            x71 * x79,
-            x80 * x81,
-            x37 * x53 * x82,
-            x37 * x55 * x80,
-            x33 * x53 * x83,
-            x33 * x66 * x82,
-            x33 * x59 * x80,
-            x31 * x53 * x84,
-            x31 * x66 * x83,
-            x31 * x58 * x82,
-            x31 * x70 * x80,
-            x26 * x53 * x85,
-            x26 * x66 * x84,
-            x26 * x58 * x83,
-            x26 * x69 * x82,
-            x26 * x79 * x80,
-            x81 * x86,
-            x37 * x42 * x44 * x86,
-            x37 * x49 * x87,
-            x33 * x54 * x86,
-            x33 * x62 * x87,
-            x33 * x49 * x88,
-            x31 * x65 * x86,
-            x31 * x52 * x87,
-            x31 * x62 * x88,
-            x31 * x49 * x89,
-            x26 * x75 * x86,
-            x26 * x64 * x87,
-            x26 * x52 * x88,
-            x26 * x62 * x89,
-            x26 * x49 * x90,
-            x93 * x97,
-            x103 * x98,
-            x66 * x96 * x98,
-            x104 * x110,
-            x102 * x104 * x66,
-            x104 * x58 * x96,
-            x115 * x116 * x53,
-            x109 * x116 * x66,
-            x102 * x116 * x58,
-            x116 * x69 * x96,
-            x122 * x35,
-            x115 * x123 * x35,
-            x109 * x124 * x35,
-            x102 * x125 * x35,
-            x126 * x35 * x96,
-            x127 * x53 * x92,
-            x128 * x19 * x53,
-            x127 * x19 * x66,
-            x129 * x15 * x53,
-            x128 * x15 * x66,
-            x127 * x15 * x58,
-            x130 * x3,
-            x123 * x129 * x3,
-            x128 * x58 * x8,
-            x127 * x69 * x8,
-            x121
-            * (
-                x0
-                * (
-                    x105 * (x117 + x118)
-                    + 4.0 * x113
-                    + 4.0 * x114
-                    + x17 * (3.0 * x111 + 3.0 * x112 + x64)
-                )
-                + x120 * x80
-            ),
-            x130 * x47,
-            x124 * x129,
-            x125 * x128,
-            x126 * x127,
-            x86 * x92 * x97,
-            x103 * x19 * x86,
-            x19 * x87 * x96,
-            x110 * x15 * x86,
-            x102 * x15 * x87,
-            x15 * x88 * x96,
-            x115 * x121 * x3 * x86,
-            x109 * x8 * x87,
-            x102 * x8 * x88,
-            x8 * x89 * x96,
-            x122 * x86,
-            x115 * x7 * x87,
-            x109 * x7 * x88,
-            x102 * x7 * x89,
-            x7 * x90 * x96,
-            x134 * x93,
-            x133 * x62 * x98,
-            x139 * x98,
-            x104 * x133 * x52,
-            x104 * x138 * x62,
-            x104 * x145,
-            x116 * x133 * x64,
-            x116 * x138 * x52,
-            x116 * x144 * x62,
-            x116 * x150 * x49,
-            x151 * x35 * x74,
-            x152 * x35 * x64,
-            x153 * x35 * x52,
-            x155 * x35 * x44,
-            x160 * x35,
-            x134 * x80 * x92,
-            x133 * x19 * x82,
-            x139 * x19 * x80,
-            x133 * x15 * x83,
-            x138 * x15 * x82,
-            x145 * x15 * x80,
-            x133 * x8 * x84,
-            x138 * x8 * x83,
-            x144 * x8 * x82,
-            x155 * x3 * x80,
-            x151 * x85,
-            x152 * x84,
-            x153 * x83,
-            x150 * x7 * x82,
-            x160 * x80,
-            x161 * x49 * x92,
-            x161 * x19 * x62,
-            x162 * x19 * x49,
-            x15 * x161 * x52,
-            x15 * x162 * x62,
-            x15 * x163 * x49,
-            x161 * x64 * x8,
-            x162 * x52 * x8,
-            x154 * x163 * x3 * x44,
-            x164 * x3,
-            x161 * x7 * x74,
-            x162 * x64 * x7,
-            x163 * x52 * x7,
-            x164 * x44,
-            x154
-            * (
-                x0
-                * (
-                    x140 * (x156 + x157)
-                    + 4.0 * x148
-                    + 4.0 * x149
-                    + x17 * (3.0 * x146 + 3.0 * x147 + x69)
-                )
-                + x159 * x86
-            ),
-        ]
+                x18 * (3.0 * x12 + 3.0 * x14 + x20)
+                + x22 * (x24 + x25)
+                + 4.0 * x29
+                + 4.0 * x35
+            )
+            + x36 * x39
+        )
     )
+    result[0, 0, 1] = numpy.sum(x50 * x52)
+    result[0, 0, 2] = numpy.sum(x52 * x55)
+    result[0, 0, 3] = numpy.sum(x57 * x64)
+    result[0, 0, 4] = numpy.sum(52.2557811793745 * x50 * x54 * x57)
+    result[0, 0, 5] = numpy.sum(x56 * x72)
+    result[0, 0, 6] = numpy.sum(x77 * x79)
+    result[0, 0, 7] = numpy.sum(x54 * x79 * x80)
+    result[0, 0, 8] = numpy.sum(x68 * x81 * x82)
+    result[0, 0, 9] = numpy.sum(x81 * x87)
+    result[0, 0, 10] = numpy.sum(x89 * x93)
+    result[0, 0, 11] = numpy.sum(x77 * x89 * x94)
+    result[0, 0, 12] = numpy.sum(x62 * x88 * x96)
+    result[0, 0, 13] = numpy.sum(x49 * x70 * x87 * x89)
+    result[0, 0, 14] = numpy.sum(x101 * x89)
+    result[0, 1, 0] = numpy.sum(x102 * x103)
+    result[0, 1, 1] = numpy.sum(x104 * x106 * x38)
+    result[0, 1, 2] = numpy.sum(x102 * x107 * x55)
+    result[0, 1, 3] = numpy.sum(x108 * x109 * x34)
+    result[0, 1, 4] = numpy.sum(x110 * x112 * x34)
+    result[0, 1, 5] = numpy.sum(x102 * x34 * x72)
+    result[0, 1, 6] = numpy.sum(x114 * x32)
+    result[0, 1, 7] = numpy.sum(x108 * x112 * x115)
+    result[0, 1, 8] = numpy.sum(x104 * x115 * x96)
+    result[0, 1, 9] = numpy.sum(x102 * x116 * x32 * x87)
+    result[0, 1, 10] = numpy.sum(x117 * x118 * x43)
+    result[0, 1, 11] = numpy.sum(x114 * x27 * x54)
+    result[0, 1, 12] = numpy.sum(x108 * x119 * x27)
+    result[0, 1, 13] = numpy.sum(x104 * x120 * x87)
+    result[0, 1, 14] = numpy.sum(x101 * x102 * x118)
+    result[0, 2, 0] = numpy.sum(x103 * x121)
+    result[0, 2, 1] = numpy.sum(x107 * x121 * x50)
+    result[0, 2, 2] = numpy.sum(x122 * x123 * x38)
+    result[0, 2, 3] = numpy.sum(x121 * x34 * x42 * x64)
+    result[0, 2, 4] = numpy.sum(x122 * x124 * x34)
+    result[0, 2, 5] = numpy.sum(x125 * x34 * x71)
+    result[0, 2, 6] = numpy.sum(x111 * x121 * x32 * x77)
+    result[0, 2, 7] = numpy.sum(x115 * x126 * x61)
+    result[0, 2, 8] = numpy.sum(x115 * x116 * x125 * x49)
+    result[0, 2, 9] = numpy.sum(x128 * x32)
+    result[0, 2, 10] = numpy.sum(x118 * x121 * x93)
+    result[0, 2, 11] = numpy.sum(x120 * x122 * x77)
+    result[0, 2, 12] = numpy.sum(x120 * x125 * x62)
+    result[0, 2, 13] = numpy.sum(x128 * x27 * x49)
+    result[0, 2, 14] = numpy.sum(x100 * x118 * x129)
+    result[1, 0, 0] = numpy.sum(x132 * x137)
+    result[1, 0, 1] = numpy.sum(x141 * x143)
+    result[1, 0, 2] = numpy.sum(x135 * x143 * x54)
+    result[1, 0, 3] = numpy.sum(x109 * x148 * x149)
+    result[1, 0, 4] = numpy.sum(x112 * x149 * x150)
+    result[1, 0, 5] = numpy.sum(x119 * x135 * x149)
+    result[1, 0, 6] = numpy.sum(x106 * x155 * x156)
+    result[1, 0, 7] = numpy.sum(x148 * x156 * x157)
+    result[1, 0, 8] = numpy.sum(x150 * x156 * x96)
+    result[1, 0, 9] = numpy.sum(x156 * x158 * x87)
+    result[1, 0, 10] = numpy.sum(x165 * x36)
+    result[1, 0, 11] = numpy.sum(x167 * x36 * x54)
+    result[1, 0, 12] = numpy.sum(x148 * x170 * x36)
+    result[1, 0, 13] = numpy.sum(x141 * x172 * x36)
+    result[1, 0, 14] = numpy.sum(x135 * x174 * x36)
+    result[1, 1, 0] = numpy.sum(x131 * x136 * x175)
+    result[1, 1, 1] = numpy.sum(x176 * x178)
+    result[1, 1, 2] = numpy.sum(x175 * x178 * x54)
+    result[1, 1, 3] = numpy.sum(x179 * x181)
+    result[1, 1, 4] = numpy.sum(x157 * x16 * x176)
+    result[1, 1, 5] = numpy.sum(x119 * x16 * x175)
+    result[1, 1, 6] = numpy.sum(x182 * x3)
+    result[1, 1, 7] = numpy.sum(52.2557811793745 * x163 * x179 * x3 * x94)
+    result[1, 1, 8] = numpy.sum(x176 * x184 * x68)
+    result[1, 1, 9] = numpy.sum(x172 * x175 * x3)
+    result[1, 1, 10] = numpy.sum(
+        x164
+        * (
+            x0
+            * (
+                x144 * (x159 + x160)
+                + 4.0 * x153
+                + 4.0 * x154
+                + x18 * (3.0 * x151 + 3.0 * x152 + x76)
+            )
+            + x102 * x162
+        )
+    )
+    result[1, 1, 11] = numpy.sum(x182 * x54)
+    result[1, 1, 12] = numpy.sum(x170 * x179)
+    result[1, 1, 13] = numpy.sum(x172 * x176)
+    result[1, 1, 14] = numpy.sum(x174 * x175)
+    result[1, 2, 0] = numpy.sum(x121 * x131 * x137)
+    result[1, 2, 1] = numpy.sum(x121 * x141 * x178)
+    result[1, 2, 2] = numpy.sum(x126 * x135 * x177)
+    result[1, 2, 3] = numpy.sum(x121 * x148 * x181)
+    result[1, 2, 4] = numpy.sum(x126 * x150 * x16)
+    result[1, 2, 5] = numpy.sum(x125 * x158 * x180)
+    result[1, 2, 6] = numpy.sum(x121 * x167 * x3)
+    result[1, 2, 7] = numpy.sum(x122 * x148 * x184)
+    result[1, 2, 8] = numpy.sum(x125 * x150 * x183)
+    result[1, 2, 9] = numpy.sum(x135 * x186 * x3)
+    result[1, 2, 10] = numpy.sum(x121 * x165)
+    result[1, 2, 11] = numpy.sum(x122 * x155 * x185)
+    result[1, 2, 12] = numpy.sum(x125 * x148 * x169)
+    result[1, 2, 13] = numpy.sum(x141 * x186)
+    result[1, 2, 14] = numpy.sum(x129 * x135 * x173)
+    result[2, 0, 0] = numpy.sum(x132 * x191)
+    result[2, 0, 1] = numpy.sum(x189 * x192 * x49)
+    result[2, 0, 2] = numpy.sum(x192 * x196)
+    result[2, 0, 3] = numpy.sum(x149 * x197 * x62)
+    result[2, 0, 4] = numpy.sum(x124 * x149 * x196)
+    result[2, 0, 5] = numpy.sum(x149 * x202 * x71)
+    result[2, 0, 6] = numpy.sum(x156 * x197 * x77)
+    result[2, 0, 7] = numpy.sum(x156 * x203 * x80)
+    result[2, 0, 8] = numpy.sum(x124 * x156 * x202)
+    result[2, 0, 9] = numpy.sum(x123 * x156 * x208)
+    result[2, 0, 10] = numpy.sum(x209 * x36 * x92)
+    result[2, 0, 11] = numpy.sum(x196 * x210 * x36)
+    result[2, 0, 12] = numpy.sum(x202 * x211 * x36)
+    result[2, 0, 13] = numpy.sum(x214 * x36 * x49)
+    result[2, 0, 14] = numpy.sum(x220 * x36)
+    result[2, 1, 0] = numpy.sum(x102 * x131 * x191)
+    result[2, 1, 1] = numpy.sum(x104 * x177 * x197)
+    result[2, 1, 2] = numpy.sum(x102 * x196 * x221)
+    result[2, 1, 3] = numpy.sum(x108 * x180 * x197)
+    result[2, 1, 4] = numpy.sum(x110 * x16 * x203)
+    result[2, 1, 5] = numpy.sum(x102 * x202 * x222)
+    result[2, 1, 6] = numpy.sum(x189 * x223 * x3)
+    result[2, 1, 7] = numpy.sum(x108 * x184 * x196)
+    result[2, 1, 8] = numpy.sum(x110 * x183 * x202)
+    result[2, 1, 9] = numpy.sum(x102 * x214 * x3)
+    result[2, 1, 10] = numpy.sum(x117 * x209)
+    result[2, 1, 11] = numpy.sum(x196 * x223)
+    result[2, 1, 12] = numpy.sum(x108 * x169 * x202)
+    result[2, 1, 13] = numpy.sum(x104 * x185 * x208)
+    result[2, 1, 14] = numpy.sum(x102 * x220)
+    result[2, 2, 0] = numpy.sum(x131 * x190 * x224)
+    result[2, 2, 1] = numpy.sum(x221 * x224 * x49)
+    result[2, 2, 2] = numpy.sum(x221 * x225)
+    result[2, 2, 3] = numpy.sum(x16 * x224 * x62 * x95)
+    result[2, 2, 4] = numpy.sum(x124 * x16 * x225)
+    result[2, 2, 5] = numpy.sum(x222 * x226)
+    result[2, 2, 6] = numpy.sum(x210 * x224 * x3)
+    result[2, 2, 7] = numpy.sum(x183 * x225 * x80)
+    result[2, 2, 8] = numpy.sum(x212 * x226 * x3 * x82)
+    result[2, 2, 9] = numpy.sum(x227 * x3)
+    result[2, 2, 10] = numpy.sum(x173 * x224 * x92)
+    result[2, 2, 11] = numpy.sum(x210 * x225)
+    result[2, 2, 12] = numpy.sum(x211 * x226)
+    result[2, 2, 13] = numpy.sum(x227 * x49)
+    result[2, 2, 14] = numpy.sum(
+        x219
+        * (
+            x0
+            * (
+                x18 * (3.0 * x204 + 3.0 * x205 + x86)
+                + x198 * (x215 + x216)
+                + 4.0 * x206
+                + 4.0 * x207
+            )
+            + x121 * x218
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_20(a, A, b, B, C):
+def diag_quadrupole3d_20(ax, da, A, bx, db, B, C):
     """Cartesian 3D (ds) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 6, 1), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - C[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3**2 * x7
-    x9 = x0 * x7
-    x10 = -x2 - A[0]
-    x11 = 2.0 * x3
-    x12 = x8 + x9
-    x13 = x10 * x12 + x11 * x9
-    x14 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3**2 * x8
+    x10 = x0 * x8
+    x11 = -x2 - A[0]
+    x12 = 2.0 * x3
+    x13 = x10 + x9
+    x14 = x10 * x12 + x11 * x13
     x15 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x16 = 3.14159265358979 * x1 * x15
-    x17 = x14 * x16
-    x18 = -x1 * (a * A[1] + b * B[1])
-    x19 = -x18 - A[1]
-    x20 = x13 * x17
-    x21 = -x1 * (a * A[2] + b * B[2])
-    x22 = -x21 - A[2]
-    x23 = x14 * x6
-    x24 = x0 * x23
-    x25 = x19**2 * x23 + x24
-    x26 = x15 * x6
-    x27 = x0 * x26
-    x28 = x22**2 * x26 + x27
-    x29 = -x18 - C[1]
-    x30 = x23 * x29**2
-    x31 = x24 + x30
-    x32 = x10**2 * x7 + x9
-    x33 = 2.0 * x29
-    x34 = x19 * x31 + x24 * x33
-    x35 = x16 * x5
-    x36 = x34 * x35
-    x37 = -x21 - C[2]
-    x38 = x26 * x37**2
-    x39 = x27 + x38
-    x40 = 3.14159265358979 * x1 * x14 * x5
-    x41 = 2.0 * x37
-    x42 = x22 * x39 + x27 * x41
-    x43 = x40 * x42
+    x16 = numpy.sqrt(ax**3.5)
+    x17 = numpy.sqrt(bx**1.5)
+    x18 = 6.53197264742181 * da * db * x16 * x17
+    x19 = x15 * x18
+    x20 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x21 = 0.564189583547756 * x1
+    x22 = x20 * x21
+    x23 = -x1 * (ax * A[1] + bx * B[1])
+    x24 = -x23 - A[1]
+    x25 = 11.3137084989848 * da * db * x16 * x17
+    x26 = x15 * x25
+    x27 = x14 * x22 * x26
+    x28 = -x1 * (ax * A[2] + bx * B[2])
+    x29 = -x28 - A[2]
+    x30 = x20 * x7
+    x31 = x0 * x30
+    x32 = x24**2 * x30 + x31
+    x33 = 0.318309886183791 * x6
+    x34 = x13 * x33
+    x35 = x26 * x29
+    x36 = x15 * x7
+    x37 = x0 * x36
+    x38 = x18 * (x29**2 * x36 + x37)
+    x39 = x10 + x11**2 * x8
+    x40 = -x23 - C[1]
+    x41 = x30 * x40**2
+    x42 = x31 + x41
+    x43 = x33 * x42
+    x44 = 2.0 * x40
+    x45 = x24 * x42 + x31 * x44
+    x46 = x21 * x5
+    x47 = x26 * x45 * x46
+    x48 = -x28 - C[2]
+    x49 = x36 * x48**2
+    x50 = x37 + x49
+    x51 = x18 * x33 * x50
+    x52 = x22 * x5
+    x53 = 2.0 * x48
+    x54 = x29 * x50 + x37 * x53
+    x55 = x25 * x52 * x54
 
     # 18 item(s)
-    return numpy.array(
-        [
-            x17 * (x0 * (x10 * x11 * x7 + x8 + 3.0 * x9) + x10 * x13),
-            x19 * x20,
-            x20 * x22,
-            x12 * x25 * x26,
-            x12 * x17 * x19 * x22,
-            x12 * x23 * x28,
-            x26 * x31 * x32,
-            x10 * x36,
-            x10 * x22 * x31 * x35,
-            x35 * (x0 * (x19 * x23 * x33 + 3.0 * x24 + x30) + x19 * x34),
-            x22 * x36,
-            x28 * x31 * x7,
-            x23 * x32 * x39,
-            x10 * x19 * x39 * x40,
-            x10 * x43,
-            x25 * x39 * x7,
-            x19 * x43,
-            x40 * (x0 * (x22 * x26 * x41 + 3.0 * x27 + x38) + x22 * x42),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x19 * x22 * (x0 * (3.0 * x10 + x11 * x12 * x8 + x9) + x11 * x14)
     )
+    result[0, 1, 0] = numpy.sum(x24 * x27)
+    result[0, 2, 0] = numpy.sum(x27 * x29)
+    result[0, 3, 0] = numpy.sum(x19 * x32 * x34)
+    result[0, 4, 0] = numpy.sum(x13 * x22 * x24 * x35)
+    result[0, 5, 0] = numpy.sum(x20 * x34 * x38)
+    result[1, 0, 0] = numpy.sum(x19 * x39 * x43)
+    result[1, 1, 0] = numpy.sum(x11 * x47)
+    result[1, 2, 0] = numpy.sum(x11 * x35 * x42 * x46)
+    result[1, 3, 0] = numpy.sum(
+        x19 * x46 * (x0 * (x24 * x30 * x44 + 3.0 * x31 + x41) + x24 * x45)
+    )
+    result[1, 4, 0] = numpy.sum(x29 * x47)
+    result[1, 5, 0] = numpy.sum(x38 * x43 * x5)
+    result[2, 0, 0] = numpy.sum(x20 * x39 * x51)
+    result[2, 1, 0] = numpy.sum(x11 * x24 * x25 * x50 * x52)
+    result[2, 2, 0] = numpy.sum(x11 * x55)
+    result[2, 3, 0] = numpy.sum(x32 * x5 * x51)
+    result[2, 4, 0] = numpy.sum(x24 * x55)
+    result[2, 5, 0] = numpy.sum(
+        x18 * x52 * (x0 * (x29 * x36 * x53 + 3.0 * x37 + x49) + x29 * x54)
+    )
+    return result
 
 
-def diag_quadrupole3d_21(a, A, b, B, C):
+def diag_quadrupole3d_21(ax, da, A, bx, db, B, C):
     """Cartesian 3D (dp) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 6, 3), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - A[0]
     x4 = -x2 - C[0]
-    x5 = a * b * x1
+    x5 = ax * bx * x1
     x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = 1.77245385090552 * numpy.sqrt(x1)
-    x8 = x6 * x7
-    x9 = x4**2 * x8
-    x10 = x0 * x8
-    x11 = x10 + x9
-    x12 = x11 * x3
-    x13 = -x2 - B[0]
-    x14 = x11 * x13
-    x15 = x13 * x8
-    x16 = x4 * x8
-    x17 = 2.0 * x0
-    x18 = x15 * x4
-    x19 = 2.0 * x3
-    x20 = 3.0 * x10 + x9
-    x21 = x16 * x17
-    x22 = x14 + x21
-    x23 = x0 * (2.0 * x18 + x20) + x22 * x3
-    x24 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x7 = numpy.sqrt(x1)
+    x8 = 1.77245385090552 * x7
+    x9 = x6 * x8
+    x10 = x4**2 * x9
+    x11 = x0 * x9
+    x12 = x10 + x11
+    x13 = x12 * x3
+    x14 = -x2 - B[0]
+    x15 = x12 * x14
+    x16 = x14 * x9
+    x17 = x4 * x9
+    x18 = 2.0 * x0
+    x19 = x16 * x4
+    x20 = 2.0 * x3
+    x21 = x10 + 3.0 * x11
+    x22 = x17 * x18
+    x23 = x15 + x22
+    x24 = x0 * (2.0 * x19 + x21) + x23 * x3
     x25 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x26 = 3.14159265358979 * x1 * x25
-    x27 = x24 * x26
-    x28 = -x1 * (a * A[1] + b * B[1])
-    x29 = -x28 - B[1]
-    x30 = x12 + x21
-    x31 = x27 * (x0 * (x16 * x19 + x20) + x3 * x30)
-    x32 = -x1 * (a * A[2] + b * B[2])
-    x33 = -x32 - B[2]
-    x34 = -x28 - A[1]
-    x35 = x23 * x27
-    x36 = x0 * x7
-    x37 = x24 * x36
-    x38 = x24 * x7
-    x39 = x34 * x38
-    x40 = x29 * x39 + x37
-    x41 = x25 * x7
-    x42 = x27 * x30
-    x43 = -x32 - A[2]
-    x44 = x25 * x36
-    x45 = x41 * x43
-    x46 = x33 * x45 + x44
-    x47 = x34**2 * x38 + x37
-    x48 = x29 * x38
-    x49 = x0 * (x39 + x48) + x34 * x40
-    x50 = x33 * x41
-    x51 = x41 * x43**2 + x44
-    x52 = x0 * (x45 + x50) + x43 * x46
-    x53 = -x28 - C[1]
-    x54 = x38 * x53**2
-    x55 = x37 + x54
-    x56 = x3 * x8
-    x57 = x10 + x15 * x3
-    x58 = x0 * (x15 + x56) + x3 * x57
-    x59 = x29 * x55
-    x60 = x38 * x53
-    x61 = x17 * x60
-    x62 = x59 + x61
-    x63 = x10 + x3**2 * x8
-    x64 = x34 * x55
-    x65 = x61 + x64
-    x66 = x48 * x53
-    x67 = 3.0 * x37 + x54
-    x68 = x0 * (2.0 * x66 + x67) + x34 * x62
-    x69 = x26 * x6
-    x70 = x68 * x69
-    x71 = x3 * x69
-    x72 = 2.0 * x34
-    x73 = x69 * (x0 * (x60 * x72 + x67) + x34 * x65)
-    x74 = -x32 - C[2]
-    x75 = x41 * x74**2
-    x76 = x44 + x75
-    x77 = x33 * x76
-    x78 = x41 * x74
-    x79 = x17 * x78
-    x80 = x77 + x79
-    x81 = 3.14159265358979 * x1 * x24 * x6
-    x82 = x3 * x81
-    x83 = x43 * x76
-    x84 = x79 + x83
-    x85 = x50 * x74
-    x86 = 3.0 * x44 + x75
-    x87 = x0 * (2.0 * x85 + x86) + x43 * x80
-    x88 = x81 * x87
-    x89 = 2.0 * x43
-    x90 = x81 * (x0 * (x78 * x89 + x86) + x43 * x84)
+    x26 = da * db * numpy.sqrt(ax**3.5) * numpy.sqrt(bx**2.5)
+    x27 = x25 * x26
+    x28 = 13.0639452948436 * x27
+    x29 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x30 = 0.564189583547756 * x1
+    x31 = x29 * x30
+    x32 = x28 * x31
+    x33 = -x1 * (ax * A[1] + bx * B[1])
+    x34 = -x33 - B[1]
+    x35 = x13 + x22
+    x36 = x32 * (x0 * (x17 * x20 + x21) + x3 * x35)
+    x37 = -x1 * (ax * A[2] + bx * B[2])
+    x38 = -x37 - B[2]
+    x39 = -x33 - A[1]
+    x40 = x31 * x39
+    x41 = 22.6274169979695 * x27
+    x42 = x24 * x41
+    x43 = x35 * x41
+    x44 = x0 * x8
+    x45 = x29 * x44
+    x46 = x29 * x8
+    x47 = x39 * x46
+    x48 = x34 * x47 + x45
+    x49 = 0.318309886183791 * x7
+    x50 = x48 * x49
+    x51 = -x37 - A[2]
+    x52 = x31 * x51
+    x53 = x26 * x49
+    x54 = x29 * x53
+    x55 = x25 * x44
+    x56 = x25 * x8
+    x57 = x51 * x56
+    x58 = x38 * x57 + x55
+    x59 = 22.6274169979695 * x58
+    x60 = x54 * x59
+    x61 = x39**2 * x46 + x45
+    x62 = x28 * x49
+    x63 = x61 * x62
+    x64 = x34 * x46
+    x65 = x0 * (x47 + x64) + x39 * x48
+    x66 = x41 * x51
+    x67 = x51**2 * x56 + x55
+    x68 = 13.0639452948436 * x54
+    x69 = x67 * x68
+    x70 = x38 * x56
+    x71 = x0 * (x57 + x70) + x51 * x58
+    x72 = x11 + x16 * x3
+    x73 = x0 * (x16 + x3 * x9) + x3 * x72
+    x74 = -x33 - C[1]
+    x75 = x46 * x74**2
+    x76 = x45 + x75
+    x77 = x62 * x76
+    x78 = x34 * x76
+    x79 = x46 * x74
+    x80 = x18 * x79
+    x81 = x78 + x80
+    x82 = x11 + x3**2 * x9
+    x83 = x39 * x76
+    x84 = x80 + x83
+    x85 = x41 * x84
+    x86 = x49 * x72
+    x87 = x64 * x74
+    x88 = 3.0 * x45 + x75
+    x89 = x0 * (2.0 * x87 + x88) + x39 * x81
+    x90 = x30 * x6
+    x91 = x89 * x90
+    x92 = x3 * x90
+    x93 = x53 * x6
+    x94 = x59 * x93
+    x95 = 2.0 * x39
+    x96 = x28 * x90
+    x97 = x96 * (x0 * (x79 * x95 + x88) + x39 * x84)
+    x98 = 13.0639452948436 * x93
+    x99 = x67 * x98
+    x100 = -x37 - C[2]
+    x101 = x100**2 * x56
+    x102 = x101 + x55
+    x103 = x102 * x68
+    x104 = x102 * x38
+    x105 = x100 * x56
+    x106 = x105 * x18
+    x107 = x104 + x106
+    x108 = x54 * x72
+    x109 = 22.6274169979695 * x102
+    x110 = x26 * x6
+    x111 = x110 * x50
+    x112 = x110 * x31
+    x113 = x112 * x3
+    x114 = x102 * x51
+    x115 = x106 + x114
+    x116 = 22.6274169979695 * x115
+    x117 = x100 * x70
+    x118 = x101 + 3.0 * x55
+    x119 = x0 * (2.0 * x117 + x118) + x107 * x51
+    x120 = 22.6274169979695 * x119
+    x121 = x102 * x98
+    x122 = x112 * x39
+    x123 = 2.0 * x51
+    x124 = 13.0639452948436 * x112
+    x125 = x124 * (x0 * (x105 * x123 + x118) + x115 * x51)
 
     # 54 item(s)
-    return numpy.array(
-        [
-            x27
-            * (
-                x0 * (4.0 * x10 * x4 + x12 + x14 + x17 * (x15 + x16) + x19 * (x10 + x18))
-                + x23 * x3
-            ),
-            x29 * x31,
-            x31 * x33,
-            x34 * x35,
-            x30 * x40 * x41,
-            x33 * x34 * x42,
-            x35 * x43,
-            x29 * x42 * x43,
-            x30 * x38 * x46,
-            x22 * x41 * x47,
-            x11 * x41 * x49,
-            x11 * x47 * x50,
-            x22 * x27 * x34 * x43,
-            x11 * x40 * x45,
-            x11 * x39 * x46,
-            x22 * x38 * x51,
-            x11 * x48 * x51,
-            x11 * x38 * x52,
-            x41 * x55 * x58,
-            x41 * x62 * x63,
-            x50 * x55 * x63,
-            x41 * x57 * x65,
-            x3 * x70,
-            x33 * x65 * x71,
-            x45 * x55 * x57,
-            x43 * x62 * x71,
-            x46 * x55 * x56,
-            x13 * x73,
-            x69
-            * (
-                x0 * (x17 * (x48 + x60) + 4.0 * x37 * x53 + x59 + x64 + x72 * (x37 + x66))
-                + x34 * x68
-            ),
-            x33 * x73,
-            x13 * x43 * x65 * x69,
-            x43 * x70,
-            x46 * x65 * x8,
-            x15 * x51 * x55,
-            x51 * x62 * x8,
-            x52 * x55 * x8,
-            x38 * x58 * x76,
-            x48 * x63 * x76,
-            x38 * x63 * x80,
-            x39 * x57 * x76,
-            x40 * x56 * x76,
-            x34 * x80 * x82,
-            x38 * x57 * x84,
-            x29 * x82 * x84,
-            x3 * x88,
-            x15 * x47 * x76,
-            x49 * x76 * x8,
-            x47 * x8 * x80,
-            x13 * x34 * x81 * x84,
-            x40 * x8 * x84,
-            x34 * x88,
-            x13 * x90,
-            x29 * x90,
-            x81
-            * (
-                x0 * (x17 * (x50 + x78) + 4.0 * x44 * x74 + x77 + x83 + x89 * (x44 + x85))
-                + x43 * x87
-            ),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x32
+        * (
+            x0 * (4.0 * x11 * x4 + x13 + x15 + x18 * (x16 + x17) + x20 * (x11 + x19))
+            + x24 * x3
+        )
     )
+    result[0, 0, 1] = numpy.sum(x34 * x36)
+    result[0, 0, 2] = numpy.sum(x36 * x38)
+    result[0, 1, 0] = numpy.sum(x40 * x42)
+    result[0, 1, 1] = numpy.sum(x43 * x50)
+    result[0, 1, 2] = numpy.sum(x38 * x40 * x43)
+    result[0, 2, 0] = numpy.sum(x42 * x52)
+    result[0, 2, 1] = numpy.sum(x34 * x43 * x52)
+    result[0, 2, 2] = numpy.sum(x35 * x60)
+    result[0, 3, 0] = numpy.sum(x23 * x63)
+    result[0, 3, 1] = numpy.sum(x12 * x62 * x65)
+    result[0, 3, 2] = numpy.sum(x12 * x38 * x63)
+    result[0, 4, 0] = numpy.sum(x23 * x40 * x66)
+    result[0, 4, 1] = numpy.sum(x12 * x50 * x66)
+    result[0, 4, 2] = numpy.sum(x12 * x39 * x60)
+    result[0, 5, 0] = numpy.sum(x23 * x69)
+    result[0, 5, 1] = numpy.sum(x12 * x34 * x69)
+    result[0, 5, 2] = numpy.sum(x12 * x68 * x71)
+    result[1, 0, 0] = numpy.sum(x73 * x77)
+    result[1, 0, 1] = numpy.sum(x62 * x81 * x82)
+    result[1, 0, 2] = numpy.sum(x38 * x77 * x82)
+    result[1, 1, 0] = numpy.sum(x85 * x86)
+    result[1, 1, 1] = numpy.sum(x3 * x41 * x91)
+    result[1, 1, 2] = numpy.sum(x38 * x85 * x92)
+    result[1, 2, 0] = numpy.sum(x66 * x76 * x86)
+    result[1, 2, 1] = numpy.sum(x66 * x81 * x92)
+    result[1, 2, 2] = numpy.sum(x3 * x76 * x94)
+    result[1, 3, 0] = numpy.sum(x14 * x97)
+    result[1, 3, 1] = numpy.sum(
+        x96
+        * (
+            x0 * (x18 * (x64 + x79) + 4.0 * x45 * x74 + x78 + x83 + x95 * (x45 + x87))
+            + x39 * x89
+        )
+    )
+    result[1, 3, 2] = numpy.sum(x38 * x97)
+    result[1, 4, 0] = numpy.sum(x14 * x51 * x85 * x90)
+    result[1, 4, 1] = numpy.sum(x66 * x91)
+    result[1, 4, 2] = numpy.sum(x84 * x94)
+    result[1, 5, 0] = numpy.sum(x14 * x76 * x99)
+    result[1, 5, 1] = numpy.sum(x81 * x99)
+    result[1, 5, 2] = numpy.sum(x71 * x76 * x98)
+    result[2, 0, 0] = numpy.sum(x103 * x73)
+    result[2, 0, 1] = numpy.sum(x103 * x34 * x82)
+    result[2, 0, 2] = numpy.sum(x107 * x68 * x82)
+    result[2, 1, 0] = numpy.sum(x108 * x109 * x39)
+    result[2, 1, 1] = numpy.sum(x109 * x111 * x3)
+    result[2, 1, 2] = numpy.sum(22.6274169979695 * x107 * x113 * x39)
+    result[2, 2, 0] = numpy.sum(x108 * x116)
+    result[2, 2, 1] = numpy.sum(x113 * x116 * x34)
+    result[2, 2, 2] = numpy.sum(x113 * x120)
+    result[2, 3, 0] = numpy.sum(x121 * x14 * x61)
+    result[2, 3, 1] = numpy.sum(x121 * x65)
+    result[2, 3, 2] = numpy.sum(x107 * x61 * x98)
+    result[2, 4, 0] = numpy.sum(x116 * x122 * x14)
+    result[2, 4, 1] = numpy.sum(x111 * x116)
+    result[2, 4, 2] = numpy.sum(x120 * x122)
+    result[2, 5, 0] = numpy.sum(x125 * x14)
+    result[2, 5, 1] = numpy.sum(x125 * x34)
+    result[2, 5, 2] = numpy.sum(
+        x124
+        * (
+            x0
+            * (4.0 * x100 * x55 + x104 + x114 + x123 * (x117 + x55) + x18 * (x105 + x70))
+            + x119 * x51
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_22(a, A, b, B, C):
+def diag_quadrupole3d_22(ax, da, A, bx, db, B, C):
     """Cartesian 3D (dd) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 6, 6), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
     x4 = -x2 - C[0]
-    x5 = a * b * x1
+    x5 = ax * bx * x1
     x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = 1.77245385090552 * numpy.sqrt(x1)
-    x8 = x6 * x7
-    x9 = x4**2 * x8
-    x10 = x0 * x8
-    x11 = x10 + x9
-    x12 = x11 * x3
-    x13 = 2.0 * x0
-    x14 = x4 * x8
-    x15 = x13 * x14
-    x16 = x12 + x15
-    x17 = x16 * x3
-    x18 = x3**2 * x8
-    x19 = 3.0 * x10
-    x20 = x3 * x8
-    x21 = x20 * x4
-    x22 = x19 + 2.0 * x21
-    x23 = x0 * (x14 + x20)
-    x24 = x10 + x21
-    x25 = x24 * x3
-    x26 = -x2 - A[0]
-    x27 = 2.0 * x26
-    x28 = x16 * x26
-    x29 = x0 * (x22 + x9)
-    x30 = 4.0 * x10 * x4 + 2.0 * x23
-    x31 = x17 + x29
-    x32 = x0 * (2.0 * x12 + 2.0 * x25 + x30) + x26 * x31
-    x33 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x7 = numpy.sqrt(x1)
+    x8 = 1.77245385090552 * x7
+    x9 = x6 * x8
+    x10 = x4**2 * x9
+    x11 = x0 * x9
+    x12 = x10 + x11
+    x13 = x12 * x3
+    x14 = 2.0 * x0
+    x15 = x4 * x9
+    x16 = x14 * x15
+    x17 = x13 + x16
+    x18 = x17 * x3
+    x19 = x3**2 * x9
+    x20 = 3.0 * x11
+    x21 = x3 * x9
+    x22 = x21 * x4
+    x23 = x20 + 2.0 * x22
+    x24 = x0 * (x15 + x21)
+    x25 = x11 + x22
+    x26 = x25 * x3
+    x27 = -x2 - A[0]
+    x28 = 2.0 * x27
+    x29 = x17 * x27
+    x30 = x0 * (x10 + x23)
+    x31 = 4.0 * x11 * x4 + 2.0 * x24
+    x32 = x18 + x30
+    x33 = x0 * (2.0 * x13 + 2.0 * x26 + x31) + x27 * x32
     x34 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x35 = 3.14159265358979 * x1 * x34
-    x36 = x33 * x35
-    x37 = -x1 * (a * A[1] + b * B[1])
-    x38 = -x37 - B[1]
-    x39 = x11 * x26
-    x40 = x28 + x29
-    x41 = x36 * (x0 * (x12 + x24 * x27 + x30 + x39) + x26 * x40)
-    x42 = -x1 * (a * A[2] + b * B[2])
-    x43 = -x42 - B[2]
-    x44 = x33 * x7
-    x45 = x38**2 * x44
-    x46 = x0 * x44
-    x47 = x45 + x46
-    x48 = x15 + x39
-    x49 = x0 * (x14 * x27 + x19 + x9) + x26 * x48
-    x50 = x34 * x7
-    x51 = x36 * x43
-    x52 = x43**2 * x50
-    x53 = x0 * x50
-    x54 = x52 + x53
-    x55 = -x37 - A[1]
-    x56 = x32 * x36
-    x57 = x44 * x55
-    x58 = x38 * x57 + x46
-    x59 = x38 * x44
-    x60 = x13 * x59 + x47 * x55
-    x61 = x43 * x50
-    x62 = -x42 - A[2]
-    x63 = x36 * x62
-    x64 = x50 * x62
-    x65 = x43 * x64 + x53
-    x66 = x13 * x61 + x54 * x62
-    x67 = x44 * x55**2 + x46
-    x68 = x0 * (x57 + x59) + x55 * x58
-    x69 = 2.0 * x55
-    x70 = 3.0 * x46
-    x71 = x45 + x70
-    x72 = x0 * (x59 * x69 + x71) + x55 * x60
-    x73 = x50 * x62**2 + x53
-    x74 = x0 * (x61 + x64) + x62 * x65
-    x75 = 2.0 * x62
-    x76 = 3.0 * x53
-    x77 = x52 + x76
-    x78 = x0 * (x61 * x75 + x77) + x62 * x66
-    x79 = -x37 - C[1]
-    x80 = x44 * x79**2
-    x81 = x46 + x80
-    x82 = x10 + x18
-    x83 = x13 * x20 + x26 * x82
-    x84 = x0 * (x18 + x19 + x20 * x27) + x26 * x83
-    x85 = x38 * x81
-    x86 = x44 * x79
-    x87 = x13 * x86
-    x88 = x85 + x87
-    x89 = x26 * x8
-    x90 = x10 + x20 * x26
-    x91 = x0 * (x20 + x89) + x26 * x90
-    x92 = x59 * x79
-    x93 = 2.0 * x92
-    x94 = x70 + x80
-    x95 = x0 * (x93 + x94)
-    x96 = x38 * x88
-    x97 = x95 + x96
-    x98 = x10 + x26**2 * x8
-    x99 = x55 * x81
-    x100 = x87 + x99
-    x101 = x55 * x88
-    x102 = x101 + x95
-    x103 = x46 + x92
-    x104 = x103 * x38
-    x105 = x0 * (x59 + x86)
-    x106 = 2.0 * x105 + 4.0 * x46 * x79
-    x107 = x0 * (2.0 * x104 + x106 + 2.0 * x85) + x55 * x97
-    x108 = x35 * x6
-    x109 = x107 * x108
-    x110 = x108 * x26
-    x111 = x0 * (x69 * x86 + x94) + x100 * x55
-    x112 = x108 * (x0 * (x103 * x69 + x106 + x85 + x99) + x102 * x55)
-    x113 = x108 * x3
-    x114 = -x42 - C[2]
-    x115 = x114**2 * x50
-    x116 = x115 + x53
-    x117 = x116 * x43
-    x118 = x114 * x50
-    x119 = x118 * x13
-    x120 = x117 + x119
-    x121 = x114 * x61
-    x122 = 2.0 * x121
-    x123 = x115 + x76
-    x124 = x0 * (x122 + x123)
-    x125 = x120 * x43
-    x126 = x124 + x125
-    x127 = 3.14159265358979 * x1 * x33 * x6
-    x128 = x127 * x26
-    x129 = x116 * x62
-    x130 = x119 + x129
-    x131 = x120 * x62
-    x132 = x124 + x131
-    x133 = x121 + x53
-    x134 = x133 * x43
-    x135 = x0 * (x118 + x61)
-    x136 = 4.0 * x114 * x53 + 2.0 * x135
-    x137 = x0 * (2.0 * x117 + 2.0 * x134 + x136) + x126 * x62
-    x138 = x127 * x137
-    x139 = x127 * x3
-    x140 = x0 * (x118 * x75 + x123) + x130 * x62
-    x141 = x127 * (x0 * (x117 + x129 + x133 * x75 + x136) + x132 * x62)
+    x35 = da * db * numpy.sqrt(ax**3.5) * numpy.sqrt(bx**3.5)
+    x36 = x34 * x35
+    x37 = 15.084944665313 * x36
+    x38 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x39 = 0.564189583547756 * x1
+    x40 = x38 * x39
+    x41 = -x1 * (ax * A[1] + bx * B[1])
+    x42 = -x41 - B[1]
+    x43 = 26.1278905896872 * x42
+    x44 = x12 * x27
+    x45 = x29 + x30
+    x46 = x36 * x40
+    x47 = x46 * (x0 * (x13 + x25 * x28 + x31 + x44) + x27 * x45)
+    x48 = -x1 * (ax * A[2] + bx * B[2])
+    x49 = -x48 - B[2]
+    x50 = 26.1278905896872 * x49
+    x51 = x16 + x44
+    x52 = x0 * (x10 + x15 * x28 + x20) + x27 * x51
+    x53 = x36 * x52
+    x54 = x38 * x8
+    x55 = x42**2 * x54
+    x56 = x0 * x54
+    x57 = x55 + x56
+    x58 = 15.084944665313 * x57
+    x59 = 0.318309886183791 * x7
+    x60 = x58 * x59
+    x61 = x40 * x43
+    x62 = x34 * x8
+    x63 = x49**2 * x62
+    x64 = x0 * x62
+    x65 = x63 + x64
+    x66 = 15.084944665313 * x65
+    x67 = x35 * x59
+    x68 = x38 * x67
+    x69 = -x41 - A[1]
+    x70 = 26.1278905896872 * x69
+    x71 = x33 * x46
+    x72 = x54 * x69
+    x73 = x42 * x72 + x56
+    x74 = 45.2548339959391 * x73
+    x75 = x36 * x59
+    x76 = x74 * x75
+    x77 = 45.2548339959391 * x49
+    x78 = x45 * x46
+    x79 = x42 * x54
+    x80 = x14 * x79 + x57 * x69
+    x81 = 26.1278905896872 * x51
+    x82 = x75 * x81
+    x83 = x68 * x81
+    x84 = -x48 - A[2]
+    x85 = 26.1278905896872 * x84
+    x86 = 45.2548339959391 * x84
+    x87 = x62 * x84
+    x88 = x49 * x87 + x64
+    x89 = 45.2548339959391 * x88
+    x90 = x68 * x89
+    x91 = x49 * x62
+    x92 = x14 * x91 + x65 * x84
+    x93 = x54 * x69**2 + x56
+    x94 = 15.084944665313 * x93
+    x95 = x0 * (x72 + x79) + x69 * x73
+    x96 = 26.1278905896872 * x17
+    x97 = x75 * x96
+    x98 = 2.0 * x69
+    x99 = 3.0 * x56
+    x100 = x55 + x99
+    x101 = x0 * (x100 + x79 * x98) + x69 * x80
+    x102 = x37 * x59
+    x103 = 26.1278905896872 * x75
+    x104 = x103 * x12
+    x105 = 0.179587122125167 * x35
+    x106 = x105 * x12
+    x107 = x12 * x68
+    x108 = x62 * x84**2 + x64
+    x109 = 15.084944665313 * x108
+    x110 = x68 * x96
+    x111 = x0 * (x87 + x91) + x84 * x88
+    x112 = 2.0 * x84
+    x113 = 3.0 * x64
+    x114 = x113 + x63
+    x115 = 15.084944665313 * x0 * (x112 * x91 + x114) + 15.084944665313 * x84 * x92
+    x116 = -x41 - C[1]
+    x117 = x116**2 * x54
+    x118 = x117 + x56
+    x119 = x11 + x19
+    x120 = x119 * x27 + x14 * x21
+    x121 = x0 * (x19 + x20 + x21 * x28) + x120 * x27
+    x122 = x118 * x42
+    x123 = x116 * x54
+    x124 = x123 * x14
+    x125 = x122 + x124
+    x126 = x11 + x21 * x27
+    x127 = x0 * (x21 + x27 * x9) + x126 * x27
+    x128 = x103 * x127
+    x129 = x116 * x79
+    x130 = 2.0 * x129
+    x131 = x117 + x99
+    x132 = x0 * (x130 + x131)
+    x133 = x125 * x42
+    x134 = x132 + x133
+    x135 = x11 + x27**2 * x9
+    x136 = x105 * x118
+    x137 = x118 * x69
+    x138 = x124 + x137
+    x139 = x103 * x120
+    x140 = x125 * x69
+    x141 = x132 + x140
+    x142 = 45.2548339959391 * x126
+    x143 = x142 * x75
+    x144 = 26.1278905896872 * x27
+    x145 = x129 + x56
+    x146 = x145 * x42
+    x147 = x0 * (x123 + x79)
+    x148 = 4.0 * x116 * x56 + 2.0 * x147
+    x149 = x0 * (2.0 * x122 + 2.0 * x146 + x148) + x134 * x69
+    x150 = x39 * x6
+    x151 = x150 * x36
+    x152 = x149 * x151
+    x153 = x151 * x27
+    x154 = x6 * x67
+    x155 = 26.1278905896872 * x154
+    x156 = x138 * x155
+    x157 = x154 * x89
+    x158 = x118 * x155
+    x159 = x0 * (x123 * x98 + x131) + x138 * x69
+    x160 = x151 * (x0 * (x122 + x137 + x145 * x98 + x148) + x141 * x69)
+    x161 = 26.1278905896872 * x3
+    x162 = x151 * x3
+    x163 = x125 * x155
+    x164 = -x48 - C[2]
+    x165 = x164**2 * x62
+    x166 = x165 + x64
+    x167 = 15.084944665313 * x68
+    x168 = 26.1278905896872 * x68
+    x169 = x127 * x168
+    x170 = x166 * x49
+    x171 = x164 * x62
+    x172 = x14 * x171
+    x173 = x170 + x172
+    x174 = x105 * x166
+    x175 = x164 * x91
+    x176 = 2.0 * x175
+    x177 = x113 + x165
+    x178 = x0 * (x176 + x177)
+    x179 = x173 * x49
+    x180 = x178 + x179
+    x181 = x120 * x168
+    x182 = x142 * x68
+    x183 = x155 * x80
+    x184 = x154 * x74
+    x185 = x35 * x6
+    x186 = x185 * x40
+    x187 = x186 * x27
+    x188 = x166 * x84
+    x189 = x172 + x188
+    x190 = x173 * x84
+    x191 = x178 + x190
+    x192 = 45.2548339959391 * x191
+    x193 = x175 + x64
+    x194 = x193 * x49
+    x195 = x0 * (x171 + x91)
+    x196 = 4.0 * x164 * x64 + 2.0 * x195
+    x197 = x0 * (2.0 * x170 + 2.0 * x194 + x196) + x180 * x84
+    x198 = x186 * x197
+    x199 = x155 * x95
+    x200 = x0 * (x112 * x171 + x177) + x189 * x84
+    x201 = x185 * x200
+    x202 = x186 * (x0 * (x112 * x193 + x170 + x188 + x196) + x191 * x84)
 
     # 108 item(s)
-    return numpy.array(
-        [
-            x36
-            * (
-                x0 * (x13 * (x18 + x22) + x17 + x27 * (x23 + x25) + 2.0 * x28 + 3.0 * x29)
-                + x26 * x32
-            ),
-            x38 * x41,
-            x41 * x43,
-            x47 * x49 * x50,
-            x38 * x49 * x51,
-            x44 * x49 * x54,
-            x55 * x56,
-            x40 * x50 * x58,
-            x40 * x51 * x55,
-            x48 * x50 * x60,
-            x48 * x58 * x61,
-            x48 * x54 * x57,
-            x56 * x62,
-            x38 * x40 * x63,
-            x40 * x44 * x65,
-            x47 * x48 * x64,
-            x48 * x59 * x65,
-            x44 * x48 * x66,
-            x31 * x50 * x67,
-            x16 * x50 * x68,
-            x16 * x61 * x67,
-            x11 * x50 * x72,
-            x11 * x61 * x68,
-            x11 * x54 * x67,
-            x31 * x55 * x63,
-            x16 * x58 * x64,
-            x16 * x57 * x65,
-            x11 * x60 * x64,
-            x11 * x58 * x65,
-            x11 * x57 * x66,
-            x31 * x44 * x73,
-            x16 * x59 * x73,
-            x16 * x44 * x74,
-            x11 * x47 * x73,
-            x11 * x59 * x74,
-            x11 * x44 * x78,
-            x50 * x81 * x84,
-            x50 * x88 * x91,
-            x61 * x81 * x91,
-            x50 * x97 * x98,
-            x61 * x88 * x98,
-            x54 * x81 * x98,
-            x100 * x50 * x83,
-            x102 * x50 * x90,
-            x100 * x61 * x90,
-            x109 * x26,
-            x102 * x110 * x43,
-            x100 * x54 * x89,
-            x64 * x81 * x83,
-            x64 * x88 * x90,
-            x65 * x81 * x90,
-            x110 * x62 * x97,
-            x65 * x88 * x89,
-            x66 * x81 * x89,
-            x111 * x50 * x82,
-            x112 * x3,
-            x111 * x113 * x43,
-            x108
-            * (
-                x0
-                * (2.0 * x101 + x13 * (x71 + x93) + x69 * (x104 + x105) + 3.0 * x95 + x96)
-                + x107 * x55
-            ),
-            x112 * x43,
-            x111 * x54 * x8,
-            x100 * x64 * x82,
-            x102 * x113 * x62,
-            x100 * x20 * x65,
-            x109 * x62,
-            x102 * x65 * x8,
-            x100 * x66 * x8,
-            x73 * x81 * x82,
-            x20 * x73 * x88,
-            x20 * x74 * x81,
-            x73 * x8 * x97,
-            x74 * x8 * x88,
-            x78 * x8 * x81,
-            x116 * x44 * x84,
-            x116 * x59 * x91,
-            x120 * x44 * x91,
-            x116 * x47 * x98,
-            x120 * x59 * x98,
-            x126 * x44 * x98,
-            x116 * x57 * x83,
-            x116 * x58 * x90,
-            x120 * x57 * x90,
-            x116 * x60 * x89,
-            x120 * x58 * x89,
-            x126 * x128 * x55,
-            x130 * x44 * x83,
-            x130 * x59 * x90,
-            x132 * x44 * x90,
-            x130 * x47 * x89,
-            x128 * x132 * x38,
-            x138 * x26,
-            x116 * x67 * x82,
-            x116 * x20 * x68,
-            x120 * x20 * x67,
-            x116 * x72 * x8,
-            x120 * x68 * x8,
-            x126 * x67 * x8,
-            x130 * x57 * x82,
-            x130 * x20 * x58,
-            x132 * x139 * x55,
-            x130 * x60 * x8,
-            x132 * x58 * x8,
-            x138 * x55,
-            x140 * x44 * x82,
-            x139 * x140 * x38,
-            x141 * x3,
-            x140 * x47 * x8,
-            x141 * x38,
-            x127
-            * (
-                x0
-                * (
-                    3.0 * x124
-                    + x125
-                    + x13 * (x122 + x77)
-                    + 2.0 * x131
-                    + x75 * (x134 + x135)
-                )
-                + x137 * x62
-            ),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x37
+        * x40
+        * (
+            x0 * (x14 * (x19 + x23) + x18 + x28 * (x24 + x26) + 2.0 * x29 + 3.0 * x30)
+            + x27 * x33
+        )
     )
+    result[0, 0, 1] = numpy.sum(x43 * x47)
+    result[0, 0, 2] = numpy.sum(x47 * x50)
+    result[0, 0, 3] = numpy.sum(x53 * x60)
+    result[0, 0, 4] = numpy.sum(x49 * x53 * x61)
+    result[0, 0, 5] = numpy.sum(x52 * x66 * x68)
+    result[0, 1, 0] = numpy.sum(x70 * x71)
+    result[0, 1, 1] = numpy.sum(x45 * x76)
+    result[0, 1, 2] = numpy.sum(x69 * x77 * x78)
+    result[0, 1, 3] = numpy.sum(x80 * x82)
+    result[0, 1, 4] = numpy.sum(x49 * x51 * x76)
+    result[0, 1, 5] = numpy.sum(x65 * x69 * x83)
+    result[0, 2, 0] = numpy.sum(x71 * x85)
+    result[0, 2, 1] = numpy.sum(x42 * x78 * x86)
+    result[0, 2, 2] = numpy.sum(x45 * x90)
+    result[0, 2, 3] = numpy.sum(x57 * x82 * x84)
+    result[0, 2, 4] = numpy.sum(x42 * x51 * x90)
+    result[0, 2, 5] = numpy.sum(x83 * x92)
+    result[0, 3, 0] = numpy.sum(x32 * x75 * x94)
+    result[0, 3, 1] = numpy.sum(x95 * x97)
+    result[0, 3, 2] = numpy.sum(x49 * x93 * x97)
+    result[0, 3, 3] = numpy.sum(x101 * x102 * x12)
+    result[0, 3, 4] = numpy.sum(x104 * x49 * x95)
+    result[0, 3, 5] = numpy.sum(x106 * x66 * x93)
+    result[0, 4, 0] = numpy.sum(x32 * x46 * x70 * x84)
+    result[0, 4, 1] = numpy.sum(x17 * x76 * x84)
+    result[0, 4, 2] = numpy.sum(x17 * x69 * x90)
+    result[0, 4, 3] = numpy.sum(x104 * x80 * x84)
+    result[0, 4, 4] = numpy.sum(x106 * x73 * x89)
+    result[0, 4, 5] = numpy.sum(x107 * x70 * x92)
+    result[0, 5, 0] = numpy.sum(x109 * x32 * x68)
+    result[0, 5, 1] = numpy.sum(x108 * x110 * x42)
+    result[0, 5, 2] = numpy.sum(x110 * x111)
+    result[0, 5, 3] = numpy.sum(x106 * x109 * x57)
+    result[0, 5, 4] = numpy.sum(x107 * x111 * x43)
+    result[0, 5, 5] = numpy.sum(x107 * x115)
+    result[1, 0, 0] = numpy.sum(x102 * x118 * x121)
+    result[1, 0, 1] = numpy.sum(x125 * x128)
+    result[1, 0, 2] = numpy.sum(x118 * x128 * x49)
+    result[1, 0, 3] = numpy.sum(x102 * x134 * x135)
+    result[1, 0, 4] = numpy.sum(x103 * x125 * x135 * x49)
+    result[1, 0, 5] = numpy.sum(x135 * x136 * x66)
+    result[1, 1, 0] = numpy.sum(x138 * x139)
+    result[1, 1, 1] = numpy.sum(x141 * x143)
+    result[1, 1, 2] = numpy.sum(x138 * x143 * x49)
+    result[1, 1, 3] = numpy.sum(x144 * x152)
+    result[1, 1, 4] = numpy.sum(x141 * x153 * x77)
+    result[1, 1, 5] = numpy.sum(x156 * x27 * x65)
+    result[1, 2, 0] = numpy.sum(x118 * x139 * x84)
+    result[1, 2, 1] = numpy.sum(x125 * x143 * x84)
+    result[1, 2, 2] = numpy.sum(x126 * x136 * x89)
+    result[1, 2, 3] = numpy.sum(x134 * x153 * x85)
+    result[1, 2, 4] = numpy.sum(x125 * x157 * x27)
+    result[1, 2, 5] = numpy.sum(x158 * x27 * x92)
+    result[1, 3, 0] = numpy.sum(x102 * x119 * x159)
+    result[1, 3, 1] = numpy.sum(x160 * x161)
+    result[1, 3, 2] = numpy.sum(x159 * x162 * x50)
+    result[1, 3, 3] = numpy.sum(
+        x150
+        * x37
+        * (
+            x0
+            * (3.0 * x132 + x133 + x14 * (x100 + x130) + 2.0 * x140 + x98 * (x146 + x147))
+            + x149 * x69
+        )
+    )
+    result[1, 3, 4] = numpy.sum(x160 * x50)
+    result[1, 3, 5] = numpy.sum(x154 * x159 * x66)
+    result[1, 4, 0] = numpy.sum(x103 * x119 * x138 * x84)
+    result[1, 4, 1] = numpy.sum(x141 * x162 * x86)
+    result[1, 4, 2] = numpy.sum(x138 * x157 * x3)
+    result[1, 4, 3] = numpy.sum(x152 * x85)
+    result[1, 4, 4] = numpy.sum(x141 * x157)
+    result[1, 4, 5] = numpy.sum(x156 * x92)
+    result[1, 5, 0] = numpy.sum(x109 * x119 * x136)
+    result[1, 5, 1] = numpy.sum(x108 * x163 * x3)
+    result[1, 5, 2] = numpy.sum(x111 * x158 * x3)
+    result[1, 5, 3] = numpy.sum(x109 * x134 * x154)
+    result[1, 5, 4] = numpy.sum(x111 * x163)
+    result[1, 5, 5] = numpy.sum(x115 * x118 * x154)
+    result[2, 0, 0] = numpy.sum(x121 * x166 * x167)
+    result[2, 0, 1] = numpy.sum(x166 * x169 * x42)
+    result[2, 0, 2] = numpy.sum(x169 * x173)
+    result[2, 0, 3] = numpy.sum(x135 * x174 * x58)
+    result[2, 0, 4] = numpy.sum(x135 * x168 * x173 * x42)
+    result[2, 0, 5] = numpy.sum(x135 * x167 * x180)
+    result[2, 1, 0] = numpy.sum(x166 * x181 * x69)
+    result[2, 1, 1] = numpy.sum(x126 * x174 * x74)
+    result[2, 1, 2] = numpy.sum(x173 * x182 * x69)
+    result[2, 1, 3] = numpy.sum(x166 * x183 * x27)
+    result[2, 1, 4] = numpy.sum(x173 * x184 * x27)
+    result[2, 1, 5] = numpy.sum(x180 * x187 * x70)
+    result[2, 2, 0] = numpy.sum(x181 * x189)
+    result[2, 2, 1] = numpy.sum(x182 * x189 * x42)
+    result[2, 2, 2] = numpy.sum(x182 * x191)
+    result[2, 2, 3] = numpy.sum(x155 * x189 * x27 * x57)
+    result[2, 2, 4] = numpy.sum(x187 * x192 * x42)
+    result[2, 2, 5] = numpy.sum(x144 * x198)
+    result[2, 3, 0] = numpy.sum(x119 * x174 * x94)
+    result[2, 3, 1] = numpy.sum(x166 * x199 * x3)
+    result[2, 3, 2] = numpy.sum(x155 * x173 * x3 * x93)
+    result[2, 3, 3] = numpy.sum(15.084944665313 * x101 * x154 * x166)
+    result[2, 3, 4] = numpy.sum(x173 * x199)
+    result[2, 3, 5] = numpy.sum(x154 * x180 * x94)
+    result[2, 4, 0] = numpy.sum(x119 * x168 * x189 * x69)
+    result[2, 4, 1] = numpy.sum(x184 * x189 * x3)
+    result[2, 4, 2] = numpy.sum(x186 * x192 * x3 * x69)
+    result[2, 4, 3] = numpy.sum(x183 * x189)
+    result[2, 4, 4] = numpy.sum(x184 * x191)
+    result[2, 4, 5] = numpy.sum(x198 * x70)
+    result[2, 5, 0] = numpy.sum(x119 * x167 * x200)
+    result[2, 5, 1] = numpy.sum(x201 * x3 * x61)
+    result[2, 5, 2] = numpy.sum(x161 * x202)
+    result[2, 5, 3] = numpy.sum(x201 * x60)
+    result[2, 5, 4] = numpy.sum(x202 * x43)
+    result[2, 5, 5] = numpy.sum(
+        15.084944665313
+        * x186
+        * (
+            x0
+            * (
+                x112 * (x194 + x195)
+                + x14 * (x114 + x176)
+                + 3.0 * x178
+                + x179
+                + 2.0 * x190
+            )
+            + x197 * x84
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_23(a, A, b, B, C):
+def diag_quadrupole3d_23(ax, da, A, bx, db, B, C):
     """Cartesian 3D (df) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 6, 10), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
     x4 = -x2 - C[0]
-    x5 = a * b * x1
+    x5 = ax * bx * x1
     x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = 1.77245385090552 * numpy.sqrt(x1)
-    x8 = x6 * x7
-    x9 = x4**2 * x8
-    x10 = x0 * x8
-    x11 = 3.0 * x10
-    x12 = x3 * x8
-    x13 = x12 * x4
-    x14 = x11 + 2.0 * x13
-    x15 = x0 * (x14 + x9)
-    x16 = x10 + x9
-    x17 = x16 * x3
-    x18 = 2.0 * x0
-    x19 = x4 * x8
-    x20 = x18 * x19
-    x21 = x17 + x20
-    x22 = x21 * x3
-    x23 = x15 + x22
-    x24 = x23 * x3
-    x25 = x0 * (x12 + x19)
-    x26 = x10 + x13
-    x27 = x26 * x3
-    x28 = x3**2 * x8
-    x29 = x10 + x28
-    x30 = x29 * x3
-    x31 = x12 * x18
-    x32 = x30 + x31
-    x33 = x0 * (x14 + x28)
-    x34 = x25 + x27
-    x35 = x3 * x34
-    x36 = -x2 - A[0]
-    x37 = 2.0 * x36
-    x38 = x23 * x36
-    x39 = 4.0 * x10 * x4 + 2.0 * x25
-    x40 = x0 * (2.0 * x17 + 2.0 * x27 + x39)
-    x41 = 3.0 * x15 + 2.0 * x33
-    x42 = x24 + x40
-    x43 = x0 * (3.0 * x22 + 2.0 * x35 + x41) + x36 * x42
-    x44 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x7 = numpy.sqrt(x1)
+    x8 = 1.77245385090552 * x7
+    x9 = x6 * x8
+    x10 = x4**2 * x9
+    x11 = x0 * x9
+    x12 = 3.0 * x11
+    x13 = x3 * x9
+    x14 = x13 * x4
+    x15 = x12 + 2.0 * x14
+    x16 = x0 * (x10 + x15)
+    x17 = x10 + x11
+    x18 = x17 * x3
+    x19 = 2.0 * x0
+    x20 = x4 * x9
+    x21 = x19 * x20
+    x22 = x18 + x21
+    x23 = x22 * x3
+    x24 = x16 + x23
+    x25 = x24 * x3
+    x26 = x0 * (x13 + x20)
+    x27 = x11 + x14
+    x28 = x27 * x3
+    x29 = x3**2 * x9
+    x30 = x11 + x29
+    x31 = x3 * x30
+    x32 = x13 * x19
+    x33 = x31 + x32
+    x34 = x0 * (x15 + x29)
+    x35 = x26 + x28
+    x36 = x3 * x35
+    x37 = -x2 - A[0]
+    x38 = 2.0 * x37
+    x39 = x24 * x37
+    x40 = 4.0 * x11 * x4 + 2.0 * x26
+    x41 = x0 * (2.0 * x18 + 2.0 * x28 + x40)
+    x42 = 3.0 * x16 + 2.0 * x34
+    x43 = x25 + x41
+    x44 = x0 * (3.0 * x23 + 2.0 * x36 + x42) + x37 * x43
     x45 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x46 = 3.14159265358979 * x1 * x45
-    x47 = x44 * x46
-    x48 = -x1 * (a * A[1] + b * B[1])
-    x49 = -x48 - B[1]
-    x50 = x21 * x36
-    x51 = x38 + x40
-    x52 = x47 * (x0 * (x22 + x34 * x37 + x41 + 2.0 * x50) + x36 * x51)
-    x53 = -x1 * (a * A[2] + b * B[2])
-    x54 = -x53 - B[2]
-    x55 = x44 * x7
-    x56 = x49**2 * x55
-    x57 = x0 * x55
-    x58 = x56 + x57
-    x59 = x16 * x36
-    x60 = x15 + x50
-    x61 = x0 * (x17 + x26 * x37 + x39 + x59) + x36 * x60
-    x62 = x45 * x7
-    x63 = x47 * x54
-    x64 = x54**2 * x62
-    x65 = x0 * x62
-    x66 = x64 + x65
-    x67 = x49 * x58
-    x68 = x49 * x55
-    x69 = x18 * x68
-    x70 = x67 + x69
-    x71 = x20 + x59
-    x72 = x0 * (x11 + x19 * x37 + x9) + x36 * x71
-    x73 = x54 * x62
-    x74 = x54 * x66
-    x75 = x18 * x73
-    x76 = x74 + x75
-    x77 = -x48 - A[1]
-    x78 = x43 * x47
-    x79 = x55 * x77
-    x80 = x49 * x79 + x57
-    x81 = x58 * x77
-    x82 = x69 + x81
-    x83 = 3.0 * x57
-    x84 = x0 * (3.0 * x56 + x83) + x70 * x77
-    x85 = -x53 - A[2]
-    x86 = x47 * x85
-    x87 = x62 * x85
-    x88 = x54 * x87 + x65
-    x89 = x66 * x85
-    x90 = x75 + x89
-    x91 = 3.0 * x65
-    x92 = x0 * (3.0 * x64 + x91) + x76 * x85
-    x93 = x55 * x77**2 + x57
-    x94 = x0 * (x68 + x79) + x77 * x80
-    x95 = 2.0 * x77
-    x96 = x56 + x83
-    x97 = x0 * (x68 * x95 + x96) + x77 * x82
-    x98 = x0 * (8.0 * x49 * x57 + x67 + 3.0 * x81) + x77 * x84
-    x99 = x62 * x85**2 + x65
-    x100 = x0 * (x73 + x87) + x85 * x88
-    x101 = 2.0 * x85
-    x102 = x64 + x91
-    x103 = x0 * (x101 * x73 + x102) + x85 * x90
-    x104 = x0 * (8.0 * x54 * x65 + x74 + 3.0 * x89) + x85 * x92
-    x105 = -x48 - C[1]
-    x106 = x105**2 * x55
-    x107 = x106 + x57
-    x108 = x29 * x36
-    x109 = x0 * (x11 + 3.0 * x28) + x32 * x36
-    x110 = x0 * (8.0 * x10 * x3 + 3.0 * x108 + x30) + x109 * x36
-    x111 = x107 * x49
-    x112 = x105 * x55
-    x113 = x112 * x18
-    x114 = x111 + x113
-    x115 = x108 + x31
-    x116 = x0 * (x11 + x12 * x37 + x28) + x115 * x36
-    x117 = x105 * x68
-    x118 = 2.0 * x117
-    x119 = x106 + x83
-    x120 = x0 * (x118 + x119)
-    x121 = x114 * x49
-    x122 = x120 + x121
-    x123 = x36 * x8
-    x124 = x10 + x12 * x36
-    x125 = x0 * (x12 + x123) + x124 * x36
-    x126 = x117 + x57
-    x127 = x126 * x49
-    x128 = x0 * (x112 + x68)
-    x129 = 4.0 * x105 * x57 + 2.0 * x128
-    x130 = x0 * (2.0 * x111 + 2.0 * x127 + x129)
-    x131 = x122 * x49
-    x132 = x130 + x131
-    x133 = x10 + x36**2 * x8
-    x134 = x107 * x77
-    x135 = x113 + x134
-    x136 = x114 * x77
-    x137 = x120 + x136
-    x138 = x122 * x77
-    x139 = x130 + x138
-    x140 = x127 + x128
-    x141 = x140 * x49
-    x142 = x0 * (x118 + x96)
-    x143 = 3.0 * x120 + 2.0 * x142
-    x144 = x0 * (3.0 * x121 + 2.0 * x141 + x143) + x132 * x77
-    x145 = x46 * x6
-    x146 = x144 * x145
-    x147 = x145 * x36
-    x148 = x0 * (x112 * x95 + x119) + x135 * x77
-    x149 = x0 * (x111 + x126 * x95 + x129 + x134) + x137 * x77
-    x150 = x145 * (x0 * (x121 + 2.0 * x136 + x140 * x95 + x143) + x139 * x77)
-    x151 = x145 * x3
-    x152 = -x53 - C[2]
-    x153 = x152**2 * x62
-    x154 = x153 + x65
-    x155 = x154 * x54
-    x156 = x152 * x62
-    x157 = x156 * x18
-    x158 = x155 + x157
-    x159 = x152 * x73
-    x160 = 2.0 * x159
-    x161 = x153 + x91
-    x162 = x0 * (x160 + x161)
-    x163 = x158 * x54
-    x164 = x162 + x163
-    x165 = x159 + x65
-    x166 = x165 * x54
-    x167 = x0 * (x156 + x73)
-    x168 = 4.0 * x152 * x65 + 2.0 * x167
-    x169 = x0 * (2.0 * x155 + 2.0 * x166 + x168)
-    x170 = x164 * x54
-    x171 = x169 + x170
-    x172 = 3.14159265358979 * x1 * x44 * x6
-    x173 = x172 * x36
-    x174 = x154 * x85
-    x175 = x157 + x174
-    x176 = x158 * x85
-    x177 = x162 + x176
-    x178 = x164 * x85
-    x179 = x169 + x178
-    x180 = x166 + x167
-    x181 = x180 * x54
-    x182 = x0 * (x102 + x160)
-    x183 = 3.0 * x162 + 2.0 * x182
-    x184 = x0 * (3.0 * x163 + 2.0 * x181 + x183) + x171 * x85
-    x185 = x172 * x184
-    x186 = x172 * x3
-    x187 = x0 * (x101 * x156 + x161) + x175 * x85
-    x188 = x0 * (x101 * x165 + x155 + x168 + x174) + x177 * x85
-    x189 = x172 * (x0 * (x101 * x180 + x163 + 2.0 * x176 + x183) + x179 * x85)
+    x46 = da * db * numpy.sqrt(ax**3.5) * numpy.sqrt(bx**4.5)
+    x47 = x45 * x46
+    x48 = 13.4923846833851 * x47
+    x49 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x50 = 0.564189583547756 * x1
+    x51 = x49 * x50
+    x52 = -x1 * (ax * A[1] + bx * B[1])
+    x53 = -x52 - B[1]
+    x54 = 30.169889330626 * x53
+    x55 = x22 * x37
+    x56 = x39 + x41
+    x57 = x47 * x51
+    x58 = x57 * (x0 * (x23 + x35 * x38 + x42 + 2.0 * x55) + x37 * x56)
+    x59 = -x1 * (ax * A[2] + bx * B[2])
+    x60 = -x59 - B[2]
+    x61 = 30.169889330626 * x60
+    x62 = x17 * x37
+    x63 = x16 + x55
+    x64 = x0 * (x18 + x27 * x38 + x40 + x62) + x37 * x63
+    x65 = x47 * x64
+    x66 = x49 * x8
+    x67 = x53**2 * x66
+    x68 = x0 * x66
+    x69 = x67 + x68
+    x70 = 30.169889330626 * x69
+    x71 = 0.318309886183791 * x7
+    x72 = x70 * x71
+    x73 = 52.2557811793745 * x60
+    x74 = x45 * x8
+    x75 = x60**2 * x74
+    x76 = x0 * x74
+    x77 = x75 + x76
+    x78 = 30.169889330626 * x71
+    x79 = x46 * x49
+    x80 = x78 * x79
+    x81 = x77 * x80
+    x82 = x53 * x69
+    x83 = x53 * x66
+    x84 = x19 * x83
+    x85 = x82 + x84
+    x86 = 13.4923846833851 * x85
+    x87 = x21 + x62
+    x88 = x0 * (x10 + x12 + x20 * x38) + x37 * x87
+    x89 = x71 * x88
+    x90 = x47 * x60
+    x91 = x60 * x77
+    x92 = x60 * x74
+    x93 = x19 * x92
+    x94 = x91 + x93
+    x95 = 13.4923846833851 * x94
+    x96 = -x52 - A[1]
+    x97 = 23.3694957868871 * x96
+    x98 = x44 * x57
+    x99 = x66 * x96
+    x100 = x53 * x99 + x68
+    x101 = 52.2557811793745 * x100
+    x102 = x47 * x71
+    x103 = x101 * x102
+    x104 = 52.2557811793745 * x56
+    x105 = x104 * x57
+    x106 = 52.2557811793745 * x63
+    x107 = x69 * x96
+    x108 = x107 + x84
+    x109 = x102 * x108
+    x110 = 90.5096679918781 * x100
+    x111 = x102 * x60
+    x112 = x71 * x79
+    x113 = x106 * x112
+    x114 = 3.0 * x68
+    x115 = x0 * (x114 + 3.0 * x67) + x85 * x96
+    x116 = 23.3694957868871 * x87
+    x117 = x102 * x116
+    x118 = 52.2557811793745 * x87
+    x119 = 0.179587122125167 * x46
+    x120 = x119 * x77
+    x121 = x112 * x116
+    x122 = -x59 - A[2]
+    x123 = 23.3694957868871 * x122
+    x124 = x122 * x74
+    x125 = x124 * x60 + x76
+    x126 = x112 * x125
+    x127 = x102 * x122
+    x128 = 90.5096679918781 * x53
+    x129 = x122 * x77
+    x130 = x129 + x93
+    x131 = x119 * x125
+    x132 = 3.0 * x76
+    x133 = x0 * (x132 + 3.0 * x75) + x122 * x94
+    x134 = x66 * x96**2 + x68
+    x135 = x48 * x71
+    x136 = x0 * (x83 + x99) + x100 * x96
+    x137 = x47 * x78
+    x138 = x137 * x24
+    x139 = 2.0 * x96
+    x140 = x114 + x67
+    x141 = x0 * (x139 * x83 + x140) + x108 * x96
+    x142 = x137 * x141
+    x143 = 52.2557811793745 * x22
+    x144 = 30.169889330626 * x120
+    x145 = x0 * (3.0 * x107 + 8.0 * x53 * x68 + x82) + x115 * x96
+    x146 = x119 * x17
+    x147 = 52.2557811793745 * x96
+    x148 = 90.5096679918781 * x131
+    x149 = 52.2557811793745 * x112
+    x150 = x149 * x22
+    x151 = 52.2557811793745 * x131
+    x152 = x122**2 * x74 + x76
+    x153 = 13.4923846833851 * x112
+    x154 = x24 * x80
+    x155 = x0 * (x124 + x92) + x122 * x125
+    x156 = x119 * x152
+    x157 = 2.0 * x122
+    x158 = x132 + x75
+    x159 = x0 * (x157 * x92 + x158) + x122 * x130
+    x160 = x159 * x80
+    x161 = x0 * (3.0 * x129 + 8.0 * x60 * x76 + x91) + x122 * x133
+    x162 = -x52 - C[1]
+    x163 = x162**2 * x66
+    x164 = x163 + x68
+    x165 = x30 * x37
+    x166 = x0 * (x12 + 3.0 * x29) + x33 * x37
+    x167 = x0 * (8.0 * x11 * x3 + 3.0 * x165 + x31) + x166 * x37
+    x168 = x164 * x53
+    x169 = x162 * x66
+    x170 = x169 * x19
+    x171 = x168 + x170
+    x172 = x165 + x32
+    x173 = x0 * (x12 + x13 * x38 + x29) + x172 * x37
+    x174 = x137 * x173
+    x175 = x11 + x13 * x37
+    x176 = x0 * (x13 + x37 * x9) + x175 * x37
+    x177 = x162 * x83
+    x178 = 2.0 * x177
+    x179 = x114 + x163
+    x180 = x0 * (x178 + x179)
+    x181 = x171 * x53
+    x182 = x180 + x181
+    x183 = x137 * x182
+    x184 = 52.2557811793745 * x171
+    x185 = x177 + x68
+    x186 = x185 * x53
+    x187 = x0 * (x169 + x83)
+    x188 = 4.0 * x162 * x68 + 2.0 * x187
+    x189 = x0 * (2.0 * x168 + 2.0 * x186 + x188)
+    x190 = x182 * x53
+    x191 = x189 + x190
+    x192 = x11 + x37**2 * x9
+    x193 = x119 * x164
+    x194 = x164 * x96
+    x195 = x170 + x194
+    x196 = 23.3694957868871 * x195
+    x197 = x102 * x166
+    x198 = x171 * x96
+    x199 = x180 + x198
+    x200 = 52.2557811793745 * x199
+    x201 = x102 * x172
+    x202 = x182 * x96
+    x203 = x189 + x202
+    x204 = 52.2557811793745 * x175
+    x205 = x102 * x204
+    x206 = 90.5096679918781 * x199
+    x207 = 23.3694957868871 * x37
+    x208 = x186 + x187
+    x209 = x208 * x53
+    x210 = x0 * (x140 + x178)
+    x211 = 3.0 * x180 + 2.0 * x210
+    x212 = x0 * (3.0 * x181 + 2.0 * x209 + x211) + x191 * x96
+    x213 = x50 * x6
+    x214 = x213 * x47
+    x215 = x212 * x214
+    x216 = 52.2557811793745 * x203
+    x217 = x213 * x90
+    x218 = x46 * x6
+    x219 = x218 * x71
+    x220 = x200 * x219
+    x221 = x196 * x219
+    x222 = 52.2557811793745 * x219
+    x223 = x125 * x222
+    x224 = x130 * x222
+    x225 = 13.4923846833851 * x33
+    x226 = x0 * (x139 * x169 + x179) + x195 * x96
+    x227 = x102 * x226
+    x228 = x0 * (x139 * x185 + x168 + x188 + x194) + x199 * x96
+    x229 = 30.169889330626 * x30
+    x230 = x214 * (x0 * (x139 * x208 + x181 + 2.0 * x198 + x211) + x203 * x96)
+    x231 = 30.169889330626 * x3
+    x232 = 52.2557811793745 * x3
+    x233 = x218 * x78
+    x234 = x233 * x77
+    x235 = x219 * x3
+    x236 = x182 * x233
+    x237 = x222 * x3
+    x238 = x159 * x233
+    x239 = 13.4923846833851 * x219
+    x240 = -x59 - C[2]
+    x241 = x240**2 * x74
+    x242 = x241 + x76
+    x243 = x173 * x80
+    x244 = x242 * x60
+    x245 = x240 * x74
+    x246 = x19 * x245
+    x247 = x244 + x246
+    x248 = x119 * x242
+    x249 = x240 * x92
+    x250 = 2.0 * x249
+    x251 = x132 + x241
+    x252 = x0 * (x250 + x251)
+    x253 = x247 * x60
+    x254 = x252 + x253
+    x255 = x254 * x80
+    x256 = x119 * x247
+    x257 = x249 + x76
+    x258 = x257 * x60
+    x259 = x0 * (x245 + x92)
+    x260 = 4.0 * x240 * x76 + 2.0 * x259
+    x261 = x0 * (2.0 * x244 + 2.0 * x258 + x260)
+    x262 = x254 * x60
+    x263 = x261 + x262
+    x264 = x112 * x166
+    x265 = x149 * x172
+    x266 = x112 * x204
+    x267 = x115 * x219
+    x268 = x108 * x222
+    x269 = x101 * x219
+    x270 = x218 * x51
+    x271 = x270 * x37
+    x272 = x122 * x242
+    x273 = x246 + x272
+    x274 = 23.3694957868871 * x273
+    x275 = x122 * x247
+    x276 = x252 + x275
+    x277 = x119 * x273
+    x278 = x122 * x254
+    x279 = x261 + x278
+    x280 = x258 + x259
+    x281 = x280 * x60
+    x282 = x0 * (x158 + x250)
+    x283 = 3.0 * x252 + 2.0 * x282
+    x284 = x0 * (3.0 * x253 + 2.0 * x281 + x283) + x122 * x263
+    x285 = x270 * x284
+    x286 = x141 * x233
+    x287 = x233 * x254
+    x288 = x0 * (x157 * x245 + x251) + x122 * x273
+    x289 = x112 * x288
+    x290 = x0 * (x157 * x257 + x244 + x260 + x272) + x122 * x276
+    x291 = x218 * x72
+    x292 = x270 * (x0 * (x157 * x280 + x253 + 2.0 * x275 + x283) + x122 * x279)
 
     # 180 item(s)
-    return numpy.array(
-        [
-            x47
+    result[0, 0, 0] = numpy.sum(
+        x48
+        * x51
+        * (
+            x0
             * (
-                x0
-                * (
-                    x18 * (3.0 * x25 + 3.0 * x27 + x32)
-                    + x24
-                    + x37 * (x33 + x35)
-                    + 3.0 * x38
-                    + 4.0 * x40
-                )
-                + x36 * x43
-            ),
-            x49 * x52,
-            x52 * x54,
-            x58 * x61 * x62,
-            x49 * x61 * x63,
-            x55 * x61 * x66,
-            x62 * x70 * x72,
-            x58 * x72 * x73,
-            x66 * x68 * x72,
-            x55 * x72 * x76,
-            x77 * x78,
-            x51 * x62 * x80,
-            x51 * x63 * x77,
-            x60 * x62 * x82,
-            x60 * x73 * x80,
-            x60 * x66 * x79,
-            x62 * x71 * x84,
-            x71 * x73 * x82,
-            x66 * x71 * x80,
-            x71 * x76 * x79,
-            x78 * x85,
-            x49 * x51 * x86,
-            x51 * x55 * x88,
-            x58 * x60 * x87,
-            x60 * x68 * x88,
-            x55 * x60 * x90,
-            x70 * x71 * x87,
-            x58 * x71 * x88,
-            x68 * x71 * x90,
-            x55 * x71 * x92,
-            x42 * x62 * x93,
-            x23 * x62 * x94,
-            x23 * x73 * x93,
-            x21 * x62 * x97,
-            x21 * x73 * x94,
-            x21 * x66 * x93,
-            x16 * x62 * x98,
-            x16 * x73 * x97,
-            x16 * x66 * x94,
-            x16 * x76 * x93,
-            x42 * x77 * x86,
-            x23 * x80 * x87,
-            x23 * x79 * x88,
-            x21 * x82 * x87,
-            x21 * x80 * x88,
-            x21 * x79 * x90,
-            x16 * x84 * x87,
-            x16 * x82 * x88,
-            x16 * x80 * x90,
-            x16 * x79 * x92,
-            x42 * x55 * x99,
-            x23 * x68 * x99,
-            x100 * x23 * x55,
-            x21 * x58 * x99,
-            x100 * x21 * x68,
-            x103 * x21 * x55,
-            x16 * x70 * x99,
-            x100 * x16 * x58,
-            x103 * x16 * x68,
-            x104 * x16 * x55,
-            x107 * x110 * x62,
-            x114 * x116 * x62,
-            x107 * x116 * x73,
-            x122 * x125 * x62,
-            x114 * x125 * x73,
-            x107 * x125 * x66,
-            x132 * x133 * x62,
-            x122 * x133 * x73,
-            x114 * x133 * x66,
-            x107 * x133 * x76,
-            x109 * x135 * x62,
-            x115 * x137 * x62,
-            x115 * x135 * x73,
-            x124 * x139 * x62,
-            x124 * x137 * x73,
-            x124 * x135 * x66,
-            x146 * x36,
-            x139 * x147 * x54,
-            x123 * x137 * x66,
-            x123 * x135 * x76,
-            x107 * x109 * x87,
-            x114 * x115 * x87,
-            x107 * x115 * x88,
-            x122 * x124 * x87,
-            x114 * x124 * x88,
-            x107 * x124 * x90,
-            x132 * x147 * x85,
-            x122 * x123 * x88,
-            x114 * x123 * x90,
-            x107 * x123 * x92,
-            x148 * x32 * x62,
-            x149 * x29 * x62,
-            x148 * x29 * x73,
-            x150 * x3,
-            x149 * x151 * x54,
-            x12 * x148 * x66,
-            x145
-            * (
-                x0
-                * (
-                    4.0 * x130
-                    + x131
-                    + 3.0 * x138
-                    + x18 * (3.0 * x127 + 3.0 * x128 + x70)
-                    + x95 * (x141 + x142)
-                )
-                + x144 * x77
-            ),
-            x150 * x54,
-            x149 * x66 * x8,
-            x148 * x76 * x8,
-            x135 * x32 * x87,
-            x137 * x29 * x87,
-            x135 * x29 * x88,
-            x139 * x151 * x85,
-            x12 * x137 * x88,
-            x12 * x135 * x90,
-            x146 * x85,
-            x139 * x8 * x88,
-            x137 * x8 * x90,
-            x135 * x8 * x92,
-            x107 * x32 * x99,
-            x114 * x29 * x99,
-            x100 * x107 * x29,
-            x12 * x122 * x99,
-            x100 * x114 * x12,
-            x103 * x107 * x12,
-            x132 * x8 * x99,
-            x100 * x122 * x8,
-            x103 * x114 * x8,
-            x104 * x107 * x8,
-            x110 * x154 * x55,
-            x116 * x154 * x68,
-            x116 * x158 * x55,
-            x125 * x154 * x58,
-            x125 * x158 * x68,
-            x125 * x164 * x55,
-            x133 * x154 * x70,
-            x133 * x158 * x58,
-            x133 * x164 * x68,
-            x133 * x171 * x55,
-            x109 * x154 * x79,
-            x115 * x154 * x80,
-            x115 * x158 * x79,
-            x124 * x154 * x82,
-            x124 * x158 * x80,
-            x124 * x164 * x79,
-            x123 * x154 * x84,
-            x123 * x158 * x82,
-            x123 * x164 * x80,
-            x171 * x173 * x77,
-            x109 * x175 * x55,
-            x115 * x175 * x68,
-            x115 * x177 * x55,
-            x124 * x175 * x58,
-            x124 * x177 * x68,
-            x124 * x179 * x55,
-            x123 * x175 * x70,
-            x123 * x177 * x58,
-            x173 * x179 * x49,
-            x185 * x36,
-            x154 * x32 * x93,
-            x154 * x29 * x94,
-            x158 * x29 * x93,
-            x12 * x154 * x97,
-            x12 * x158 * x94,
-            x12 * x164 * x93,
-            x154 * x8 * x98,
-            x158 * x8 * x97,
-            x164 * x8 * x94,
-            x171 * x8 * x93,
-            x175 * x32 * x79,
-            x175 * x29 * x80,
-            x177 * x29 * x79,
-            x12 * x175 * x82,
-            x12 * x177 * x80,
-            x179 * x186 * x77,
-            x175 * x8 * x84,
-            x177 * x8 * x82,
-            x179 * x8 * x80,
-            x185 * x77,
-            x187 * x32 * x55,
-            x187 * x29 * x68,
-            x188 * x29 * x55,
-            x12 * x187 * x58,
-            x186 * x188 * x49,
-            x189 * x3,
-            x187 * x70 * x8,
-            x188 * x58 * x8,
-            x189 * x49,
-            x172
-            * (
-                x0
-                * (
-                    x101 * (x181 + x182)
-                    + 4.0 * x169
-                    + x170
-                    + 3.0 * x178
-                    + x18 * (3.0 * x166 + 3.0 * x167 + x76)
-                )
-                + x184 * x85
-            ),
-        ]
+                x19 * (3.0 * x26 + 3.0 * x28 + x33)
+                + x25
+                + x38 * (x34 + x36)
+                + 3.0 * x39
+                + 4.0 * x41
+            )
+            + x37 * x44
+        )
     )
+    result[0, 0, 1] = numpy.sum(x54 * x58)
+    result[0, 0, 2] = numpy.sum(x58 * x61)
+    result[0, 0, 3] = numpy.sum(x65 * x72)
+    result[0, 0, 4] = numpy.sum(x51 * x53 * x65 * x73)
+    result[0, 0, 5] = numpy.sum(x64 * x81)
+    result[0, 0, 6] = numpy.sum(x47 * x86 * x89)
+    result[0, 0, 7] = numpy.sum(x72 * x88 * x90)
+    result[0, 0, 8] = numpy.sum(x53 * x81 * x88)
+    result[0, 0, 9] = numpy.sum(x79 * x89 * x95)
+    result[0, 1, 0] = numpy.sum(x97 * x98)
+    result[0, 1, 1] = numpy.sum(x103 * x56)
+    result[0, 1, 2] = numpy.sum(x105 * x60 * x96)
+    result[0, 1, 3] = numpy.sum(x106 * x109)
+    result[0, 1, 4] = numpy.sum(x110 * x111 * x63)
+    result[0, 1, 5] = numpy.sum(x113 * x77 * x96)
+    result[0, 1, 6] = numpy.sum(x115 * x117)
+    result[0, 1, 7] = numpy.sum(x109 * x118 * x60)
+    result[0, 1, 8] = numpy.sum(x101 * x120 * x87)
+    result[0, 1, 9] = numpy.sum(x121 * x94 * x96)
+    result[0, 2, 0] = numpy.sum(x123 * x98)
+    result[0, 2, 1] = numpy.sum(x105 * x122 * x53)
+    result[0, 2, 2] = numpy.sum(x104 * x126)
+    result[0, 2, 3] = numpy.sum(x106 * x127 * x69)
+    result[0, 2, 4] = numpy.sum(x126 * x128 * x63)
+    result[0, 2, 5] = numpy.sum(x113 * x130)
+    result[0, 2, 6] = numpy.sum(x117 * x122 * x85)
+    result[0, 2, 7] = numpy.sum(x118 * x131 * x69)
+    result[0, 2, 8] = numpy.sum(x112 * x118 * x130 * x53)
+    result[0, 2, 9] = numpy.sum(x121 * x133)
+    result[0, 3, 0] = numpy.sum(x134 * x135 * x43)
+    result[0, 3, 1] = numpy.sum(x136 * x138)
+    result[0, 3, 2] = numpy.sum(x134 * x138 * x60)
+    result[0, 3, 3] = numpy.sum(x142 * x22)
+    result[0, 3, 4] = numpy.sum(x111 * x136 * x143)
+    result[0, 3, 5] = numpy.sum(x134 * x144 * x22)
+    result[0, 3, 6] = numpy.sum(x135 * x145 * x17)
+    result[0, 3, 7] = numpy.sum(x142 * x17 * x60)
+    result[0, 3, 8] = numpy.sum(x136 * x144 * x17)
+    result[0, 3, 9] = numpy.sum(x134 * x146 * x95)
+    result[0, 4, 0] = numpy.sum(x122 * x43 * x57 * x97)
+    result[0, 4, 1] = numpy.sum(x103 * x122 * x24)
+    result[0, 4, 2] = numpy.sum(x126 * x147 * x24)
+    result[0, 4, 3] = numpy.sum(x109 * x122 * x143)
+    result[0, 4, 4] = numpy.sum(x100 * x148 * x22)
+    result[0, 4, 5] = numpy.sum(x130 * x150 * x96)
+    result[0, 4, 6] = numpy.sum(x102 * x115 * x123 * x17)
+    result[0, 4, 7] = numpy.sum(x108 * x151 * x17)
+    result[0, 4, 8] = numpy.sum(x101 * x130 * x146)
+    result[0, 4, 9] = numpy.sum(x112 * x133 * x17 * x97)
+    result[0, 5, 0] = numpy.sum(x152 * x153 * x43)
+    result[0, 5, 1] = numpy.sum(x152 * x154 * x53)
+    result[0, 5, 2] = numpy.sum(x154 * x155)
+    result[0, 5, 3] = numpy.sum(x156 * x22 * x70)
+    result[0, 5, 4] = numpy.sum(x150 * x155 * x53)
+    result[0, 5, 5] = numpy.sum(x160 * x22)
+    result[0, 5, 6] = numpy.sum(x146 * x152 * x86)
+    result[0, 5, 7] = numpy.sum(x146 * x155 * x70)
+    result[0, 5, 8] = numpy.sum(x160 * x17 * x53)
+    result[0, 5, 9] = numpy.sum(x153 * x161 * x17)
+    result[1, 0, 0] = numpy.sum(x135 * x164 * x167)
+    result[1, 0, 1] = numpy.sum(x171 * x174)
+    result[1, 0, 2] = numpy.sum(x164 * x174 * x60)
+    result[1, 0, 3] = numpy.sum(x176 * x183)
+    result[1, 0, 4] = numpy.sum(x111 * x176 * x184)
+    result[1, 0, 5] = numpy.sum(x144 * x164 * x176)
+    result[1, 0, 6] = numpy.sum(x135 * x191 * x192)
+    result[1, 0, 7] = numpy.sum(x183 * x192 * x60)
+    result[1, 0, 8] = numpy.sum(x144 * x171 * x192)
+    result[1, 0, 9] = numpy.sum(x192 * x193 * x95)
+    result[1, 1, 0] = numpy.sum(x196 * x197)
+    result[1, 1, 1] = numpy.sum(x200 * x201)
+    result[1, 1, 2] = numpy.sum(x195 * x201 * x73)
+    result[1, 1, 3] = numpy.sum(x203 * x205)
+    result[1, 1, 4] = numpy.sum(x111 * x175 * x206)
+    result[1, 1, 5] = numpy.sum(x120 * x195 * x204)
+    result[1, 1, 6] = numpy.sum(x207 * x215)
+    result[1, 1, 7] = numpy.sum(x216 * x217 * x37)
+    result[1, 1, 8] = numpy.sum(x220 * x37 * x77)
+    result[1, 1, 9] = numpy.sum(x221 * x37 * x94)
+    result[1, 2, 0] = numpy.sum(x123 * x164 * x197)
+    result[1, 2, 1] = numpy.sum(x122 * x184 * x201)
+    result[1, 2, 2] = numpy.sum(x151 * x164 * x172)
+    result[1, 2, 3] = numpy.sum(x122 * x182 * x205)
+    result[1, 2, 4] = numpy.sum(x148 * x171 * x175)
+    result[1, 2, 5] = numpy.sum(x130 * x193 * x204)
+    result[1, 2, 6] = numpy.sum(x123 * x191 * x214 * x37)
+    result[1, 2, 7] = numpy.sum(x182 * x223 * x37)
+    result[1, 2, 8] = numpy.sum(x171 * x224 * x37)
+    result[1, 2, 9] = numpy.sum(x133 * x164 * x207 * x219)
+    result[1, 3, 0] = numpy.sum(x225 * x227)
+    result[1, 3, 1] = numpy.sum(x102 * x228 * x229)
+    result[1, 3, 2] = numpy.sum(x227 * x229 * x60)
+    result[1, 3, 3] = numpy.sum(x230 * x231)
+    result[1, 3, 4] = numpy.sum(x217 * x228 * x232)
+    result[1, 3, 5] = numpy.sum(x226 * x234 * x3)
+    result[1, 3, 6] = numpy.sum(
+        x213
+        * x48
+        * (
+            x0
+            * (
+                x139 * (x209 + x210)
+                + 4.0 * x189
+                + x19 * (3.0 * x186 + 3.0 * x187 + x85)
+                + x190
+                + 3.0 * x202
+            )
+            + x212 * x96
+        )
+    )
+    result[1, 3, 7] = numpy.sum(x230 * x61)
+    result[1, 3, 8] = numpy.sum(x228 * x234)
+    result[1, 3, 9] = numpy.sum(x219 * x226 * x95)
+    result[1, 4, 0] = numpy.sum(x127 * x196 * x33)
+    result[1, 4, 1] = numpy.sum(x127 * x200 * x30)
+    result[1, 4, 2] = numpy.sum(x151 * x195 * x30)
+    result[1, 4, 3] = numpy.sum(x122 * x214 * x216 * x3)
+    result[1, 4, 4] = numpy.sum(x125 * x206 * x235)
+    result[1, 4, 5] = numpy.sum(x195 * x224 * x3)
+    result[1, 4, 6] = numpy.sum(x123 * x215)
+    result[1, 4, 7] = numpy.sum(x203 * x223)
+    result[1, 4, 8] = numpy.sum(x130 * x220)
+    result[1, 4, 9] = numpy.sum(x133 * x221)
+    result[1, 5, 0] = numpy.sum(x156 * x164 * x225)
+    result[1, 5, 1] = numpy.sum(x156 * x171 * x229)
+    result[1, 5, 2] = numpy.sum(x155 * x193 * x229)
+    result[1, 5, 3] = numpy.sum(x152 * x236 * x3)
+    result[1, 5, 4] = numpy.sum(x155 * x171 * x237)
+    result[1, 5, 5] = numpy.sum(x164 * x238 * x3)
+    result[1, 5, 6] = numpy.sum(x152 * x191 * x239)
+    result[1, 5, 7] = numpy.sum(x155 * x236)
+    result[1, 5, 8] = numpy.sum(x171 * x238)
+    result[1, 5, 9] = numpy.sum(x161 * x164 * x239)
+    result[2, 0, 0] = numpy.sum(x153 * x167 * x242)
+    result[2, 0, 1] = numpy.sum(x242 * x243 * x53)
+    result[2, 0, 2] = numpy.sum(x243 * x247)
+    result[2, 0, 3] = numpy.sum(x176 * x248 * x70)
+    result[2, 0, 4] = numpy.sum(x149 * x176 * x247 * x53)
+    result[2, 0, 5] = numpy.sum(x176 * x255)
+    result[2, 0, 6] = numpy.sum(x192 * x248 * x86)
+    result[2, 0, 7] = numpy.sum(x192 * x256 * x70)
+    result[2, 0, 8] = numpy.sum(x192 * x255 * x53)
+    result[2, 0, 9] = numpy.sum(x153 * x192 * x263)
+    result[2, 1, 0] = numpy.sum(x242 * x264 * x97)
+    result[2, 1, 1] = numpy.sum(x101 * x172 * x248)
+    result[2, 1, 2] = numpy.sum(x247 * x265 * x96)
+    result[2, 1, 3] = numpy.sum(x108 * x204 * x248)
+    result[2, 1, 4] = numpy.sum(x110 * x175 * x256)
+    result[2, 1, 5] = numpy.sum(x254 * x266 * x96)
+    result[2, 1, 6] = numpy.sum(x207 * x242 * x267)
+    result[2, 1, 7] = numpy.sum(x247 * x268 * x37)
+    result[2, 1, 8] = numpy.sum(x254 * x269 * x37)
+    result[2, 1, 9] = numpy.sum(x263 * x271 * x97)
+    result[2, 2, 0] = numpy.sum(x264 * x274)
+    result[2, 2, 1] = numpy.sum(x265 * x273 * x53)
+    result[2, 2, 2] = numpy.sum(x265 * x276)
+    result[2, 2, 3] = numpy.sum(x204 * x277 * x69)
+    result[2, 2, 4] = numpy.sum(x112 * x128 * x175 * x276)
+    result[2, 2, 5] = numpy.sum(x266 * x279)
+    result[2, 2, 6] = numpy.sum(x219 * x274 * x37 * x85)
+    result[2, 2, 7] = numpy.sum(x222 * x276 * x37 * x69)
+    result[2, 2, 8] = numpy.sum(52.2557811793745 * x271 * x279 * x53)
+    result[2, 2, 9] = numpy.sum(x207 * x285)
+    result[2, 3, 0] = numpy.sum(x134 * x225 * x248)
+    result[2, 3, 1] = numpy.sum(x136 * x229 * x248)
+    result[2, 3, 2] = numpy.sum(x134 * x229 * x256)
+    result[2, 3, 3] = numpy.sum(x242 * x286 * x3)
+    result[2, 3, 4] = numpy.sum(x136 * x237 * x247)
+    result[2, 3, 5] = numpy.sum(x134 * x287 * x3)
+    result[2, 3, 6] = numpy.sum(x145 * x239 * x242)
+    result[2, 3, 7] = numpy.sum(x247 * x286)
+    result[2, 3, 8] = numpy.sum(x136 * x287)
+    result[2, 3, 9] = numpy.sum(x134 * x239 * x263)
+    result[2, 4, 0] = numpy.sum(x112 * x274 * x33 * x96)
+    result[2, 4, 1] = numpy.sum(x101 * x277 * x30)
+    result[2, 4, 2] = numpy.sum(x149 * x276 * x30 * x96)
+    result[2, 4, 3] = numpy.sum(x268 * x273 * x3)
+    result[2, 4, 4] = numpy.sum(x110 * x235 * x276)
+    result[2, 4, 5] = numpy.sum(x147 * x270 * x279 * x3)
+    result[2, 4, 6] = numpy.sum(x267 * x274)
+    result[2, 4, 7] = numpy.sum(x268 * x276)
+    result[2, 4, 8] = numpy.sum(x269 * x279)
+    result[2, 4, 9] = numpy.sum(x285 * x97)
+    result[2, 5, 0] = numpy.sum(x225 * x289)
+    result[2, 5, 1] = numpy.sum(x229 * x289 * x53)
+    result[2, 5, 2] = numpy.sum(x112 * x229 * x290)
+    result[2, 5, 3] = numpy.sum(x288 * x291 * x3)
+    result[2, 5, 4] = numpy.sum(x232 * x270 * x290 * x53)
+    result[2, 5, 5] = numpy.sum(x231 * x292)
+    result[2, 5, 6] = numpy.sum(x219 * x288 * x86)
+    result[2, 5, 7] = numpy.sum(x290 * x291)
+    result[2, 5, 8] = numpy.sum(x292 * x54)
+    result[2, 5, 9] = numpy.sum(
+        13.4923846833851
+        * x270
+        * (
+            x0
+            * (
+                x157 * (x281 + x282)
+                + x19 * (3.0 * x258 + 3.0 * x259 + x94)
+                + 4.0 * x261
+                + x262
+                + 3.0 * x278
+            )
+            + x122 * x284
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_24(a, A, b, B, C):
+def diag_quadrupole3d_24(ax, da, A, bx, db, B, C):
     """Cartesian 3D (dg) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 6, 15), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
     x4 = -x2 - C[0]
-    x5 = a * b * x1
+    x5 = ax * bx * x1
     x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = 1.77245385090552 * numpy.sqrt(x1)
-    x8 = x6 * x7
-    x9 = x4**2 * x8
-    x10 = x0 * x8
-    x11 = x10 + x9
-    x12 = x11 * x3
-    x13 = x3 * x6
-    x14 = x13 * x7
-    x15 = x14 * x4
-    x16 = x10 + x15
-    x17 = x16 * x3
-    x18 = x4 * x8
-    x19 = x0 * (x14 + x18)
-    x20 = 4.0 * x0 * x18 + 2.0 * x19
-    x21 = x0 * (2.0 * x12 + 2.0 * x17 + x20)
-    x22 = 3.0 * x10
-    x23 = 2.0 * x15 + x22
-    x24 = x0 * (x23 + x9)
-    x25 = 2.0 * x0
-    x26 = x18 * x25
-    x27 = x12 + x26
-    x28 = x27 * x3
-    x29 = x24 + x28
-    x30 = x29 * x3
-    x31 = x21 + x30
-    x32 = x3 * x31
-    x33 = x3**2 * x8
-    x34 = x0 * (x23 + x33)
-    x35 = x17 + x19
-    x36 = x3 * x35
-    x37 = x0 * (x22 + 3.0 * x33)
-    x38 = x10 + x33
-    x39 = x3 * x38
-    x40 = x14 * x25
-    x41 = x39 + x40
-    x42 = x3 * x41
-    x43 = x37 + x42
-    x44 = x0 * (3.0 * x17 + 3.0 * x19 + x41)
-    x45 = x34 + x36
-    x46 = x3 * x45
-    x47 = -x2 - A[0]
-    x48 = 2.0 * x47
-    x49 = x31 * x47
-    x50 = 3.0 * x24 + 2.0 * x34
-    x51 = x0 * (3.0 * x28 + 2.0 * x36 + x50)
-    x52 = 4.0 * x21 + 2.0 * x44
-    x53 = x32 + x51
-    x54 = x0 * (4.0 * x30 + 2.0 * x46 + x52) + x47 * x53
-    x55 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x7 = numpy.sqrt(x1)
+    x8 = 1.77245385090552 * x7
+    x9 = x6 * x8
+    x10 = x4**2 * x9
+    x11 = x0 * x9
+    x12 = x10 + x11
+    x13 = x12 * x3
+    x14 = x3 * x6
+    x15 = x14 * x8
+    x16 = x15 * x4
+    x17 = x11 + x16
+    x18 = x17 * x3
+    x19 = x4 * x9
+    x20 = x0 * (x15 + x19)
+    x21 = 4.0 * x0 * x19 + 2.0 * x20
+    x22 = x0 * (2.0 * x13 + 2.0 * x18 + x21)
+    x23 = 3.0 * x11
+    x24 = 2.0 * x16 + x23
+    x25 = x0 * (x10 + x24)
+    x26 = 2.0 * x0
+    x27 = x19 * x26
+    x28 = x13 + x27
+    x29 = x28 * x3
+    x30 = x25 + x29
+    x31 = x3 * x30
+    x32 = x22 + x31
+    x33 = x3 * x32
+    x34 = x3**2 * x9
+    x35 = x0 * (x24 + x34)
+    x36 = x18 + x20
+    x37 = x3 * x36
+    x38 = x0 * (x23 + 3.0 * x34)
+    x39 = x11 + x34
+    x40 = x3 * x39
+    x41 = x15 * x26
+    x42 = x40 + x41
+    x43 = x3 * x42
+    x44 = x38 + x43
+    x45 = x0 * (3.0 * x18 + 3.0 * x20 + x42)
+    x46 = x35 + x37
+    x47 = x3 * x46
+    x48 = -x2 - A[0]
+    x49 = 2.0 * x48
+    x50 = x32 * x48
+    x51 = 3.0 * x25 + 2.0 * x35
+    x52 = x0 * (3.0 * x29 + 2.0 * x37 + x51)
+    x53 = 4.0 * x22 + 2.0 * x45
+    x54 = x33 + x52
+    x55 = x0 * (4.0 * x31 + 2.0 * x47 + x53) + x48 * x54
     x56 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x57 = 3.14159265358979 * x1 * x56
-    x58 = x55 * x57
-    x59 = -x1 * (a * A[1] + b * B[1])
-    x60 = -x59 - B[1]
-    x61 = x29 * x47
-    x62 = x49 + x51
-    x63 = x58 * (x0 * (x30 + x45 * x48 + x52 + 3.0 * x61) + x47 * x62)
-    x64 = -x1 * (a * A[2] + b * B[2])
-    x65 = -x64 - B[2]
-    x66 = x55 * x7
-    x67 = x60**2 * x66
-    x68 = x0 * x66
-    x69 = x67 + x68
-    x70 = x27 * x47
-    x71 = x21 + x61
-    x72 = x0 * (x28 + x35 * x48 + x50 + 2.0 * x70) + x47 * x71
-    x73 = x56 * x7
-    x74 = x58 * x65
-    x75 = x65**2 * x73
-    x76 = x0 * x73
-    x77 = x75 + x76
-    x78 = x60 * x69
-    x79 = x60 * x66
-    x80 = x25 * x79
-    x81 = x78 + x80
-    x82 = x11 * x47
-    x83 = x24 + x70
-    x84 = x0 * (x12 + x16 * x48 + x20 + x82) + x47 * x83
-    x85 = x65 * x73
-    x86 = x65 * x77
-    x87 = x25 * x85
+    x57 = da * db * numpy.sqrt(ax**3.5) * numpy.sqrt(bx**5.5)
+    x58 = x56 * x57
+    x59 = 10.1992841329868 * x58
+    x60 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x61 = 0.564189583547756 * x1
+    x62 = x60 * x61
+    x63 = -x1 * (ax * A[1] + bx * B[1])
+    x64 = -x63 - B[1]
+    x65 = 26.9847693667702 * x64
+    x66 = x30 * x48
+    x67 = x50 + x52
+    x68 = x58 * x62
+    x69 = x68 * (x0 * (x31 + x46 * x49 + x53 + 3.0 * x66) + x48 * x67)
+    x70 = -x1 * (ax * A[2] + bx * B[2])
+    x71 = -x70 - B[2]
+    x72 = 26.9847693667702 * x71
+    x73 = x28 * x48
+    x74 = x22 + x66
+    x75 = x0 * (x29 + x36 * x49 + x51 + 2.0 * x73) + x48 * x74
+    x76 = x58 * x75
+    x77 = x60 * x8
+    x78 = x64**2 * x77
+    x79 = x0 * x77
+    x80 = x78 + x79
+    x81 = 34.8371874529163 * x80
+    x82 = 0.318309886183791 * x7
+    x83 = x81 * x82
+    x84 = 60.3397786612521 * x64
+    x85 = x56 * x8
+    x86 = x71**2 * x85
+    x87 = x0 * x85
     x88 = x86 + x87
-    x89 = 3.0 * x68
-    x90 = x0 * (3.0 * x67 + x89)
-    x91 = x60 * x81
-    x92 = x90 + x91
-    x93 = x26 + x82
-    x94 = x0 * (x18 * x48 + x22 + x9) + x47 * x93
-    x95 = 3.0 * x76
-    x96 = x0 * (3.0 * x75 + x95)
-    x97 = x65 * x88
-    x98 = x96 + x97
-    x99 = -x59 - A[1]
-    x100 = x54 * x58
-    x101 = x66 * x99
-    x102 = x101 * x60 + x68
-    x103 = x69 * x99
-    x104 = x103 + x80
-    x105 = x81 * x99
-    x106 = x105 + x90
-    x107 = 8.0 * x60 * x68
-    x108 = x0 * (x107 + 4.0 * x78) + x92 * x99
-    x109 = -x64 - A[2]
-    x110 = x109 * x58
-    x111 = x109 * x73
-    x112 = x111 * x65 + x76
-    x113 = x109 * x77
-    x114 = x113 + x87
-    x115 = x109 * x88
-    x116 = x115 + x96
-    x117 = 8.0 * x65 * x76
-    x118 = x0 * (x117 + 4.0 * x86) + x109 * x98
-    x119 = x66 * x99**2 + x68
-    x120 = x0 * (x101 + x79) + x102 * x99
-    x121 = 2.0 * x99
-    x122 = x67 + x89
-    x123 = x0 * (x121 * x79 + x122) + x104 * x99
-    x124 = x0 * (3.0 * x103 + x107 + x78) + x106 * x99
-    x125 = x0 * (4.0 * x105 + 5.0 * x90 + x91) + x108 * x99
-    x126 = x109**2 * x73 + x76
-    x127 = x0 * (x111 + x85) + x109 * x112
-    x128 = 2.0 * x109
-    x129 = x75 + x95
-    x130 = x0 * (x128 * x85 + x129) + x109 * x114
-    x131 = x0 * (3.0 * x113 + x117 + x86) + x109 * x116
-    x132 = x0 * (4.0 * x115 + 5.0 * x96 + x97) + x109 * x118
-    x133 = -x59 - C[1]
-    x134 = x133**2 * x66
-    x135 = x134 + x68
-    x136 = x41 * x47
-    x137 = 8.0 * x0 * x14
-    x138 = x0 * (x137 + 4.0 * x39) + x43 * x47
-    x139 = x0 * (4.0 * x136 + 5.0 * x37 + x42) + x138 * x47
-    x140 = x135 * x60
-    x141 = x133 * x66
-    x142 = x141 * x25
-    x143 = x140 + x142
-    x144 = x38 * x47
-    x145 = x136 + x37
-    x146 = x0 * (x137 + 3.0 * x144 + x39) + x145 * x47
-    x147 = x133 * x79
-    x148 = 2.0 * x147
-    x149 = x134 + x89
-    x150 = x0 * (x148 + x149)
-    x151 = x143 * x60
-    x152 = x150 + x151
-    x153 = x144 + x40
-    x154 = x0 * (x14 * x48 + x22 + x33) + x153 * x47
-    x155 = x147 + x68
-    x156 = x155 * x60
-    x157 = x0 * (x141 + x79)
-    x158 = 4.0 * x133 * x68 + 2.0 * x157
-    x159 = x0 * (2.0 * x140 + 2.0 * x156 + x158)
-    x160 = x152 * x60
-    x161 = x159 + x160
-    x162 = x47 * x8
-    x163 = x10 + x14 * x47
-    x164 = x0 * (x14 + x162) + x163 * x47
-    x165 = x156 + x157
-    x166 = x165 * x60
-    x167 = x0 * (x122 + x148)
-    x168 = 3.0 * x150 + 2.0 * x167
-    x169 = x0 * (3.0 * x151 + 2.0 * x166 + x168)
-    x170 = x161 * x60
-    x171 = x169 + x170
-    x172 = x10 + x47**2 * x8
-    x173 = x135 * x99
-    x174 = x142 + x173
-    x175 = x143 * x99
-    x176 = x150 + x175
-    x177 = x152 * x99
-    x178 = x159 + x177
-    x179 = x161 * x99
-    x180 = x169 + x179
-    x181 = x166 + x167
-    x182 = x181 * x60
-    x183 = x0 * (3.0 * x156 + 3.0 * x157 + x81)
-    x184 = 4.0 * x159 + 2.0 * x183
-    x185 = x0 * (4.0 * x160 + 2.0 * x182 + x184) + x171 * x99
-    x186 = x57 * x6
-    x187 = x185 * x186
-    x188 = x186 * x65
-    x189 = x0 * (x121 * x141 + x149) + x174 * x99
-    x190 = x0 * (x121 * x155 + x140 + x158 + x173) + x176 * x99
-    x191 = x0 * (x121 * x165 + x151 + x168 + 2.0 * x175) + x178 * x99
-    x192 = x0 * (x121 * x181 + x160 + 3.0 * x177 + x184) + x180 * x99
-    x193 = x13 * x57
-    x194 = -x64 - C[2]
-    x195 = x194**2 * x73
-    x196 = x195 + x76
-    x197 = x196 * x65
-    x198 = x194 * x73
-    x199 = x198 * x25
-    x200 = x197 + x199
-    x201 = x194 * x85
-    x202 = 2.0 * x201
-    x203 = x195 + x95
-    x204 = x0 * (x202 + x203)
-    x205 = x200 * x65
-    x206 = x204 + x205
-    x207 = x201 + x76
-    x208 = x207 * x65
-    x209 = x0 * (x198 + x85)
-    x210 = 4.0 * x194 * x76 + 2.0 * x209
-    x211 = x0 * (2.0 * x197 + 2.0 * x208 + x210)
-    x212 = x206 * x65
-    x213 = x211 + x212
-    x214 = x208 + x209
-    x215 = x214 * x65
-    x216 = x0 * (x129 + x202)
-    x217 = 3.0 * x204 + 2.0 * x216
-    x218 = x0 * (3.0 * x205 + 2.0 * x215 + x217)
-    x219 = x213 * x65
-    x220 = x218 + x219
-    x221 = 3.14159265358979 * x1 * x55
-    x222 = x221 * x6
-    x223 = x109 * x196
-    x224 = x199 + x223
-    x225 = x109 * x200
-    x226 = x204 + x225
-    x227 = x109 * x206
-    x228 = x211 + x227
-    x229 = x109 * x213
-    x230 = x218 + x229
-    x231 = x222 * x60
-    x232 = x215 + x216
-    x233 = x232 * x65
-    x234 = x0 * (3.0 * x208 + 3.0 * x209 + x88)
-    x235 = 4.0 * x211 + 2.0 * x234
-    x236 = x0 * (4.0 * x212 + 2.0 * x233 + x235) + x109 * x220
-    x237 = x222 * x236
-    x238 = x13 * x221
-    x239 = x0 * (x128 * x198 + x203) + x109 * x224
-    x240 = x0 * (x128 * x207 + x197 + x210 + x223) + x109 * x226
-    x241 = x0 * (x128 * x214 + x205 + x217 + 2.0 * x225) + x109 * x228
-    x242 = x0 * (x128 * x232 + x212 + 3.0 * x227 + x235) + x109 * x230
+    x89 = 34.8371874529163 * x82
+    x90 = x57 * x60
+    x91 = x89 * x90
+    x92 = x64 * x80
+    x93 = x64 * x77
+    x94 = x26 * x93
+    x95 = x92 + x94
+    x96 = 26.9847693667702 * x95
+    x97 = x12 * x48
+    x98 = x25 + x73
+    x99 = x82 * (x0 * (x13 + x17 * x49 + x21 + x97) + x48 * x98)
+    x100 = x58 * x99
+    x101 = 60.3397786612521 * x80
+    x102 = x71 * x88
+    x103 = x71 * x85
+    x104 = x103 * x26
+    x105 = x102 + x104
+    x106 = 26.9847693667702 * x90
+    x107 = x105 * x106
+    x108 = 3.0 * x79
+    x109 = x0 * (x108 + 3.0 * x78)
+    x110 = x64 * x95
+    x111 = x109 + x110
+    x112 = 10.1992841329868 * x111
+    x113 = x27 + x97
+    x114 = x0 * (x10 + x19 * x49 + x23) + x113 * x48
+    x115 = x114 * x82
+    x116 = x115 * x58
+    x117 = 0.179587122125167 * x57
+    x118 = x117 * x88
+    x119 = 3.0 * x87
+    x120 = x0 * (x119 + 3.0 * x86)
+    x121 = x105 * x71
+    x122 = x120 + x121
+    x123 = 10.1992841329868 * x122
+    x124 = -x63 - A[1]
+    x125 = 17.6656783191643 * x124
+    x126 = x55 * x68
+    x127 = x124 * x77
+    x128 = x127 * x64 + x79
+    x129 = 46.7389915737742 * x128
+    x130 = x58 * x82
+    x131 = x129 * x130
+    x132 = 46.7389915737742 * x67
+    x133 = x132 * x68
+    x134 = x124 * x80
+    x135 = x134 + x94
+    x136 = 60.3397786612521 * x135
+    x137 = x130 * x74
+    x138 = 104.511562358749 * x128
+    x139 = x82 * x90
+    x140 = x139 * x74
+    x141 = 60.3397786612521 * x88
+    x142 = 46.7389915737742 * x98
+    x143 = x124 * x95
+    x144 = x109 + x143
+    x145 = x130 * x144
+    x146 = 104.511562358749 * x98
+    x147 = x130 * x71
+    x148 = x139 * x142
+    x149 = 8.0 * x64 * x79
+    x150 = x0 * (x149 + 4.0 * x92) + x111 * x124
+    x151 = 17.6656783191643 * x113
+    x152 = x130 * x151
+    x153 = 46.7389915737742 * x145
+    x154 = 60.3397786612521 * x113
+    x155 = x105 * x117
+    x156 = x139 * x151
+    x157 = -x70 - A[2]
+    x158 = 17.6656783191643 * x157
+    x159 = x157 * x85
+    x160 = x159 * x71 + x87
+    x161 = x139 * x160
+    x162 = 60.3397786612521 * x157
+    x163 = 104.511562358749 * x64
+    x164 = x157 * x88
+    x165 = x104 + x164
+    x166 = 60.3397786612521 * x165
+    x167 = x130 * x157
+    x168 = x117 * x160
+    x169 = x139 * x64
+    x170 = x105 * x157
+    x171 = x120 + x170
+    x172 = 46.7389915737742 * x168
+    x173 = x117 * x165
+    x174 = 46.7389915737742 * x139
+    x175 = x171 * x174
+    x176 = 8.0 * x71 * x87
+    x177 = x0 * (4.0 * x102 + x176) + x122 * x157
+    x178 = x124**2 * x77 + x79
+    x179 = x59 * x82
+    x180 = x0 * (x127 + x93) + x124 * x128
+    x181 = 26.9847693667702 * x130
+    x182 = x181 * x32
+    x183 = 2.0 * x124
+    x184 = x108 + x78
+    x185 = x0 * (x183 * x93 + x184) + x124 * x135
+    x186 = x58 * x89
+    x187 = 60.3397786612521 * x180
+    x188 = 34.8371874529163 * x118
+    x189 = x0 * (3.0 * x134 + x149 + x92) + x124 * x144
+    x190 = x181 * x189
+    x191 = 60.3397786612521 * x28
+    x192 = 26.9847693667702 * x155
+    x193 = x0 * (5.0 * x109 + x110 + 4.0 * x143) + x124 * x150
+    x194 = x117 * x12
+    x195 = 46.7389915737742 * x124
+    x196 = 104.511562358749 * x168
+    x197 = x139 * x30
+    x198 = 104.511562358749 * x173
+    x199 = 60.3397786612521 * x173
+    x200 = x157**2 * x85 + x87
+    x201 = 10.1992841329868 * x139
+    x202 = x106 * x82
+    x203 = x202 * x32
+    x204 = x0 * (x103 + x159) + x157 * x160
+    x205 = x117 * x200
+    x206 = 2.0 * x157
+    x207 = x119 + x86
+    x208 = x0 * (x103 * x206 + x207) + x157 * x165
+    x209 = x117 * x204
+    x210 = x0 * (x102 + 3.0 * x164 + x176) + x157 * x171
+    x211 = x202 * x210
+    x212 = x0 * (5.0 * x120 + x121 + 4.0 * x170) + x157 * x177
+    x213 = -x63 - C[1]
+    x214 = x213**2 * x77
+    x215 = x214 + x79
+    x216 = x42 * x48
+    x217 = 8.0 * x0 * x15
+    x218 = x0 * (x217 + 4.0 * x40) + x44 * x48
+    x219 = x0 * (4.0 * x216 + 5.0 * x38 + x43) + x218 * x48
+    x220 = x215 * x64
+    x221 = x213 * x77
+    x222 = x221 * x26
+    x223 = x220 + x222
+    x224 = x39 * x48
+    x225 = x216 + x38
+    x226 = x0 * (x217 + 3.0 * x224 + x40) + x225 * x48
+    x227 = x181 * x226
+    x228 = x213 * x93
+    x229 = 2.0 * x228
+    x230 = x108 + x214
+    x231 = x0 * (x229 + x230)
+    x232 = x223 * x64
+    x233 = x231 + x232
+    x234 = x224 + x41
+    x235 = x0 * (x15 * x49 + x23 + x34) + x234 * x48
+    x236 = 60.3397786612521 * x223
+    x237 = x11 + x15 * x48
+    x238 = x0 * (x15 + x48 * x9) + x237 * x48
+    x239 = x228 + x79
+    x240 = x239 * x64
+    x241 = x0 * (x221 + x93)
+    x242 = 4.0 * x213 * x79 + 2.0 * x241
+    x243 = x0 * (2.0 * x220 + 2.0 * x240 + x242)
+    x244 = x233 * x64
+    x245 = x243 + x244
+    x246 = x181 * x245
+    x247 = 60.3397786612521 * x233
+    x248 = x240 + x241
+    x249 = x248 * x64
+    x250 = x0 * (x184 + x229)
+    x251 = 3.0 * x231 + 2.0 * x250
+    x252 = x0 * (3.0 * x232 + 2.0 * x249 + x251)
+    x253 = x245 * x64
+    x254 = x252 + x253
+    x255 = x11 + x48**2 * x9
+    x256 = x117 * x215
+    x257 = x124 * x215
+    x258 = x222 + x257
+    x259 = 17.6656783191643 * x258
+    x260 = x130 * x218
+    x261 = x124 * x223
+    x262 = x231 + x261
+    x263 = 46.7389915737742 * x262
+    x264 = x130 * x225
+    x265 = 46.7389915737742 * x264
+    x266 = 60.3397786612521 * x234
+    x267 = x124 * x233
+    x268 = x243 + x267
+    x269 = x130 * x268
+    x270 = 104.511562358749 * x262
+    x271 = x124 * x245
+    x272 = x252 + x271
+    x273 = 46.7389915737742 * x237
+    x274 = x130 * x273
+    x275 = 104.511562358749 * x237
+    x276 = 17.6656783191643 * x48
+    x277 = x249 + x250
+    x278 = x277 * x64
+    x279 = x0 * (3.0 * x240 + 3.0 * x241 + x95)
+    x280 = 4.0 * x243 + 2.0 * x279
+    x281 = x0 * (4.0 * x244 + 2.0 * x278 + x280) + x124 * x254
+    x282 = x6 * x61
+    x283 = x282 * x58
+    x284 = x281 * x283
+    x285 = x283 * x48
+    x286 = 46.7389915737742 * x272
+    x287 = x57 * x6
+    x288 = x287 * x82
+    x289 = x268 * x288
+    x290 = x263 * x288
+    x291 = x259 * x288
+    x292 = 46.7389915737742 * x288
+    x293 = x160 * x292
+    x294 = x288 * x48
+    x295 = x292 * x48
+    x296 = 10.1992841329868 * x44
+    x297 = x0 * (x183 * x221 + x230) + x124 * x258
+    x298 = x130 * x297
+    x299 = 26.9847693667702 * x42
+    x300 = x0 * (x183 * x239 + x220 + x242 + x257) + x124 * x262
+    x301 = x130 * x300
+    x302 = x0 * (x183 * x248 + x232 + x251 + 2.0 * x261) + x124 * x268
+    x303 = 34.8371874529163 * x39
+    x304 = 60.3397786612521 * x71
+    x305 = x0 * (x183 * x277 + x244 + 3.0 * x267 + x280) + x124 * x272
+    x306 = 26.9847693667702 * x14
+    x307 = x58 * x61
+    x308 = x14 * x307
+    x309 = x57 * x82
+    x310 = x14 * x309
+    x311 = 60.3397786612521 * x310
+    x312 = x306 * x309
+    x313 = x287 * x89
+    x314 = 26.9847693667702 * x288
+    x315 = 104.511562358749 * x310
+    x316 = 46.7389915737742 * x310
+    x317 = 10.1992841329868 * x288
+    x318 = -x70 - C[2]
+    x319 = x318**2 * x85
+    x320 = x319 + x87
+    x321 = x202 * x226
+    x322 = x320 * x71
+    x323 = x318 * x85
+    x324 = x26 * x323
+    x325 = x322 + x324
+    x326 = x117 * x320
+    x327 = x139 * x84
+    x328 = x103 * x318
+    x329 = 2.0 * x328
+    x330 = x119 + x319
+    x331 = x0 * (x329 + x330)
+    x332 = x325 * x71
+    x333 = x331 + x332
+    x334 = x117 * x325
+    x335 = x328 + x87
+    x336 = x335 * x71
+    x337 = x0 * (x103 + x323)
+    x338 = 4.0 * x318 * x87 + 2.0 * x337
+    x339 = x0 * (2.0 * x322 + 2.0 * x336 + x338)
+    x340 = x333 * x71
+    x341 = x339 + x340
+    x342 = x202 * x341
+    x343 = x117 * x333
+    x344 = x336 + x337
+    x345 = x344 * x71
+    x346 = x0 * (x207 + x329)
+    x347 = 3.0 * x331 + 2.0 * x346
+    x348 = x0 * (3.0 * x332 + 2.0 * x345 + x347)
+    x349 = x341 * x71
+    x350 = x348 + x349
+    x351 = x139 * x218
+    x352 = x174 * x225
+    x353 = x139 * x266
+    x354 = x139 * x273
+    x355 = x150 * x288
+    x356 = x144 * x292
+    x357 = x136 * x288
+    x358 = x129 * x288
+    x359 = x287 * x62
+    x360 = x359 * x48
+    x361 = x157 * x320
+    x362 = x324 + x361
+    x363 = 17.6656783191643 * x362
+    x364 = x157 * x325
+    x365 = x331 + x364
+    x366 = x117 * x362
+    x367 = x157 * x333
+    x368 = x339 + x367
+    x369 = x117 * x365
+    x370 = x157 * x341
+    x371 = x348 + x370
+    x372 = 60.3397786612521 * x368
+    x373 = x345 + x346
+    x374 = x373 * x71
+    x375 = x0 * (x105 + 3.0 * x336 + 3.0 * x337)
+    x376 = 4.0 * x339 + 2.0 * x375
+    x377 = x0 * (4.0 * x340 + 2.0 * x374 + x376) + x157 * x350
+    x378 = x359 * x377
+    x379 = x124 * x139
+    x380 = x57 * x62
+    x381 = x14 * x380
+    x382 = x0 * (x206 * x323 + x330) + x157 * x362
+    x383 = x139 * x382
+    x384 = x0 * (x206 * x335 + x322 + x338 + x361) + x157 * x365
+    x385 = x139 * x384
+    x386 = x0 * (x206 * x344 + x332 + x347 + 2.0 * x364) + x157 * x368
+    x387 = x0 * (x206 * x373 + x340 + 3.0 * x367 + x376) + x157 * x371
 
     # 270 item(s)
-    return numpy.array(
-        [
-            x58
+    result[0, 0, 0] = numpy.sum(
+        x59
+        * x62
+        * (
+            x0
             * (
-                x0
-                * (
-                    x25 * (4.0 * x34 + 4.0 * x36 + x43)
-                    + x32
-                    + x48 * (x44 + x46)
-                    + 4.0 * x49
-                    + 5.0 * x51
-                )
-                + x47 * x54
-            ),
-            x60 * x63,
-            x63 * x65,
-            x69 * x72 * x73,
-            x60 * x72 * x74,
-            x66 * x72 * x77,
-            x73 * x81 * x84,
-            x69 * x84 * x85,
-            x77 * x79 * x84,
-            x66 * x84 * x88,
-            x73 * x92 * x94,
-            x81 * x85 * x94,
-            x69 * x77 * x94,
-            x79 * x88 * x94,
-            x66 * x94 * x98,
-            x100 * x99,
-            x102 * x62 * x73,
-            x62 * x74 * x99,
-            x104 * x71 * x73,
-            x102 * x71 * x85,
-            x101 * x71 * x77,
-            x106 * x73 * x83,
-            x104 * x83 * x85,
-            x102 * x77 * x83,
-            x101 * x83 * x88,
-            x108 * x73 * x93,
-            x106 * x85 * x93,
-            x104 * x77 * x93,
-            x102 * x88 * x93,
-            x101 * x93 * x98,
-            x100 * x109,
-            x110 * x60 * x62,
-            x112 * x62 * x66,
-            x111 * x69 * x71,
-            x112 * x71 * x79,
-            x114 * x66 * x71,
-            x111 * x81 * x83,
-            x112 * x69 * x83,
-            x114 * x79 * x83,
-            x116 * x66 * x83,
-            x111 * x92 * x93,
-            x112 * x81 * x93,
-            x114 * x69 * x93,
-            x116 * x79 * x93,
-            x118 * x66 * x93,
-            x119 * x53 * x73,
-            x120 * x31 * x73,
-            x119 * x31 * x85,
-            x123 * x29 * x73,
-            x120 * x29 * x85,
-            x119 * x29 * x77,
-            x124 * x27 * x73,
-            x123 * x27 * x85,
-            x120 * x27 * x77,
-            x119 * x27 * x88,
-            x11 * x125 * x73,
-            x11 * x124 * x85,
-            x11 * x123 * x77,
-            x11 * x120 * x88,
-            x11 * x119 * x98,
-            x110 * x53 * x99,
-            x102 * x111 * x31,
-            x101 * x112 * x31,
-            x104 * x111 * x29,
-            x102 * x112 * x29,
-            x101 * x114 * x29,
-            x106 * x111 * x27,
-            x104 * x112 * x27,
-            x102 * x114 * x27,
-            x101 * x116 * x27,
-            x108 * x11 * x111,
-            x106 * x11 * x112,
-            x104 * x11 * x114,
-            x102 * x11 * x116,
-            x101 * x11 * x118,
-            x126 * x53 * x66,
-            x126 * x31 * x79,
-            x127 * x31 * x66,
-            x126 * x29 * x69,
-            x127 * x29 * x79,
-            x130 * x29 * x66,
-            x126 * x27 * x81,
-            x127 * x27 * x69,
-            x130 * x27 * x79,
-            x131 * x27 * x66,
-            x11 * x126 * x92,
-            x11 * x127 * x81,
-            x11 * x130 * x69,
-            x11 * x131 * x79,
-            x11 * x132 * x66,
-            x135 * x139 * x73,
-            x143 * x146 * x73,
-            x135 * x146 * x85,
-            x152 * x154 * x73,
-            x143 * x154 * x85,
-            x135 * x154 * x77,
-            x161 * x164 * x73,
-            x152 * x164 * x85,
-            x143 * x164 * x77,
-            x135 * x164 * x88,
-            x171 * x172 * x73,
-            x161 * x172 * x85,
-            x152 * x172 * x77,
-            x143 * x172 * x88,
-            x135 * x172 * x98,
-            x138 * x174 * x73,
-            x145 * x176 * x73,
-            x145 * x174 * x85,
-            x153 * x178 * x73,
-            x153 * x176 * x85,
-            x153 * x174 * x77,
-            x163 * x180 * x73,
-            x163 * x178 * x85,
-            x163 * x176 * x77,
-            x163 * x174 * x88,
-            x187 * x47,
-            x180 * x188 * x47,
-            x162 * x178 * x77,
-            x162 * x176 * x88,
-            x162 * x174 * x98,
-            x111 * x135 * x138,
-            x111 * x143 * x145,
-            x112 * x135 * x145,
-            x111 * x152 * x153,
-            x112 * x143 * x153,
-            x114 * x135 * x153,
-            x111 * x161 * x163,
-            x112 * x152 * x163,
-            x114 * x143 * x163,
-            x116 * x135 * x163,
-            x109 * x171 * x186 * x47,
-            x112 * x161 * x162,
-            x114 * x152 * x162,
-            x116 * x143 * x162,
-            x118 * x135 * x162,
-            x189 * x43 * x73,
-            x190 * x41 * x73,
-            x189 * x41 * x85,
-            x191 * x38 * x73,
-            x190 * x38 * x85,
-            x189 * x38 * x77,
-            x192 * x193,
-            x191 * x193 * x65,
-            x14 * x190 * x77,
-            x14 * x189 * x88,
-            x186
-            * (
-                x0
-                * (
-                    x121 * (x182 + x183)
-                    + 5.0 * x169
-                    + x170
-                    + 4.0 * x179
-                    + x25 * (4.0 * x166 + 4.0 * x167 + x92)
-                )
-                + x185 * x99
-            ),
-            x188 * x192,
-            x191 * x77 * x8,
-            x190 * x8 * x88,
-            x189 * x8 * x98,
-            x111 * x174 * x43,
-            x111 * x176 * x41,
-            x112 * x174 * x41,
-            x111 * x178 * x38,
-            x112 * x176 * x38,
-            x114 * x174 * x38,
-            x109 * x180 * x193,
-            x112 * x14 * x178,
-            x114 * x14 * x176,
-            x116 * x14 * x174,
-            x109 * x187,
-            x112 * x180 * x8,
-            x114 * x178 * x8,
-            x116 * x176 * x8,
-            x118 * x174 * x8,
-            x126 * x135 * x43,
-            x126 * x143 * x41,
-            x127 * x135 * x41,
-            x126 * x152 * x38,
-            x127 * x143 * x38,
-            x130 * x135 * x38,
-            x126 * x14 * x161,
-            x127 * x14 * x152,
-            x130 * x14 * x143,
-            x131 * x135 * x14,
-            x126 * x171 * x8,
-            x127 * x161 * x8,
-            x130 * x152 * x8,
-            x131 * x143 * x8,
-            x132 * x135 * x8,
-            x139 * x196 * x66,
-            x146 * x196 * x79,
-            x146 * x200 * x66,
-            x154 * x196 * x69,
-            x154 * x200 * x79,
-            x154 * x206 * x66,
-            x164 * x196 * x81,
-            x164 * x200 * x69,
-            x164 * x206 * x79,
-            x164 * x213 * x66,
-            x172 * x196 * x92,
-            x172 * x200 * x81,
-            x172 * x206 * x69,
-            x172 * x213 * x79,
-            x172 * x220 * x66,
-            x101 * x138 * x196,
-            x102 * x145 * x196,
-            x101 * x145 * x200,
-            x104 * x153 * x196,
-            x102 * x153 * x200,
-            x101 * x153 * x206,
-            x106 * x163 * x196,
-            x104 * x163 * x200,
-            x102 * x163 * x206,
-            x101 * x163 * x213,
-            x108 * x162 * x196,
-            x106 * x162 * x200,
-            x104 * x162 * x206,
-            x102 * x162 * x213,
-            x220 * x222 * x47 * x99,
-            x138 * x224 * x66,
-            x145 * x224 * x79,
-            x145 * x226 * x66,
-            x153 * x224 * x69,
-            x153 * x226 * x79,
-            x153 * x228 * x66,
-            x163 * x224 * x81,
-            x163 * x226 * x69,
-            x163 * x228 * x79,
-            x163 * x230 * x66,
-            x162 * x224 * x92,
-            x162 * x226 * x81,
-            x162 * x228 * x69,
-            x230 * x231 * x47,
-            x237 * x47,
-            x119 * x196 * x43,
-            x120 * x196 * x41,
-            x119 * x200 * x41,
-            x123 * x196 * x38,
-            x120 * x200 * x38,
-            x119 * x206 * x38,
-            x124 * x14 * x196,
-            x123 * x14 * x200,
-            x120 * x14 * x206,
-            x119 * x14 * x213,
-            x125 * x196 * x8,
-            x124 * x200 * x8,
-            x123 * x206 * x8,
-            x120 * x213 * x8,
-            x119 * x220 * x8,
-            x101 * x224 * x43,
-            x102 * x224 * x41,
-            x101 * x226 * x41,
-            x104 * x224 * x38,
-            x102 * x226 * x38,
-            x101 * x228 * x38,
-            x106 * x14 * x224,
-            x104 * x14 * x226,
-            x102 * x14 * x228,
-            x230 * x238 * x99,
-            x108 * x224 * x8,
-            x106 * x226 * x8,
-            x104 * x228 * x8,
-            x102 * x230 * x8,
-            x237 * x99,
-            x239 * x43 * x66,
-            x239 * x41 * x79,
-            x240 * x41 * x66,
-            x239 * x38 * x69,
-            x240 * x38 * x79,
-            x241 * x38 * x66,
-            x14 * x239 * x81,
-            x14 * x240 * x69,
-            x238 * x241 * x60,
-            x238 * x242,
-            x239 * x8 * x92,
-            x240 * x8 * x81,
-            x241 * x69 * x8,
-            x231 * x242,
-            x222
-            * (
-                x0
-                * (
-                    x128 * (x233 + x234)
-                    + 5.0 * x218
-                    + x219
-                    + 4.0 * x229
-                    + x25 * (4.0 * x215 + 4.0 * x216 + x98)
-                )
-                + x109 * x236
-            ),
-        ]
+                x26 * (4.0 * x35 + 4.0 * x37 + x44)
+                + x33
+                + x49 * (x45 + x47)
+                + 4.0 * x50
+                + 5.0 * x52
+            )
+            + x48 * x55
+        )
     )
+    result[0, 0, 1] = numpy.sum(x65 * x69)
+    result[0, 0, 2] = numpy.sum(x69 * x72)
+    result[0, 0, 3] = numpy.sum(x76 * x83)
+    result[0, 0, 4] = numpy.sum(x62 * x71 * x76 * x84)
+    result[0, 0, 5] = numpy.sum(x75 * x88 * x91)
+    result[0, 0, 6] = numpy.sum(x100 * x96)
+    result[0, 0, 7] = numpy.sum(x100 * x101 * x71)
+    result[0, 0, 8] = numpy.sum(x84 * x88 * x90 * x99)
+    result[0, 0, 9] = numpy.sum(x107 * x99)
+    result[0, 0, 10] = numpy.sum(x112 * x116)
+    result[0, 0, 11] = numpy.sum(x116 * x71 * x96)
+    result[0, 0, 12] = numpy.sum(x114 * x118 * x81)
+    result[0, 0, 13] = numpy.sum(x107 * x115 * x64)
+    result[0, 0, 14] = numpy.sum(x115 * x123 * x90)
+    result[0, 1, 0] = numpy.sum(x125 * x126)
+    result[0, 1, 1] = numpy.sum(x131 * x67)
+    result[0, 1, 2] = numpy.sum(x124 * x133 * x71)
+    result[0, 1, 3] = numpy.sum(x136 * x137)
+    result[0, 1, 4] = numpy.sum(x137 * x138 * x71)
+    result[0, 1, 5] = numpy.sum(x124 * x140 * x141)
+    result[0, 1, 6] = numpy.sum(x142 * x145)
+    result[0, 1, 7] = numpy.sum(x135 * x146 * x147)
+    result[0, 1, 8] = numpy.sum(x118 * x128 * x146)
+    result[0, 1, 9] = numpy.sum(x105 * x124 * x148)
+    result[0, 1, 10] = numpy.sum(x150 * x152)
+    result[0, 1, 11] = numpy.sum(x113 * x153 * x71)
+    result[0, 1, 12] = numpy.sum(x118 * x135 * x154)
+    result[0, 1, 13] = numpy.sum(x113 * x129 * x155)
+    result[0, 1, 14] = numpy.sum(x122 * x124 * x156)
+    result[0, 2, 0] = numpy.sum(x126 * x158)
+    result[0, 2, 1] = numpy.sum(x133 * x157 * x64)
+    result[0, 2, 2] = numpy.sum(x132 * x161)
+    result[0, 2, 3] = numpy.sum(x137 * x162 * x80)
+    result[0, 2, 4] = numpy.sum(x161 * x163 * x74)
+    result[0, 2, 5] = numpy.sum(x140 * x166)
+    result[0, 2, 6] = numpy.sum(x142 * x167 * x95)
+    result[0, 2, 7] = numpy.sum(x146 * x168 * x80)
+    result[0, 2, 8] = numpy.sum(x146 * x165 * x169)
+    result[0, 2, 9] = numpy.sum(x148 * x171)
+    result[0, 2, 10] = numpy.sum(x111 * x152 * x157)
+    result[0, 2, 11] = numpy.sum(x113 * x172 * x95)
+    result[0, 2, 12] = numpy.sum(x154 * x173 * x80)
+    result[0, 2, 13] = numpy.sum(x113 * x175 * x64)
+    result[0, 2, 14] = numpy.sum(x156 * x177)
+    result[0, 3, 0] = numpy.sum(x178 * x179 * x54)
+    result[0, 3, 1] = numpy.sum(x180 * x182)
+    result[0, 3, 2] = numpy.sum(x178 * x182 * x71)
+    result[0, 3, 3] = numpy.sum(x185 * x186 * x30)
+    result[0, 3, 4] = numpy.sum(x147 * x187 * x30)
+    result[0, 3, 5] = numpy.sum(x178 * x188 * x30)
+    result[0, 3, 6] = numpy.sum(x190 * x28)
+    result[0, 3, 7] = numpy.sum(x147 * x185 * x191)
+    result[0, 3, 8] = numpy.sum(x118 * x180 * x191)
+    result[0, 3, 9] = numpy.sum(x178 * x192 * x28)
+    result[0, 3, 10] = numpy.sum(x12 * x179 * x193)
+    result[0, 3, 11] = numpy.sum(x12 * x190 * x71)
+    result[0, 3, 12] = numpy.sum(x12 * x185 * x188)
+    result[0, 3, 13] = numpy.sum(x12 * x180 * x192)
+    result[0, 3, 14] = numpy.sum(x123 * x178 * x194)
+    result[0, 4, 0] = numpy.sum(x125 * x157 * x54 * x68)
+    result[0, 4, 1] = numpy.sum(x131 * x157 * x32)
+    result[0, 4, 2] = numpy.sum(x161 * x195 * x32)
+    result[0, 4, 3] = numpy.sum(x136 * x167 * x30)
+    result[0, 4, 4] = numpy.sum(x128 * x196 * x30)
+    result[0, 4, 5] = numpy.sum(x124 * x166 * x197)
+    result[0, 4, 6] = numpy.sum(x153 * x157 * x28)
+    result[0, 4, 7] = numpy.sum(x135 * x196 * x28)
+    result[0, 4, 8] = numpy.sum(x128 * x198 * x28)
+    result[0, 4, 9] = numpy.sum(x124 * x175 * x28)
+    result[0, 4, 10] = numpy.sum(x12 * x130 * x150 * x158)
+    result[0, 4, 11] = numpy.sum(x12 * x144 * x172)
+    result[0, 4, 12] = numpy.sum(x12 * x135 * x199)
+    result[0, 4, 13] = numpy.sum(x129 * x171 * x194)
+    result[0, 4, 14] = numpy.sum(x12 * x125 * x139 * x177)
+    result[0, 5, 0] = numpy.sum(x200 * x201 * x54)
+    result[0, 5, 1] = numpy.sum(x200 * x203 * x64)
+    result[0, 5, 2] = numpy.sum(x203 * x204)
+    result[0, 5, 3] = numpy.sum(x205 * x30 * x81)
+    result[0, 5, 4] = numpy.sum(x197 * x204 * x84)
+    result[0, 5, 5] = numpy.sum(x208 * x30 * x91)
+    result[0, 5, 6] = numpy.sum(x205 * x28 * x96)
+    result[0, 5, 7] = numpy.sum(x191 * x209 * x80)
+    result[0, 5, 8] = numpy.sum(x169 * x191 * x208)
+    result[0, 5, 9] = numpy.sum(x211 * x28)
+    result[0, 5, 10] = numpy.sum(x112 * x194 * x200)
+    result[0, 5, 11] = numpy.sum(x194 * x204 * x96)
+    result[0, 5, 12] = numpy.sum(x194 * x208 * x81)
+    result[0, 5, 13] = numpy.sum(x12 * x211 * x64)
+    result[0, 5, 14] = numpy.sum(x12 * x201 * x212)
+    result[1, 0, 0] = numpy.sum(x179 * x215 * x219)
+    result[1, 0, 1] = numpy.sum(x223 * x227)
+    result[1, 0, 2] = numpy.sum(x215 * x227 * x71)
+    result[1, 0, 3] = numpy.sum(x186 * x233 * x235)
+    result[1, 0, 4] = numpy.sum(x147 * x235 * x236)
+    result[1, 0, 5] = numpy.sum(x188 * x215 * x235)
+    result[1, 0, 6] = numpy.sum(x238 * x246)
+    result[1, 0, 7] = numpy.sum(x147 * x238 * x247)
+    result[1, 0, 8] = numpy.sum(x118 * x236 * x238)
+    result[1, 0, 9] = numpy.sum(x192 * x215 * x238)
+    result[1, 0, 10] = numpy.sum(x179 * x254 * x255)
+    result[1, 0, 11] = numpy.sum(x246 * x255 * x71)
+    result[1, 0, 12] = numpy.sum(x188 * x233 * x255)
+    result[1, 0, 13] = numpy.sum(x192 * x223 * x255)
+    result[1, 0, 14] = numpy.sum(x123 * x255 * x256)
+    result[1, 1, 0] = numpy.sum(x259 * x260)
+    result[1, 1, 1] = numpy.sum(x263 * x264)
+    result[1, 1, 2] = numpy.sum(x258 * x265 * x71)
+    result[1, 1, 3] = numpy.sum(x266 * x269)
+    result[1, 1, 4] = numpy.sum(x147 * x234 * x270)
+    result[1, 1, 5] = numpy.sum(x118 * x258 * x266)
+    result[1, 1, 6] = numpy.sum(x272 * x274)
+    result[1, 1, 7] = numpy.sum(x269 * x275 * x71)
+    result[1, 1, 8] = numpy.sum(x118 * x262 * x275)
+    result[1, 1, 9] = numpy.sum(x155 * x258 * x273)
+    result[1, 1, 10] = numpy.sum(x276 * x284)
+    result[1, 1, 11] = numpy.sum(x285 * x286 * x71)
+    result[1, 1, 12] = numpy.sum(x141 * x289 * x48)
+    result[1, 1, 13] = numpy.sum(x105 * x290 * x48)
+    result[1, 1, 14] = numpy.sum(x122 * x291 * x48)
+    result[1, 2, 0] = numpy.sum(x158 * x215 * x260)
+    result[1, 2, 1] = numpy.sum(x157 * x223 * x265)
+    result[1, 2, 2] = numpy.sum(x172 * x215 * x225)
+    result[1, 2, 3] = numpy.sum(x167 * x233 * x266)
+    result[1, 2, 4] = numpy.sum(x196 * x223 * x234)
+    result[1, 2, 5] = numpy.sum(x199 * x215 * x234)
+    result[1, 2, 6] = numpy.sum(x157 * x245 * x274)
+    result[1, 2, 7] = numpy.sum(x196 * x233 * x237)
+    result[1, 2, 8] = numpy.sum(x198 * x223 * x237)
+    result[1, 2, 9] = numpy.sum(x171 * x256 * x273)
+    result[1, 2, 10] = numpy.sum(x158 * x254 * x285)
+    result[1, 2, 11] = numpy.sum(x245 * x293 * x48)
+    result[1, 2, 12] = numpy.sum(x166 * x233 * x294)
+    result[1, 2, 13] = numpy.sum(x171 * x223 * x295)
+    result[1, 2, 14] = numpy.sum(x177 * x215 * x276 * x288)
+    result[1, 3, 0] = numpy.sum(x296 * x298)
+    result[1, 3, 1] = numpy.sum(x299 * x301)
+    result[1, 3, 2] = numpy.sum(x298 * x299 * x71)
+    result[1, 3, 3] = numpy.sum(x130 * x302 * x303)
+    result[1, 3, 4] = numpy.sum(x301 * x304 * x39)
+    result[1, 3, 5] = numpy.sum(x188 * x297 * x39)
+    result[1, 3, 6] = numpy.sum(x305 * x306 * x307)
+    result[1, 3, 7] = numpy.sum(x302 * x304 * x308)
+    result[1, 3, 8] = numpy.sum(x300 * x311 * x88)
+    result[1, 3, 9] = numpy.sum(x105 * x297 * x312)
+    result[1, 3, 10] = numpy.sum(
+        x282
+        * x59
+        * (
+            x0
+            * (
+                x183 * (x278 + x279)
+                + 5.0 * x252
+                + x253
+                + x26 * (x111 + 4.0 * x249 + 4.0 * x250)
+                + 4.0 * x271
+            )
+            + x124 * x281
+        )
+    )
+    result[1, 3, 11] = numpy.sum(x283 * x305 * x72)
+    result[1, 3, 12] = numpy.sum(x302 * x313 * x88)
+    result[1, 3, 13] = numpy.sum(x105 * x300 * x314)
+    result[1, 3, 14] = numpy.sum(x123 * x288 * x297)
+    result[1, 4, 0] = numpy.sum(x167 * x259 * x44)
+    result[1, 4, 1] = numpy.sum(x167 * x263 * x42)
+    result[1, 4, 2] = numpy.sum(x172 * x258 * x42)
+    result[1, 4, 3] = numpy.sum(x162 * x269 * x39)
+    result[1, 4, 4] = numpy.sum(x196 * x262 * x39)
+    result[1, 4, 5] = numpy.sum(x199 * x258 * x39)
+    result[1, 4, 6] = numpy.sum(x157 * x286 * x308)
+    result[1, 4, 7] = numpy.sum(x160 * x268 * x315)
+    result[1, 4, 8] = numpy.sum(x165 * x270 * x310)
+    result[1, 4, 9] = numpy.sum(x171 * x258 * x316)
+    result[1, 4, 10] = numpy.sum(x158 * x284)
+    result[1, 4, 11] = numpy.sum(x272 * x293)
+    result[1, 4, 12] = numpy.sum(x166 * x289)
+    result[1, 4, 13] = numpy.sum(x171 * x290)
+    result[1, 4, 14] = numpy.sum(x177 * x291)
+    result[1, 5, 0] = numpy.sum(x205 * x215 * x296)
+    result[1, 5, 1] = numpy.sum(x205 * x223 * x299)
+    result[1, 5, 2] = numpy.sum(x209 * x215 * x299)
+    result[1, 5, 3] = numpy.sum(x205 * x233 * x303)
+    result[1, 5, 4] = numpy.sum(x209 * x236 * x39)
+    result[1, 5, 5] = numpy.sum(x208 * x256 * x303)
+    result[1, 5, 6] = numpy.sum(x200 * x245 * x312)
+    result[1, 5, 7] = numpy.sum(x204 * x247 * x310)
+    result[1, 5, 8] = numpy.sum(x208 * x236 * x310)
+    result[1, 5, 9] = numpy.sum(x210 * x215 * x312)
+    result[1, 5, 10] = numpy.sum(x200 * x254 * x317)
+    result[1, 5, 11] = numpy.sum(x204 * x245 * x314)
+    result[1, 5, 12] = numpy.sum(x208 * x233 * x313)
+    result[1, 5, 13] = numpy.sum(x210 * x223 * x314)
+    result[1, 5, 14] = numpy.sum(x212 * x215 * x317)
+    result[2, 0, 0] = numpy.sum(x201 * x219 * x320)
+    result[2, 0, 1] = numpy.sum(x320 * x321 * x64)
+    result[2, 0, 2] = numpy.sum(x321 * x325)
+    result[2, 0, 3] = numpy.sum(x235 * x326 * x81)
+    result[2, 0, 4] = numpy.sum(x235 * x325 * x327)
+    result[2, 0, 5] = numpy.sum(x235 * x333 * x91)
+    result[2, 0, 6] = numpy.sum(x238 * x326 * x96)
+    result[2, 0, 7] = numpy.sum(x101 * x238 * x334)
+    result[2, 0, 8] = numpy.sum(x238 * x327 * x333)
+    result[2, 0, 9] = numpy.sum(x238 * x342)
+    result[2, 0, 10] = numpy.sum(x112 * x255 * x326)
+    result[2, 0, 11] = numpy.sum(x255 * x334 * x96)
+    result[2, 0, 12] = numpy.sum(x255 * x343 * x81)
+    result[2, 0, 13] = numpy.sum(x255 * x342 * x64)
+    result[2, 0, 14] = numpy.sum(x201 * x255 * x350)
+    result[2, 1, 0] = numpy.sum(x125 * x320 * x351)
+    result[2, 1, 1] = numpy.sum(x129 * x225 * x326)
+    result[2, 1, 2] = numpy.sum(x124 * x325 * x352)
+    result[2, 1, 3] = numpy.sum(x135 * x266 * x326)
+    result[2, 1, 4] = numpy.sum(x138 * x234 * x334)
+    result[2, 1, 5] = numpy.sum(x124 * x333 * x353)
+    result[2, 1, 6] = numpy.sum(x144 * x273 * x326)
+    result[2, 1, 7] = numpy.sum(x135 * x275 * x334)
+    result[2, 1, 8] = numpy.sum(x128 * x275 * x343)
+    result[2, 1, 9] = numpy.sum(x124 * x341 * x354)
+    result[2, 1, 10] = numpy.sum(x276 * x320 * x355)
+    result[2, 1, 11] = numpy.sum(x325 * x356 * x48)
+    result[2, 1, 12] = numpy.sum(x333 * x357 * x48)
+    result[2, 1, 13] = numpy.sum(x341 * x358 * x48)
+    result[2, 1, 14] = numpy.sum(x125 * x350 * x360)
+    result[2, 2, 0] = numpy.sum(x351 * x363)
+    result[2, 2, 1] = numpy.sum(x352 * x362 * x64)
+    result[2, 2, 2] = numpy.sum(x352 * x365)
+    result[2, 2, 3] = numpy.sum(x266 * x366 * x80)
+    result[2, 2, 4] = numpy.sum(x139 * x163 * x234 * x365)
+    result[2, 2, 5] = numpy.sum(x353 * x368)
+    result[2, 2, 6] = numpy.sum(x273 * x366 * x95)
+    result[2, 2, 7] = numpy.sum(x275 * x369 * x80)
+    result[2, 2, 8] = numpy.sum(x169 * x275 * x368)
+    result[2, 2, 9] = numpy.sum(x354 * x371)
+    result[2, 2, 10] = numpy.sum(x111 * x294 * x363)
+    result[2, 2, 11] = numpy.sum(x295 * x365 * x95)
+    result[2, 2, 12] = numpy.sum(x294 * x372 * x80)
+    result[2, 2, 13] = numpy.sum(46.7389915737742 * x360 * x371 * x64)
+    result[2, 2, 14] = numpy.sum(x276 * x378)
+    result[2, 3, 0] = numpy.sum(x178 * x296 * x326)
+    result[2, 3, 1] = numpy.sum(x180 * x299 * x326)
+    result[2, 3, 2] = numpy.sum(x178 * x299 * x334)
+    result[2, 3, 3] = numpy.sum(x185 * x303 * x326)
+    result[2, 3, 4] = numpy.sum(x187 * x334 * x39)
+    result[2, 3, 5] = numpy.sum(x178 * x303 * x343)
+    result[2, 3, 6] = numpy.sum(x189 * x312 * x320)
+    result[2, 3, 7] = numpy.sum(x185 * x311 * x325)
+    result[2, 3, 8] = numpy.sum(x187 * x310 * x333)
+    result[2, 3, 9] = numpy.sum(x178 * x312 * x341)
+    result[2, 3, 10] = numpy.sum(x193 * x317 * x320)
+    result[2, 3, 11] = numpy.sum(x189 * x314 * x325)
+    result[2, 3, 12] = numpy.sum(x185 * x313 * x333)
+    result[2, 3, 13] = numpy.sum(x180 * x314 * x341)
+    result[2, 3, 14] = numpy.sum(x178 * x317 * x350)
+    result[2, 4, 0] = numpy.sum(x363 * x379 * x44)
+    result[2, 4, 1] = numpy.sum(x129 * x366 * x42)
+    result[2, 4, 2] = numpy.sum(x124 * x174 * x365 * x42)
+    result[2, 4, 3] = numpy.sum(x136 * x366 * x39)
+    result[2, 4, 4] = numpy.sum(x138 * x369 * x39)
+    result[2, 4, 5] = numpy.sum(x372 * x379 * x39)
+    result[2, 4, 6] = numpy.sum(x144 * x316 * x362)
+    result[2, 4, 7] = numpy.sum(x135 * x315 * x365)
+    result[2, 4, 8] = numpy.sum(x138 * x310 * x368)
+    result[2, 4, 9] = numpy.sum(x195 * x371 * x381)
+    result[2, 4, 10] = numpy.sum(x355 * x363)
+    result[2, 4, 11] = numpy.sum(x356 * x365)
+    result[2, 4, 12] = numpy.sum(x357 * x368)
+    result[2, 4, 13] = numpy.sum(x358 * x371)
+    result[2, 4, 14] = numpy.sum(x125 * x378)
+    result[2, 5, 0] = numpy.sum(x296 * x383)
+    result[2, 5, 1] = numpy.sum(x299 * x383 * x64)
+    result[2, 5, 2] = numpy.sum(x299 * x385)
+    result[2, 5, 3] = numpy.sum(x117 * x382 * x39 * x81)
+    result[2, 5, 4] = numpy.sum(x385 * x39 * x84)
+    result[2, 5, 5] = numpy.sum(x139 * x303 * x386)
+    result[2, 5, 6] = numpy.sum(x310 * x382 * x96)
+    result[2, 5, 7] = numpy.sum(x101 * x310 * x384)
+    result[2, 5, 8] = numpy.sum(x381 * x386 * x84)
+    result[2, 5, 9] = numpy.sum(x306 * x380 * x387)
+    result[2, 5, 10] = numpy.sum(x112 * x288 * x382)
+    result[2, 5, 11] = numpy.sum(x288 * x384 * x96)
+    result[2, 5, 12] = numpy.sum(x287 * x386 * x83)
+    result[2, 5, 13] = numpy.sum(x359 * x387 * x65)
+    result[2, 5, 14] = numpy.sum(
+        10.1992841329868
+        * x359
+        * (
+            x0
+            * (
+                x206 * (x374 + x375)
+                + x26 * (x122 + 4.0 * x345 + 4.0 * x346)
+                + 5.0 * x348
+                + x349
+                + 4.0 * x370
+            )
+            + x157 * x377
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_30(a, A, b, B, C):
+def diag_quadrupole3d_30(ax, da, A, bx, db, B, C):
     """Cartesian 3D (fs) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = 1.77245385090552 * numpy.sqrt(x1)
-    x3 = -x1 * (a * A[0] + b * B[0])
-    x4 = -x3 - A[0]
-    x5 = a * b * x1
-    x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = x4 * x6
-    x8 = x2 * x7
-    x9 = -x3 - C[0]
-    x10 = x2 * x6
-    x11 = x10 * x9
-    x12 = 2.0 * x0
-    x13 = x10 * x9**2
-    x14 = x0 * x10
-    x15 = x13 + x14
-    x16 = x15 * x4
-    x17 = 2.0 * x4
-    x18 = x11 * x12 + x16
-    x19 = x0 * (x11 * x17 + x13 + 3.0 * x14) + x18 * x4
-    x20 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
-    x21 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x22 = 3.14159265358979 * x1 * x21
-    x23 = x20 * x22
-    x24 = -x1 * (a * A[1] + b * B[1])
-    x25 = -x24 - A[1]
-    x26 = x19 * x23
-    x27 = -x1 * (a * A[2] + b * B[2])
-    x28 = -x27 - A[2]
-    x29 = x2 * x20
-    x30 = x0 * x29
-    x31 = x25**2 * x29 + x30
-    x32 = x2 * x21
-    x33 = x0 * x32
-    x34 = x28**2 * x32 + x33
-    x35 = x25 * x29
-    x36 = x12 * x35 + x25 * x31
-    x37 = x28 * x32
-    x38 = x12 * x37 + x28 * x34
-    x39 = -x24 - C[1]
-    x40 = x29 * x39**2
-    x41 = x30 + x40
-    x42 = x10 * x4**2 + x14
-    x43 = x12 * x8 + x4 * x42
-    x44 = x25 * x41
-    x45 = x29 * x39
-    x46 = x12 * x45 + x44
-    x47 = 2.0 * x25
-    x48 = x0 * (3.0 * x30 + x40 + x45 * x47) + x25 * x46
-    x49 = x22 * x7
-    x50 = x22 * x6
-    x51 = -x27 - C[2]
-    x52 = x32 * x51**2
-    x53 = x33 + x52
-    x54 = x28 * x53
-    x55 = x32 * x51
-    x56 = x12 * x55 + x54
-    x57 = 3.14159265358979 * x1 * x20
-    x58 = x57 * x7
-    x59 = 2.0 * x28
-    x60 = x0 * (3.0 * x33 + x52 + x55 * x59) + x28 * x56
-    x61 = x57 * x6
+    result = numpy.zeros((3, 10, 1), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = numpy.sqrt(x1)
+    x3 = 1.77245385090552 * x2
+    x4 = -x1 * (ax * A[0] + bx * B[0])
+    x5 = -x4 - A[0]
+    x6 = ax * bx * x1
+    x7 = numpy.exp(-x6 * (A[0] - B[0]) ** 2)
+    x8 = x5 * x7
+    x9 = x3 * x8
+    x10 = -x4 - C[0]
+    x11 = x3 * x7
+    x12 = x10 * x11
+    x13 = 2.0 * x0
+    x14 = x10**2 * x11
+    x15 = x0 * x11
+    x16 = x14 + x15
+    x17 = x16 * x5
+    x18 = 2.0 * x5
+    x19 = x12 * x13 + x17
+    x20 = x0 * (x12 * x18 + x14 + 3.0 * x15) + x19 * x5
+    x21 = numpy.exp(-x6 * (A[2] - B[2]) ** 2)
+    x22 = da * db * numpy.sqrt(ax**4.5) * numpy.sqrt(bx**1.5)
+    x23 = x21 * x22
+    x24 = 5.84237394672177 * x23
+    x25 = numpy.exp(-x6 * (A[1] - B[1]) ** 2)
+    x26 = 0.564189583547756 * x1
+    x27 = x25 * x26
+    x28 = -x1 * (ax * A[1] + bx * B[1])
+    x29 = -x28 - A[1]
+    x30 = x27 * x29
+    x31 = 13.0639452948436 * x23
+    x32 = x20 * x31
+    x33 = -x1 * (ax * A[2] + bx * B[2])
+    x34 = -x33 - A[2]
+    x35 = 0.318309886183791 * x2
+    x36 = x19 * x35
+    x37 = x25 * x3
+    x38 = x0 * x37
+    x39 = x29**2 * x37 + x38
+    x40 = x31 * x39
+    x41 = 22.6274169979695 * x30
+    x42 = x23 * x34
+    x43 = x22 * x25
+    x44 = x21 * x3
+    x45 = x0 * x44
+    x46 = x34**2 * x44 + x45
+    x47 = 13.0639452948436 * x46
+    x48 = x43 * x47
+    x49 = x29 * x37
+    x50 = x13 * x49 + x29 * x39
+    x51 = x16 * x35
+    x52 = x34 * x44
+    x53 = 5.84237394672177 * x13 * x52 + 5.84237394672177 * x34 * x46
+    x54 = x11 * x5**2 + x15
+    x55 = x13 * x9 + x5 * x54
+    x56 = -x28 - C[1]
+    x57 = x37 * x56**2
+    x58 = x38 + x57
+    x59 = x35 * x58
+    x60 = x29 * x58
+    x61 = x37 * x56
+    x62 = x13 * x61 + x60
+    x63 = x35 * x62
+    x64 = x31 * x54
+    x65 = 2.0 * x29
+    x66 = x0 * (3.0 * x38 + x57 + x61 * x65) + x29 * x62
+    x67 = x31 * x66
+    x68 = x26 * x8
+    x69 = x22 * x8
+    x70 = x26 * x7
+    x71 = x22 * x7
+    x72 = x35 * x43
+    x73 = -x33 - C[2]
+    x74 = x44 * x73**2
+    x75 = x45 + x74
+    x76 = 5.84237394672177 * x75
+    x77 = x54 * x72
+    x78 = 13.0639452948436 * x75
+    x79 = x34 * x75
+    x80 = x44 * x73
+    x81 = x13 * x80 + x79
+    x82 = 13.0639452948436 * x81
+    x83 = 2.0 * x34
+    x84 = x0 * (3.0 * x45 + x74 + x80 * x83) + x34 * x81
+    x85 = 13.0639452948436 * x84
+    x86 = x35 * x71
+    x87 = x27 * x71
 
     # 30 item(s)
-    return numpy.array(
-        [
-            x23
-            * (
-                x0
-                * (4.0 * x0 * x11 + x12 * (x11 + x8) + 2.0 * x16 + x17 * (x14 + x8 * x9))
-                + x19 * x4
-            ),
-            x25 * x26,
-            x26 * x28,
-            x18 * x31 * x32,
-            x18 * x23 * x25 * x28,
-            x18 * x29 * x34,
-            x15 * x32 * x36,
-            x15 * x31 * x37,
-            x15 * x34 * x35,
-            x15 * x29 * x38,
-            x32 * x41 * x43,
-            x32 * x42 * x46,
-            x37 * x41 * x42,
-            x48 * x49,
-            x28 * x46 * x49,
-            x34 * x41 * x8,
-            x50
-            * (
-                x0
-                * (
-                    x12 * (x35 + x45)
-                    + 4.0 * x30 * x39
-                    + 2.0 * x44
-                    + x47 * (x30 + x35 * x39)
-                )
-                + x25 * x48
-            ),
-            x28 * x48 * x50,
-            x10 * x34 * x46,
-            x10 * x38 * x41,
-            x29 * x43 * x53,
-            x35 * x42 * x53,
-            x29 * x42 * x56,
-            x31 * x53 * x8,
-            x25 * x56 * x58,
-            x58 * x60,
-            x10 * x36 * x53,
-            x10 * x31 * x56,
-            x25 * x60 * x61,
-            x61
-            * (
-                x0
-                * (
-                    x12 * (x37 + x55)
-                    + 4.0 * x33 * x51
-                    + 2.0 * x54
-                    + x59 * (x33 + x37 * x51)
-                )
-                + x28 * x60
-            ),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x24
+        * x27
+        * (
+            x0 * (4.0 * x0 * x12 + x13 * (x12 + x9) + 2.0 * x17 + x18 * (x10 * x9 + x15))
+            + x20 * x5
+        )
     )
+    result[0, 1, 0] = numpy.sum(x30 * x32)
+    result[0, 2, 0] = numpy.sum(x27 * x32 * x34)
+    result[0, 3, 0] = numpy.sum(x36 * x40)
+    result[0, 4, 0] = numpy.sum(x19 * x41 * x42)
+    result[0, 5, 0] = numpy.sum(x36 * x48)
+    result[0, 6, 0] = numpy.sum(x24 * x50 * x51)
+    result[0, 7, 0] = numpy.sum(x34 * x40 * x51)
+    result[0, 8, 0] = numpy.sum(x29 * x48 * x51)
+    result[0, 9, 0] = numpy.sum(x43 * x51 * x53)
+    result[1, 0, 0] = numpy.sum(x24 * x55 * x59)
+    result[1, 1, 0] = numpy.sum(x63 * x64)
+    result[1, 2, 0] = numpy.sum(x34 * x59 * x64)
+    result[1, 3, 0] = numpy.sum(x67 * x68)
+    result[1, 4, 0] = numpy.sum(22.6274169979695 * x42 * x62 * x68)
+    result[1, 5, 0] = numpy.sum(x47 * x59 * x69)
+    result[1, 6, 0] = numpy.sum(
+        x24
+        * x70
+        * (
+            x0
+            * (x13 * (x49 + x61) + 4.0 * x38 * x56 + 2.0 * x60 + x65 * (x38 + x49 * x56))
+            + x29 * x66
+        )
+    )
+    result[1, 7, 0] = numpy.sum(x34 * x67 * x70)
+    result[1, 8, 0] = numpy.sum(x47 * x63 * x71)
+    result[1, 9, 0] = numpy.sum(x53 * x59 * x71)
+    result[2, 0, 0] = numpy.sum(x55 * x72 * x76)
+    result[2, 1, 0] = numpy.sum(x29 * x77 * x78)
+    result[2, 2, 0] = numpy.sum(x77 * x82)
+    result[2, 3, 0] = numpy.sum(x35 * x39 * x69 * x78)
+    result[2, 4, 0] = numpy.sum(x41 * x69 * x81)
+    result[2, 5, 0] = numpy.sum(x27 * x69 * x85)
+    result[2, 6, 0] = numpy.sum(x50 * x76 * x86)
+    result[2, 7, 0] = numpy.sum(x39 * x82 * x86)
+    result[2, 8, 0] = numpy.sum(x29 * x85 * x87)
+    result[2, 9, 0] = numpy.sum(
+        5.84237394672177
+        * x87
+        * (
+            x0
+            * (x13 * (x52 + x80) + 4.0 * x45 * x73 + 2.0 * x79 + x83 * (x45 + x52 * x73))
+            + x34 * x84
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_31(a, A, b, B, C):
+def diag_quadrupole3d_31(ax, da, A, bx, db, B, C):
     """Cartesian 3D (fp) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 10, 3), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - C[0]
     x4 = -x2 - B[0]
-    x5 = a * b * x1
+    x5 = ax * bx * x1
     x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = 1.77245385090552 * numpy.sqrt(x1)
-    x8 = x6 * x7
-    x9 = x4 * x8
-    x10 = x3 * x9
-    x11 = x3**2 * x8
-    x12 = x0 * x8
-    x13 = 3.0 * x12
-    x14 = x11 + x13
-    x15 = x0 * (2.0 * x10 + x14)
-    x16 = -x2 - A[0]
-    x17 = x16 * x9
-    x18 = x3 * x8
-    x19 = x16 * x18
-    x20 = 2.0 * x0
-    x21 = x0 * (x18 + x9)
-    x22 = x16 * (x10 + x12)
-    x23 = 2.0 * x16
-    x24 = x11 + x12
-    x25 = x24 * x4
-    x26 = x18 * x20
-    x27 = x25 + x26
-    x28 = x16 * x27
-    x29 = x16 * x24
-    x30 = x26 + x29
-    x31 = x0 * (x14 + x18 * x23) + x16 * x30
-    x32 = 4.0 * x12 * x3
-    x33 = x15 + x28
-    x34 = x0 * (2.0 * x21 + 2.0 * x22 + x25 + x29 + x32) + x16 * x33
-    x35 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x7 = numpy.sqrt(x1)
+    x8 = 1.77245385090552 * x7
+    x9 = x6 * x8
+    x10 = x4 * x9
+    x11 = x10 * x3
+    x12 = x3**2 * x9
+    x13 = x0 * x9
+    x14 = 3.0 * x13
+    x15 = x12 + x14
+    x16 = x0 * (2.0 * x11 + x15)
+    x17 = -x2 - A[0]
+    x18 = x10 * x17
+    x19 = x3 * x9
+    x20 = x17 * x19
+    x21 = 2.0 * x0
+    x22 = x0 * (x10 + x19)
+    x23 = x17 * (x11 + x13)
+    x24 = 2.0 * x17
+    x25 = x12 + x13
+    x26 = x25 * x4
+    x27 = x19 * x21
+    x28 = x26 + x27
+    x29 = x17 * x28
+    x30 = x17 * x25
+    x31 = x27 + x30
+    x32 = x0 * (x15 + x19 * x24) + x17 * x31
+    x33 = 4.0 * x13 * x3
+    x34 = x16 + x29
+    x35 = x0 * (2.0 * x22 + 2.0 * x23 + x26 + x30 + x33) + x17 * x34
     x36 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x37 = 3.14159265358979 * x1 * x36
-    x38 = x35 * x37
-    x39 = -x1 * (a * A[1] + b * B[1])
-    x40 = -x39 - B[1]
-    x41 = x16 * x8
-    x42 = x38 * (
-        x0 * (x20 * (x18 + x41) + x23 * (x12 + x19) + 2.0 * x29 + x32) + x16 * x31
+    x37 = da * db * numpy.sqrt(ax**4.5) * numpy.sqrt(bx**2.5)
+    x38 = 11.6847478934435 * x37
+    x39 = x36 * x38
+    x40 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x41 = 0.564189583547756 * x1
+    x42 = x40 * x41
+    x43 = x39 * x42
+    x44 = -x1 * (ax * A[1] + bx * B[1])
+    x45 = -x44 - B[1]
+    x46 = x17 * x9
+    x47 = x43 * (
+        x0 * (x21 * (x19 + x46) + x24 * (x13 + x20) + 2.0 * x30 + x33) + x17 * x32
     )
-    x43 = -x1 * (a * A[2] + b * B[2])
-    x44 = -x43 - B[2]
-    x45 = -x39 - A[1]
-    x46 = x34 * x38
-    x47 = x0 * x7
-    x48 = x35 * x47
-    x49 = x35 * x7
-    x50 = x45 * x49
-    x51 = x40 * x50
-    x52 = x48 + x51
-    x53 = x36 * x7
-    x54 = x31 * x38
-    x55 = -x43 - A[2]
-    x56 = x36 * x47
-    x57 = x53 * x55
-    x58 = x44 * x57
-    x59 = x56 + x58
-    x60 = x45**2 * x49
-    x61 = x48 + x60
-    x62 = x40 * x49
-    x63 = x0 * (x50 + x62) + x45 * x52
-    x64 = x44 * x53
-    x65 = x53 * x55**2
-    x66 = x56 + x65
-    x67 = x0 * (x57 + x64) + x55 * x59
-    x68 = x20 * x50 + x45 * x61
-    x69 = 3.0 * x48
-    x70 = 2.0 * x45
-    x71 = x0 * (x60 + x62 * x70 + x69) + x45 * x63
-    x72 = x20 * x57 + x55 * x66
-    x73 = 3.0 * x56
-    x74 = 2.0 * x55
-    x75 = x0 * (x64 * x74 + x65 + x73) + x55 * x67
-    x76 = -x39 - C[1]
-    x77 = x49 * x76**2
-    x78 = x48 + x77
-    x79 = x16**2 * x8
-    x80 = x12 + x17
-    x81 = x0 * (x41 + x9) + x16 * x80
-    x82 = x0 * (x13 + x23 * x9 + x79) + x16 * x81
-    x83 = x40 * x78
-    x84 = x49 * x76
-    x85 = x20 * x84
-    x86 = x83 + x85
-    x87 = x12 + x79
-    x88 = x16 * x87 + x20 * x41
-    x89 = x45 * x78
-    x90 = x85 + x89
-    x91 = x62 * x76
-    x92 = x69 + x77
-    x93 = x0 * (2.0 * x91 + x92)
-    x94 = x45 * x86
-    x95 = x93 + x94
-    x96 = x0 * (x70 * x84 + x92) + x45 * x90
-    x97 = x0 * (x62 + x84)
-    x98 = x45 * (x48 + x91)
-    x99 = 4.0 * x48 * x76
-    x100 = x0 * (x83 + x89 + 2.0 * x97 + 2.0 * x98 + x99) + x45 * x95
-    x101 = x37 * x6
-    x102 = x100 * x101
-    x103 = x101 * x16
-    x104 = x50 * x76
-    x105 = x101 * (
-        x0 * (x20 * (x50 + x84) + x70 * (x104 + x48) + 2.0 * x89 + x99) + x45 * x96
+    x48 = -x1 * (ax * A[2] + bx * B[2])
+    x49 = -x48 - B[2]
+    x50 = -x44 - A[1]
+    x51 = x42 * x50
+    x52 = 26.1278905896872 * x37
+    x53 = x36 * x52
+    x54 = x35 * x53
+    x55 = x0 * x8
+    x56 = x40 * x55
+    x57 = x40 * x8
+    x58 = x50 * x57
+    x59 = x45 * x58
+    x60 = x56 + x59
+    x61 = 0.318309886183791 * x7
+    x62 = x60 * x61
+    x63 = x32 * x53
+    x64 = -x48 - A[2]
+    x65 = x42 * x64
+    x66 = x36 * x55
+    x67 = x36 * x8
+    x68 = x64 * x67
+    x69 = x49 * x68
+    x70 = x66 + x69
+    x71 = x40 * x61
+    x72 = x52 * x71
+    x73 = x50**2 * x57
+    x74 = x56 + x73
+    x75 = x53 * x61
+    x76 = x74 * x75
+    x77 = x45 * x57
+    x78 = x0 * (x58 + x77) + x50 * x60
+    x79 = x75 * x78
+    x80 = 45.2548339959391 * x37
+    x81 = x36 * x64
+    x82 = x80 * x81
+    x83 = x31 * x80
+    x84 = x50 * x71
+    x85 = x64**2 * x67
+    x86 = x66 + x85
+    x87 = x72 * x86
+    x88 = x49 * x67
+    x89 = x0 * (x68 + x88) + x64 * x70
+    x90 = x72 * x89
+    x91 = x21 * x58 + x50 * x74
+    x92 = x39 * x61
+    x93 = x91 * x92
+    x94 = 3.0 * x56
+    x95 = 2.0 * x50
+    x96 = x0 * (x73 + x77 * x95 + x94) + x50 * x78
+    x97 = 0.179587122125167 * x52
+    x98 = x25 * x97
+    x99 = x21 * x68 + x64 * x86
+    x100 = x38 * x71
+    x101 = x100 * x99
+    x102 = 3.0 * x66
+    x103 = 2.0 * x64
+    x104 = x0 * (x102 + x103 * x88 + x85) + x64 * x89
+    x105 = x17**2 * x9
+    x106 = x13 + x18
+    x107 = x0 * (x10 + x46) + x106 * x17
+    x108 = x0 * (x10 * x24 + x105 + x14) + x107 * x17
+    x109 = -x44 - C[1]
+    x110 = x109**2 * x57
+    x111 = x110 + x56
+    x112 = x111 * x92
+    x113 = x111 * x45
+    x114 = x109 * x57
+    x115 = x114 * x21
+    x116 = x113 + x115
+    x117 = x105 + x13
+    x118 = x117 * x17 + x21 * x46
+    x119 = x111 * x50
+    x120 = x115 + x119
+    x121 = x120 * x75
+    x122 = x109 * x77
+    x123 = x110 + x94
+    x124 = x0 * (2.0 * x122 + x123)
+    x125 = x116 * x50
+    x126 = x124 + x125
+    x127 = x117 * x75
+    x128 = x111 * x97
+    x129 = x0 * (x114 * x95 + x123) + x120 * x50
+    x130 = x41 * x6
+    x131 = x130 * x17
+    x132 = x0 * (x114 + x77)
+    x133 = x50 * (x122 + x56)
+    x134 = 4.0 * x109 * x56
+    x135 = x0 * (x113 + x119 + 2.0 * x132 + 2.0 * x133 + x134) + x126 * x50
+    x136 = x135 * x53
+    x137 = x129 * x53
+    x138 = x120 * x80
+    x139 = x6 * x61
+    x140 = x139 * x52
+    x141 = x140 * x86
+    x142 = x140 * x89
+    x143 = x109 * x58
+    x144 = x130 * x39
+    x145 = x144 * (
+        x0 * (2.0 * x119 + x134 + x21 * (x114 + x58) + x95 * (x143 + x56)) + x129 * x50
     )
-    x106 = -x43 - C[2]
-    x107 = x106**2 * x53
-    x108 = x107 + x56
-    x109 = x108 * x44
-    x110 = x106 * x53
-    x111 = x110 * x20
-    x112 = x109 + x111
-    x113 = x108 * x55
-    x114 = x111 + x113
-    x115 = x106 * x64
-    x116 = x107 + x73
-    x117 = x0 * (2.0 * x115 + x116)
-    x118 = x112 * x55
-    x119 = x117 + x118
-    x120 = 3.14159265358979 * x1 * x35 * x6
-    x121 = x120 * x16
-    x122 = x0 * (x110 * x74 + x116) + x114 * x55
-    x123 = x0 * (x110 + x64)
-    x124 = x55 * (x115 + x56)
-    x125 = 4.0 * x106 * x56
-    x126 = x0 * (x109 + x113 + 2.0 * x123 + 2.0 * x124 + x125) + x119 * x55
-    x127 = x120 * x126
-    x128 = x106 * x57
-    x129 = x120 * (
-        x0 * (2.0 * x113 + x125 + x20 * (x110 + x57) + x74 * (x128 + x56)) + x122 * x55
+    x146 = x130 * x64
+    x147 = x139 * x38
+    x148 = x147 * x99
+    x149 = -x48 - C[2]
+    x150 = x149**2 * x67
+    x151 = x150 + x66
+    x152 = x100 * x151
+    x153 = x151 * x49
+    x154 = x149 * x67
+    x155 = x154 * x21
+    x156 = x153 + x155
+    x157 = x107 * x72
+    x158 = x151 * x97
+    x159 = x117 * x72
+    x160 = x151 * x64
+    x161 = x155 + x160
+    x162 = x149 * x88
+    x163 = x102 + x150
+    x164 = x0 * (2.0 * x162 + x163)
+    x165 = x156 * x64
+    x166 = x164 + x165
+    x167 = x140 * x78
+    x168 = x140 * x74
+    x169 = x161 * x80
+    x170 = x6 * x62
+    x171 = x42 * x6
+    x172 = x17 * x171
+    x173 = x0 * (x103 * x154 + x163) + x161 * x64
+    x174 = x173 * x52
+    x175 = x0 * (x154 + x88)
+    x176 = x64 * (x162 + x66)
+    x177 = 4.0 * x149 * x66
+    x178 = x0 * (x153 + x160 + 2.0 * x175 + 2.0 * x176 + x177) + x166 * x64
+    x179 = x178 * x52
+    x180 = x147 * x151
+    x181 = x171 * x50
+    x182 = x149 * x68
+    x183 = x171 * x38
+    x184 = x183 * (
+        x0 * (x103 * (x182 + x66) + 2.0 * x160 + x177 + x21 * (x154 + x68)) + x173 * x64
     )
 
     # 90 item(s)
-    return numpy.array(
-        [
-            x38
+    result[0, 0, 0] = numpy.sum(
+        x43
+        * (
+            x0
             * (
-                x0
-                * (
-                    2.0 * x15
-                    + x20 * (x10 + x13 + x17 + x19)
-                    + x23 * (x21 + x22)
-                    + 2.0 * x28
-                    + x31
-                )
-                + x16 * x34
-            ),
-            x40 * x42,
-            x42 * x44,
-            x45 * x46,
-            x31 * x52 * x53,
-            x44 * x45 * x54,
-            x46 * x55,
-            x40 * x54 * x55,
-            x31 * x49 * x59,
-            x33 * x53 * x61,
-            x30 * x53 * x63,
-            x30 * x61 * x64,
-            x33 * x38 * x45 * x55,
-            x30 * x52 * x57,
-            x30 * x50 * x59,
-            x33 * x49 * x66,
-            x30 * x62 * x66,
-            x30 * x49 * x67,
-            x27 * x53 * x68,
-            x24 * x53 * x71,
-            x24 * x64 * x68,
-            x27 * x57 * x61,
-            x24 * x57 * x63,
-            x24 * x59 * x61,
-            x27 * x50 * x66,
-            x24 * x52 * x66,
-            x24 * x50 * x67,
-            x27 * x49 * x72,
-            x24 * x62 * x72,
-            x24 * x49 * x75,
-            x53 * x78 * x82,
-            x53 * x86 * x88,
-            x64 * x78 * x88,
-            x53 * x81 * x90,
-            x53 * x87 * x95,
-            x64 * x87 * x90,
-            x57 * x78 * x81,
-            x57 * x86 * x87,
-            x59 * x78 * x87,
-            x53 * x80 * x96,
-            x102 * x16,
-            x103 * x44 * x96,
-            x57 * x80 * x90,
-            x103 * x55 * x95,
-            x41 * x59 * x90,
-            x66 * x78 * x80,
-            x41 * x66 * x86,
-            x41 * x67 * x78,
-            x105 * x4,
-            x101
-            * (
-                x0
-                * (
-                    x20 * (x104 + x51 + x69 + x91)
-                    + x70 * (x97 + x98)
-                    + 2.0 * x93
-                    + 2.0 * x94
-                    + x96
-                )
-                + x100 * x45
-            ),
-            x105 * x44,
-            x101 * x4 * x55 * x96,
-            x102 * x55,
-            x59 * x8 * x96,
-            x66 * x9 * x90,
-            x66 * x8 * x95,
-            x67 * x8 * x90,
-            x72 * x78 * x9,
-            x72 * x8 * x86,
-            x75 * x78 * x8,
-            x108 * x49 * x82,
-            x108 * x62 * x88,
-            x112 * x49 * x88,
-            x108 * x50 * x81,
-            x108 * x52 * x87,
-            x112 * x50 * x87,
-            x114 * x49 * x81,
-            x114 * x62 * x87,
-            x119 * x49 * x87,
-            x108 * x61 * x80,
-            x108 * x41 * x63,
-            x112 * x41 * x61,
-            x114 * x50 * x80,
-            x114 * x41 * x52,
-            x119 * x121 * x45,
-            x122 * x49 * x80,
-            x121 * x122 * x40,
-            x127 * x16,
-            x108 * x68 * x9,
-            x108 * x71 * x8,
-            x112 * x68 * x8,
-            x114 * x61 * x9,
-            x114 * x63 * x8,
-            x119 * x61 * x8,
-            x120 * x122 * x4 * x45,
-            x122 * x52 * x8,
-            x127 * x45,
-            x129 * x4,
-            x129 * x40,
-            x120
-            * (
-                x0
-                * (
-                    2.0 * x117
-                    + 2.0 * x118
-                    + x122
-                    + x20 * (x115 + x128 + x58 + x73)
-                    + x74 * (x123 + x124)
-                )
-                + x126 * x55
-            ),
-        ]
+                2.0 * x16
+                + x21 * (x11 + x14 + x18 + x20)
+                + x24 * (x22 + x23)
+                + 2.0 * x29
+                + x32
+            )
+            + x17 * x35
+        )
     )
+    result[0, 0, 1] = numpy.sum(x45 * x47)
+    result[0, 0, 2] = numpy.sum(x47 * x49)
+    result[0, 1, 0] = numpy.sum(x51 * x54)
+    result[0, 1, 1] = numpy.sum(x62 * x63)
+    result[0, 1, 2] = numpy.sum(x49 * x51 * x63)
+    result[0, 2, 0] = numpy.sum(x54 * x65)
+    result[0, 2, 1] = numpy.sum(x45 * x63 * x65)
+    result[0, 2, 2] = numpy.sum(x32 * x70 * x72)
+    result[0, 3, 0] = numpy.sum(x34 * x76)
+    result[0, 3, 1] = numpy.sum(x31 * x79)
+    result[0, 3, 2] = numpy.sum(x31 * x49 * x76)
+    result[0, 4, 0] = numpy.sum(x34 * x51 * x82)
+    result[0, 4, 1] = numpy.sum(x62 * x81 * x83)
+    result[0, 4, 2] = numpy.sum(x70 * x83 * x84)
+    result[0, 5, 0] = numpy.sum(x34 * x87)
+    result[0, 5, 1] = numpy.sum(x31 * x45 * x87)
+    result[0, 5, 2] = numpy.sum(x31 * x90)
+    result[0, 6, 0] = numpy.sum(x28 * x93)
+    result[0, 6, 1] = numpy.sum(x25 * x92 * x96)
+    result[0, 6, 2] = numpy.sum(x25 * x49 * x93)
+    result[0, 7, 0] = numpy.sum(x28 * x64 * x76)
+    result[0, 7, 1] = numpy.sum(x25 * x64 * x79)
+    result[0, 7, 2] = numpy.sum(x70 * x74 * x98)
+    result[0, 8, 0] = numpy.sum(x28 * x50 * x87)
+    result[0, 8, 1] = numpy.sum(x60 * x86 * x98)
+    result[0, 8, 2] = numpy.sum(x25 * x50 * x90)
+    result[0, 9, 0] = numpy.sum(x101 * x28)
+    result[0, 9, 1] = numpy.sum(x101 * x25 * x45)
+    result[0, 9, 2] = numpy.sum(x100 * x104 * x25)
+    result[1, 0, 0] = numpy.sum(x108 * x112)
+    result[1, 0, 1] = numpy.sum(x116 * x118 * x92)
+    result[1, 0, 2] = numpy.sum(x112 * x118 * x49)
+    result[1, 1, 0] = numpy.sum(x107 * x121)
+    result[1, 1, 1] = numpy.sum(x126 * x127)
+    result[1, 1, 2] = numpy.sum(x117 * x121 * x49)
+    result[1, 2, 0] = numpy.sum(x107 * x111 * x64 * x75)
+    result[1, 2, 1] = numpy.sum(x116 * x127 * x64)
+    result[1, 2, 2] = numpy.sum(x117 * x128 * x70)
+    result[1, 3, 0] = numpy.sum(x106 * x129 * x75)
+    result[1, 3, 1] = numpy.sum(x131 * x136)
+    result[1, 3, 2] = numpy.sum(x131 * x137 * x49)
+    result[1, 4, 0] = numpy.sum(x106 * x138 * x61 * x81)
+    result[1, 4, 1] = numpy.sum(x126 * x131 * x82)
+    result[1, 4, 2] = numpy.sum(x138 * x139 * x17 * x70)
+    result[1, 5, 0] = numpy.sum(x106 * x128 * x86)
+    result[1, 5, 1] = numpy.sum(x116 * x141 * x17)
+    result[1, 5, 2] = numpy.sum(x111 * x142 * x17)
+    result[1, 6, 0] = numpy.sum(x145 * x4)
+    result[1, 6, 1] = numpy.sum(
+        x144
+        * (
+            x0
+            * (
+                2.0 * x124
+                + 2.0 * x125
+                + x129
+                + x21 * (x122 + x143 + x59 + x94)
+                + x95 * (x132 + x133)
+            )
+            + x135 * x50
+        )
+    )
+    result[1, 6, 2] = numpy.sum(x145 * x49)
+    result[1, 7, 0] = numpy.sum(x137 * x146 * x4)
+    result[1, 7, 1] = numpy.sum(x136 * x146)
+    result[1, 7, 2] = numpy.sum(x129 * x140 * x70)
+    result[1, 8, 0] = numpy.sum(x120 * x141 * x4)
+    result[1, 8, 1] = numpy.sum(x126 * x141)
+    result[1, 8, 2] = numpy.sum(x120 * x142)
+    result[1, 9, 0] = numpy.sum(x111 * x148 * x4)
+    result[1, 9, 1] = numpy.sum(x116 * x148)
+    result[1, 9, 2] = numpy.sum(x104 * x111 * x147)
+    result[2, 0, 0] = numpy.sum(x108 * x152)
+    result[2, 0, 1] = numpy.sum(x118 * x152 * x45)
+    result[2, 0, 2] = numpy.sum(x100 * x118 * x156)
+    result[2, 1, 0] = numpy.sum(x151 * x157 * x50)
+    result[2, 1, 1] = numpy.sum(x117 * x158 * x60)
+    result[2, 1, 2] = numpy.sum(x156 * x159 * x50)
+    result[2, 2, 0] = numpy.sum(x157 * x161)
+    result[2, 2, 1] = numpy.sum(x159 * x161 * x45)
+    result[2, 2, 2] = numpy.sum(x159 * x166)
+    result[2, 3, 0] = numpy.sum(x106 * x158 * x74)
+    result[2, 3, 1] = numpy.sum(x151 * x167 * x17)
+    result[2, 3, 2] = numpy.sum(x156 * x168 * x17)
+    result[2, 4, 0] = numpy.sum(x106 * x169 * x84)
+    result[2, 4, 1] = numpy.sum(x169 * x17 * x170)
+    result[2, 4, 2] = numpy.sum(x166 * x172 * x50 * x80)
+    result[2, 5, 0] = numpy.sum(x106 * x173 * x72)
+    result[2, 5, 1] = numpy.sum(x172 * x174 * x45)
+    result[2, 5, 2] = numpy.sum(x172 * x179)
+    result[2, 6, 0] = numpy.sum(x180 * x4 * x91)
+    result[2, 6, 1] = numpy.sum(x180 * x96)
+    result[2, 6, 2] = numpy.sum(x147 * x156 * x91)
+    result[2, 7, 0] = numpy.sum(x161 * x168 * x4)
+    result[2, 7, 1] = numpy.sum(x161 * x167)
+    result[2, 7, 2] = numpy.sum(x166 * x168)
+    result[2, 8, 0] = numpy.sum(x174 * x181 * x4)
+    result[2, 8, 1] = numpy.sum(x170 * x174)
+    result[2, 8, 2] = numpy.sum(x179 * x181)
+    result[2, 9, 0] = numpy.sum(x184 * x4)
+    result[2, 9, 1] = numpy.sum(x184 * x45)
+    result[2, 9, 2] = numpy.sum(
+        x183
+        * (
+            x0
+            * (
+                x103 * (x175 + x176)
+                + 2.0 * x164
+                + 2.0 * x165
+                + x173
+                + x21 * (x102 + x162 + x182 + x69)
+            )
+            + x178 * x64
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_32(a, A, b, B, C):
+def diag_quadrupole3d_32(ax, da, A, bx, db, B, C):
     """Cartesian 3D (fd) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 10, 6), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
     x4 = -x2 - C[0]
-    x5 = a * b * x1
+    x5 = ax * bx * x1
     x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = 1.77245385090552 * numpy.sqrt(x1)
-    x8 = x6 * x7
-    x9 = x4**2 * x8
-    x10 = x0 * x8
-    x11 = x10 + x9
-    x12 = x11 * x3
-    x13 = x3 * x6
-    x14 = x13 * x7
-    x15 = x14 * x4
-    x16 = x10 + x15
-    x17 = x16 * x3
-    x18 = x4 * x8
-    x19 = x0 * (x14 + x18)
-    x20 = 4.0 * x0
-    x21 = x18 * x20
-    x22 = 2.0 * x19 + x21
-    x23 = x0 * (2.0 * x12 + 2.0 * x17 + x22)
-    x24 = -x2 - A[0]
-    x25 = x16 * x24
-    x26 = 2.0 * x25
-    x27 = x3**2 * x8
-    x28 = x10 + x27
-    x29 = x24 * x28
-    x30 = 2.0 * x0
-    x31 = x14 * x30 + x29
-    x32 = x11 * x24
-    x33 = x0 * (x12 + x22 + x26 + x32)
-    x34 = 3.0 * x10
-    x35 = 2.0 * x15 + x34
-    x36 = x0 * (x27 + x35)
-    x37 = x24 * (x17 + x19)
-    x38 = 2.0 * x24
-    x39 = x0 * (x35 + x9)
-    x40 = x18 * x30
-    x41 = x12 + x40
-    x42 = x24 * x41
-    x43 = x39 + x42
-    x44 = x24 * x43
-    x45 = x3 * x41
-    x46 = x39 + x45
-    x47 = x24 * x46
-    x48 = 2.0 * x42
-    x49 = x23 + x47
-    x50 = x0 * (2.0 * x36 + 2.0 * x37 + 3.0 * x39 + x45 + x48) + x24 * x49
-    x51 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x7 = numpy.sqrt(x1)
+    x8 = 1.77245385090552 * x7
+    x9 = x6 * x8
+    x10 = x4**2 * x9
+    x11 = x0 * x9
+    x12 = x10 + x11
+    x13 = x12 * x3
+    x14 = x3 * x6
+    x15 = x14 * x8
+    x16 = x15 * x4
+    x17 = x11 + x16
+    x18 = x17 * x3
+    x19 = x4 * x9
+    x20 = x0 * (x15 + x19)
+    x21 = 4.0 * x0
+    x22 = x19 * x21
+    x23 = 2.0 * x20 + x22
+    x24 = x0 * (2.0 * x13 + 2.0 * x18 + x23)
+    x25 = -x2 - A[0]
+    x26 = x17 * x25
+    x27 = 2.0 * x26
+    x28 = x3**2 * x9
+    x29 = x11 + x28
+    x30 = x25 * x29
+    x31 = 2.0 * x0
+    x32 = x15 * x31 + x30
+    x33 = x12 * x25
+    x34 = x0 * (x13 + x23 + x27 + x33)
+    x35 = 3.0 * x11
+    x36 = 2.0 * x16 + x35
+    x37 = x0 * (x28 + x36)
+    x38 = x25 * (x18 + x20)
+    x39 = 2.0 * x25
+    x40 = x0 * (x10 + x36)
+    x41 = x19 * x31
+    x42 = x13 + x41
+    x43 = x25 * x42
+    x44 = x40 + x43
+    x45 = x25 * x44
+    x46 = x3 * x42
+    x47 = x40 + x46
+    x48 = x25 * x47
+    x49 = 2.0 * x43
+    x50 = x24 + x48
+    x51 = x0 * (2.0 * x37 + 2.0 * x38 + 3.0 * x40 + x46 + x49) + x25 * x50
     x52 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x53 = 3.14159265358979 * x1 * x52
-    x54 = x51 * x53
-    x55 = -x1 * (a * A[1] + b * B[1])
-    x56 = -x55 - B[1]
-    x57 = x14 * x24
-    x58 = x18 * x24
-    x59 = x32 + x40
-    x60 = x0 * (x18 * x38 + x34 + x9) + x24 * x59
-    x61 = x33 + x44
-    x62 = x54 * (
-        x0 * (x30 * (x15 + x34 + x57 + x58) + x38 * (x19 + x25) + 2.0 * x39 + x48 + x60)
-        + x24 * x61
+    x53 = da * db * numpy.sqrt(ax**4.5) * numpy.sqrt(bx**3.5)
+    x54 = x52 * x53
+    x55 = 13.4923846833851 * x54
+    x56 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
+    x57 = 0.564189583547756 * x1
+    x58 = x56 * x57
+    x59 = -x1 * (ax * A[1] + bx * B[1])
+    x60 = -x59 - B[1]
+    x61 = 23.3694957868871 * x60
+    x62 = x15 * x25
+    x63 = x19 * x25
+    x64 = x33 + x41
+    x65 = x0 * (x10 + x19 * x39 + x35) + x25 * x64
+    x66 = x34 + x45
+    x67 = x54 * x58
+    x68 = x67 * (
+        x0 * (x31 * (x16 + x35 + x62 + x63) + x39 * (x20 + x26) + 2.0 * x40 + x49 + x65)
+        + x25 * x66
     )
-    x63 = -x1 * (a * A[2] + b * B[2])
-    x64 = -x63 - B[2]
-    x65 = x51 * x7
-    x66 = x56**2 * x65
-    x67 = x0 * x65
-    x68 = x66 + x67
-    x69 = x24 * x8
-    x70 = x0 * (x21 + x30 * (x18 + x69) + 2.0 * x32 + x38 * (x10 + x58)) + x24 * x60
-    x71 = x52 * x7
-    x72 = x54 * x64
-    x73 = x64**2 * x71
-    x74 = x0 * x71
-    x75 = x73 + x74
-    x76 = -x55 - A[1]
-    x77 = x50 * x54
-    x78 = x65 * x76
-    x79 = x56 * x78
-    x80 = x67 + x79
-    x81 = x68 * x76
-    x82 = x56 * x65
-    x83 = x30 * x82 + x81
-    x84 = x64 * x71
-    x85 = -x63 - A[2]
-    x86 = x54 * x85
-    x87 = x71 * x85
-    x88 = x64 * x87
-    x89 = x74 + x88
-    x90 = x75 * x85
-    x91 = x30 * x84 + x90
-    x92 = x65 * x76**2
-    x93 = x67 + x92
-    x94 = x0 * (x78 + x82)
-    x95 = x76 * x80
-    x96 = x94 + x95
-    x97 = 3.0 * x67
-    x98 = 2.0 * x76
-    x99 = x82 * x98 + x97
-    x100 = x0 * (x66 + x99) + x76 * x83
-    x101 = x71 * x85**2
-    x102 = x101 + x74
-    x103 = x0 * (x84 + x87)
-    x104 = x85 * x89
-    x105 = x103 + x104
-    x106 = 3.0 * x74
-    x107 = 2.0 * x85
-    x108 = x106 + x107 * x84
-    x109 = x0 * (x108 + x73) + x85 * x91
-    x110 = x30 * x78 + x76 * x93
-    x111 = x0 * (x92 + x99) + x76 * x96
-    x112 = 4.0 * x67
-    x113 = x0 * (x112 * x56 + 2.0 * x81 + 2.0 * x94 + 2.0 * x95) + x100 * x76
-    x114 = x102 * x85 + x30 * x87
-    x115 = x0 * (x101 + x108) + x105 * x85
-    x116 = 4.0 * x74
-    x117 = x0 * (2.0 * x103 + 2.0 * x104 + x116 * x64 + 2.0 * x90) + x109 * x85
-    x118 = -x55 - C[1]
-    x119 = x118**2 * x65
-    x120 = x119 + x67
-    x121 = x0 * (x14 + x69)
-    x122 = x10 + x57
-    x123 = x122 * x24
-    x124 = x14 * x38 + x34
-    x125 = x0 * (x124 + x27) + x24 * x31
-    x126 = x0 * (2.0 * x121 + 2.0 * x123 + x14 * x20 + 2.0 * x29) + x125 * x24
-    x127 = x120 * x56
-    x128 = x118 * x65
-    x129 = x128 * x30
-    x130 = x127 + x129
-    x131 = x24**2 * x8
-    x132 = x121 + x123
-    x133 = x0 * (x124 + x131) + x132 * x24
-    x134 = x118 * x82
-    x135 = 2.0 * x134
-    x136 = x119 + x97
-    x137 = x0 * (x135 + x136)
-    x138 = x130 * x56
-    x139 = x137 + x138
-    x140 = x10 + x131
-    x141 = x140 * x24 + x30 * x69
-    x142 = x120 * x76
-    x143 = x129 + x142
-    x144 = x130 * x76
-    x145 = x137 + x144
-    x146 = x134 + x67
-    x147 = x146 * x56
-    x148 = x0 * (x128 + x82)
-    x149 = x112 * x118
-    x150 = 2.0 * x148 + x149
-    x151 = x0 * (2.0 * x127 + 2.0 * x147 + x150)
-    x152 = x139 * x76
-    x153 = x151 + x152
-    x154 = x0 * (x128 * x98 + x136) + x143 * x76
-    x155 = x146 * x76
-    x156 = 2.0 * x155
-    x157 = x0 * (x127 + x142 + x150 + x156)
-    x158 = x145 * x76
-    x159 = x157 + x158
-    x160 = x0 * (x135 + x66 + x97)
-    x161 = x76 * (x147 + x148)
-    x162 = 2.0 * x144
-    x163 = x0 * (3.0 * x137 + x138 + 2.0 * x160 + 2.0 * x161 + x162) + x153 * x76
-    x164 = x53 * x6
-    x165 = x163 * x164
-    x166 = x164 * x64
-    x167 = x118 * x78
-    x168 = x0 * (2.0 * x142 + x149 + x30 * (x128 + x78) + x98 * (x167 + x67)) + x154 * x76
-    x169 = (
+    x69 = -x1 * (ax * A[2] + bx * B[2])
+    x70 = -x69 - B[2]
+    x71 = 23.3694957868871 * x70
+    x72 = x25 * x9
+    x73 = x0 * (x22 + x31 * (x19 + x72) + 2.0 * x33 + x39 * (x11 + x63)) + x25 * x65
+    x74 = x54 * x73
+    x75 = x56 * x8
+    x76 = x60**2 * x75
+    x77 = x0 * x75
+    x78 = x76 + x77
+    x79 = 13.4923846833851 * x78
+    x80 = 0.318309886183791 * x7
+    x81 = x79 * x80
+    x82 = x52 * x8
+    x83 = x70**2 * x82
+    x84 = x0 * x82
+    x85 = x83 + x84
+    x86 = 13.4923846833851 * x85
+    x87 = x53 * x80
+    x88 = x56 * x87
+    x89 = -x59 - A[1]
+    x90 = 30.169889330626 * x89
+    x91 = x51 * x67
+    x92 = x75 * x89
+    x93 = x60 * x92
+    x94 = x77 + x93
+    x95 = 52.2557811793745 * x94
+    x96 = x54 * x80
+    x97 = x95 * x96
+    x98 = 52.2557811793745 * x70
+    x99 = x66 * x67
+    x100 = x78 * x89
+    x101 = x60 * x75
+    x102 = x100 + x101 * x31
+    x103 = 30.169889330626 * x96
+    x104 = x103 * x65
+    x105 = x65 * x88
+    x106 = -x69 - A[2]
+    x107 = 30.169889330626 * x106
+    x108 = 52.2557811793745 * x106
+    x109 = x106 * x82
+    x110 = x109 * x70
+    x111 = x110 + x84
+    x112 = 52.2557811793745 * x111
+    x113 = x112 * x88
+    x114 = x106 * x85
+    x115 = x70 * x82
+    x116 = x114 + x115 * x31
+    x117 = 30.169889330626 * x116
+    x118 = x75 * x89**2
+    x119 = x118 + x77
+    x120 = 30.169889330626 * x119
+    x121 = x120 * x96
+    x122 = x0 * (x101 + x92)
+    x123 = x89 * x94
+    x124 = x122 + x123
+    x125 = 52.2557811793745 * x96
+    x126 = x125 * x44
+    x127 = 3.0 * x77
+    x128 = 2.0 * x89
+    x129 = x101 * x128 + x127
+    x130 = x0 * (x129 + x76) + x102 * x89
+    x131 = x103 * x130
+    x132 = x125 * x64
+    x133 = 0.179587122125167 * x53
+    x134 = x133 * x64
+    x135 = 90.5096679918781 * x94
+    x136 = x106 * x96
+    x137 = 90.5096679918781 * x111
+    x138 = x44 * x88
+    x139 = 52.2557811793745 * x88
+    x140 = x139 * x89
+    x141 = x106**2 * x82
+    x142 = x141 + x84
+    x143 = 30.169889330626 * x142
+    x144 = x143 * x88
+    x145 = 52.2557811793745 * x142
+    x146 = x0 * (x109 + x115)
+    x147 = x106 * x111
+    x148 = x146 + x147
+    x149 = 52.2557811793745 * x148
+    x150 = x149 * x88
+    x151 = 3.0 * x84
+    x152 = 2.0 * x106
+    x153 = x115 * x152 + x151
+    x154 = x0 * (x153 + x83) + x106 * x116
+    x155 = 30.169889330626 * x88
+    x156 = x154 * x155
+    x157 = x119 * x89 + x31 * x92
+    x158 = 13.4923846833851 * x157
+    x159 = x0 * (x118 + x129) + x124 * x89
+    x160 = 23.3694957868871 * x42
+    x161 = x160 * x96
+    x162 = 4.0 * x77
+    x163 = x0 * (2.0 * x100 + 2.0 * x122 + 2.0 * x123 + x162 * x60) + x130 * x89
+    x164 = x55 * x80
+    x165 = x12 * x133
+    x166 = x106 * x125
+    x167 = x133 * x42
+    x168 = x106 * x142 + x109 * x31
+    x169 = 13.4923846833851 * x168
+    x170 = x160 * x88
+    x171 = x0 * (x141 + x153) + x106 * x148
+    x172 = x12 * x88
+    x173 = 4.0 * x84
+    x174 = (
+        13.4923846833851 * x0 * (2.0 * x114 + 2.0 * x146 + 2.0 * x147 + x173 * x70)
+        + 13.4923846833851 * x106 * x154
+    )
+    x175 = -x59 - C[1]
+    x176 = x175**2 * x75
+    x177 = x176 + x77
+    x178 = x0 * (x15 + x72)
+    x179 = x11 + x62
+    x180 = x179 * x25
+    x181 = x15 * x39 + x35
+    x182 = x0 * (x181 + x28) + x25 * x32
+    x183 = x0 * (x15 * x21 + 2.0 * x178 + 2.0 * x180 + 2.0 * x30) + x182 * x25
+    x184 = x177 * x60
+    x185 = x175 * x75
+    x186 = x185 * x31
+    x187 = x184 + x186
+    x188 = 23.3694957868871 * x187
+    x189 = x25**2 * x9
+    x190 = x178 + x180
+    x191 = x0 * (x181 + x189) + x190 * x25
+    x192 = x191 * x96
+    x193 = x101 * x175
+    x194 = 2.0 * x193
+    x195 = x127 + x176
+    x196 = x0 * (x194 + x195)
+    x197 = x187 * x60
+    x198 = x196 + x197
+    x199 = x11 + x189
+    x200 = x199 * x25 + x31 * x72
+    x201 = x133 * x177
+    x202 = x177 * x89
+    x203 = x186 + x202
+    x204 = 30.169889330626 * x203
+    x205 = x187 * x89
+    x206 = x196 + x205
+    x207 = x125 * x190
+    x208 = x193 + x77
+    x209 = x208 * x60
+    x210 = x0 * (x101 + x185)
+    x211 = x162 * x175
+    x212 = 2.0 * x210 + x211
+    x213 = x0 * (2.0 * x184 + 2.0 * x209 + x212)
+    x214 = x198 * x89
+    x215 = x213 + x214
+    x216 = x103 * x199
+    x217 = x133 * x199
+    x218 = x0 * (x128 * x185 + x195) + x203 * x89
+    x219 = x103 * x218
+    x220 = x208 * x89
+    x221 = 2.0 * x220
+    x222 = x0 * (x184 + x202 + x212 + x221)
+    x223 = x206 * x89
+    x224 = x222 + x223
+    x225 = x125 * x179
+    x226 = 30.169889330626 * x25
+    x227 = x0 * (x127 + x194 + x76)
+    x228 = x89 * (x209 + x210)
+    x229 = 2.0 * x205
+    x230 = x0 * (3.0 * x196 + x197 + 2.0 * x227 + 2.0 * x228 + x229) + x215 * x89
+    x231 = x57 * x6
+    x232 = x231 * x54
+    x233 = x230 * x232
+    x234 = x232 * x25
+    x235 = x6 * x87
+    x236 = x218 * x235
+    x237 = 90.5096679918781 * x179
+    x238 = x133 * x179
+    x239 = x206 * x235
+    x240 = 52.2557811793745 * x235
+    x241 = x240 * x25
+    x242 = 52.2557811793745 * x238
+    x243 = x143 * x235
+    x244 = x235 * x25
+    x245 = x154 * x235
+    x246 = x175 * x92
+    x247 = (
+        x0 * (x128 * (x246 + x77) + 2.0 * x202 + x211 + x31 * (x185 + x92)) + x218 * x89
+    )
+    x248 = (
         x0
         * (
-            2.0 * x137
-            + x154
-            + x162
-            + x30 * (x134 + x167 + x79 + x97)
-            + x98 * (x148 + x155)
+            x128 * (x210 + x220)
+            + 2.0 * x196
+            + x218
+            + x229
+            + x31 * (x127 + x193 + x246 + x93)
         )
-        + x159 * x76
+        + x224 * x89
     )
-    x170 = x13 * x53
-    x171 = -x63 - C[2]
-    x172 = x171**2 * x71
-    x173 = x172 + x74
-    x174 = x173 * x64
-    x175 = x171 * x71
-    x176 = x175 * x30
-    x177 = x174 + x176
-    x178 = x171 * x84
-    x179 = 2.0 * x178
-    x180 = x106 + x172
-    x181 = x0 * (x179 + x180)
-    x182 = x177 * x64
-    x183 = x181 + x182
-    x184 = x173 * x85
-    x185 = x176 + x184
-    x186 = x177 * x85
-    x187 = x181 + x186
-    x188 = x178 + x74
-    x189 = x188 * x64
-    x190 = x0 * (x175 + x84)
-    x191 = x116 * x171
-    x192 = 2.0 * x190 + x191
-    x193 = x0 * (2.0 * x174 + 2.0 * x189 + x192)
-    x194 = x183 * x85
-    x195 = x193 + x194
-    x196 = 3.14159265358979 * x1 * x51
-    x197 = x196 * x6
-    x198 = x0 * (x107 * x175 + x180) + x185 * x85
-    x199 = x188 * x85
-    x200 = 2.0 * x199
-    x201 = x0 * (x174 + x184 + x192 + x200)
-    x202 = x187 * x85
-    x203 = x201 + x202
-    x204 = x197 * x56
-    x205 = x0 * (x106 + x179 + x73)
-    x206 = x85 * (x189 + x190)
-    x207 = 2.0 * x186
-    x208 = x0 * (3.0 * x181 + x182 + 2.0 * x205 + 2.0 * x206 + x207) + x195 * x85
-    x209 = x197 * x208
-    x210 = x13 * x196
-    x211 = x171 * x87
-    x212 = (
-        x0 * (x107 * (x211 + x74) + 2.0 * x184 + x191 + x30 * (x175 + x87)) + x198 * x85
+    x249 = 23.3694957868871 * x14
+    x250 = x54 * x57
+    x251 = x14 * x250
+    x252 = x14 * x87
+    x253 = x133 * x29
+    x254 = x249 * x87
+    x255 = -x69 - C[2]
+    x256 = x255**2 * x82
+    x257 = x256 + x84
+    x258 = 13.4923846833851 * x88
+    x259 = x191 * x88
+    x260 = x257 * x70
+    x261 = x255 * x82
+    x262 = x261 * x31
+    x263 = x260 + x262
+    x264 = 23.3694957868871 * x263
+    x265 = x133 * x257
+    x266 = x115 * x255
+    x267 = 2.0 * x266
+    x268 = x151 + x256
+    x269 = x0 * (x267 + x268)
+    x270 = x263 * x70
+    x271 = x269 + x270
+    x272 = x155 * x182
+    x273 = x139 * x190
+    x274 = 30.169889330626 * x217
+    x275 = x155 * x199
+    x276 = x106 * x257
+    x277 = x262 + x276
+    x278 = x106 * x263
+    x279 = x269 + x278
+    x280 = x266 + x84
+    x281 = x280 * x70
+    x282 = x0 * (x115 + x261)
+    x283 = x173 * x255
+    x284 = 2.0 * x282 + x283
+    x285 = x0 * (2.0 * x260 + 2.0 * x281 + x284)
+    x286 = x106 * x271
+    x287 = x285 + x286
+    x288 = x235 * x257
+    x289 = x124 * x240
+    x290 = x235 * x271
+    x291 = 52.2557811793745 * x89
+    x292 = x53 * x6
+    x293 = x292 * x58
+    x294 = x25 * x293
+    x295 = x0 * (x152 * x261 + x268) + x106 * x277
+    x296 = x155 * x295
+    x297 = x139 * x179
+    x298 = x106 * x280
+    x299 = 2.0 * x298
+    x300 = x0 * (x260 + x276 + x284 + x299)
+    x301 = x106 * x279
+    x302 = x300 + x301
+    x303 = 30.169889330626 * x235
+    x304 = x295 * x303
+    x305 = x0 * (x151 + x267 + x83)
+    x306 = x106 * (x281 + x282)
+    x307 = 2.0 * x278
+    x308 = x0 * (3.0 * x269 + x270 + 2.0 * x305 + 2.0 * x306 + x307) + x106 * x287
+    x309 = x293 * x308
+    x310 = 52.2557811793745 * x252
+    x311 = x53 * x58
+    x312 = x14 * x311
+    x313 = x109 * x255
+    x314 = (
+        x0 * (x152 * (x313 + x84) + 2.0 * x276 + x283 + x31 * (x109 + x261)) + x106 * x295
     )
-    x213 = (
+    x315 = (
         x0
         * (
-            x107 * (x190 + x199)
-            + 2.0 * x181
-            + x198
-            + x207
-            + x30 * (x106 + x178 + x211 + x88)
+            x152 * (x282 + x298)
+            + 2.0 * x269
+            + x295
+            + x307
+            + x31 * (x110 + x151 + x266 + x313)
         )
-        + x203 * x85
+        + x106 * x302
     )
 
     # 180 item(s)
-    return numpy.array(
-        [
-            x54
+    result[0, 0, 0] = numpy.sum(
+        x55
+        * x58
+        * (
+            x0
             * (
-                x0
-                * (
-                    2.0 * x23
-                    + x30 * (x17 + 3.0 * x19 + x26 + x31)
-                    + 2.0 * x33
-                    + x38 * (x36 + x37)
-                    + 2.0 * x44
-                    + 2.0 * x47
-                )
-                + x24 * x50
-            ),
-            x56 * x62,
-            x62 * x64,
-            x68 * x70 * x71,
-            x56 * x70 * x72,
-            x65 * x70 * x75,
-            x76 * x77,
-            x61 * x71 * x80,
-            x61 * x72 * x76,
-            x60 * x71 * x83,
-            x60 * x80 * x84,
-            x60 * x75 * x78,
-            x77 * x85,
-            x56 * x61 * x86,
-            x61 * x65 * x89,
-            x60 * x68 * x87,
-            x60 * x82 * x89,
-            x60 * x65 * x91,
-            x49 * x71 * x93,
-            x43 * x71 * x96,
-            x43 * x84 * x93,
-            x100 * x59 * x71,
-            x59 * x84 * x96,
-            x59 * x75 * x93,
-            x49 * x76 * x86,
-            x43 * x80 * x87,
-            x43 * x78 * x89,
-            x59 * x83 * x87,
-            x59 * x80 * x89,
-            x59 * x78 * x91,
-            x102 * x49 * x65,
-            x102 * x43 * x82,
-            x105 * x43 * x65,
-            x102 * x59 * x68,
-            x105 * x59 * x82,
-            x109 * x59 * x65,
-            x110 * x46 * x71,
-            x111 * x41 * x71,
-            x110 * x41 * x84,
-            x11 * x113 * x71,
-            x11 * x111 * x84,
-            x11 * x110 * x75,
-            x46 * x87 * x93,
-            x41 * x87 * x96,
-            x41 * x89 * x93,
-            x100 * x11 * x87,
-            x11 * x89 * x96,
-            x11 * x91 * x93,
-            x102 * x46 * x78,
-            x102 * x41 * x80,
-            x105 * x41 * x78,
-            x102 * x11 * x83,
-            x105 * x11 * x80,
-            x109 * x11 * x78,
-            x114 * x46 * x65,
-            x114 * x41 * x82,
-            x115 * x41 * x65,
-            x11 * x114 * x68,
-            x11 * x115 * x82,
-            x11 * x117 * x65,
-            x120 * x126 * x71,
-            x130 * x133 * x71,
-            x120 * x133 * x84,
-            x139 * x141 * x71,
-            x130 * x141 * x84,
-            x120 * x141 * x75,
-            x125 * x143 * x71,
-            x132 * x145 * x71,
-            x132 * x143 * x84,
-            x140 * x153 * x71,
-            x140 * x145 * x84,
-            x140 * x143 * x75,
-            x120 * x125 * x87,
-            x130 * x132 * x87,
-            x120 * x132 * x89,
-            x139 * x140 * x87,
-            x130 * x140 * x89,
-            x120 * x140 * x91,
-            x154 * x31 * x71,
-            x122 * x159 * x71,
-            x122 * x154 * x84,
-            x165 * x24,
-            x159 * x166 * x24,
-            x154 * x69 * x75,
-            x143 * x31 * x87,
-            x122 * x145 * x87,
-            x122 * x143 * x89,
-            x153 * x164 * x24 * x85,
-            x145 * x69 * x89,
-            x143 * x69 * x91,
-            x102 * x120 * x31,
-            x102 * x122 * x130,
-            x105 * x120 * x122,
-            x102 * x139 * x69,
-            x105 * x130 * x69,
-            x109 * x120 * x69,
-            x168 * x28 * x71,
-            x169 * x170,
-            x168 * x170 * x64,
-            x164
-            * (
-                x0
-                * (
-                    2.0 * x151
-                    + 2.0 * x152
-                    + 2.0 * x157
-                    + 2.0 * x158
-                    + x30 * (x147 + 3.0 * x148 + x156 + x83)
-                    + x98 * (x160 + x161)
-                )
-                + x163 * x76
-            ),
-            x166 * x169,
-            x168 * x75 * x8,
-            x154 * x28 * x87,
-            x159 * x170 * x85,
-            x14 * x154 * x89,
-            x165 * x85,
-            x159 * x8 * x89,
-            x154 * x8 * x91,
-            x102 * x143 * x28,
-            x102 * x14 * x145,
-            x105 * x14 * x143,
-            x102 * x153 * x8,
-            x105 * x145 * x8,
-            x109 * x143 * x8,
-            x114 * x120 * x28,
-            x114 * x130 * x14,
-            x115 * x120 * x14,
-            x114 * x139 * x8,
-            x115 * x130 * x8,
-            x117 * x120 * x8,
-            x126 * x173 * x65,
-            x133 * x173 * x82,
-            x133 * x177 * x65,
-            x141 * x173 * x68,
-            x141 * x177 * x82,
-            x141 * x183 * x65,
-            x125 * x173 * x78,
-            x132 * x173 * x80,
-            x132 * x177 * x78,
-            x140 * x173 * x83,
-            x140 * x177 * x80,
-            x140 * x183 * x78,
-            x125 * x185 * x65,
-            x132 * x185 * x82,
-            x132 * x187 * x65,
-            x140 * x185 * x68,
-            x140 * x187 * x82,
-            x140 * x195 * x65,
-            x173 * x31 * x93,
-            x122 * x173 * x96,
-            x122 * x177 * x93,
-            x100 * x173 * x69,
-            x177 * x69 * x96,
-            x183 * x69 * x93,
-            x185 * x31 * x78,
-            x122 * x185 * x80,
-            x122 * x187 * x78,
-            x185 * x69 * x83,
-            x187 * x69 * x80,
-            x195 * x197 * x24 * x76,
-            x198 * x31 * x65,
-            x122 * x198 * x82,
-            x122 * x203 * x65,
-            x198 * x68 * x69,
-            x203 * x204 * x24,
-            x209 * x24,
-            x110 * x173 * x28,
-            x111 * x14 * x173,
-            x110 * x14 * x177,
-            x113 * x173 * x8,
-            x111 * x177 * x8,
-            x110 * x183 * x8,
-            x185 * x28 * x93,
-            x14 * x185 * x96,
-            x14 * x187 * x93,
-            x100 * x185 * x8,
-            x187 * x8 * x96,
-            x195 * x8 * x93,
-            x198 * x28 * x78,
-            x14 * x198 * x80,
-            x203 * x210 * x76,
-            x198 * x8 * x83,
-            x203 * x8 * x80,
-            x209 * x76,
-            x212 * x28 * x65,
-            x210 * x212 * x56,
-            x210 * x213,
-            x212 * x68 * x8,
-            x204 * x213,
-            x197
-            * (
-                x0
-                * (
-                    x107 * (x205 + x206)
-                    + 2.0 * x193
-                    + 2.0 * x194
-                    + 2.0 * x201
-                    + 2.0 * x202
-                    + x30 * (x189 + 3.0 * x190 + x200 + x91)
-                )
-                + x208 * x85
-            ),
-        ]
+                2.0 * x24
+                + x31 * (x18 + 3.0 * x20 + x27 + x32)
+                + 2.0 * x34
+                + x39 * (x37 + x38)
+                + 2.0 * x45
+                + 2.0 * x48
+            )
+            + x25 * x51
+        )
     )
+    result[0, 0, 1] = numpy.sum(x61 * x68)
+    result[0, 0, 2] = numpy.sum(x68 * x71)
+    result[0, 0, 3] = numpy.sum(x74 * x81)
+    result[0, 0, 4] = numpy.sum(x58 * x61 * x70 * x74)
+    result[0, 0, 5] = numpy.sum(x73 * x86 * x88)
+    result[0, 1, 0] = numpy.sum(x90 * x91)
+    result[0, 1, 1] = numpy.sum(x66 * x97)
+    result[0, 1, 2] = numpy.sum(x89 * x98 * x99)
+    result[0, 1, 3] = numpy.sum(x102 * x104)
+    result[0, 1, 4] = numpy.sum(x65 * x70 * x97)
+    result[0, 1, 5] = numpy.sum(x105 * x85 * x90)
+    result[0, 2, 0] = numpy.sum(x107 * x91)
+    result[0, 2, 1] = numpy.sum(x108 * x60 * x99)
+    result[0, 2, 2] = numpy.sum(x113 * x66)
+    result[0, 2, 3] = numpy.sum(x104 * x106 * x78)
+    result[0, 2, 4] = numpy.sum(x113 * x60 * x65)
+    result[0, 2, 5] = numpy.sum(x105 * x117)
+    result[0, 3, 0] = numpy.sum(x121 * x50)
+    result[0, 3, 1] = numpy.sum(x124 * x126)
+    result[0, 3, 2] = numpy.sum(x119 * x126 * x70)
+    result[0, 3, 3] = numpy.sum(x131 * x64)
+    result[0, 3, 4] = numpy.sum(x124 * x132 * x70)
+    result[0, 3, 5] = numpy.sum(x120 * x134 * x85)
+    result[0, 4, 0] = numpy.sum(x108 * x50 * x67 * x89)
+    result[0, 4, 1] = numpy.sum(x135 * x136 * x44)
+    result[0, 4, 2] = numpy.sum(x137 * x138 * x89)
+    result[0, 4, 3] = numpy.sum(x102 * x106 * x132)
+    result[0, 4, 4] = numpy.sum(x134 * x137 * x94)
+    result[0, 4, 5] = numpy.sum(x116 * x140 * x64)
+    result[0, 5, 0] = numpy.sum(x144 * x50)
+    result[0, 5, 1] = numpy.sum(x138 * x145 * x60)
+    result[0, 5, 2] = numpy.sum(x138 * x149)
+    result[0, 5, 3] = numpy.sum(x134 * x143 * x78)
+    result[0, 5, 4] = numpy.sum(x150 * x60 * x64)
+    result[0, 5, 5] = numpy.sum(x156 * x64)
+    result[0, 6, 0] = numpy.sum(x158 * x47 * x96)
+    result[0, 6, 1] = numpy.sum(x159 * x161)
+    result[0, 6, 2] = numpy.sum(x157 * x161 * x70)
+    result[0, 6, 3] = numpy.sum(x12 * x163 * x164)
+    result[0, 6, 4] = numpy.sum(x12 * x159 * x71 * x96)
+    result[0, 6, 5] = numpy.sum(x157 * x165 * x86)
+    result[0, 7, 0] = numpy.sum(x106 * x121 * x47)
+    result[0, 7, 1] = numpy.sum(x124 * x166 * x42)
+    result[0, 7, 2] = numpy.sum(x112 * x119 * x167)
+    result[0, 7, 3] = numpy.sum(x106 * x12 * x131)
+    result[0, 7, 4] = numpy.sum(x112 * x124 * x165)
+    result[0, 7, 5] = numpy.sum(x116 * x120 * x165)
+    result[0, 8, 0] = numpy.sum(x144 * x47 * x89)
+    result[0, 8, 1] = numpy.sum(x142 * x167 * x95)
+    result[0, 8, 2] = numpy.sum(x150 * x42 * x89)
+    result[0, 8, 3] = numpy.sum(x102 * x143 * x165)
+    result[0, 8, 4] = numpy.sum(x148 * x165 * x95)
+    result[0, 8, 5] = numpy.sum(x12 * x156 * x89)
+    result[0, 9, 0] = numpy.sum(x169 * x47 * x88)
+    result[0, 9, 1] = numpy.sum(x168 * x170 * x60)
+    result[0, 9, 2] = numpy.sum(x170 * x171)
+    result[0, 9, 3] = numpy.sum(x165 * x169 * x78)
+    result[0, 9, 4] = numpy.sum(x171 * x172 * x61)
+    result[0, 9, 5] = numpy.sum(x172 * x174)
+    result[1, 0, 0] = numpy.sum(x164 * x177 * x183)
+    result[1, 0, 1] = numpy.sum(x188 * x192)
+    result[1, 0, 2] = numpy.sum(x177 * x192 * x71)
+    result[1, 0, 3] = numpy.sum(x164 * x198 * x200)
+    result[1, 0, 4] = numpy.sum(x188 * x200 * x70 * x96)
+    result[1, 0, 5] = numpy.sum(x200 * x201 * x86)
+    result[1, 1, 0] = numpy.sum(x182 * x204 * x96)
+    result[1, 1, 1] = numpy.sum(x206 * x207)
+    result[1, 1, 2] = numpy.sum(x203 * x207 * x70)
+    result[1, 1, 3] = numpy.sum(x215 * x216)
+    result[1, 1, 4] = numpy.sum(x125 * x199 * x206 * x70)
+    result[1, 1, 5] = numpy.sum(x204 * x217 * x85)
+    result[1, 2, 0] = numpy.sum(x103 * x106 * x177 * x182)
+    result[1, 2, 1] = numpy.sum(x106 * x187 * x207)
+    result[1, 2, 2] = numpy.sum(x112 * x190 * x201)
+    result[1, 2, 3] = numpy.sum(x106 * x198 * x216)
+    result[1, 2, 4] = numpy.sum(x112 * x187 * x217)
+    result[1, 2, 5] = numpy.sum(x117 * x199 * x201)
+    result[1, 3, 0] = numpy.sum(x219 * x32)
+    result[1, 3, 1] = numpy.sum(x224 * x225)
+    result[1, 3, 2] = numpy.sum(x218 * x225 * x70)
+    result[1, 3, 3] = numpy.sum(x226 * x233)
+    result[1, 3, 4] = numpy.sum(x224 * x234 * x98)
+    result[1, 3, 5] = numpy.sum(x226 * x236 * x85)
+    result[1, 4, 0] = numpy.sum(x166 * x203 * x32)
+    result[1, 4, 1] = numpy.sum(x136 * x206 * x237)
+    result[1, 4, 2] = numpy.sum(x137 * x203 * x238)
+    result[1, 4, 3] = numpy.sum(x108 * x215 * x234)
+    result[1, 4, 4] = numpy.sum(x137 * x239 * x25)
+    result[1, 4, 5] = numpy.sum(x116 * x203 * x241)
+    result[1, 5, 0] = numpy.sum(x143 * x201 * x32)
+    result[1, 5, 1] = numpy.sum(x142 * x187 * x242)
+    result[1, 5, 2] = numpy.sum(x149 * x179 * x201)
+    result[1, 5, 3] = numpy.sum(x198 * x243 * x25)
+    result[1, 5, 4] = numpy.sum(x149 * x187 * x244)
+    result[1, 5, 5] = numpy.sum(x177 * x226 * x245)
+    result[1, 6, 0] = numpy.sum(x164 * x247 * x29)
+    result[1, 6, 1] = numpy.sum(x248 * x249 * x250)
+    result[1, 6, 2] = numpy.sum(x247 * x251 * x71)
+    result[1, 6, 3] = numpy.sum(
+        x231
+        * x55
+        * (
+            x0
+            * (
+                x128 * (x227 + x228)
+                + 2.0 * x213
+                + 2.0 * x214
+                + 2.0 * x222
+                + 2.0 * x223
+                + x31 * (x102 + x209 + 3.0 * x210 + x221)
+            )
+            + x230 * x89
+        )
+    )
+    result[1, 6, 4] = numpy.sum(x232 * x248 * x71)
+    result[1, 6, 5] = numpy.sum(x235 * x247 * x86)
+    result[1, 7, 0] = numpy.sum(x106 * x219 * x29)
+    result[1, 7, 1] = numpy.sum(x108 * x224 * x251)
+    result[1, 7, 2] = numpy.sum(x112 * x218 * x252)
+    result[1, 7, 3] = numpy.sum(x107 * x233)
+    result[1, 7, 4] = numpy.sum(x112 * x224 * x235)
+    result[1, 7, 5] = numpy.sum(x117 * x236)
+    result[1, 8, 0] = numpy.sum(x143 * x203 * x253)
+    result[1, 8, 1] = numpy.sum(x145 * x206 * x252)
+    result[1, 8, 2] = numpy.sum(x149 * x203 * x252)
+    result[1, 8, 3] = numpy.sum(x215 * x243)
+    result[1, 8, 4] = numpy.sum(x149 * x239)
+    result[1, 8, 5] = numpy.sum(x204 * x245)
+    result[1, 9, 0] = numpy.sum(x169 * x201 * x29)
+    result[1, 9, 1] = numpy.sum(x168 * x188 * x252)
+    result[1, 9, 2] = numpy.sum(x171 * x177 * x254)
+    result[1, 9, 3] = numpy.sum(x169 * x198 * x235)
+    result[1, 9, 4] = numpy.sum(x171 * x188 * x235)
+    result[1, 9, 5] = numpy.sum(x174 * x177 * x235)
+    result[2, 0, 0] = numpy.sum(x183 * x257 * x258)
+    result[2, 0, 1] = numpy.sum(x257 * x259 * x61)
+    result[2, 0, 2] = numpy.sum(x259 * x264)
+    result[2, 0, 3] = numpy.sum(x200 * x265 * x79)
+    result[2, 0, 4] = numpy.sum(x200 * x264 * x60 * x88)
+    result[2, 0, 5] = numpy.sum(x200 * x258 * x271)
+    result[2, 1, 0] = numpy.sum(x257 * x272 * x89)
+    result[2, 1, 1] = numpy.sum(x190 * x265 * x95)
+    result[2, 1, 2] = numpy.sum(x263 * x273 * x89)
+    result[2, 1, 3] = numpy.sum(x102 * x257 * x274)
+    result[2, 1, 4] = numpy.sum(x217 * x263 * x95)
+    result[2, 1, 5] = numpy.sum(x271 * x275 * x89)
+    result[2, 2, 0] = numpy.sum(x272 * x277)
+    result[2, 2, 1] = numpy.sum(x273 * x277 * x60)
+    result[2, 2, 2] = numpy.sum(x273 * x279)
+    result[2, 2, 3] = numpy.sum(x274 * x277 * x78)
+    result[2, 2, 4] = numpy.sum(x139 * x199 * x279 * x60)
+    result[2, 2, 5] = numpy.sum(x275 * x287)
+    result[2, 3, 0] = numpy.sum(x120 * x265 * x32)
+    result[2, 3, 1] = numpy.sum(x124 * x242 * x257)
+    result[2, 3, 2] = numpy.sum(x119 * x242 * x263)
+    result[2, 3, 3] = numpy.sum(x130 * x226 * x288)
+    result[2, 3, 4] = numpy.sum(x25 * x263 * x289)
+    result[2, 3, 5] = numpy.sum(x120 * x25 * x290)
+    result[2, 4, 0] = numpy.sum(x140 * x277 * x32)
+    result[2, 4, 1] = numpy.sum(x135 * x238 * x277)
+    result[2, 4, 2] = numpy.sum(x237 * x279 * x88 * x89)
+    result[2, 4, 3] = numpy.sum(x102 * x241 * x277)
+    result[2, 4, 4] = numpy.sum(x135 * x244 * x279)
+    result[2, 4, 5] = numpy.sum(x287 * x291 * x294)
+    result[2, 5, 0] = numpy.sum(x296 * x32)
+    result[2, 5, 1] = numpy.sum(x295 * x297 * x60)
+    result[2, 5, 2] = numpy.sum(x297 * x302)
+    result[2, 5, 3] = numpy.sum(x25 * x304 * x78)
+    result[2, 5, 4] = numpy.sum(52.2557811793745 * x294 * x302 * x60)
+    result[2, 5, 5] = numpy.sum(x226 * x309)
+    result[2, 6, 0] = numpy.sum(x158 * x253 * x257)
+    result[2, 6, 1] = numpy.sum(x159 * x254 * x257)
+    result[2, 6, 2] = numpy.sum(x157 * x252 * x264)
+    result[2, 6, 3] = numpy.sum(13.4923846833851 * x163 * x288)
+    result[2, 6, 4] = numpy.sum(x159 * x235 * x264)
+    result[2, 6, 5] = numpy.sum(x158 * x290)
+    result[2, 7, 0] = numpy.sum(x120 * x253 * x277)
+    result[2, 7, 1] = numpy.sum(x124 * x277 * x310)
+    result[2, 7, 2] = numpy.sum(x119 * x279 * x310)
+    result[2, 7, 3] = numpy.sum(x130 * x277 * x303)
+    result[2, 7, 4] = numpy.sum(x279 * x289)
+    result[2, 7, 5] = numpy.sum(x120 * x235 * x287)
+    result[2, 8, 0] = numpy.sum(x29 * x296 * x89)
+    result[2, 8, 1] = numpy.sum(x252 * x295 * x95)
+    result[2, 8, 2] = numpy.sum(x291 * x302 * x312)
+    result[2, 8, 3] = numpy.sum(x102 * x304)
+    result[2, 8, 4] = numpy.sum(x235 * x302 * x95)
+    result[2, 8, 5] = numpy.sum(x309 * x90)
+    result[2, 9, 0] = numpy.sum(x258 * x29 * x314)
+    result[2, 9, 1] = numpy.sum(x312 * x314 * x61)
+    result[2, 9, 2] = numpy.sum(x249 * x311 * x315)
+    result[2, 9, 3] = numpy.sum(x292 * x314 * x81)
+    result[2, 9, 4] = numpy.sum(x293 * x315 * x61)
+    result[2, 9, 5] = numpy.sum(
+        13.4923846833851
+        * x293
+        * (
+            x0
+            * (
+                x152 * (x305 + x306)
+                + 2.0 * x285
+                + 2.0 * x286
+                + 2.0 * x300
+                + 2.0 * x301
+                + x31 * (x116 + x281 + 3.0 * x282 + x299)
+            )
+            + x106 * x308
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_33(a, A, b, B, C):
+def diag_quadrupole3d_33(ax, da, A, bx, db, B, C):
     """Cartesian 3D (ff) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 10, 10), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3 * x7
-    x9 = -x2 - C[0]
-    x10 = x7 * x9
-    x11 = x0 * (x10 + x8)
-    x12 = x0 * x7
-    x13 = x8 * x9
-    x14 = x12 + x13
-    x15 = x14 * x3
-    x16 = x11 + x15
-    x17 = x16 * x3
-    x18 = x7 * x9**2
-    x19 = x12 + x18
-    x20 = x19 * x3
-    x21 = 2.0 * x0
-    x22 = x10 * x21
-    x23 = x20 + x22
-    x24 = x23 * x3
-    x25 = x3**2 * x7
-    x26 = 3.0 * x12
-    x27 = 2.0 * x13 + x26
-    x28 = x0 * (x25 + x27)
-    x29 = x0 * (x18 + x27)
-    x30 = 2.0 * x28 + 3.0 * x29
-    x31 = x0 * (2.0 * x17 + 3.0 * x24 + x30)
-    x32 = -x2 - A[0]
-    x33 = x16 * x32
-    x34 = x0 * (3.0 * x25 + x26)
-    x35 = x12 + x25
-    x36 = x3 * x35
-    x37 = x21 * x8
-    x38 = x36 + x37
-    x39 = x32 * x38
-    x40 = x34 + x39
-    x41 = 3.0 * x11
-    x42 = x0 * (3.0 * x15 + x38 + x41)
-    x43 = x32 * (x17 + x28)
-    x44 = 2.0 * x32
-    x45 = 4.0 * x0
-    x46 = x10 * x45
-    x47 = 2.0 * x11 + x46
-    x48 = x0 * (2.0 * x15 + 2.0 * x20 + x47)
-    x49 = x24 + x29
-    x50 = x3 * x49
-    x51 = x48 + x50
-    x52 = x32 * x51
-    x53 = x23 * x32
-    x54 = 2.0 * x53
-    x55 = x0 * (x24 + x30 + 2.0 * x33 + x54)
-    x56 = x32 * x49
-    x57 = x48 + x56
-    x58 = x32 * x57
-    x59 = x31 + x52
-    x60 = x0 * (2.0 * x42 + 2.0 * x43 + 4.0 * x48 + x50 + 3.0 * x56) + x32 * x59
-    x61 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3 * x8
+    x10 = -x2 - C[0]
+    x11 = x10 * x8
+    x12 = x0 * (x11 + x9)
+    x13 = x0 * x8
+    x14 = x10 * x9
+    x15 = x13 + x14
+    x16 = x15 * x3
+    x17 = x12 + x16
+    x18 = x17 * x3
+    x19 = x10**2 * x8
+    x20 = x13 + x19
+    x21 = x20 * x3
+    x22 = 2.0 * x0
+    x23 = x11 * x22
+    x24 = x21 + x23
+    x25 = x24 * x3
+    x26 = x3**2 * x8
+    x27 = 3.0 * x13
+    x28 = 2.0 * x14 + x27
+    x29 = x0 * (x26 + x28)
+    x30 = x0 * (x19 + x28)
+    x31 = 2.0 * x29 + 3.0 * x30
+    x32 = x0 * (2.0 * x18 + 3.0 * x25 + x31)
+    x33 = -x2 - A[0]
+    x34 = x17 * x33
+    x35 = x0 * (3.0 * x26 + x27)
+    x36 = x13 + x26
+    x37 = x3 * x36
+    x38 = x22 * x9
+    x39 = x37 + x38
+    x40 = x33 * x39
+    x41 = x35 + x40
+    x42 = 3.0 * x12
+    x43 = x0 * (3.0 * x16 + x39 + x42)
+    x44 = x33 * (x18 + x29)
+    x45 = 2.0 * x33
+    x46 = 4.0 * x0
+    x47 = x11 * x46
+    x48 = 2.0 * x12 + x47
+    x49 = x0 * (2.0 * x16 + 2.0 * x21 + x48)
+    x50 = x25 + x30
+    x51 = x3 * x50
+    x52 = x49 + x51
+    x53 = x33 * x52
+    x54 = x24 * x33
+    x55 = 2.0 * x54
+    x56 = x0 * (x25 + x31 + 2.0 * x34 + x55)
+    x57 = x33 * x50
+    x58 = x49 + x57
+    x59 = x33 * x58
+    x60 = x32 + x53
+    x61 = x0 * (2.0 * x43 + 2.0 * x44 + 4.0 * x49 + x51 + 3.0 * x57) + x33 * x60
     x62 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x63 = 3.14159265358979 * x1 * x62
-    x64 = x61 * x63
-    x65 = -x1 * (a * A[1] + b * B[1])
-    x66 = -x65 - B[1]
-    x67 = x14 * x32
-    x68 = 2.0 * x67
-    x69 = x32 * x35
-    x70 = x37 + x69
-    x71 = x19 * x32
-    x72 = x0 * (x20 + x47 + x68 + x71)
-    x73 = x29 + x53
-    x74 = x32 * x73
-    x75 = x55 + x58
-    x76 = x64 * (
+    x63 = da * db * numpy.sqrt(ax**4.5) * numpy.sqrt(bx**4.5)
+    x64 = x62 * x63
+    x65 = 12.0679557322504 * x64
+    x66 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x67 = 0.564189583547756 * x1
+    x68 = x66 * x67
+    x69 = -x1 * (ax * A[1] + bx * B[1])
+    x70 = -x69 - B[1]
+    x71 = x68 * x70
+    x72 = x15 * x33
+    x73 = 2.0 * x72
+    x74 = x33 * x36
+    x75 = x38 + x74
+    x76 = x20 * x33
+    x77 = x0 * (x21 + x48 + x73 + x76)
+    x78 = x30 + x54
+    x79 = x33 * x78
+    x80 = x56 + x59
+    x81 = 26.9847693667702 * x64
+    x82 = x81 * (
         x0
         * (
-            x21 * (x15 + x41 + x68 + x70)
-            + x44 * (x28 + x33)
-            + 2.0 * x48
-            + 2.0 * x56
-            + 2.0 * x72
-            + 2.0 * x74
+            x22 * (x16 + x42 + x73 + x75)
+            + x45 * (x29 + x34)
+            + 2.0 * x49
+            + 2.0 * x57
+            + 2.0 * x77
+            + 2.0 * x79
         )
-        + x32 * x75
+        + x33 * x80
     )
-    x77 = -x1 * (a * A[2] + b * B[2])
-    x78 = -x77 - B[2]
-    x79 = x6 * x61
-    x80 = x66**2 * x79
-    x81 = x0 * x79
-    x82 = x80 + x81
-    x83 = x32 * x8
-    x84 = x10 * x32
-    x85 = x22 + x71
-    x86 = x0 * (x10 * x44 + x18 + x26) + x32 * x85
-    x87 = x72 + x74
-    x88 = (
-        x0 * (x21 * (x13 + x26 + x83 + x84) + 2.0 * x29 + x44 * (x11 + x67) + x54 + x86)
-        + x32 * x87
+    x83 = -x1 * (ax * A[2] + bx * B[2])
+    x84 = -x83 - B[2]
+    x85 = x68 * x84
+    x86 = x33 * x9
+    x87 = x11 * x33
+    x88 = x23 + x76
+    x89 = x0 * (x11 * x45 + x19 + x27) + x33 * x88
+    x90 = x77 + x79
+    x91 = (
+        x0 * (x22 * (x14 + x27 + x86 + x87) + 2.0 * x30 + x45 * (x12 + x72) + x55 + x89)
+        + x33 * x90
     )
-    x89 = x6 * x62
-    x90 = x64 * x78
-    x91 = x78**2 * x89
-    x92 = x0 * x89
-    x93 = x91 + x92
-    x94 = x66 * x82
-    x95 = x66 * x79
-    x96 = x21 * x95
-    x97 = x94 + x96
-    x98 = x32 * x7
-    x99 = x0 * (x21 * (x10 + x98) + x44 * (x12 + x84) + x46 + 2.0 * x71) + x32 * x86
-    x100 = x78 * x89
-    x101 = x78 * x93
-    x102 = x100 * x21
+    x92 = x64 * x91
+    x93 = x66 * x7
+    x94 = x70**2 * x93
+    x95 = x0 * x93
+    x96 = x94 + x95
+    x97 = 26.9847693667702 * x96
+    x98 = 0.318309886183791 * x6
+    x99 = x97 * x98
+    x100 = x62 * x7
+    x101 = x100 * x84**2
+    x102 = x0 * x100
     x103 = x101 + x102
-    x104 = -x65 - A[1]
-    x105 = x60 * x64
-    x106 = x104 * x79
-    x107 = x106 * x66
-    x108 = x107 + x81
-    x109 = x104 * x82
-    x110 = x109 + x96
-    x111 = 3.0 * x81
-    x112 = x0 * (x111 + 3.0 * x80)
-    x113 = x104 * x97
-    x114 = x112 + x113
-    x115 = -x77 - A[2]
-    x116 = x115 * x64
-    x117 = x115 * x89
-    x118 = x117 * x78
-    x119 = x118 + x92
-    x120 = x115 * x93
-    x121 = x102 + x120
-    x122 = 3.0 * x92
-    x123 = x0 * (x122 + 3.0 * x91)
-    x124 = x103 * x115
-    x125 = x123 + x124
-    x126 = x104**2 * x79
-    x127 = x126 + x81
-    x128 = x0 * (x106 + x95)
-    x129 = x104 * x108
-    x130 = x128 + x129
-    x131 = 2.0 * x104
-    x132 = x111 + x131 * x95
-    x133 = x0 * (x132 + x80)
-    x134 = x104 * x110
-    x135 = x133 + x134
-    x136 = x66 * x81
-    x137 = x0 * (3.0 * x109 + 8.0 * x136 + x94) + x104 * x114
-    x138 = x115**2 * x89
-    x139 = x138 + x92
-    x140 = x0 * (x100 + x117)
-    x141 = x115 * x119
-    x142 = x140 + x141
-    x143 = 2.0 * x115
-    x144 = x100 * x143 + x122
-    x145 = x0 * (x144 + x91)
-    x146 = x115 * x121
-    x147 = x145 + x146
-    x148 = x78 * x92
-    x149 = x0 * (x101 + 3.0 * x120 + 8.0 * x148) + x115 * x125
-    x150 = x104 * x127 + x106 * x21
-    x151 = x0 * (x126 + x132) + x104 * x130
-    x152 = x0 * (2.0 * x109 + 2.0 * x128 + 2.0 * x129 + 4.0 * x136) + x104 * x135
-    x153 = x0 * (2.0 * x112 + 2.0 * x113 + 3.0 * x133 + 3.0 * x134) + x104 * x137
-    x154 = x115 * x139 + x117 * x21
-    x155 = x0 * (x138 + x144) + x115 * x142
-    x156 = x0 * (2.0 * x120 + 2.0 * x140 + 2.0 * x141 + 4.0 * x148) + x115 * x147
-    x157 = x0 * (2.0 * x123 + 2.0 * x124 + 3.0 * x145 + 3.0 * x146) + x115 * x149
-    x158 = -x65 - C[1]
-    x159 = x158**2 * x79
-    x160 = x159 + x81
-    x161 = x26 + x44 * x8
-    x162 = x0 * (x161 + x25)
-    x163 = x32 * x70
-    x164 = x0 * (8.0 * x0 * x8 + x36 + 3.0 * x69) + x32 * x40
-    x165 = x0 * (3.0 * x162 + 3.0 * x163 + 2.0 * x34 + 2.0 * x39) + x164 * x32
-    x166 = x160 * x66
-    x167 = x158 * x79
-    x168 = x167 * x21
-    x169 = x166 + x168
-    x170 = x0 * (x8 + x98)
-    x171 = x12 + x83
-    x172 = x171 * x32
-    x173 = x162 + x163
-    x174 = x0 * (2.0 * x170 + 2.0 * x172 + x45 * x8 + 2.0 * x69) + x173 * x32
-    x175 = x158 * x95
-    x176 = x111 + 2.0 * x175
-    x177 = x0 * (x159 + x176)
-    x178 = x169 * x66
-    x179 = x177 + x178
-    x180 = x32**2 * x7
-    x181 = x170 + x172
-    x182 = x0 * (x161 + x180) + x181 * x32
-    x183 = x175 + x81
-    x184 = x183 * x66
-    x185 = x0 * (x167 + x95)
-    x186 = 4.0 * x158 * x81
-    x187 = 2.0 * x185 + x186
-    x188 = x0 * (2.0 * x166 + 2.0 * x184 + x187)
-    x189 = x179 * x66
-    x190 = x188 + x189
-    x191 = x12 + x180
-    x192 = x191 * x32 + x21 * x98
-    x193 = x104 * x160
-    x194 = x168 + x193
-    x195 = x104 * x169
-    x196 = x177 + x195
-    x197 = x104 * x179
-    x198 = x188 + x197
-    x199 = x184 + x185
-    x200 = x199 * x66
-    x201 = x0 * (x176 + x80)
-    x202 = 3.0 * x177 + 2.0 * x201
-    x203 = x0 * (3.0 * x178 + 2.0 * x200 + x202)
-    x204 = x104 * x190
+    x104 = 26.9847693667702 * x103
+    x105 = x63 * x98
+    x106 = x105 * x66
+    x107 = x104 * x106
+    x108 = x33 * x8
+    x109 = x0 * (x22 * (x108 + x11) + x45 * (x13 + x87) + x47 + 2.0 * x76) + x33 * x89
+    x110 = x70 * x96
+    x111 = x70 * x93
+    x112 = x111 * x22
+    x113 = x110 + x112
+    x114 = 12.0679557322504 * x113
+    x115 = x64 * x98
+    x116 = x64 * x84
+    x117 = x103 * x84
+    x118 = x100 * x84
+    x119 = x118 * x22
+    x120 = x117 + x119
+    x121 = 12.0679557322504 * x120
+    x122 = -x69 - A[1]
+    x123 = x122 * x68
+    x124 = x61 * x81
+    x125 = 60.3397786612521 * x80
+    x126 = x122 * x93
+    x127 = x126 * x70
+    x128 = x127 + x95
+    x129 = x115 * x128
+    x130 = x125 * x64
+    x131 = x122 * x96
+    x132 = x112 + x131
+    x133 = 60.3397786612521 * x132
+    x134 = x115 * x90
+    x135 = 104.511562358749 * x90
+    x136 = 60.3397786612521 * x103
+    x137 = x106 * x90
+    x138 = 3.0 * x95
+    x139 = x0 * (x138 + 3.0 * x94)
+    x140 = x113 * x122
+    x141 = x139 + x140
+    x142 = 26.9847693667702 * x141
+    x143 = x115 * x89
+    x144 = 60.3397786612521 * x89
+    x145 = x115 * x84
+    x146 = 0.179587122125167 * x63
+    x147 = x128 * x146
+    x148 = 26.9847693667702 * x106
+    x149 = x148 * x89
+    x150 = -x83 - A[2]
+    x151 = x100 * x150
+    x152 = x151 * x84
+    x153 = x102 + x152
+    x154 = x106 * x153
+    x155 = 60.3397786612521 * x96
+    x156 = x103 * x150
+    x157 = x119 + x156
+    x158 = 60.3397786612521 * x157
+    x159 = 26.9847693667702 * x113
+    x160 = x146 * x153
+    x161 = x106 * x70
+    x162 = 3.0 * x102
+    x163 = x0 * (3.0 * x101 + x162)
+    x164 = x120 * x150
+    x165 = x163 + x164
+    x166 = x122**2 * x93
+    x167 = x166 + x95
+    x168 = 26.9847693667702 * x167
+    x169 = x115 * x168
+    x170 = x0 * (x111 + x126)
+    x171 = x122 * x128
+    x172 = x170 + x171
+    x173 = 60.3397786612521 * x115
+    x174 = x172 * x173
+    x175 = 60.3397786612521 * x167
+    x176 = 2.0 * x122
+    x177 = x111 * x176 + x138
+    x178 = x0 * (x177 + x94)
+    x179 = x122 * x132
+    x180 = x178 + x179
+    x181 = x173 * x180
+    x182 = 104.511562358749 * x78
+    x183 = x136 * x146
+    x184 = x70 * x95
+    x185 = x0 * (x110 + 3.0 * x131 + 8.0 * x184) + x122 * x141
+    x186 = 26.9847693667702 * x115
+    x187 = x185 * x186
+    x188 = x146 * x88
+    x189 = x150 * x64
+    x190 = 46.7389915737742 * x189
+    x191 = 104.511562358749 * x58
+    x192 = x115 * x150
+    x193 = 181.019335983756 * x147
+    x194 = 104.511562358749 * x157
+    x195 = x106 * x122
+    x196 = 46.7389915737742 * x88
+    x197 = 104.511562358749 * x88
+    x198 = x100 * x150**2
+    x199 = x102 + x198
+    x200 = x148 * x199
+    x201 = 60.3397786612521 * x106
+    x202 = x201 * x58
+    x203 = x0 * (x118 + x151)
+    x204 = x150 * x153
     x205 = x203 + x204
-    x206 = x0 * (x111 + x131 * x167 + x159) + x104 * x194
-    x207 = x104 * x183
-    x208 = 2.0 * x207
-    x209 = x0 * (x166 + x187 + x193 + x208)
-    x210 = x104 * x196
-    x211 = x209 + x210
-    x212 = x104 * x199
-    x213 = 2.0 * x195
-    x214 = x0 * (x178 + x202 + 2.0 * x212 + x213)
-    x215 = x104 * x198
-    x216 = x214 + x215
-    x217 = 3.0 * x185
-    x218 = x0 * (3.0 * x184 + x217 + x97)
-    x219 = x104 * (x200 + x201)
-    x220 = x0 * (4.0 * x188 + x189 + 3.0 * x197 + 2.0 * x218 + 2.0 * x219) + x104 * x205
-    x221 = x5 * x63
-    x222 = x220 * x221
-    x223 = x221 * x32
-    x224 = x106 * x158
-    x225 = (
-        x0 * (x131 * (x224 + x81) + x186 + 2.0 * x193 + x21 * (x106 + x167)) + x104 * x206
+    x206 = x146 * x199
+    x207 = 104.511562358749 * x205
+    x208 = 2.0 * x150
+    x209 = x118 * x208 + x162
+    x210 = x0 * (x101 + x209)
+    x211 = x150 * x157
+    x212 = x210 + x211
+    x213 = x201 * x212
+    x214 = x102 * x84
+    x215 = x0 * (x117 + 3.0 * x156 + 8.0 * x214) + x150 * x165
+    x216 = x148 * x215
+    x217 = x122 * x167 + x126 * x22
+    x218 = x65 * x98
+    x219 = x0 * (x166 + x177) + x122 * x172
+    x220 = x186 * x50
+    x221 = 2.0 * x0 * (x131 + x170 + x171 + 2.0 * x184) + x122 * x180
+    x222 = x186 * x221
+    x223 = 46.7389915737742 * x24
+    x224 = x146 * x217
+    x225 = x0 * (2.0 * x139 + 2.0 * x140 + 3.0 * x178 + 3.0 * x179) + x122 * x185
+    x226 = x146 * x20
+    x227 = 104.511562358749 * x24
+    x228 = x146 * x24
+    x229 = 60.3397786612521 * x20
+    x230 = 60.3397786612521 * x226
+    x231 = 60.3397786612521 * x147
+    x232 = 60.3397786612521 * x206
+    x233 = 26.9847693667702 * x206
+    x234 = x150 * x199 + x151 * x22
+    x235 = 12.0679557322504 * x234
+    x236 = x148 * x50
+    x237 = x0 * (x198 + x209) + x150 * x205
+    x238 = 2.0 * x0 * (x156 + x203 + x204 + 2.0 * x214) + x150 * x212
+    x239 = x148 * x238
+    x240 = (
+        12.0679557322504 * x0 * (2.0 * x163 + 2.0 * x164 + 3.0 * x210 + 3.0 * x211)
+        + 12.0679557322504 * x150 * x215
     )
-    x226 = (
+    x241 = -x69 - C[1]
+    x242 = x241**2 * x93
+    x243 = x242 + x95
+    x244 = x27 + x45 * x9
+    x245 = x0 * (x244 + x26)
+    x246 = x33 * x75
+    x247 = x0 * (8.0 * x0 * x9 + x37 + 3.0 * x74) + x33 * x41
+    x248 = x0 * (3.0 * x245 + 3.0 * x246 + 2.0 * x35 + 2.0 * x40) + x247 * x33
+    x249 = x243 * x70
+    x250 = x241 * x93
+    x251 = x22 * x250
+    x252 = x249 + x251
+    x253 = x0 * (x108 + x9)
+    x254 = x13 + x86
+    x255 = x254 * x33
+    x256 = x245 + x246
+    x257 = x0 * (2.0 * x253 + 2.0 * x255 + x46 * x9 + 2.0 * x74) + x256 * x33
+    x258 = x186 * x257
+    x259 = x33**2 * x8
+    x260 = x253 + x255
+    x261 = x0 * (x244 + x259) + x260 * x33
+    x262 = x111 * x241
+    x263 = x138 + 2.0 * x262
+    x264 = x0 * (x242 + x263)
+    x265 = x252 * x70
+    x266 = x264 + x265
+    x267 = x186 * x266
+    x268 = 46.7389915737742 * x252
+    x269 = x104 * x146
+    x270 = x262 + x95
+    x271 = x270 * x70
+    x272 = x0 * (x111 + x250)
+    x273 = 4.0 * x241 * x95
+    x274 = 2.0 * x272 + x273
+    x275 = x0 * (2.0 * x249 + 2.0 * x271 + x274)
+    x276 = x266 * x70
+    x277 = x275 + x276
+    x278 = x13 + x259
+    x279 = x108 * x22 + x278 * x33
+    x280 = x146 * x243
+    x281 = x122 * x243
+    x282 = x251 + x281
+    x283 = 26.9847693667702 * x282
+    x284 = x122 * x252
+    x285 = x264 + x284
+    x286 = x173 * x256
+    x287 = x122 * x266
+    x288 = x275 + x287
+    x289 = x173 * x288
+    x290 = 104.511562358749 * x285
+    x291 = x271 + x272
+    x292 = x291 * x70
+    x293 = x0 * (x263 + x94)
+    x294 = 3.0 * x264 + 2.0 * x293
+    x295 = x0 * (3.0 * x265 + 2.0 * x292 + x294)
+    x296 = x122 * x277
+    x297 = x295 + x296
+    x298 = x186 * x278
+    x299 = x146 * x278
+    x300 = 60.3397786612521 * x160
+    x301 = 104.511562358749 * x160
+    x302 = 26.9847693667702 * x280
+    x303 = x0 * (x138 + x176 * x250 + x242) + x122 * x282
+    x304 = x186 * x303
+    x305 = x122 * x270
+    x306 = 2.0 * x305
+    x307 = x0 * (x249 + x274 + x281 + x306)
+    x308 = x122 * x285
+    x309 = x307 + x308
+    x310 = x173 * x75
+    x311 = x122 * x291
+    x312 = 2.0 * x284
+    x313 = x0 * (x265 + x294 + 2.0 * x311 + x312)
+    x314 = x122 * x288
+    x315 = x313 + x314
+    x316 = 104.511562358749 * x254
+    x317 = 3.0 * x272
+    x318 = x0 * (x113 + 3.0 * x271 + x317)
+    x319 = x122 * (x292 + x293)
+    x320 = x0 * (4.0 * x275 + x276 + 3.0 * x287 + 2.0 * x318 + 2.0 * x319) + x122 * x297
+    x321 = x5 * x67
+    x322 = x321 * x81
+    x323 = x320 * x322
+    x324 = x321 * x33
+    x325 = 60.3397786612521 * x315
+    x326 = x105 * x5
+    x327 = x309 * x326
+    x328 = 26.9847693667702 * x326
+    x329 = x303 * x328
+    x330 = 46.7389915737742 * x282
+    x331 = x146 * x282
+    x332 = x326 * x33
+    x333 = 104.511562358749 * x153
+    x334 = 60.3397786612521 * x280
+    x335 = x146 * x252
+    x336 = x199 * x328
+    x337 = 60.3397786612521 * x326
+    x338 = x205 * x337
+    x339 = x212 * x337
+    x340 = 12.0679557322504 * x39
+    x341 = x126 * x241
+    x342 = (
+        x0 * (x176 * (x341 + x95) + x22 * (x126 + x250) + x273 + 2.0 * x281) + x122 * x303
+    )
+    x343 = x115 * x342
+    x344 = (
         x0
         * (
-            x131 * (x185 + x207)
-            + 2.0 * x177
-            + x206
-            + x21 * (x107 + x111 + x175 + x224)
-            + x213
+            x176 * (x272 + x305)
+            + x22 * (x127 + x138 + x262 + x341)
+            + 2.0 * x264
+            + x303
+            + x312
         )
-        + x104 * x211
+        + x122 * x309
     )
-    x227 = x221 * (
+    x345 = 26.9847693667702 * x36
+    x346 = x322 * (
         x0
         * (
-            x131 * (x201 + x212)
-            + 2.0 * x188
-            + 2.0 * x197
-            + 2.0 * x209
-            + x21 * (x110 + x184 + x208 + x217)
-            + 2.0 * x210
+            x176 * (x293 + x311)
+            + x22 * (x132 + x271 + x306 + x317)
+            + 2.0 * x275
+            + 2.0 * x287
+            + 2.0 * x307
+            + 2.0 * x308
         )
-        + x104 * x216
+        + x122 * x315
     )
-    x228 = x221 * x3
-    x229 = -x77 - C[2]
-    x230 = x229**2 * x89
-    x231 = x230 + x92
-    x232 = x231 * x78
-    x233 = x229 * x89
-    x234 = x21 * x233
-    x235 = x232 + x234
-    x236 = x100 * x229
-    x237 = x122 + 2.0 * x236
-    x238 = x0 * (x230 + x237)
-    x239 = x235 * x78
-    x240 = x238 + x239
-    x241 = x236 + x92
-    x242 = x241 * x78
-    x243 = x0 * (x100 + x233)
-    x244 = 4.0 * x229 * x92
-    x245 = 2.0 * x243 + x244
-    x246 = x0 * (2.0 * x232 + 2.0 * x242 + x245)
-    x247 = x240 * x78
-    x248 = x246 + x247
-    x249 = x115 * x231
-    x250 = x234 + x249
-    x251 = x115 * x235
-    x252 = x238 + x251
-    x253 = x115 * x240
-    x254 = x246 + x253
-    x255 = x242 + x243
-    x256 = x255 * x78
-    x257 = x0 * (x237 + x91)
-    x258 = 3.0 * x238 + 2.0 * x257
-    x259 = x0 * (3.0 * x239 + 2.0 * x256 + x258)
-    x260 = x115 * x248
-    x261 = x259 + x260
-    x262 = 3.14159265358979 * x1 * x5 * x61
-    x263 = x262 * x32
-    x264 = x0 * (x122 + x143 * x233 + x230) + x115 * x250
-    x265 = x115 * x241
-    x266 = 2.0 * x265
-    x267 = x0 * (x232 + x245 + x249 + x266)
-    x268 = x115 * x252
-    x269 = x267 + x268
-    x270 = x115 * x255
-    x271 = 2.0 * x251
-    x272 = x0 * (x239 + x258 + 2.0 * x270 + x271)
-    x273 = x115 * x254
-    x274 = x272 + x273
-    x275 = 3.0 * x243
-    x276 = x0 * (x103 + 3.0 * x242 + x275)
-    x277 = x115 * (x256 + x257)
-    x278 = x0 * (4.0 * x246 + x247 + 3.0 * x253 + 2.0 * x276 + 2.0 * x277) + x115 * x261
-    x279 = x262 * x278
-    x280 = x262 * x3
-    x281 = x117 * x229
-    x282 = (
-        x0 * (x143 * (x281 + x92) + x21 * (x117 + x233) + x244 + 2.0 * x249) + x115 * x264
+    x347 = x3 * x321
+    x348 = x104 * x326
+    x349 = 60.3397786612521 * x36
+    x350 = x3 * x326
+    x351 = x266 * x328
+    x352 = x238 * x328
+    x353 = -x83 - C[2]
+    x354 = x100 * x353**2
+    x355 = x102 + x354
+    x356 = 12.0679557322504 * x106
+    x357 = x148 * x257
+    x358 = x355 * x84
+    x359 = x100 * x353
+    x360 = x22 * x359
+    x361 = x358 + x360
+    x362 = x146 * x355
+    x363 = 46.7389915737742 * x361
+    x364 = x118 * x353
+    x365 = x162 + 2.0 * x364
+    x366 = x0 * (x354 + x365)
+    x367 = x361 * x84
+    x368 = x366 + x367
+    x369 = x148 * x368
+    x370 = x146 * x361
+    x371 = x102 + x364
+    x372 = x371 * x84
+    x373 = x0 * (x118 + x359)
+    x374 = 4.0 * x102 * x353
+    x375 = 2.0 * x373 + x374
+    x376 = x0 * (2.0 * x358 + 2.0 * x372 + x375)
+    x377 = x368 * x84
+    x378 = x376 + x377
+    x379 = x148 * x247
+    x380 = x201 * x256
+    x381 = 104.511562358749 * x147
+    x382 = x201 * x260
+    x383 = x148 * x278
+    x384 = x150 * x355
+    x385 = x360 + x384
+    x386 = x150 * x361
+    x387 = x366 + x386
+    x388 = x146 * x385
+    x389 = 104.511562358749 * x387
+    x390 = x150 * x368
+    x391 = x376 + x390
+    x392 = x372 + x373
+    x393 = x392 * x84
+    x394 = x0 * (x101 + x365)
+    x395 = 3.0 * x366 + 2.0 * x394
+    x396 = x0 * (3.0 * x367 + 2.0 * x393 + x395)
+    x397 = x150 * x378
+    x398 = x396 + x397
+    x399 = 60.3397786612521 * x362
+    x400 = x146 * x254
+    x401 = x185 * x328
+    x402 = x180 * x337
+    x403 = x172 * x337
+    x404 = x168 * x326
+    x405 = 46.7389915737742 * x385
+    x406 = 104.511562358749 * x128
+    x407 = x5 * x63
+    x408 = x407 * x68
+    x409 = x33 * x408
+    x410 = x0 * (x162 + x208 * x359 + x354) + x150 * x385
+    x411 = x148 * x410
+    x412 = x201 * x75
+    x413 = x150 * x371
+    x414 = 2.0 * x413
+    x415 = x0 * (x358 + x375 + x384 + x414)
+    x416 = x150 * x387
+    x417 = x415 + x416
+    x418 = x150 * x392
+    x419 = 2.0 * x386
+    x420 = x0 * (x367 + x395 + 2.0 * x418 + x419)
+    x421 = x150 * x391
+    x422 = x420 + x421
+    x423 = x326 * x410
+    x424 = x326 * x417
+    x425 = 60.3397786612521 * x422
+    x426 = 3.0 * x373
+    x427 = x0 * (x120 + 3.0 * x372 + x426)
+    x428 = x150 * (x393 + x394)
+    x429 = x0 * (4.0 * x376 + x377 + 3.0 * x390 + 2.0 * x427 + 2.0 * x428) + x150 * x398
+    x430 = 26.9847693667702 * x408
+    x431 = x429 * x430
+    x432 = x221 * x328
+    x433 = x328 * x368
+    x434 = 12.0679557322504 * x326
+    x435 = x3 * x408
+    x436 = x151 * x353
+    x437 = (
+        x0 * (x208 * (x102 + x436) + x22 * (x151 + x359) + x374 + 2.0 * x384)
+        + x150 * x410
     )
-    x283 = (
+    x438 = x106 * x437
+    x439 = (
         x0
         * (
-            x143 * (x243 + x265)
-            + x21 * (x118 + x122 + x236 + x281)
-            + 2.0 * x238
-            + x264
-            + x271
+            x208 * (x373 + x413)
+            + x22 * (x152 + x162 + x364 + x436)
+            + 2.0 * x366
+            + x410
+            + x419
         )
-        + x115 * x269
+        + x150 * x417
     )
-    x284 = x262 * (
+    x440 = x407 * x99
+    x441 = x430 * (
         x0
         * (
-            x143 * (x257 + x270)
-            + x21 * (x121 + x242 + x266 + x275)
-            + 2.0 * x246
-            + 2.0 * x253
-            + 2.0 * x267
-            + 2.0 * x268
+            x208 * (x394 + x418)
+            + x22 * (x157 + x372 + x414 + x426)
+            + 2.0 * x376
+            + 2.0 * x390
+            + 2.0 * x415
+            + 2.0 * x416
         )
-        + x115 * x274
+        + x150 * x422
     )
 
     # 300 item(s)
-    return numpy.array(
-        [
-            x64
+    result[0, 0, 0] = numpy.sum(
+        x65
+        * x68
+        * (
+            x0
             * (
-                x0
-                * (
-                    x21 * (x17 + 4.0 * x28 + 3.0 * x33 + x40)
-                    + 2.0 * x31
-                    + x44 * (x42 + x43)
-                    + 2.0 * x52
-                    + 3.0 * x55
-                    + 3.0 * x58
-                )
-                + x32 * x60
-            ),
-            x66 * x76,
-            x76 * x78,
-            x82 * x88 * x89,
-            x66 * x88 * x90,
-            x79 * x88 * x93,
-            x89 * x97 * x99,
-            x100 * x82 * x99,
-            x93 * x95 * x99,
-            x103 * x79 * x99,
-            x104 * x105,
-            x108 * x75 * x89,
-            x104 * x75 * x90,
-            x110 * x87 * x89,
-            x100 * x108 * x87,
-            x106 * x87 * x93,
-            x114 * x86 * x89,
-            x100 * x110 * x86,
-            x108 * x86 * x93,
-            x103 * x106 * x86,
-            x105 * x115,
-            x116 * x66 * x75,
-            x119 * x75 * x79,
-            x117 * x82 * x87,
-            x119 * x87 * x95,
-            x121 * x79 * x87,
-            x117 * x86 * x97,
-            x119 * x82 * x86,
-            x121 * x86 * x95,
-            x125 * x79 * x86,
-            x127 * x59 * x89,
-            x130 * x57 * x89,
-            x100 * x127 * x57,
-            x135 * x73 * x89,
-            x100 * x130 * x73,
-            x127 * x73 * x93,
-            x137 * x85 * x89,
-            x100 * x135 * x85,
-            x130 * x85 * x93,
-            x103 * x127 * x85,
-            x104 * x116 * x59,
-            x108 * x117 * x57,
-            x106 * x119 * x57,
-            x110 * x117 * x73,
-            x108 * x119 * x73,
-            x106 * x121 * x73,
-            x114 * x117 * x85,
-            x110 * x119 * x85,
-            x108 * x121 * x85,
-            x106 * x125 * x85,
-            x139 * x59 * x79,
-            x139 * x57 * x95,
-            x142 * x57 * x79,
-            x139 * x73 * x82,
-            x142 * x73 * x95,
-            x147 * x73 * x79,
-            x139 * x85 * x97,
-            x142 * x82 * x85,
-            x147 * x85 * x95,
-            x149 * x79 * x85,
-            x150 * x51 * x89,
-            x151 * x49 * x89,
-            x100 * x150 * x49,
-            x152 * x23 * x89,
-            x100 * x151 * x23,
-            x150 * x23 * x93,
-            x153 * x19 * x89,
-            x100 * x152 * x19,
-            x151 * x19 * x93,
-            x103 * x150 * x19,
-            x117 * x127 * x51,
-            x117 * x130 * x49,
-            x119 * x127 * x49,
-            x117 * x135 * x23,
-            x119 * x130 * x23,
-            x121 * x127 * x23,
-            x117 * x137 * x19,
-            x119 * x135 * x19,
-            x121 * x130 * x19,
-            x125 * x127 * x19,
-            x106 * x139 * x51,
-            x108 * x139 * x49,
-            x106 * x142 * x49,
-            x110 * x139 * x23,
-            x108 * x142 * x23,
-            x106 * x147 * x23,
-            x114 * x139 * x19,
-            x110 * x142 * x19,
-            x108 * x147 * x19,
-            x106 * x149 * x19,
-            x154 * x51 * x79,
-            x154 * x49 * x95,
-            x155 * x49 * x79,
-            x154 * x23 * x82,
-            x155 * x23 * x95,
-            x156 * x23 * x79,
-            x154 * x19 * x97,
-            x155 * x19 * x82,
-            x156 * x19 * x95,
-            x157 * x19 * x79,
-            x160 * x165 * x89,
-            x169 * x174 * x89,
-            x100 * x160 * x174,
-            x179 * x182 * x89,
-            x100 * x169 * x182,
-            x160 * x182 * x93,
-            x190 * x192 * x89,
-            x100 * x179 * x192,
-            x169 * x192 * x93,
-            x103 * x160 * x192,
-            x164 * x194 * x89,
-            x173 * x196 * x89,
-            x100 * x173 * x194,
-            x181 * x198 * x89,
-            x100 * x181 * x196,
-            x181 * x194 * x93,
-            x191 * x205 * x89,
-            x100 * x191 * x198,
-            x191 * x196 * x93,
-            x103 * x191 * x194,
-            x117 * x160 * x164,
-            x117 * x169 * x173,
-            x119 * x160 * x173,
-            x117 * x179 * x181,
-            x119 * x169 * x181,
-            x121 * x160 * x181,
-            x117 * x190 * x191,
-            x119 * x179 * x191,
-            x121 * x169 * x191,
-            x125 * x160 * x191,
-            x206 * x40 * x89,
-            x211 * x70 * x89,
-            x100 * x206 * x70,
-            x171 * x216 * x89,
-            x100 * x171 * x211,
-            x171 * x206 * x93,
-            x222 * x32,
-            x216 * x223 * x78,
-            x211 * x93 * x98,
-            x103 * x206 * x98,
-            x117 * x194 * x40,
-            x117 * x196 * x70,
-            x119 * x194 * x70,
-            x117 * x171 * x198,
-            x119 * x171 * x196,
-            x121 * x171 * x194,
-            x115 * x205 * x223,
-            x119 * x198 * x98,
-            x121 * x196 * x98,
-            x125 * x194 * x98,
-            x139 * x160 * x40,
-            x139 * x169 * x70,
-            x142 * x160 * x70,
-            x139 * x171 * x179,
-            x142 * x169 * x171,
-            x147 * x160 * x171,
-            x139 * x190 * x98,
-            x142 * x179 * x98,
-            x147 * x169 * x98,
-            x149 * x160 * x98,
-            x225 * x38 * x89,
-            x226 * x35 * x89,
-            x100 * x225 * x35,
-            x227 * x3,
-            x226 * x228 * x78,
-            x225 * x8 * x93,
-            x221
-            * (
-                x0
-                * (
-                    x131 * (x218 + x219)
-                    + 2.0 * x203
-                    + 2.0 * x204
-                    + x21 * (x114 + x200 + 4.0 * x201 + 3.0 * x212)
-                    + 3.0 * x214
-                    + 3.0 * x215
-                )
-                + x104 * x220
-            ),
-            x227 * x78,
-            x226 * x7 * x93,
-            x103 * x225 * x7,
-            x117 * x206 * x38,
-            x117 * x211 * x35,
-            x119 * x206 * x35,
-            x115 * x216 * x228,
-            x119 * x211 * x8,
-            x121 * x206 * x8,
-            x115 * x222,
-            x119 * x216 * x7,
-            x121 * x211 * x7,
-            x125 * x206 * x7,
-            x139 * x194 * x38,
-            x139 * x196 * x35,
-            x142 * x194 * x35,
-            x139 * x198 * x8,
-            x142 * x196 * x8,
-            x147 * x194 * x8,
-            x139 * x205 * x7,
-            x142 * x198 * x7,
-            x147 * x196 * x7,
-            x149 * x194 * x7,
-            x154 * x160 * x38,
-            x154 * x169 * x35,
-            x155 * x160 * x35,
-            x154 * x179 * x8,
-            x155 * x169 * x8,
-            x156 * x160 * x8,
-            x154 * x190 * x7,
-            x155 * x179 * x7,
-            x156 * x169 * x7,
-            x157 * x160 * x7,
-            x165 * x231 * x79,
-            x174 * x231 * x95,
-            x174 * x235 * x79,
-            x182 * x231 * x82,
-            x182 * x235 * x95,
-            x182 * x240 * x79,
-            x192 * x231 * x97,
-            x192 * x235 * x82,
-            x192 * x240 * x95,
-            x192 * x248 * x79,
-            x106 * x164 * x231,
-            x108 * x173 * x231,
-            x106 * x173 * x235,
-            x110 * x181 * x231,
-            x108 * x181 * x235,
-            x106 * x181 * x240,
-            x114 * x191 * x231,
-            x110 * x191 * x235,
-            x108 * x191 * x240,
-            x106 * x191 * x248,
-            x164 * x250 * x79,
-            x173 * x250 * x95,
-            x173 * x252 * x79,
-            x181 * x250 * x82,
-            x181 * x252 * x95,
-            x181 * x254 * x79,
-            x191 * x250 * x97,
-            x191 * x252 * x82,
-            x191 * x254 * x95,
-            x191 * x261 * x79,
-            x127 * x231 * x40,
-            x130 * x231 * x70,
-            x127 * x235 * x70,
-            x135 * x171 * x231,
-            x130 * x171 * x235,
-            x127 * x171 * x240,
-            x137 * x231 * x98,
-            x135 * x235 * x98,
-            x130 * x240 * x98,
-            x127 * x248 * x98,
-            x106 * x250 * x40,
-            x108 * x250 * x70,
-            x106 * x252 * x70,
-            x110 * x171 * x250,
-            x108 * x171 * x252,
-            x106 * x171 * x254,
-            x114 * x250 * x98,
-            x110 * x252 * x98,
-            x108 * x254 * x98,
-            x104 * x261 * x263,
-            x264 * x40 * x79,
-            x264 * x70 * x95,
-            x269 * x70 * x79,
-            x171 * x264 * x82,
-            x171 * x269 * x95,
-            x171 * x274 * x79,
-            x264 * x97 * x98,
-            x269 * x82 * x98,
-            x263 * x274 * x66,
-            x279 * x32,
-            x150 * x231 * x38,
-            x151 * x231 * x35,
-            x150 * x235 * x35,
-            x152 * x231 * x8,
-            x151 * x235 * x8,
-            x150 * x240 * x8,
-            x153 * x231 * x7,
-            x152 * x235 * x7,
-            x151 * x240 * x7,
-            x150 * x248 * x7,
-            x127 * x250 * x38,
-            x130 * x250 * x35,
-            x127 * x252 * x35,
-            x135 * x250 * x8,
-            x130 * x252 * x8,
-            x127 * x254 * x8,
-            x137 * x250 * x7,
-            x135 * x252 * x7,
-            x130 * x254 * x7,
-            x127 * x261 * x7,
-            x106 * x264 * x38,
-            x108 * x264 * x35,
-            x106 * x269 * x35,
-            x110 * x264 * x8,
-            x108 * x269 * x8,
-            x104 * x274 * x280,
-            x114 * x264 * x7,
-            x110 * x269 * x7,
-            x108 * x274 * x7,
-            x104 * x279,
-            x282 * x38 * x79,
-            x282 * x35 * x95,
-            x283 * x35 * x79,
-            x282 * x8 * x82,
-            x280 * x283 * x66,
-            x284 * x3,
-            x282 * x7 * x97,
-            x283 * x7 * x82,
-            x284 * x66,
-            x262
-            * (
-                x0
-                * (
-                    x143 * (x276 + x277)
-                    + x21 * (x125 + x256 + 4.0 * x257 + 3.0 * x270)
-                    + 2.0 * x259
-                    + 2.0 * x260
-                    + 3.0 * x272
-                    + 3.0 * x273
-                )
-                + x115 * x278
-            ),
-        ]
+                x22 * (x18 + 4.0 * x29 + 3.0 * x34 + x41)
+                + 2.0 * x32
+                + x45 * (x43 + x44)
+                + 2.0 * x53
+                + 3.0 * x56
+                + 3.0 * x59
+            )
+            + x33 * x61
+        )
     )
+    result[0, 0, 1] = numpy.sum(x71 * x82)
+    result[0, 0, 2] = numpy.sum(x82 * x85)
+    result[0, 0, 3] = numpy.sum(x92 * x99)
+    result[0, 0, 4] = numpy.sum(46.7389915737742 * x71 * x84 * x92)
+    result[0, 0, 5] = numpy.sum(x107 * x91)
+    result[0, 0, 6] = numpy.sum(x109 * x114 * x115)
+    result[0, 0, 7] = numpy.sum(x109 * x116 * x99)
+    result[0, 0, 8] = numpy.sum(x107 * x109 * x70)
+    result[0, 0, 9] = numpy.sum(x106 * x109 * x121)
+    result[0, 1, 0] = numpy.sum(x123 * x124)
+    result[0, 1, 1] = numpy.sum(x125 * x129)
+    result[0, 1, 2] = numpy.sum(x122 * x130 * x85)
+    result[0, 1, 3] = numpy.sum(x133 * x134)
+    result[0, 1, 4] = numpy.sum(x129 * x135 * x84)
+    result[0, 1, 5] = numpy.sum(x122 * x136 * x137)
+    result[0, 1, 6] = numpy.sum(x142 * x143)
+    result[0, 1, 7] = numpy.sum(x132 * x144 * x145)
+    result[0, 1, 8] = numpy.sum(x136 * x147 * x89)
+    result[0, 1, 9] = numpy.sum(x120 * x122 * x149)
+    result[0, 2, 0] = numpy.sum(x124 * x150 * x68)
+    result[0, 2, 1] = numpy.sum(x130 * x150 * x71)
+    result[0, 2, 2] = numpy.sum(x125 * x154)
+    result[0, 2, 3] = numpy.sum(x134 * x150 * x155)
+    result[0, 2, 4] = numpy.sum(x135 * x154 * x70)
+    result[0, 2, 5] = numpy.sum(x137 * x158)
+    result[0, 2, 6] = numpy.sum(x143 * x150 * x159)
+    result[0, 2, 7] = numpy.sum(x144 * x160 * x96)
+    result[0, 2, 8] = numpy.sum(x144 * x157 * x161)
+    result[0, 2, 9] = numpy.sum(x149 * x165)
+    result[0, 3, 0] = numpy.sum(x169 * x60)
+    result[0, 3, 1] = numpy.sum(x174 * x58)
+    result[0, 3, 2] = numpy.sum(x145 * x175 * x58)
+    result[0, 3, 3] = numpy.sum(x181 * x78)
+    result[0, 3, 4] = numpy.sum(x145 * x172 * x182)
+    result[0, 3, 5] = numpy.sum(x167 * x183 * x78)
+    result[0, 3, 6] = numpy.sum(x187 * x88)
+    result[0, 3, 7] = numpy.sum(x181 * x84 * x88)
+    result[0, 3, 8] = numpy.sum(x172 * x183 * x88)
+    result[0, 3, 9] = numpy.sum(x120 * x168 * x188)
+    result[0, 4, 0] = numpy.sum(x123 * x190 * x60)
+    result[0, 4, 1] = numpy.sum(x129 * x150 * x191)
+    result[0, 4, 2] = numpy.sum(x122 * x154 * x191)
+    result[0, 4, 3] = numpy.sum(x132 * x182 * x192)
+    result[0, 4, 4] = numpy.sum(x153 * x193 * x78)
+    result[0, 4, 5] = numpy.sum(x194 * x195 * x78)
+    result[0, 4, 6] = numpy.sum(x141 * x192 * x196)
+    result[0, 4, 7] = numpy.sum(x132 * x160 * x197)
+    result[0, 4, 8] = numpy.sum(x147 * x157 * x197)
+    result[0, 4, 9] = numpy.sum(x165 * x195 * x196)
+    result[0, 5, 0] = numpy.sum(x200 * x60)
+    result[0, 5, 1] = numpy.sum(x199 * x202 * x70)
+    result[0, 5, 2] = numpy.sum(x202 * x205)
+    result[0, 5, 3] = numpy.sum(x155 * x206 * x78)
+    result[0, 5, 4] = numpy.sum(x161 * x207 * x78)
+    result[0, 5, 5] = numpy.sum(x213 * x78)
+    result[0, 5, 6] = numpy.sum(x159 * x188 * x199)
+    result[0, 5, 7] = numpy.sum(x155 * x188 * x205)
+    result[0, 5, 8] = numpy.sum(x213 * x70 * x88)
+    result[0, 5, 9] = numpy.sum(x216 * x88)
+    result[0, 6, 0] = numpy.sum(x217 * x218 * x52)
+    result[0, 6, 1] = numpy.sum(x219 * x220)
+    result[0, 6, 2] = numpy.sum(x217 * x220 * x84)
+    result[0, 6, 3] = numpy.sum(x222 * x24)
+    result[0, 6, 4] = numpy.sum(x145 * x219 * x223)
+    result[0, 6, 5] = numpy.sum(x104 * x224 * x24)
+    result[0, 6, 6] = numpy.sum(x20 * x218 * x225)
+    result[0, 6, 7] = numpy.sum(x20 * x222 * x84)
+    result[0, 6, 8] = numpy.sum(x104 * x219 * x226)
+    result[0, 6, 9] = numpy.sum(x121 * x20 * x224)
+    result[0, 7, 0] = numpy.sum(x150 * x169 * x52)
+    result[0, 7, 1] = numpy.sum(x150 * x174 * x50)
+    result[0, 7, 2] = numpy.sum(x160 * x175 * x50)
+    result[0, 7, 3] = numpy.sum(x150 * x181 * x24)
+    result[0, 7, 4] = numpy.sum(x160 * x172 * x227)
+    result[0, 7, 5] = numpy.sum(x157 * x175 * x228)
+    result[0, 7, 6] = numpy.sum(x150 * x187 * x20)
+    result[0, 7, 7] = numpy.sum(x160 * x180 * x229)
+    result[0, 7, 8] = numpy.sum(x157 * x172 * x230)
+    result[0, 7, 9] = numpy.sum(x165 * x168 * x226)
+    result[0, 8, 0] = numpy.sum(x122 * x200 * x52)
+    result[0, 8, 1] = numpy.sum(x199 * x231 * x50)
+    result[0, 8, 2] = numpy.sum(x122 * x201 * x205 * x50)
+    result[0, 8, 3] = numpy.sum(x132 * x232 * x24)
+    result[0, 8, 4] = numpy.sum(x147 * x205 * x227)
+    result[0, 8, 5] = numpy.sum(x122 * x213 * x24)
+    result[0, 8, 6] = numpy.sum(x141 * x20 * x233)
+    result[0, 8, 7] = numpy.sum(x132 * x205 * x230)
+    result[0, 8, 8] = numpy.sum(x147 * x212 * x229)
+    result[0, 8, 9] = numpy.sum(x122 * x20 * x216)
+    result[0, 9, 0] = numpy.sum(x106 * x235 * x52)
+    result[0, 9, 1] = numpy.sum(x234 * x236 * x70)
+    result[0, 9, 2] = numpy.sum(x236 * x237)
+    result[0, 9, 3] = numpy.sum(x228 * x234 * x97)
+    result[0, 9, 4] = numpy.sum(x161 * x223 * x237)
+    result[0, 9, 5] = numpy.sum(x239 * x24)
+    result[0, 9, 6] = numpy.sum(x113 * x226 * x235)
+    result[0, 9, 7] = numpy.sum(x226 * x237 * x97)
+    result[0, 9, 8] = numpy.sum(x20 * x239 * x70)
+    result[0, 9, 9] = numpy.sum(x106 * x20 * x240)
+    result[1, 0, 0] = numpy.sum(x218 * x243 * x248)
+    result[1, 0, 1] = numpy.sum(x252 * x258)
+    result[1, 0, 2] = numpy.sum(x243 * x258 * x84)
+    result[1, 0, 3] = numpy.sum(x261 * x267)
+    result[1, 0, 4] = numpy.sum(x145 * x261 * x268)
+    result[1, 0, 5] = numpy.sum(x243 * x261 * x269)
+    result[1, 0, 6] = numpy.sum(x218 * x277 * x279)
+    result[1, 0, 7] = numpy.sum(x267 * x279 * x84)
+    result[1, 0, 8] = numpy.sum(x252 * x269 * x279)
+    result[1, 0, 9] = numpy.sum(x121 * x279 * x280)
+    result[1, 1, 0] = numpy.sum(x115 * x247 * x283)
+    result[1, 1, 1] = numpy.sum(x285 * x286)
+    result[1, 1, 2] = numpy.sum(x282 * x286 * x84)
+    result[1, 1, 3] = numpy.sum(x260 * x289)
+    result[1, 1, 4] = numpy.sum(x145 * x260 * x290)
+    result[1, 1, 5] = numpy.sum(x183 * x260 * x282)
+    result[1, 1, 6] = numpy.sum(x297 * x298)
+    result[1, 1, 7] = numpy.sum(x278 * x289 * x84)
+    result[1, 1, 8] = numpy.sum(x183 * x278 * x285)
+    result[1, 1, 9] = numpy.sum(x120 * x283 * x299)
+    result[1, 2, 0] = numpy.sum(x150 * x186 * x243 * x247)
+    result[1, 2, 1] = numpy.sum(x150 * x252 * x286)
+    result[1, 2, 2] = numpy.sum(x243 * x256 * x300)
+    result[1, 2, 3] = numpy.sum(x150 * x173 * x260 * x266)
+    result[1, 2, 4] = numpy.sum(x252 * x260 * x301)
+    result[1, 2, 5] = numpy.sum(x158 * x260 * x280)
+    result[1, 2, 6] = numpy.sum(x150 * x277 * x298)
+    result[1, 2, 7] = numpy.sum(x266 * x278 * x300)
+    result[1, 2, 8] = numpy.sum(x158 * x252 * x299)
+    result[1, 2, 9] = numpy.sum(x165 * x278 * x302)
+    result[1, 3, 0] = numpy.sum(x304 * x41)
+    result[1, 3, 1] = numpy.sum(x309 * x310)
+    result[1, 3, 2] = numpy.sum(x303 * x310 * x84)
+    result[1, 3, 3] = numpy.sum(x173 * x254 * x315)
+    result[1, 3, 4] = numpy.sum(x145 * x309 * x316)
+    result[1, 3, 5] = numpy.sum(x183 * x254 * x303)
+    result[1, 3, 6] = numpy.sum(x323 * x33)
+    result[1, 3, 7] = numpy.sum(x116 * x324 * x325)
+    result[1, 3, 8] = numpy.sum(x136 * x327 * x33)
+    result[1, 3, 9] = numpy.sum(x120 * x329 * x33)
+    result[1, 4, 0] = numpy.sum(x192 * x330 * x41)
+    result[1, 4, 1] = numpy.sum(x192 * x290 * x75)
+    result[1, 4, 2] = numpy.sum(x282 * x301 * x75)
+    result[1, 4, 3] = numpy.sum(x192 * x288 * x316)
+    result[1, 4, 4] = numpy.sum(181.019335983756 * x160 * x254 * x285)
+    result[1, 4, 5] = numpy.sum(x194 * x254 * x331)
+    result[1, 4, 6] = numpy.sum(x190 * x297 * x324)
+    result[1, 4, 7] = numpy.sum(x288 * x332 * x333)
+    result[1, 4, 8] = numpy.sum(x194 * x285 * x332)
+    result[1, 4, 9] = numpy.sum(x165 * x330 * x332)
+    result[1, 5, 0] = numpy.sum(x233 * x243 * x41)
+    result[1, 5, 1] = numpy.sum(x232 * x252 * x75)
+    result[1, 5, 2] = numpy.sum(x205 * x334 * x75)
+    result[1, 5, 3] = numpy.sum(x232 * x254 * x266)
+    result[1, 5, 4] = numpy.sum(x207 * x254 * x335)
+    result[1, 5, 5] = numpy.sum(x212 * x254 * x334)
+    result[1, 5, 6] = numpy.sum(x277 * x33 * x336)
+    result[1, 5, 7] = numpy.sum(x266 * x33 * x338)
+    result[1, 5, 8] = numpy.sum(x252 * x33 * x339)
+    result[1, 5, 9] = numpy.sum(x215 * x243 * x328 * x33)
+    result[1, 6, 0] = numpy.sum(x340 * x343)
+    result[1, 6, 1] = numpy.sum(x115 * x344 * x345)
+    result[1, 6, 2] = numpy.sum(x343 * x345 * x84)
+    result[1, 6, 3] = numpy.sum(x3 * x346)
+    result[1, 6, 4] = numpy.sum(46.7389915737742 * x116 * x344 * x347)
+    result[1, 6, 5] = numpy.sum(x3 * x342 * x348)
+    result[1, 6, 6] = numpy.sum(
+        x321
+        * x65
+        * (
+            x0
+            * (
+                x176 * (x318 + x319)
+                + x22 * (x141 + x292 + 4.0 * x293 + 3.0 * x311)
+                + 2.0 * x295
+                + 2.0 * x296
+                + 3.0 * x313
+                + 3.0 * x314
+            )
+            + x122 * x320
+        )
+    )
+    result[1, 6, 7] = numpy.sum(x346 * x84)
+    result[1, 6, 8] = numpy.sum(x344 * x348)
+    result[1, 6, 9] = numpy.sum(x121 * x326 * x342)
+    result[1, 7, 0] = numpy.sum(x150 * x304 * x39)
+    result[1, 7, 1] = numpy.sum(x192 * x309 * x349)
+    result[1, 7, 2] = numpy.sum(x300 * x303 * x36)
+    result[1, 7, 3] = numpy.sum(x189 * x325 * x347)
+    result[1, 7, 4] = numpy.sum(x3 * x327 * x333)
+    result[1, 7, 5] = numpy.sum(x158 * x303 * x350)
+    result[1, 7, 6] = numpy.sum(x150 * x323)
+    result[1, 7, 7] = numpy.sum(x153 * x315 * x337)
+    result[1, 7, 8] = numpy.sum(x158 * x327)
+    result[1, 7, 9] = numpy.sum(x165 * x329)
+    result[1, 8, 0] = numpy.sum(x233 * x282 * x39)
+    result[1, 8, 1] = numpy.sum(x232 * x285 * x36)
+    result[1, 8, 2] = numpy.sum(x205 * x331 * x349)
+    result[1, 8, 3] = numpy.sum(x199 * x288 * x3 * x337)
+    result[1, 8, 4] = numpy.sum(x207 * x285 * x350)
+    result[1, 8, 5] = numpy.sum(x282 * x3 * x339)
+    result[1, 8, 6] = numpy.sum(x297 * x336)
+    result[1, 8, 7] = numpy.sum(x288 * x338)
+    result[1, 8, 8] = numpy.sum(x285 * x339)
+    result[1, 8, 9] = numpy.sum(x215 * x283 * x326)
+    result[1, 9, 0] = numpy.sum(x235 * x280 * x39)
+    result[1, 9, 1] = numpy.sum(x234 * x335 * x345)
+    result[1, 9, 2] = numpy.sum(x237 * x302 * x36)
+    result[1, 9, 3] = numpy.sum(x234 * x3 * x351)
+    result[1, 9, 4] = numpy.sum(x237 * x268 * x350)
+    result[1, 9, 5] = numpy.sum(x243 * x3 * x352)
+    result[1, 9, 6] = numpy.sum(x235 * x277 * x326)
+    result[1, 9, 7] = numpy.sum(x237 * x351)
+    result[1, 9, 8] = numpy.sum(x252 * x352)
+    result[1, 9, 9] = numpy.sum(x240 * x243 * x326)
+    result[2, 0, 0] = numpy.sum(x248 * x355 * x356)
+    result[2, 0, 1] = numpy.sum(x355 * x357 * x70)
+    result[2, 0, 2] = numpy.sum(x357 * x361)
+    result[2, 0, 3] = numpy.sum(x261 * x362 * x97)
+    result[2, 0, 4] = numpy.sum(x161 * x261 * x363)
+    result[2, 0, 5] = numpy.sum(x261 * x369)
+    result[2, 0, 6] = numpy.sum(x114 * x279 * x362)
+    result[2, 0, 7] = numpy.sum(x279 * x370 * x97)
+    result[2, 0, 8] = numpy.sum(x279 * x369 * x70)
+    result[2, 0, 9] = numpy.sum(x279 * x356 * x378)
+    result[2, 1, 0] = numpy.sum(x122 * x355 * x379)
+    result[2, 1, 1] = numpy.sum(x231 * x256 * x355)
+    result[2, 1, 2] = numpy.sum(x122 * x361 * x380)
+    result[2, 1, 3] = numpy.sum(x133 * x260 * x362)
+    result[2, 1, 4] = numpy.sum(x260 * x361 * x381)
+    result[2, 1, 5] = numpy.sum(x122 * x368 * x382)
+    result[2, 1, 6] = numpy.sum(x142 * x299 * x355)
+    result[2, 1, 7] = numpy.sum(x133 * x299 * x361)
+    result[2, 1, 8] = numpy.sum(x231 * x278 * x368)
+    result[2, 1, 9] = numpy.sum(x122 * x378 * x383)
+    result[2, 2, 0] = numpy.sum(x379 * x385)
+    result[2, 2, 1] = numpy.sum(x380 * x385 * x70)
+    result[2, 2, 2] = numpy.sum(x380 * x387)
+    result[2, 2, 3] = numpy.sum(x155 * x260 * x388)
+    result[2, 2, 4] = numpy.sum(x161 * x260 * x389)
+    result[2, 2, 5] = numpy.sum(x382 * x391)
+    result[2, 2, 6] = numpy.sum(x159 * x299 * x385)
+    result[2, 2, 7] = numpy.sum(x155 * x299 * x387)
+    result[2, 2, 8] = numpy.sum(x201 * x278 * x391 * x70)
+    result[2, 2, 9] = numpy.sum(x383 * x398)
+    result[2, 3, 0] = numpy.sum(x168 * x362 * x41)
+    result[2, 3, 1] = numpy.sum(x172 * x399 * x75)
+    result[2, 3, 2] = numpy.sum(x175 * x370 * x75)
+    result[2, 3, 3] = numpy.sum(x180 * x254 * x399)
+    result[2, 3, 4] = numpy.sum(x172 * x316 * x370)
+    result[2, 3, 5] = numpy.sum(x175 * x368 * x400)
+    result[2, 3, 6] = numpy.sum(x33 * x355 * x401)
+    result[2, 3, 7] = numpy.sum(x33 * x361 * x402)
+    result[2, 3, 8] = numpy.sum(x33 * x368 * x403)
+    result[2, 3, 9] = numpy.sum(x33 * x378 * x404)
+    result[2, 4, 0] = numpy.sum(x195 * x405 * x41)
+    result[2, 4, 1] = numpy.sum(x381 * x385 * x75)
+    result[2, 4, 2] = numpy.sum(x195 * x389 * x75)
+    result[2, 4, 3] = numpy.sum(x132 * x316 * x388)
+    result[2, 4, 4] = numpy.sum(x193 * x254 * x387)
+    result[2, 4, 5] = numpy.sum(x195 * x316 * x391)
+    result[2, 4, 6] = numpy.sum(x141 * x332 * x405)
+    result[2, 4, 7] = numpy.sum(x132 * x332 * x389)
+    result[2, 4, 8] = numpy.sum(x332 * x391 * x406)
+    result[2, 4, 9] = numpy.sum(46.7389915737742 * x122 * x398 * x409)
+    result[2, 5, 0] = numpy.sum(x41 * x411)
+    result[2, 5, 1] = numpy.sum(x410 * x412 * x70)
+    result[2, 5, 2] = numpy.sum(x412 * x417)
+    result[2, 5, 3] = numpy.sum(x155 * x400 * x410)
+    result[2, 5, 4] = numpy.sum(x161 * x316 * x417)
+    result[2, 5, 5] = numpy.sum(x201 * x254 * x422)
+    result[2, 5, 6] = numpy.sum(x159 * x33 * x423)
+    result[2, 5, 7] = numpy.sum(x155 * x33 * x424)
+    result[2, 5, 8] = numpy.sum(x409 * x425 * x70)
+    result[2, 5, 9] = numpy.sum(x33 * x431)
+    result[2, 6, 0] = numpy.sum(x224 * x340 * x355)
+    result[2, 6, 1] = numpy.sum(x219 * x345 * x362)
+    result[2, 6, 2] = numpy.sum(x224 * x345 * x361)
+    result[2, 6, 3] = numpy.sum(x3 * x355 * x432)
+    result[2, 6, 4] = numpy.sum(x219 * x350 * x363)
+    result[2, 6, 5] = numpy.sum(x217 * x3 * x433)
+    result[2, 6, 6] = numpy.sum(x225 * x355 * x434)
+    result[2, 6, 7] = numpy.sum(x361 * x432)
+    result[2, 6, 8] = numpy.sum(x219 * x433)
+    result[2, 6, 9] = numpy.sum(x217 * x378 * x434)
+    result[2, 7, 0] = numpy.sum(x168 * x388 * x39)
+    result[2, 7, 1] = numpy.sum(x172 * x349 * x388)
+    result[2, 7, 2] = numpy.sum(x146 * x175 * x36 * x387)
+    result[2, 7, 3] = numpy.sum(x3 * x385 * x402)
+    result[2, 7, 4] = numpy.sum(x172 * x350 * x389)
+    result[2, 7, 5] = numpy.sum(x175 * x350 * x391)
+    result[2, 7, 6] = numpy.sum(x385 * x401)
+    result[2, 7, 7] = numpy.sum(x387 * x402)
+    result[2, 7, 8] = numpy.sum(x391 * x403)
+    result[2, 7, 9] = numpy.sum(x398 * x404)
+    result[2, 8, 0] = numpy.sum(x122 * x39 * x411)
+    result[2, 8, 1] = numpy.sum(x231 * x36 * x410)
+    result[2, 8, 2] = numpy.sum(x195 * x349 * x417)
+    result[2, 8, 3] = numpy.sum(x133 * x3 * x423)
+    result[2, 8, 4] = numpy.sum(x3 * x406 * x424)
+    result[2, 8, 5] = numpy.sum(x122 * x425 * x435)
+    result[2, 8, 6] = numpy.sum(x142 * x423)
+    result[2, 8, 7] = numpy.sum(x133 * x424)
+    result[2, 8, 8] = numpy.sum(x128 * x337 * x422)
+    result[2, 8, 9] = numpy.sum(x122 * x431)
+    result[2, 9, 0] = numpy.sum(x340 * x438)
+    result[2, 9, 1] = numpy.sum(x345 * x438 * x70)
+    result[2, 9, 2] = numpy.sum(x106 * x345 * x439)
+    result[2, 9, 3] = numpy.sum(x3 * x437 * x440)
+    result[2, 9, 4] = numpy.sum(46.7389915737742 * x435 * x439 * x70)
+    result[2, 9, 5] = numpy.sum(x3 * x441)
+    result[2, 9, 6] = numpy.sum(x114 * x326 * x437)
+    result[2, 9, 7] = numpy.sum(x439 * x440)
+    result[2, 9, 8] = numpy.sum(x441 * x70)
+    result[2, 9, 9] = numpy.sum(
+        12.0679557322504
+        * x408
+        * (
+            x0
+            * (
+                x208 * (x427 + x428)
+                + x22 * (x165 + x393 + 4.0 * x394 + 3.0 * x418)
+                + 2.0 * x396
+                + 2.0 * x397
+                + 3.0 * x420
+                + 3.0 * x421
+            )
+            + x150 * x429
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_34(a, A, b, B, C):
+def diag_quadrupole3d_34(ax, da, A, bx, db, B, C):
     """Cartesian 3D (fg) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 10, 15), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3**2 * x7
-    x9 = x0 * x7
-    x10 = 3.0 * x9
-    x11 = -x2 - C[0]
-    x12 = x3 * x7
-    x13 = x11 * x12
-    x14 = x10 + 2.0 * x13
-    x15 = x0 * (x14 + x8)
-    x16 = x11 * x7
-    x17 = x0 * (x12 + x16)
-    x18 = x13 + x9
-    x19 = x18 * x3
-    x20 = x17 + x19
-    x21 = x20 * x3
-    x22 = x15 + x21
-    x23 = x22 * x3
-    x24 = x11**2 * x7
-    x25 = x0 * (x14 + x24)
-    x26 = x24 + x9
-    x27 = x26 * x3
-    x28 = 2.0 * x0
-    x29 = x16 * x28
-    x30 = x27 + x29
-    x31 = x3 * x30
-    x32 = x25 + x31
-    x33 = x3 * x32
-    x34 = 3.0 * x17
-    x35 = x8 + x9
-    x36 = x3 * x35
-    x37 = x12 * x28
-    x38 = x36 + x37
-    x39 = x0 * (3.0 * x19 + x34 + x38)
-    x40 = 4.0 * x9
-    x41 = x11 * x40
-    x42 = 2.0 * x17 + x41
-    x43 = x0 * (2.0 * x19 + 2.0 * x27 + x42)
-    x44 = 2.0 * x39 + 4.0 * x43
-    x45 = x0 * (2.0 * x23 + 4.0 * x33 + x44)
-    x46 = -x2 - A[0]
-    x47 = x22 * x46
-    x48 = 8.0 * x3 * x9
-    x49 = x0 * (4.0 * x36 + x48)
-    x50 = x0 * (x10 + 3.0 * x8)
-    x51 = x3 * x38
-    x52 = x50 + x51
-    x53 = x46 * x52
-    x54 = x49 + x53
-    x55 = 4.0 * x15
-    x56 = x0 * (4.0 * x21 + x52 + x55)
-    x57 = x46 * (x23 + x39)
-    x58 = 2.0 * x46
-    x59 = 2.0 * x15 + 3.0 * x25
-    x60 = x0 * (2.0 * x21 + 3.0 * x31 + x59)
-    x61 = x33 + x43
-    x62 = x3 * x61
-    x63 = x60 + x62
-    x64 = x46 * x63
-    x65 = x32 * x46
-    x66 = x0 * (x33 + x44 + 2.0 * x47 + 3.0 * x65)
-    x67 = x46 * x61
-    x68 = x60 + x67
-    x69 = x46 * x68
-    x70 = x45 + x64
-    x71 = x0 * (2.0 * x56 + 2.0 * x57 + 5.0 * x60 + x62 + 4.0 * x67) + x46 * x70
-    x72 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3**2 * x8
+    x10 = x0 * x8
+    x11 = 3.0 * x10
+    x12 = -x2 - C[0]
+    x13 = x3 * x8
+    x14 = x12 * x13
+    x15 = x11 + 2.0 * x14
+    x16 = x0 * (x15 + x9)
+    x17 = x12 * x8
+    x18 = x0 * (x13 + x17)
+    x19 = x10 + x14
+    x20 = x19 * x3
+    x21 = x18 + x20
+    x22 = x21 * x3
+    x23 = x16 + x22
+    x24 = x23 * x3
+    x25 = x12**2 * x8
+    x26 = x0 * (x15 + x25)
+    x27 = x10 + x25
+    x28 = x27 * x3
+    x29 = 2.0 * x0
+    x30 = x17 * x29
+    x31 = x28 + x30
+    x32 = x3 * x31
+    x33 = x26 + x32
+    x34 = x3 * x33
+    x35 = 3.0 * x18
+    x36 = x10 + x9
+    x37 = x3 * x36
+    x38 = x13 * x29
+    x39 = x37 + x38
+    x40 = x0 * (3.0 * x20 + x35 + x39)
+    x41 = 4.0 * x10
+    x42 = x12 * x41
+    x43 = 2.0 * x18 + x42
+    x44 = x0 * (2.0 * x20 + 2.0 * x28 + x43)
+    x45 = 2.0 * x40 + 4.0 * x44
+    x46 = x0 * (2.0 * x24 + 4.0 * x34 + x45)
+    x47 = -x2 - A[0]
+    x48 = x23 * x47
+    x49 = 8.0 * x10 * x3
+    x50 = x0 * (4.0 * x37 + x49)
+    x51 = x0 * (x11 + 3.0 * x9)
+    x52 = x3 * x39
+    x53 = x51 + x52
+    x54 = x47 * x53
+    x55 = x50 + x54
+    x56 = 4.0 * x16
+    x57 = x0 * (4.0 * x22 + x53 + x56)
+    x58 = x47 * (x24 + x40)
+    x59 = 2.0 * x47
+    x60 = 2.0 * x16 + 3.0 * x26
+    x61 = x0 * (2.0 * x22 + 3.0 * x32 + x60)
+    x62 = x34 + x44
+    x63 = x3 * x62
+    x64 = x61 + x63
+    x65 = x47 * x64
+    x66 = x33 * x47
+    x67 = x0 * (x34 + x45 + 2.0 * x48 + 3.0 * x66)
+    x68 = x47 * x62
+    x69 = x61 + x68
+    x70 = x47 * x69
+    x71 = x46 + x65
+    x72 = x0 * (2.0 * x57 + 2.0 * x58 + 5.0 * x61 + x63 + 4.0 * x68) + x47 * x71
     x73 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x74 = 3.14159265358979 * x1 * x73
-    x75 = x72 * x74
-    x76 = -x1 * (a * A[1] + b * B[1])
-    x77 = -x76 - B[1]
-    x78 = x20 * x46
-    x79 = x38 * x46
-    x80 = x50 + x79
-    x81 = x30 * x46
-    x82 = 2.0 * x81
-    x83 = x0 * (x31 + x59 + 2.0 * x78 + x82)
-    x84 = x43 + x65
-    x85 = x46 * x84
-    x86 = x66 + x69
-    x87 = x75 * (
+    x74 = da * db * numpy.sqrt(ax**4.5) * numpy.sqrt(bx**5.5)
+    x75 = x73 * x74
+    x76 = 9.12251705727742 * x75
+    x77 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x78 = 0.564189583547756 * x1
+    x79 = x77 * x78
+    x80 = -x1 * (ax * A[1] + bx * B[1])
+    x81 = -x80 - B[1]
+    x82 = 24.1359114645008 * x81
+    x83 = x21 * x47
+    x84 = x39 * x47
+    x85 = x51 + x84
+    x86 = x31 * x47
+    x87 = 2.0 * x86
+    x88 = x0 * (x32 + x60 + 2.0 * x83 + x87)
+    x89 = x44 + x66
+    x90 = x47 * x89
+    x91 = x67 + x70
+    x92 = x75 * x79
+    x93 = x92 * (
         x0
         * (
-            x28 * (x21 + x55 + 3.0 * x78 + x80)
-            + x58 * (x39 + x47)
-            + 2.0 * x60
-            + 2.0 * x67
-            + 3.0 * x83
-            + 3.0 * x85
+            x29 * (x22 + x56 + 3.0 * x83 + x85)
+            + x59 * (x40 + x48)
+            + 2.0 * x61
+            + 2.0 * x68
+            + 3.0 * x88
+            + 3.0 * x90
         )
-        + x46 * x86
+        + x47 * x91
     )
-    x88 = -x1 * (a * A[2] + b * B[2])
-    x89 = -x88 - B[2]
-    x90 = x6 * x72
-    x91 = x77**2 * x90
-    x92 = x0 * x90
-    x93 = x91 + x92
-    x94 = x18 * x46
-    x95 = 2.0 * x94
-    x96 = x35 * x46
-    x97 = x37 + x96
-    x98 = x26 * x46
-    x99 = x0 * (x27 + x42 + x95 + x98)
-    x100 = x25 + x81
-    x101 = x100 * x46
-    x102 = x83 + x85
-    x103 = (
+    x94 = -x1 * (ax * A[2] + bx * B[2])
+    x95 = -x94 - B[2]
+    x96 = 24.1359114645008 * x95
+    x97 = x19 * x47
+    x98 = 2.0 * x97
+    x99 = x36 * x47
+    x100 = x38 + x99
+    x101 = x27 * x47
+    x102 = x0 * (x101 + x28 + x43 + x98)
+    x103 = x26 + x86
+    x104 = x103 * x47
+    x105 = x88 + x90
+    x106 = (
         x0
         * (
-            2.0 * x101
-            + x28 * (x19 + x34 + x95 + x97)
-            + 2.0 * x43
-            + x58 * (x15 + x78)
-            + 2.0 * x65
-            + 2.0 * x99
+            2.0 * x102
+            + 2.0 * x104
+            + x29 * (x100 + x20 + x35 + x98)
+            + 2.0 * x44
+            + x59 * (x16 + x83)
+            + 2.0 * x66
         )
-        + x102 * x46
+        + x105 * x47
     )
-    x104 = x6 * x73
-    x105 = x75 * x89
-    x106 = x104 * x89**2
-    x107 = x0 * x104
-    x108 = x106 + x107
-    x109 = x77 * x93
-    x110 = x77 * x90
-    x111 = x110 * x28
-    x112 = x109 + x111
-    x113 = x12 * x46
-    x114 = x16 * x46
-    x115 = x29 + x98
-    x116 = x0 * (x10 + x16 * x58 + x24) + x115 * x46
-    x117 = x101 + x99
-    x118 = (
+    x107 = x106 * x75
+    x108 = x7 * x77
+    x109 = x108 * x81**2
+    x110 = x0 * x108
+    x111 = x109 + x110
+    x112 = 31.1593277158494 * x111
+    x113 = 0.318309886183791 * x6
+    x114 = x112 * x113
+    x115 = 53.9695387335403 * x95
+    x116 = x79 * x81
+    x117 = x7 * x73
+    x118 = x117 * x95**2
+    x119 = x0 * x117
+    x120 = x118 + x119
+    x121 = 31.1593277158494 * x113
+    x122 = x74 * x77
+    x123 = x121 * x122
+    x124 = x111 * x81
+    x125 = x108 * x81
+    x126 = x125 * x29
+    x127 = x124 + x126
+    x128 = 24.1359114645008 * x127
+    x129 = x13 * x47
+    x130 = x17 * x47
+    x131 = x101 + x30
+    x132 = x0 * (x11 + x17 * x59 + x25) + x131 * x47
+    x133 = x102 + x104
+    x134 = x113 * (
         x0
-        * (x116 + 2.0 * x25 + x28 * (x10 + x113 + x114 + x13) + x58 * (x17 + x94) + x82)
-        + x117 * x46
+        * (x132 + 2.0 * x26 + x29 * (x11 + x129 + x130 + x14) + x59 * (x18 + x97) + x87)
+        + x133 * x47
     )
-    x119 = x104 * x89
-    x120 = x108 * x89
-    x121 = x119 * x28
-    x122 = x120 + x121
-    x123 = 3.0 * x92
-    x124 = x0 * (x123 + 3.0 * x91)
-    x125 = x112 * x77
-    x126 = x124 + x125
-    x127 = x46 * x7
-    x128 = x0 * (x28 * (x127 + x16) + x41 + x58 * (x114 + x9) + 2.0 * x98) + x116 * x46
-    x129 = 3.0 * x107
-    x130 = x0 * (3.0 * x106 + x129)
-    x131 = x122 * x89
-    x132 = x130 + x131
-    x133 = -x76 - A[1]
-    x134 = x71 * x75
-    x135 = x133 * x90
-    x136 = x135 * x77
-    x137 = x136 + x92
-    x138 = x133 * x93
-    x139 = x111 + x138
-    x140 = x112 * x133
-    x141 = x124 + x140
-    x142 = x77 * x92
-    x143 = 8.0 * x142
-    x144 = x0 * (4.0 * x109 + x143)
-    x145 = x126 * x133
-    x146 = x144 + x145
-    x147 = -x88 - A[2]
-    x148 = x147 * x75
-    x149 = x104 * x147
-    x150 = x149 * x89
-    x151 = x107 + x150
-    x152 = x108 * x147
-    x153 = x121 + x152
-    x154 = x122 * x147
-    x155 = x130 + x154
-    x156 = x107 * x89
-    x157 = 8.0 * x156
-    x158 = x0 * (4.0 * x120 + x157)
-    x159 = x132 * x147
-    x160 = x158 + x159
-    x161 = x133**2 * x90
-    x162 = x161 + x92
-    x163 = x0 * (x110 + x135)
-    x164 = x133 * x137
-    x165 = x163 + x164
-    x166 = 2.0 * x133
-    x167 = x110 * x166 + x123
-    x168 = x0 * (x167 + x91)
-    x169 = x133 * x139
-    x170 = x168 + x169
-    x171 = x0 * (x109 + 3.0 * x138 + x143)
-    x172 = x133 * x141
-    x173 = x171 + x172
-    x174 = x0 * (5.0 * x124 + x125 + 4.0 * x140) + x133 * x146
-    x175 = x104 * x147**2
-    x176 = x107 + x175
-    x177 = x0 * (x119 + x149)
-    x178 = x147 * x151
-    x179 = x177 + x178
-    x180 = 2.0 * x147
-    x181 = x119 * x180 + x129
-    x182 = x0 * (x106 + x181)
-    x183 = x147 * x153
-    x184 = x182 + x183
-    x185 = x0 * (x120 + 3.0 * x152 + x157)
-    x186 = x147 * x155
-    x187 = x185 + x186
-    x188 = x0 * (5.0 * x130 + x131 + 4.0 * x154) + x147 * x160
-    x189 = x133 * x162 + x135 * x28
-    x190 = x0 * (x161 + x167) + x133 * x165
-    x191 = x0 * (2.0 * x138 + 4.0 * x142 + 2.0 * x163 + 2.0 * x164) + x133 * x170
-    x192 = x0 * (2.0 * x124 + 2.0 * x140 + 3.0 * x168 + 3.0 * x169) + x133 * x173
-    x193 = x0 * (2.0 * x144 + 2.0 * x145 + 4.0 * x171 + 4.0 * x172) + x133 * x174
-    x194 = x147 * x176 + x149 * x28
-    x195 = x0 * (x175 + x181) + x147 * x179
-    x196 = x0 * (2.0 * x152 + 4.0 * x156 + 2.0 * x177 + 2.0 * x178) + x147 * x184
-    x197 = x0 * (2.0 * x130 + 2.0 * x154 + 3.0 * x182 + 3.0 * x183) + x147 * x187
-    x198 = x0 * (2.0 * x158 + 2.0 * x159 + 4.0 * x185 + 4.0 * x186) + x147 * x188
-    x199 = -x76 - C[1]
-    x200 = x199**2 * x90
-    x201 = x200 + x92
-    x202 = x0 * (x36 + x48 + 3.0 * x96)
-    x203 = x46 * x80
-    x204 = x0 * (5.0 * x50 + x51 + 4.0 * x79) + x46 * x54
-    x205 = x0 * (4.0 * x202 + 4.0 * x203 + 2.0 * x49 + 2.0 * x53) + x204 * x46
-    x206 = x201 * x77
-    x207 = x199 * x90
-    x208 = x207 * x28
-    x209 = x206 + x208
-    x210 = x10 + x12 * x58
-    x211 = x0 * (x210 + x8)
-    x212 = x46 * x97
-    x213 = x202 + x203
-    x214 = x0 * (3.0 * x211 + 3.0 * x212 + 2.0 * x50 + 2.0 * x79) + x213 * x46
-    x215 = x110 * x199
-    x216 = x123 + 2.0 * x215
-    x217 = x0 * (x200 + x216)
-    x218 = x209 * x77
+    x135 = x134 * x75
+    x136 = 53.9695387335403 * x111
+    x137 = x122 * x134
+    x138 = 53.9695387335403 * x120
+    x139 = x120 * x95
+    x140 = x117 * x95
+    x141 = x140 * x29
+    x142 = x139 + x141
+    x143 = 24.1359114645008 * x142
+    x144 = 3.0 * x110
+    x145 = x0 * (3.0 * x109 + x144)
+    x146 = x127 * x81
+    x147 = x145 + x146
+    x148 = 9.12251705727742 * x147
+    x149 = x47 * x8
+    x150 = x0 * (2.0 * x101 + x29 * (x149 + x17) + x42 + x59 * (x10 + x130)) + x132 * x47
+    x151 = x113 * x150
+    x152 = x151 * x75
+    x153 = 0.179587122125167 * x74
+    x154 = x120 * x153
+    x155 = x122 * x151
+    x156 = 3.0 * x119
+    x157 = x0 * (3.0 * x118 + x156)
+    x158 = x142 * x95
+    x159 = x157 + x158
+    x160 = 9.12251705727742 * x159
+    x161 = -x80 - A[1]
+    x162 = 20.3985682659737 * x161
+    x163 = x72 * x92
+    x164 = 53.9695387335403 * x91
+    x165 = x108 * x161
+    x166 = x165 * x81
+    x167 = x110 + x166
+    x168 = x113 * x75
+    x169 = x167 * x168
+    x170 = x164 * x92
+    x171 = x111 * x161
+    x172 = x126 + x171
+    x173 = 69.6743749058326 * x172
+    x174 = x105 * x168
+    x175 = 120.679557322504 * x105
+    x176 = x113 * x122
+    x177 = 69.6743749058326 * x176
+    x178 = x105 * x177
+    x179 = x127 * x161
+    x180 = x145 + x179
+    x181 = 53.9695387335403 * x180
+    x182 = x168 * x181
+    x183 = 120.679557322504 * x133
+    x184 = x168 * x95
+    x185 = 53.9695387335403 * x142
+    x186 = x133 * x176
+    x187 = x110 * x81
+    x188 = 8.0 * x187
+    x189 = x0 * (4.0 * x124 + x188)
+    x190 = x147 * x161
+    x191 = x189 + x190
+    x192 = 20.3985682659737 * x191
+    x193 = x132 * x168
+    x194 = 69.6743749058326 * x132
+    x195 = x153 * x167
+    x196 = x132 * x176
+    x197 = -x94 - A[2]
+    x198 = 20.3985682659737 * x197
+    x199 = x117 * x197
+    x200 = x199 * x95
+    x201 = x119 + x200
+    x202 = x176 * x201
+    x203 = 69.6743749058326 * x111
+    x204 = x120 * x197
+    x205 = x141 + x204
+    x206 = 53.9695387335403 * x127
+    x207 = x168 * x197
+    x208 = x153 * x201
+    x209 = x176 * x205
+    x210 = x142 * x197
+    x211 = x157 + x210
+    x212 = 53.9695387335403 * x211
+    x213 = 20.3985682659737 * x147
+    x214 = x153 * x205
+    x215 = x119 * x95
+    x216 = 8.0 * x215
+    x217 = x0 * (4.0 * x139 + x216)
+    x218 = x159 * x197
     x219 = x217 + x218
-    x220 = x0 * (x12 + x127)
-    x221 = x113 + x9
-    x222 = x221 * x46
-    x223 = x211 + x212
-    x224 = x0 * (2.0 * x220 + 2.0 * x222 + x3 * x40 + 2.0 * x96) + x223 * x46
-    x225 = x215 + x92
-    x226 = x225 * x77
-    x227 = x0 * (x110 + x207)
-    x228 = 4.0 * x199 * x92
-    x229 = 2.0 * x227 + x228
-    x230 = x0 * (2.0 * x206 + 2.0 * x226 + x229)
-    x231 = x219 * x77
-    x232 = x230 + x231
-    x233 = x46**2 * x7
-    x234 = x220 + x222
-    x235 = x0 * (x210 + x233) + x234 * x46
-    x236 = x226 + x227
-    x237 = x236 * x77
-    x238 = x0 * (x216 + x91)
-    x239 = 3.0 * x217 + 2.0 * x238
-    x240 = x0 * (3.0 * x218 + 2.0 * x237 + x239)
-    x241 = x232 * x77
-    x242 = x240 + x241
-    x243 = x233 + x9
-    x244 = x127 * x28 + x243 * x46
-    x245 = x133 * x201
-    x246 = x208 + x245
-    x247 = x133 * x209
-    x248 = x217 + x247
-    x249 = x133 * x219
-    x250 = x230 + x249
-    x251 = x133 * x232
-    x252 = x240 + x251
-    x253 = x237 + x238
-    x254 = x253 * x77
-    x255 = 3.0 * x227
-    x256 = x0 * (x112 + 3.0 * x226 + x255)
-    x257 = 4.0 * x230 + 2.0 * x256
-    x258 = x0 * (4.0 * x231 + 2.0 * x254 + x257)
-    x259 = x133 * x242
-    x260 = x258 + x259
-    x261 = x0 * (x123 + x166 * x207 + x200) + x133 * x246
-    x262 = x133 * x225
-    x263 = 2.0 * x262
-    x264 = x0 * (x206 + x229 + x245 + x263)
-    x265 = x133 * x248
-    x266 = x264 + x265
-    x267 = x133 * x236
-    x268 = 2.0 * x247
-    x269 = x0 * (x218 + x239 + 2.0 * x267 + x268)
-    x270 = x133 * x250
-    x271 = x269 + x270
-    x272 = x133 * x253
-    x273 = x0 * (x231 + 3.0 * x249 + x257 + 2.0 * x272)
-    x274 = x133 * x252
+    x220 = 20.3985682659737 * x219
+    x221 = x108 * x161**2
+    x222 = x110 + x221
+    x223 = 20.3985682659737 * x222
+    x224 = x168 * x223
+    x225 = x0 * (x125 + x165)
+    x226 = x161 * x167
+    x227 = x225 + x226
+    x228 = 53.9695387335403 * x168
+    x229 = x228 * x69
+    x230 = 2.0 * x161
+    x231 = x125 * x230 + x144
+    x232 = x0 * (x109 + x231)
+    x233 = x161 * x172
+    x234 = x232 + x233
+    x235 = 69.6743749058326 * x168
+    x236 = x234 * x235
+    x237 = 120.679557322504 * x227
+    x238 = 69.6743749058326 * x154
+    x239 = x0 * (x124 + 3.0 * x171 + x188)
+    x240 = x161 * x180
+    x241 = x239 + x240
+    x242 = x228 * x241
+    x243 = 120.679557322504 * x103
+    x244 = x153 * x185
+    x245 = 20.3985682659737 * x131
+    x246 = x0 * (5.0 * x145 + x146 + 4.0 * x179) + x161 * x191
+    x247 = x168 * x246
+    x248 = x131 * x153
+    x249 = 93.4779831475484 * x69
+    x250 = 120.679557322504 * x172
+    x251 = 209.023124717498 * x195
+    x252 = 120.679557322504 * x161
+    x253 = 93.4779831475484 * x103
+    x254 = 209.023124717498 * x208
+    x255 = x161 * x176
+    x256 = 35.3313566383285 * x131
+    x257 = 93.4779831475484 * x131
+    x258 = 120.679557322504 * x214
+    x259 = x117 * x197**2
+    x260 = x119 + x259
+    x261 = 20.3985682659737 * x260
+    x262 = x176 * x261
+    x263 = 53.9695387335403 * x176
+    x264 = x263 * x69
+    x265 = x0 * (x140 + x199)
+    x266 = x197 * x201
+    x267 = x265 + x266
+    x268 = x153 * x260
+    x269 = x176 * x81
+    x270 = 120.679557322504 * x267
+    x271 = 2.0 * x197
+    x272 = x140 * x271 + x156
+    x273 = x0 * (x118 + x272)
+    x274 = x197 * x205
     x275 = x273 + x274
-    x276 = 4.0 * x238
-    x277 = x0 * (x126 + 4.0 * x237 + x276)
-    x278 = x133 * (x254 + x256)
-    x279 = x0 * (5.0 * x240 + x241 + 4.0 * x251 + 2.0 * x277 + 2.0 * x278) + x133 * x260
-    x280 = x5 * x74
-    x281 = x279 * x280
-    x282 = x280 * x46
-    x283 = x135 * x199
-    x284 = (
-        x0 * (x166 * (x283 + x92) + x228 + 2.0 * x245 + x28 * (x135 + x207)) + x133 * x261
+    x276 = x177 * x275
+    x277 = x153 * x267
+    x278 = x0 * (x139 + 3.0 * x204 + x216)
+    x279 = x197 * x211
+    x280 = x278 + x279
+    x281 = x263 * x280
+    x282 = x0 * (5.0 * x157 + x158 + 4.0 * x210) + x197 * x219
+    x283 = x176 * x282
+    x284 = x161 * x222 + x165 * x29
+    x285 = x113 * x76
+    x286 = x0 * (x221 + x231) + x161 * x227
+    x287 = 24.1359114645008 * x168
+    x288 = x287 * x62
+    x289 = 2.0 * x0 * (x171 + 2.0 * x187 + x225 + x226) + x161 * x234
+    x290 = x121 * x75
+    x291 = 53.9695387335403 * x286
+    x292 = 31.1593277158494 * x154
+    x293 = x0 * (2.0 * x145 + 2.0 * x179 + 3.0 * x232 + 3.0 * x233) + x161 * x241
+    x294 = x287 * x293
+    x295 = 53.9695387335403 * x31
+    x296 = x153 * x284
+    x297 = 2.0 * x0 * (x189 + x190 + 2.0 * x239 + 2.0 * x240) + x161 * x246
+    x298 = x153 * x27
+    x299 = x197 * x228
+    x300 = 53.9695387335403 * x208
+    x301 = 120.679557322504 * x208
+    x302 = 69.6743749058326 * x214
+    x303 = 120.679557322504 * x31
+    x304 = x153 * x295
+    x305 = 53.9695387335403 * x195
+    x306 = 120.679557322504 * x195
+    x307 = 20.3985682659737 * x268
+    x308 = 53.9695387335403 * x277
+    x309 = x197 * x260 + x199 * x29
+    x310 = 9.12251705727742 * x176
+    x311 = 24.1359114645008 * x176
+    x312 = x311 * x62
+    x313 = x0 * (x259 + x272) + x197 * x267
+    x314 = x153 * x309
+    x315 = x263 * x81
+    x316 = 2.0 * x0 * (x204 + 2.0 * x215 + x265 + x266) + x197 * x275
+    x317 = x0 * (2.0 * x157 + 2.0 * x210 + 3.0 * x273 + 3.0 * x274) + x197 * x280
+    x318 = x311 * x317
+    x319 = 2.0 * x0 * (x217 + x218 + 2.0 * x278 + 2.0 * x279) + x197 * x282
+    x320 = -x80 - C[1]
+    x321 = x108 * x320**2
+    x322 = x110 + x321
+    x323 = x0 * (x37 + x49 + 3.0 * x99)
+    x324 = x47 * x85
+    x325 = x0 * (5.0 * x51 + x52 + 4.0 * x84) + x47 * x55
+    x326 = 2.0 * x0 * (2.0 * x323 + 2.0 * x324 + x50 + x54) + x325 * x47
+    x327 = x322 * x81
+    x328 = x108 * x320
+    x329 = x29 * x328
+    x330 = x327 + x329
+    x331 = x11 + x13 * x59
+    x332 = x0 * (x331 + x9)
+    x333 = x100 * x47
+    x334 = x323 + x324
+    x335 = x0 * (3.0 * x332 + 3.0 * x333 + 2.0 * x51 + 2.0 * x84) + x334 * x47
+    x336 = x287 * x335
+    x337 = x125 * x320
+    x338 = x144 + 2.0 * x337
+    x339 = x0 * (x321 + x338)
+    x340 = x330 * x81
+    x341 = x339 + x340
+    x342 = x0 * (x13 + x149)
+    x343 = x10 + x129
+    x344 = x343 * x47
+    x345 = x332 + x333
+    x346 = x0 * (x3 * x41 + 2.0 * x342 + 2.0 * x344 + 2.0 * x99) + x345 * x47
+    x347 = 53.9695387335403 * x330
+    x348 = x47**2 * x8
+    x349 = x342 + x344
+    x350 = x0 * (x331 + x348) + x349 * x47
+    x351 = x110 + x337
+    x352 = x351 * x81
+    x353 = x0 * (x125 + x328)
+    x354 = 4.0 * x110 * x320
+    x355 = 2.0 * x353 + x354
+    x356 = x0 * (2.0 * x327 + 2.0 * x352 + x355)
+    x357 = x341 * x81
+    x358 = x356 + x357
+    x359 = x287 * x358
+    x360 = x228 * x95
+    x361 = x143 * x153
+    x362 = x352 + x353
+    x363 = x362 * x81
+    x364 = x0 * (x109 + x338)
+    x365 = 3.0 * x339 + 2.0 * x364
+    x366 = x0 * (3.0 * x340 + 2.0 * x363 + x365)
+    x367 = x358 * x81
+    x368 = x366 + x367
+    x369 = x10 + x348
+    x370 = x149 * x29 + x369 * x47
+    x371 = x153 * x322
+    x372 = x161 * x322
+    x373 = x329 + x372
+    x374 = 20.3985682659737 * x373
+    x375 = x168 * x325
+    x376 = x161 * x330
+    x377 = x339 + x376
+    x378 = x228 * x334
+    x379 = x161 * x341
+    x380 = x356 + x379
+    x381 = x235 * x345
+    x382 = 120.679557322504 * x184
+    x383 = x161 * x358
+    x384 = x366 + x383
+    x385 = x228 * x384
+    x386 = 120.679557322504 * x349
+    x387 = x363 + x364
+    x388 = x387 * x81
+    x389 = 3.0 * x353
+    x390 = x0 * (x127 + 3.0 * x352 + x389)
+    x391 = 4.0 * x356 + 2.0 * x390
+    x392 = x0 * (4.0 * x357 + 2.0 * x388 + x391)
+    x393 = x161 * x368
+    x394 = x392 + x393
+    x395 = 20.3985682659737 * x168
+    x396 = x369 * x395
+    x397 = x153 * x369
+    x398 = x0 * (x144 + x230 * x328 + x321) + x161 * x373
+    x399 = x395 * x398
+    x400 = x161 * x351
+    x401 = 2.0 * x400
+    x402 = x0 * (x327 + x355 + x372 + x401)
+    x403 = x161 * x377
+    x404 = x402 + x403
+    x405 = 53.9695387335403 * x85
+    x406 = x168 * x405
+    x407 = 69.6743749058326 * x100
+    x408 = x161 * x362
+    x409 = 2.0 * x376
+    x410 = x0 * (x340 + x365 + 2.0 * x408 + x409)
+    x411 = x161 * x380
+    x412 = x410 + x411
+    x413 = x168 * x412
+    x414 = x161 * x387
+    x415 = x0 * (x357 + 3.0 * x379 + x391 + 2.0 * x414)
+    x416 = x161 * x384
+    x417 = x415 + x416
+    x418 = 53.9695387335403 * x343
+    x419 = 120.679557322504 * x343
+    x420 = 20.3985682659737 * x47
+    x421 = 4.0 * x364
+    x422 = x0 * (x147 + 4.0 * x363 + x421)
+    x423 = x161 * (x388 + x390)
+    x424 = x0 * (5.0 * x366 + x367 + 4.0 * x383 + 2.0 * x422 + 2.0 * x423) + x161 * x394
+    x425 = x5 * x78
+    x426 = x425 * x75
+    x427 = x424 * x426
+    x428 = x115 * x426
+    x429 = x5 * x74
+    x430 = x113 * x429
+    x431 = 69.6743749058326 * x430
+    x432 = x412 * x431
+    x433 = x404 * x430
+    x434 = x398 * x430
+    x435 = 35.3313566383285 * x373
+    x436 = 93.4779831475484 * x207
+    x437 = 93.4779831475484 * x373
+    x438 = 120.679557322504 * x380
+    x439 = 209.023124717498 * x343
+    x440 = x153 * x343
+    x441 = 35.3313566383285 * x47
+    x442 = x197 * x426
+    x443 = x430 * x47
+    x444 = 93.4779831475484 * x443
+    x445 = 120.679557322504 * x277
+    x446 = x153 * x275
+    x447 = x261 * x430
+    x448 = 53.9695387335403 * x430
+    x449 = x267 * x448
+    x450 = x275 * x431
+    x451 = x282 * x430
+    x452 = 9.12251705727742 * x53
+    x453 = x165 * x320
+    x454 = (
+        x0 * (x230 * (x110 + x453) + x29 * (x165 + x328) + x354 + 2.0 * x372)
+        + x161 * x398
     )
-    x285 = (
+    x455 = x168 * x454
+    x456 = (
         x0
         * (
-            x166 * (x227 + x262)
-            + 2.0 * x217
-            + x261
-            + x268
-            + x28 * (x123 + x136 + x215 + x283)
+            x230 * (x353 + x400)
+            + x29 * (x144 + x166 + x337 + x453)
+            + 2.0 * x339
+            + x398
+            + x409
         )
-        + x133 * x266
+        + x161 * x404
     )
-    x286 = (
+    x457 = 24.1359114645008 * x39
+    x458 = (
         x0
         * (
-            x166 * (x238 + x267)
-            + 2.0 * x230
-            + 2.0 * x249
-            + 2.0 * x264
-            + 2.0 * x265
-            + x28 * (x139 + x226 + x255 + x263)
+            x230 * (x364 + x408)
+            + x29 * (x172 + x352 + x389 + x401)
+            + 2.0 * x356
+            + 2.0 * x379
+            + 2.0 * x402
+            + 2.0 * x403
         )
-        + x133 * x271
+        + x161 * x412
     )
-    x287 = x280 * (
+    x459 = 31.1593277158494 * x36
+    x460 = x426 * (
         x0
         * (
-            x166 * (x256 + x272)
-            + 2.0 * x240
-            + 2.0 * x251
-            + 3.0 * x269
-            + 3.0 * x270
-            + x28 * (x141 + x237 + 3.0 * x267 + x276)
+            x230 * (x390 + x414)
+            + x29 * (x180 + x363 + 3.0 * x408 + x421)
+            + 2.0 * x366
+            + 2.0 * x383
+            + 3.0 * x410
+            + 3.0 * x411
         )
-        + x133 * x275
+        + x161 * x417
     )
-    x288 = x280 * x3
-    x289 = -x88 - C[2]
-    x290 = x104 * x289**2
-    x291 = x107 + x290
-    x292 = x291 * x89
-    x293 = x104 * x289
-    x294 = x28 * x293
-    x295 = x292 + x294
-    x296 = x119 * x289
-    x297 = x129 + 2.0 * x296
-    x298 = x0 * (x290 + x297)
-    x299 = x295 * x89
-    x300 = x298 + x299
-    x301 = x107 + x296
-    x302 = x301 * x89
-    x303 = x0 * (x119 + x293)
-    x304 = 4.0 * x107 * x289
-    x305 = 2.0 * x303 + x304
-    x306 = x0 * (2.0 * x292 + 2.0 * x302 + x305)
-    x307 = x300 * x89
-    x308 = x306 + x307
-    x309 = x302 + x303
-    x310 = x309 * x89
-    x311 = x0 * (x106 + x297)
-    x312 = 3.0 * x298 + 2.0 * x311
-    x313 = x0 * (3.0 * x299 + 2.0 * x310 + x312)
-    x314 = x308 * x89
-    x315 = x313 + x314
-    x316 = x147 * x291
-    x317 = x294 + x316
-    x318 = x147 * x295
-    x319 = x298 + x318
-    x320 = x147 * x300
-    x321 = x306 + x320
-    x322 = x147 * x308
-    x323 = x313 + x322
-    x324 = x310 + x311
-    x325 = x324 * x89
-    x326 = 3.0 * x303
-    x327 = x0 * (x122 + 3.0 * x302 + x326)
-    x328 = 4.0 * x306 + 2.0 * x327
-    x329 = x0 * (4.0 * x307 + 2.0 * x325 + x328)
-    x330 = x147 * x315
-    x331 = x329 + x330
-    x332 = 3.14159265358979 * x1 * x5 * x72
-    x333 = x332 * x46
-    x334 = x0 * (x129 + x180 * x293 + x290) + x147 * x317
-    x335 = x147 * x301
-    x336 = 2.0 * x335
-    x337 = x0 * (x292 + x305 + x316 + x336)
-    x338 = x147 * x319
-    x339 = x337 + x338
-    x340 = x147 * x309
-    x341 = 2.0 * x318
-    x342 = x0 * (x299 + x312 + 2.0 * x340 + x341)
-    x343 = x147 * x321
-    x344 = x342 + x343
-    x345 = x147 * x324
-    x346 = x0 * (x307 + 3.0 * x320 + x328 + 2.0 * x345)
-    x347 = x147 * x323
-    x348 = x346 + x347
-    x349 = 4.0 * x311
-    x350 = x0 * (x132 + 4.0 * x310 + x349)
-    x351 = x147 * (x325 + x327)
-    x352 = x0 * (5.0 * x313 + x314 + 4.0 * x322 + 2.0 * x350 + 2.0 * x351) + x147 * x331
-    x353 = x332 * x352
-    x354 = x3 * x332
-    x355 = x149 * x289
-    x356 = (
-        x0 * (x180 * (x107 + x355) + x28 * (x149 + x293) + x304 + 2.0 * x316)
-        + x147 * x334
+    x461 = 24.1359114645008 * x3
+    x462 = x430 * x456
+    x463 = x430 * x454
+    x464 = x121 * x429
+    x465 = 53.9695387335403 * x39
+    x466 = 69.6743749058326 * x36
+    x467 = 53.9695387335403 * x3
+    x468 = 120.679557322504 * x3
+    x469 = x430 * x468
+    x470 = x3 * x448
+    x471 = x3 * x430
+    x472 = x280 * x448
+    x473 = x153 * x36
+    x474 = 24.1359114645008 * x430
+    x475 = x358 * x474
+    x476 = x317 * x474
+    x477 = 9.12251705727742 * x430
+    x478 = -x94 - C[2]
+    x479 = x117 * x478**2
+    x480 = x119 + x479
+    x481 = x311 * x335
+    x482 = x480 * x95
+    x483 = x117 * x478
+    x484 = x29 * x483
+    x485 = x482 + x484
+    x486 = x153 * x480
+    x487 = x140 * x478
+    x488 = x156 + 2.0 * x487
+    x489 = x0 * (x479 + x488)
+    x490 = x485 * x95
+    x491 = x489 + x490
+    x492 = x153 * x485
+    x493 = x119 + x487
+    x494 = x493 * x95
+    x495 = x0 * (x140 + x483)
+    x496 = 4.0 * x119 * x478
+    x497 = 2.0 * x495 + x496
+    x498 = x0 * (2.0 * x482 + 2.0 * x494 + x497)
+    x499 = x491 * x95
+    x500 = x498 + x499
+    x501 = x311 * x500
+    x502 = x153 * x491
+    x503 = x494 + x495
+    x504 = x503 * x95
+    x505 = x0 * (x118 + x488)
+    x506 = 3.0 * x489 + 2.0 * x505
+    x507 = x0 * (3.0 * x490 + 2.0 * x504 + x506)
+    x508 = x500 * x95
+    x509 = x507 + x508
+    x510 = 20.3985682659737 * x176
+    x511 = x325 * x510
+    x512 = x263 * x334
+    x513 = x177 * x345
+    x514 = x263 * x349
+    x515 = x369 * x510
+    x516 = x197 * x480
+    x517 = x484 + x516
+    x518 = x197 * x485
+    x519 = x489 + x518
+    x520 = x153 * x517
+    x521 = 120.679557322504 * x269
+    x522 = x197 * x491
+    x523 = x498 + x522
+    x524 = x153 * x519
+    x525 = x197 * x500
+    x526 = x507 + x525
+    x527 = x504 + x505
+    x528 = x527 * x95
+    x529 = 3.0 * x495
+    x530 = x0 * (x142 + 3.0 * x494 + x529)
+    x531 = 4.0 * x498 + 2.0 * x530
+    x532 = x0 * (4.0 * x499 + 2.0 * x528 + x531)
+    x533 = x197 * x509
+    x534 = x532 + x533
+    x535 = 53.9695387335403 * x440
+    x536 = 20.3985682659737 * x246
+    x537 = x241 * x448
+    x538 = x234 * x431
+    x539 = x227 * x448
+    x540 = x223 * x430
+    x541 = 93.4779831475484 * x517
+    x542 = 93.4779831475484 * x255
+    x543 = x430 * x517
+    x544 = x429 * x79
+    x545 = x161 * x544
+    x546 = x0 * (x156 + x271 * x483 + x479) + x197 * x517
+    x547 = x510 * x546
+    x548 = x176 * x405
+    x549 = x197 * x493
+    x550 = 2.0 * x549
+    x551 = x0 * (x482 + x497 + x516 + x550)
+    x552 = x197 * x519
+    x553 = x551 + x552
+    x554 = x197 * x503
+    x555 = 2.0 * x518
+    x556 = x0 * (x490 + x506 + 2.0 * x554 + x555)
+    x557 = x197 * x523
+    x558 = x556 + x557
+    x559 = x176 * x558
+    x560 = x197 * x527
+    x561 = x0 * (x499 + 3.0 * x522 + x531 + 2.0 * x560)
+    x562 = x197 * x526
+    x563 = x561 + x562
+    x564 = x430 * x546
+    x565 = x430 * x553
+    x566 = x430 * x558
+    x567 = 4.0 * x505
+    x568 = x0 * (x159 + 4.0 * x504 + x567)
+    x569 = x197 * (x528 + x530)
+    x570 = x0 * (5.0 * x507 + x508 + 4.0 * x525 + 2.0 * x568 + 2.0 * x569) + x197 * x534
+    x571 = x544 * x570
+    x572 = x293 * x474
+    x573 = x474 * x500
+    x574 = x199 * x478
+    x575 = (
+        x0 * (x271 * (x119 + x574) + x29 * (x199 + x483) + x496 + 2.0 * x516)
+        + x197 * x546
     )
-    x357 = (
+    x576 = x176 * x575
+    x577 = (
         x0
         * (
-            x180 * (x303 + x335)
-            + x28 * (x129 + x150 + x296 + x355)
-            + 2.0 * x298
-            + x334
-            + x341
+            x271 * (x495 + x549)
+            + x29 * (x156 + x200 + x487 + x574)
+            + 2.0 * x489
+            + x546
+            + x555
         )
-        + x147 * x339
+        + x197 * x553
     )
-    x358 = (
+    x578 = (
         x0
         * (
-            x180 * (x311 + x340)
-            + x28 * (x153 + x302 + x326 + x336)
-            + 2.0 * x306
-            + 2.0 * x320
-            + 2.0 * x337
-            + 2.0 * x338
+            x271 * (x505 + x554)
+            + x29 * (x205 + x494 + x529 + x550)
+            + 2.0 * x498
+            + 2.0 * x522
+            + 2.0 * x551
+            + 2.0 * x552
         )
-        + x147 * x344
+        + x197 * x558
     )
-    x359 = x332 * (
+    x579 = x430 * x575
+    x580 = x430 * x577
+    x581 = x429 * x578
+    x582 = x544 * (
         x0
         * (
-            x180 * (x327 + x345)
-            + x28 * (x155 + x310 + 3.0 * x340 + x349)
-            + 2.0 * x313
-            + 2.0 * x322
-            + 3.0 * x342
-            + 3.0 * x343
+            x271 * (x530 + x560)
+            + x29 * (x211 + x504 + 3.0 * x554 + x567)
+            + 2.0 * x507
+            + 2.0 * x525
+            + 3.0 * x556
+            + 3.0 * x557
         )
-        + x147 * x348
+        + x197 * x563
     )
 
     # 450 item(s)
-    return numpy.array(
-        [
-            x75
+    result[0, 0, 0] = numpy.sum(
+        x76
+        * x79
+        * (
+            x0
             * (
-                x0
-                * (
-                    x28 * (x23 + 5.0 * x39 + 4.0 * x47 + x54)
-                    + 2.0 * x45
-                    + x58 * (x56 + x57)
-                    + 2.0 * x64
-                    + 4.0 * x66
-                    + 4.0 * x69
-                )
-                + x46 * x71
-            ),
-            x77 * x87,
-            x87 * x89,
-            x103 * x104 * x93,
-            x103 * x105 * x77,
-            x103 * x108 * x90,
-            x104 * x112 * x118,
-            x118 * x119 * x93,
-            x108 * x110 * x118,
-            x118 * x122 * x90,
-            x104 * x126 * x128,
-            x112 * x119 * x128,
-            x108 * x128 * x93,
-            x110 * x122 * x128,
-            x128 * x132 * x90,
-            x133 * x134,
-            x104 * x137 * x86,
-            x105 * x133 * x86,
-            x102 * x104 * x139,
-            x102 * x119 * x137,
-            x102 * x108 * x135,
-            x104 * x117 * x141,
-            x117 * x119 * x139,
-            x108 * x117 * x137,
-            x117 * x122 * x135,
-            x104 * x116 * x146,
-            x116 * x119 * x141,
-            x108 * x116 * x139,
-            x116 * x122 * x137,
-            x116 * x132 * x135,
-            x134 * x147,
-            x148 * x77 * x86,
-            x151 * x86 * x90,
-            x102 * x149 * x93,
-            x102 * x110 * x151,
-            x102 * x153 * x90,
-            x112 * x117 * x149,
-            x117 * x151 * x93,
-            x110 * x117 * x153,
-            x117 * x155 * x90,
-            x116 * x126 * x149,
-            x112 * x116 * x151,
-            x116 * x153 * x93,
-            x110 * x116 * x155,
-            x116 * x160 * x90,
-            x104 * x162 * x70,
-            x104 * x165 * x68,
-            x119 * x162 * x68,
-            x104 * x170 * x84,
-            x119 * x165 * x84,
-            x108 * x162 * x84,
-            x100 * x104 * x173,
-            x100 * x119 * x170,
-            x100 * x108 * x165,
-            x100 * x122 * x162,
-            x104 * x115 * x174,
-            x115 * x119 * x173,
-            x108 * x115 * x170,
-            x115 * x122 * x165,
-            x115 * x132 * x162,
-            x133 * x148 * x70,
-            x137 * x149 * x68,
-            x135 * x151 * x68,
-            x139 * x149 * x84,
-            x137 * x151 * x84,
-            x135 * x153 * x84,
-            x100 * x141 * x149,
-            x100 * x139 * x151,
-            x100 * x137 * x153,
-            x100 * x135 * x155,
-            x115 * x146 * x149,
-            x115 * x141 * x151,
-            x115 * x139 * x153,
-            x115 * x137 * x155,
-            x115 * x135 * x160,
-            x176 * x70 * x90,
-            x110 * x176 * x68,
-            x179 * x68 * x90,
-            x176 * x84 * x93,
-            x110 * x179 * x84,
-            x184 * x84 * x90,
-            x100 * x112 * x176,
-            x100 * x179 * x93,
-            x100 * x110 * x184,
-            x100 * x187 * x90,
-            x115 * x126 * x176,
-            x112 * x115 * x179,
-            x115 * x184 * x93,
-            x110 * x115 * x187,
-            x115 * x188 * x90,
-            x104 * x189 * x63,
-            x104 * x190 * x61,
-            x119 * x189 * x61,
-            x104 * x191 * x32,
-            x119 * x190 * x32,
-            x108 * x189 * x32,
-            x104 * x192 * x30,
-            x119 * x191 * x30,
-            x108 * x190 * x30,
-            x122 * x189 * x30,
-            x104 * x193 * x26,
-            x119 * x192 * x26,
-            x108 * x191 * x26,
-            x122 * x190 * x26,
-            x132 * x189 * x26,
-            x149 * x162 * x63,
-            x149 * x165 * x61,
-            x151 * x162 * x61,
-            x149 * x170 * x32,
-            x151 * x165 * x32,
-            x153 * x162 * x32,
-            x149 * x173 * x30,
-            x151 * x170 * x30,
-            x153 * x165 * x30,
-            x155 * x162 * x30,
-            x149 * x174 * x26,
-            x151 * x173 * x26,
-            x153 * x170 * x26,
-            x155 * x165 * x26,
-            x160 * x162 * x26,
-            x135 * x176 * x63,
-            x137 * x176 * x61,
-            x135 * x179 * x61,
-            x139 * x176 * x32,
-            x137 * x179 * x32,
-            x135 * x184 * x32,
-            x141 * x176 * x30,
-            x139 * x179 * x30,
-            x137 * x184 * x30,
-            x135 * x187 * x30,
-            x146 * x176 * x26,
-            x141 * x179 * x26,
-            x139 * x184 * x26,
-            x137 * x187 * x26,
-            x135 * x188 * x26,
-            x194 * x63 * x90,
-            x110 * x194 * x61,
-            x195 * x61 * x90,
-            x194 * x32 * x93,
-            x110 * x195 * x32,
-            x196 * x32 * x90,
-            x112 * x194 * x30,
-            x195 * x30 * x93,
-            x110 * x196 * x30,
-            x197 * x30 * x90,
-            x126 * x194 * x26,
-            x112 * x195 * x26,
-            x196 * x26 * x93,
-            x110 * x197 * x26,
-            x198 * x26 * x90,
-            x104 * x201 * x205,
-            x104 * x209 * x214,
-            x119 * x201 * x214,
-            x104 * x219 * x224,
-            x119 * x209 * x224,
-            x108 * x201 * x224,
-            x104 * x232 * x235,
-            x119 * x219 * x235,
-            x108 * x209 * x235,
-            x122 * x201 * x235,
-            x104 * x242 * x244,
-            x119 * x232 * x244,
-            x108 * x219 * x244,
-            x122 * x209 * x244,
-            x132 * x201 * x244,
-            x104 * x204 * x246,
-            x104 * x213 * x248,
-            x119 * x213 * x246,
-            x104 * x223 * x250,
-            x119 * x223 * x248,
-            x108 * x223 * x246,
-            x104 * x234 * x252,
-            x119 * x234 * x250,
-            x108 * x234 * x248,
-            x122 * x234 * x246,
-            x104 * x243 * x260,
-            x119 * x243 * x252,
-            x108 * x243 * x250,
-            x122 * x243 * x248,
-            x132 * x243 * x246,
-            x149 * x201 * x204,
-            x149 * x209 * x213,
-            x151 * x201 * x213,
-            x149 * x219 * x223,
-            x151 * x209 * x223,
-            x153 * x201 * x223,
-            x149 * x232 * x234,
-            x151 * x219 * x234,
-            x153 * x209 * x234,
-            x155 * x201 * x234,
-            x149 * x242 * x243,
-            x151 * x232 * x243,
-            x153 * x219 * x243,
-            x155 * x209 * x243,
-            x160 * x201 * x243,
-            x104 * x261 * x54,
-            x104 * x266 * x80,
-            x119 * x261 * x80,
-            x104 * x271 * x97,
-            x119 * x266 * x97,
-            x108 * x261 * x97,
-            x104 * x221 * x275,
-            x119 * x221 * x271,
-            x108 * x221 * x266,
-            x122 * x221 * x261,
-            x281 * x46,
-            x275 * x282 * x89,
-            x108 * x127 * x271,
-            x122 * x127 * x266,
-            x127 * x132 * x261,
-            x149 * x246 * x54,
-            x149 * x248 * x80,
-            x151 * x246 * x80,
-            x149 * x250 * x97,
-            x151 * x248 * x97,
-            x153 * x246 * x97,
-            x149 * x221 * x252,
-            x151 * x221 * x250,
-            x153 * x221 * x248,
-            x155 * x221 * x246,
-            x147 * x260 * x282,
-            x127 * x151 * x252,
-            x127 * x153 * x250,
-            x127 * x155 * x248,
-            x127 * x160 * x246,
-            x176 * x201 * x54,
-            x176 * x209 * x80,
-            x179 * x201 * x80,
-            x176 * x219 * x97,
-            x179 * x209 * x97,
-            x184 * x201 * x97,
-            x176 * x221 * x232,
-            x179 * x219 * x221,
-            x184 * x209 * x221,
-            x187 * x201 * x221,
-            x127 * x176 * x242,
-            x127 * x179 * x232,
-            x127 * x184 * x219,
-            x127 * x187 * x209,
-            x127 * x188 * x201,
-            x104 * x284 * x52,
-            x104 * x285 * x38,
-            x119 * x284 * x38,
-            x104 * x286 * x35,
-            x119 * x285 * x35,
-            x108 * x284 * x35,
-            x287 * x3,
-            x286 * x288 * x89,
-            x108 * x12 * x285,
-            x12 * x122 * x284,
-            x280
-            * (
-                x0
-                * (
-                    x166 * (x277 + x278)
-                    + 2.0 * x258
-                    + 2.0 * x259
-                    + 4.0 * x273
-                    + 4.0 * x274
-                    + x28 * (x146 + x254 + 5.0 * x256 + 4.0 * x272)
-                )
-                + x133 * x279
-            ),
-            x287 * x89,
-            x108 * x286 * x7,
-            x122 * x285 * x7,
-            x132 * x284 * x7,
-            x149 * x261 * x52,
-            x149 * x266 * x38,
-            x151 * x261 * x38,
-            x149 * x271 * x35,
-            x151 * x266 * x35,
-            x153 * x261 * x35,
-            x147 * x275 * x288,
-            x12 * x151 * x271,
-            x12 * x153 * x266,
-            x12 * x155 * x261,
-            x147 * x281,
-            x151 * x275 * x7,
-            x153 * x271 * x7,
-            x155 * x266 * x7,
-            x160 * x261 * x7,
-            x176 * x246 * x52,
-            x176 * x248 * x38,
-            x179 * x246 * x38,
-            x176 * x250 * x35,
-            x179 * x248 * x35,
-            x184 * x246 * x35,
-            x12 * x176 * x252,
-            x12 * x179 * x250,
-            x12 * x184 * x248,
-            x12 * x187 * x246,
-            x176 * x260 * x7,
-            x179 * x252 * x7,
-            x184 * x250 * x7,
-            x187 * x248 * x7,
-            x188 * x246 * x7,
-            x194 * x201 * x52,
-            x194 * x209 * x38,
-            x195 * x201 * x38,
-            x194 * x219 * x35,
-            x195 * x209 * x35,
-            x196 * x201 * x35,
-            x12 * x194 * x232,
-            x12 * x195 * x219,
-            x12 * x196 * x209,
-            x12 * x197 * x201,
-            x194 * x242 * x7,
-            x195 * x232 * x7,
-            x196 * x219 * x7,
-            x197 * x209 * x7,
-            x198 * x201 * x7,
-            x205 * x291 * x90,
-            x110 * x214 * x291,
-            x214 * x295 * x90,
-            x224 * x291 * x93,
-            x110 * x224 * x295,
-            x224 * x300 * x90,
-            x112 * x235 * x291,
-            x235 * x295 * x93,
-            x110 * x235 * x300,
-            x235 * x308 * x90,
-            x126 * x244 * x291,
-            x112 * x244 * x295,
-            x244 * x300 * x93,
-            x110 * x244 * x308,
-            x244 * x315 * x90,
-            x135 * x204 * x291,
-            x137 * x213 * x291,
-            x135 * x213 * x295,
-            x139 * x223 * x291,
-            x137 * x223 * x295,
-            x135 * x223 * x300,
-            x141 * x234 * x291,
-            x139 * x234 * x295,
-            x137 * x234 * x300,
-            x135 * x234 * x308,
-            x146 * x243 * x291,
-            x141 * x243 * x295,
-            x139 * x243 * x300,
-            x137 * x243 * x308,
-            x135 * x243 * x315,
-            x204 * x317 * x90,
-            x110 * x213 * x317,
-            x213 * x319 * x90,
-            x223 * x317 * x93,
-            x110 * x223 * x319,
-            x223 * x321 * x90,
-            x112 * x234 * x317,
-            x234 * x319 * x93,
-            x110 * x234 * x321,
-            x234 * x323 * x90,
-            x126 * x243 * x317,
-            x112 * x243 * x319,
-            x243 * x321 * x93,
-            x110 * x243 * x323,
-            x243 * x331 * x90,
-            x162 * x291 * x54,
-            x165 * x291 * x80,
-            x162 * x295 * x80,
-            x170 * x291 * x97,
-            x165 * x295 * x97,
-            x162 * x300 * x97,
-            x173 * x221 * x291,
-            x170 * x221 * x295,
-            x165 * x221 * x300,
-            x162 * x221 * x308,
-            x127 * x174 * x291,
-            x127 * x173 * x295,
-            x127 * x170 * x300,
-            x127 * x165 * x308,
-            x127 * x162 * x315,
-            x135 * x317 * x54,
-            x137 * x317 * x80,
-            x135 * x319 * x80,
-            x139 * x317 * x97,
-            x137 * x319 * x97,
-            x135 * x321 * x97,
-            x141 * x221 * x317,
-            x139 * x221 * x319,
-            x137 * x221 * x321,
-            x135 * x221 * x323,
-            x127 * x146 * x317,
-            x127 * x141 * x319,
-            x127 * x139 * x321,
-            x127 * x137 * x323,
-            x133 * x331 * x333,
-            x334 * x54 * x90,
-            x110 * x334 * x80,
-            x339 * x80 * x90,
-            x334 * x93 * x97,
-            x110 * x339 * x97,
-            x344 * x90 * x97,
-            x112 * x221 * x334,
-            x221 * x339 * x93,
-            x110 * x221 * x344,
-            x221 * x348 * x90,
-            x126 * x127 * x334,
-            x112 * x127 * x339,
-            x127 * x344 * x93,
-            x333 * x348 * x77,
-            x353 * x46,
-            x189 * x291 * x52,
-            x190 * x291 * x38,
-            x189 * x295 * x38,
-            x191 * x291 * x35,
-            x190 * x295 * x35,
-            x189 * x300 * x35,
-            x12 * x192 * x291,
-            x12 * x191 * x295,
-            x12 * x190 * x300,
-            x12 * x189 * x308,
-            x193 * x291 * x7,
-            x192 * x295 * x7,
-            x191 * x300 * x7,
-            x190 * x308 * x7,
-            x189 * x315 * x7,
-            x162 * x317 * x52,
-            x165 * x317 * x38,
-            x162 * x319 * x38,
-            x170 * x317 * x35,
-            x165 * x319 * x35,
-            x162 * x321 * x35,
-            x12 * x173 * x317,
-            x12 * x170 * x319,
-            x12 * x165 * x321,
-            x12 * x162 * x323,
-            x174 * x317 * x7,
-            x173 * x319 * x7,
-            x170 * x321 * x7,
-            x165 * x323 * x7,
-            x162 * x331 * x7,
-            x135 * x334 * x52,
-            x137 * x334 * x38,
-            x135 * x339 * x38,
-            x139 * x334 * x35,
-            x137 * x339 * x35,
-            x135 * x344 * x35,
-            x12 * x141 * x334,
-            x12 * x139 * x339,
-            x12 * x137 * x344,
-            x133 * x348 * x354,
-            x146 * x334 * x7,
-            x141 * x339 * x7,
-            x139 * x344 * x7,
-            x137 * x348 * x7,
-            x133 * x353,
-            x356 * x52 * x90,
-            x110 * x356 * x38,
-            x357 * x38 * x90,
-            x35 * x356 * x93,
-            x110 * x35 * x357,
-            x35 * x358 * x90,
-            x112 * x12 * x356,
-            x12 * x357 * x93,
-            x354 * x358 * x77,
-            x3 * x359,
-            x126 * x356 * x7,
-            x112 * x357 * x7,
-            x358 * x7 * x93,
-            x359 * x77,
-            x332
-            * (
-                x0
-                * (
-                    x180 * (x350 + x351)
-                    + x28 * (x160 + x325 + 5.0 * x327 + 4.0 * x345)
-                    + 2.0 * x329
-                    + 2.0 * x330
-                    + 4.0 * x346
-                    + 4.0 * x347
-                )
-                + x147 * x352
-            ),
-        ]
+                x29 * (x24 + 5.0 * x40 + 4.0 * x48 + x55)
+                + 2.0 * x46
+                + x59 * (x57 + x58)
+                + 2.0 * x65
+                + 4.0 * x67
+                + 4.0 * x70
+            )
+            + x47 * x72
+        )
     )
+    result[0, 0, 1] = numpy.sum(x82 * x93)
+    result[0, 0, 2] = numpy.sum(x93 * x96)
+    result[0, 0, 3] = numpy.sum(x107 * x114)
+    result[0, 0, 4] = numpy.sum(x107 * x115 * x116)
+    result[0, 0, 5] = numpy.sum(x106 * x120 * x123)
+    result[0, 0, 6] = numpy.sum(x128 * x135)
+    result[0, 0, 7] = numpy.sum(x135 * x136 * x95)
+    result[0, 0, 8] = numpy.sum(x137 * x138 * x81)
+    result[0, 0, 9] = numpy.sum(x137 * x143)
+    result[0, 0, 10] = numpy.sum(x148 * x152)
+    result[0, 0, 11] = numpy.sum(x128 * x152 * x95)
+    result[0, 0, 12] = numpy.sum(x112 * x150 * x154)
+    result[0, 0, 13] = numpy.sum(x143 * x155 * x81)
+    result[0, 0, 14] = numpy.sum(x155 * x160)
+    result[0, 1, 0] = numpy.sum(x162 * x163)
+    result[0, 1, 1] = numpy.sum(x164 * x169)
+    result[0, 1, 2] = numpy.sum(x161 * x170 * x95)
+    result[0, 1, 3] = numpy.sum(x173 * x174)
+    result[0, 1, 4] = numpy.sum(x169 * x175 * x95)
+    result[0, 1, 5] = numpy.sum(x120 * x161 * x178)
+    result[0, 1, 6] = numpy.sum(x133 * x182)
+    result[0, 1, 7] = numpy.sum(x172 * x183 * x184)
+    result[0, 1, 8] = numpy.sum(x154 * x167 * x183)
+    result[0, 1, 9] = numpy.sum(x161 * x185 * x186)
+    result[0, 1, 10] = numpy.sum(x192 * x193)
+    result[0, 1, 11] = numpy.sum(x132 * x182 * x95)
+    result[0, 1, 12] = numpy.sum(x154 * x172 * x194)
+    result[0, 1, 13] = numpy.sum(x132 * x185 * x195)
+    result[0, 1, 14] = numpy.sum(x159 * x162 * x196)
+    result[0, 2, 0] = numpy.sum(x163 * x198)
+    result[0, 2, 1] = numpy.sum(x170 * x197 * x81)
+    result[0, 2, 2] = numpy.sum(x164 * x202)
+    result[0, 2, 3] = numpy.sum(x174 * x197 * x203)
+    result[0, 2, 4] = numpy.sum(x175 * x202 * x81)
+    result[0, 2, 5] = numpy.sum(x178 * x205)
+    result[0, 2, 6] = numpy.sum(x133 * x206 * x207)
+    result[0, 2, 7] = numpy.sum(x111 * x183 * x208)
+    result[0, 2, 8] = numpy.sum(x183 * x209 * x81)
+    result[0, 2, 9] = numpy.sum(x186 * x212)
+    result[0, 2, 10] = numpy.sum(x193 * x197 * x213)
+    result[0, 2, 11] = numpy.sum(x132 * x206 * x208)
+    result[0, 2, 12] = numpy.sum(x111 * x194 * x214)
+    result[0, 2, 13] = numpy.sum(x196 * x212 * x81)
+    result[0, 2, 14] = numpy.sum(x196 * x220)
+    result[0, 3, 0] = numpy.sum(x224 * x71)
+    result[0, 3, 1] = numpy.sum(x227 * x229)
+    result[0, 3, 2] = numpy.sum(x222 * x229 * x95)
+    result[0, 3, 3] = numpy.sum(x236 * x89)
+    result[0, 3, 4] = numpy.sum(x184 * x237 * x89)
+    result[0, 3, 5] = numpy.sum(x222 * x238 * x89)
+    result[0, 3, 6] = numpy.sum(x103 * x242)
+    result[0, 3, 7] = numpy.sum(x184 * x234 * x243)
+    result[0, 3, 8] = numpy.sum(x154 * x227 * x243)
+    result[0, 3, 9] = numpy.sum(x103 * x222 * x244)
+    result[0, 3, 10] = numpy.sum(x245 * x247)
+    result[0, 3, 11] = numpy.sum(x131 * x242 * x95)
+    result[0, 3, 12] = numpy.sum(x131 * x234 * x238)
+    result[0, 3, 13] = numpy.sum(x131 * x227 * x244)
+    result[0, 3, 14] = numpy.sum(x159 * x223 * x248)
+    result[0, 4, 0] = numpy.sum(35.3313566383285 * x161 * x197 * x71 * x92)
+    result[0, 4, 1] = numpy.sum(x169 * x197 * x249)
+    result[0, 4, 2] = numpy.sum(x161 * x202 * x249)
+    result[0, 4, 3] = numpy.sum(x207 * x250 * x89)
+    result[0, 4, 4] = numpy.sum(x201 * x251 * x89)
+    result[0, 4, 5] = numpy.sum(x209 * x252 * x89)
+    result[0, 4, 6] = numpy.sum(x180 * x207 * x253)
+    result[0, 4, 7] = numpy.sum(x103 * x172 * x254)
+    result[0, 4, 8] = numpy.sum(x103 * x205 * x251)
+    result[0, 4, 9] = numpy.sum(x211 * x253 * x255)
+    result[0, 4, 10] = numpy.sum(x191 * x207 * x256)
+    result[0, 4, 11] = numpy.sum(x180 * x208 * x257)
+    result[0, 4, 12] = numpy.sum(x131 * x172 * x258)
+    result[0, 4, 13] = numpy.sum(x195 * x211 * x257)
+    result[0, 4, 14] = numpy.sum(x219 * x255 * x256)
+    result[0, 5, 0] = numpy.sum(x262 * x71)
+    result[0, 5, 1] = numpy.sum(x260 * x264 * x81)
+    result[0, 5, 2] = numpy.sum(x264 * x267)
+    result[0, 5, 3] = numpy.sum(x203 * x268 * x89)
+    result[0, 5, 4] = numpy.sum(x269 * x270 * x89)
+    result[0, 5, 5] = numpy.sum(x276 * x89)
+    result[0, 5, 6] = numpy.sum(x103 * x206 * x268)
+    result[0, 5, 7] = numpy.sum(x111 * x243 * x277)
+    result[0, 5, 8] = numpy.sum(x243 * x269 * x275)
+    result[0, 5, 9] = numpy.sum(x103 * x281)
+    result[0, 5, 10] = numpy.sum(x213 * x248 * x260)
+    result[0, 5, 11] = numpy.sum(x206 * x248 * x267)
+    result[0, 5, 12] = numpy.sum(x203 * x248 * x275)
+    result[0, 5, 13] = numpy.sum(x131 * x281 * x81)
+    result[0, 5, 14] = numpy.sum(x245 * x283)
+    result[0, 6, 0] = numpy.sum(x284 * x285 * x64)
+    result[0, 6, 1] = numpy.sum(x286 * x288)
+    result[0, 6, 2] = numpy.sum(x284 * x288 * x95)
+    result[0, 6, 3] = numpy.sum(x289 * x290 * x33)
+    result[0, 6, 4] = numpy.sum(x184 * x291 * x33)
+    result[0, 6, 5] = numpy.sum(x284 * x292 * x33)
+    result[0, 6, 6] = numpy.sum(x294 * x31)
+    result[0, 6, 7] = numpy.sum(x184 * x289 * x295)
+    result[0, 6, 8] = numpy.sum(x154 * x286 * x295)
+    result[0, 6, 9] = numpy.sum(x143 * x296 * x31)
+    result[0, 6, 10] = numpy.sum(x27 * x285 * x297)
+    result[0, 6, 11] = numpy.sum(x27 * x294 * x95)
+    result[0, 6, 12] = numpy.sum(x27 * x289 * x292)
+    result[0, 6, 13] = numpy.sum(x143 * x286 * x298)
+    result[0, 6, 14] = numpy.sum(x160 * x27 * x296)
+    result[0, 7, 0] = numpy.sum(x197 * x224 * x64)
+    result[0, 7, 1] = numpy.sum(x227 * x299 * x62)
+    result[0, 7, 2] = numpy.sum(x222 * x300 * x62)
+    result[0, 7, 3] = numpy.sum(x197 * x236 * x33)
+    result[0, 7, 4] = numpy.sum(x227 * x301 * x33)
+    result[0, 7, 5] = numpy.sum(x222 * x302 * x33)
+    result[0, 7, 6] = numpy.sum(x207 * x241 * x295)
+    result[0, 7, 7] = numpy.sum(x234 * x301 * x31)
+    result[0, 7, 8] = numpy.sum(x214 * x227 * x303)
+    result[0, 7, 9] = numpy.sum(x211 * x222 * x304)
+    result[0, 7, 10] = numpy.sum(x198 * x247 * x27)
+    result[0, 7, 11] = numpy.sum(x241 * x27 * x300)
+    result[0, 7, 12] = numpy.sum(x234 * x27 * x302)
+    result[0, 7, 13] = numpy.sum(x212 * x227 * x298)
+    result[0, 7, 14] = numpy.sum(x219 * x223 * x298)
+    result[0, 8, 0] = numpy.sum(x161 * x262 * x64)
+    result[0, 8, 1] = numpy.sum(x260 * x305 * x62)
+    result[0, 8, 2] = numpy.sum(x161 * x263 * x267 * x62)
+    result[0, 8, 3] = numpy.sum(x173 * x268 * x33)
+    result[0, 8, 4] = numpy.sum(x267 * x306 * x33)
+    result[0, 8, 5] = numpy.sum(x161 * x276 * x33)
+    result[0, 8, 6] = numpy.sum(x180 * x268 * x295)
+    result[0, 8, 7] = numpy.sum(x172 * x277 * x303)
+    result[0, 8, 8] = numpy.sum(x195 * x275 * x303)
+    result[0, 8, 9] = numpy.sum(x255 * x280 * x295)
+    result[0, 8, 10] = numpy.sum(x191 * x27 * x307)
+    result[0, 8, 11] = numpy.sum(x180 * x27 * x308)
+    result[0, 8, 12] = numpy.sum(x173 * x275 * x298)
+    result[0, 8, 13] = numpy.sum(x27 * x280 * x305)
+    result[0, 8, 14] = numpy.sum(x162 * x27 * x283)
+    result[0, 9, 0] = numpy.sum(x309 * x310 * x64)
+    result[0, 9, 1] = numpy.sum(x309 * x312 * x81)
+    result[0, 9, 2] = numpy.sum(x312 * x313)
+    result[0, 9, 3] = numpy.sum(x112 * x314 * x33)
+    result[0, 9, 4] = numpy.sum(x313 * x315 * x33)
+    result[0, 9, 5] = numpy.sum(x123 * x316 * x33)
+    result[0, 9, 6] = numpy.sum(x128 * x31 * x314)
+    result[0, 9, 7] = numpy.sum(x111 * x304 * x313)
+    result[0, 9, 8] = numpy.sum(x269 * x295 * x316)
+    result[0, 9, 9] = numpy.sum(x31 * x318)
+    result[0, 9, 10] = numpy.sum(x148 * x298 * x309)
+    result[0, 9, 11] = numpy.sum(x128 * x298 * x313)
+    result[0, 9, 12] = numpy.sum(x112 * x298 * x316)
+    result[0, 9, 13] = numpy.sum(x27 * x318 * x81)
+    result[0, 9, 14] = numpy.sum(x27 * x310 * x319)
+    result[1, 0, 0] = numpy.sum(x285 * x322 * x326)
+    result[1, 0, 1] = numpy.sum(x330 * x336)
+    result[1, 0, 2] = numpy.sum(x322 * x336 * x95)
+    result[1, 0, 3] = numpy.sum(x290 * x341 * x346)
+    result[1, 0, 4] = numpy.sum(x184 * x346 * x347)
+    result[1, 0, 5] = numpy.sum(x292 * x322 * x346)
+    result[1, 0, 6] = numpy.sum(x350 * x359)
+    result[1, 0, 7] = numpy.sum(x341 * x350 * x360)
+    result[1, 0, 8] = numpy.sum(x154 * x347 * x350)
+    result[1, 0, 9] = numpy.sum(x322 * x350 * x361)
+    result[1, 0, 10] = numpy.sum(x285 * x368 * x370)
+    result[1, 0, 11] = numpy.sum(x359 * x370 * x95)
+    result[1, 0, 12] = numpy.sum(x292 * x341 * x370)
+    result[1, 0, 13] = numpy.sum(x330 * x361 * x370)
+    result[1, 0, 14] = numpy.sum(x160 * x370 * x371)
+    result[1, 1, 0] = numpy.sum(x374 * x375)
+    result[1, 1, 1] = numpy.sum(x377 * x378)
+    result[1, 1, 2] = numpy.sum(x373 * x378 * x95)
+    result[1, 1, 3] = numpy.sum(x380 * x381)
+    result[1, 1, 4] = numpy.sum(x345 * x377 * x382)
+    result[1, 1, 5] = numpy.sum(x238 * x345 * x373)
+    result[1, 1, 6] = numpy.sum(x349 * x385)
+    result[1, 1, 7] = numpy.sum(x184 * x380 * x386)
+    result[1, 1, 8] = numpy.sum(x154 * x377 * x386)
+    result[1, 1, 9] = numpy.sum(x244 * x349 * x373)
+    result[1, 1, 10] = numpy.sum(x394 * x396)
+    result[1, 1, 11] = numpy.sum(x369 * x385 * x95)
+    result[1, 1, 12] = numpy.sum(x238 * x369 * x380)
+    result[1, 1, 13] = numpy.sum(x244 * x369 * x377)
+    result[1, 1, 14] = numpy.sum(x159 * x374 * x397)
+    result[1, 2, 0] = numpy.sum(x198 * x322 * x375)
+    result[1, 2, 1] = numpy.sum(x207 * x334 * x347)
+    result[1, 2, 2] = numpy.sum(x300 * x322 * x334)
+    result[1, 2, 3] = numpy.sum(x197 * x341 * x381)
+    result[1, 2, 4] = numpy.sum(x301 * x330 * x345)
+    result[1, 2, 5] = numpy.sum(x302 * x322 * x345)
+    result[1, 2, 6] = numpy.sum(x299 * x349 * x358)
+    result[1, 2, 7] = numpy.sum(x301 * x341 * x349)
+    result[1, 2, 8] = numpy.sum(x214 * x330 * x386)
+    result[1, 2, 9] = numpy.sum(x212 * x349 * x371)
+    result[1, 2, 10] = numpy.sum(x197 * x368 * x396)
+    result[1, 2, 11] = numpy.sum(x300 * x358 * x369)
+    result[1, 2, 12] = numpy.sum(x302 * x341 * x369)
+    result[1, 2, 13] = numpy.sum(x212 * x330 * x397)
+    result[1, 2, 14] = numpy.sum(x220 * x369 * x371)
+    result[1, 3, 0] = numpy.sum(x399 * x55)
+    result[1, 3, 1] = numpy.sum(x404 * x406)
+    result[1, 3, 2] = numpy.sum(x398 * x406 * x95)
+    result[1, 3, 3] = numpy.sum(x407 * x413)
+    result[1, 3, 4] = numpy.sum(x100 * x382 * x404)
+    result[1, 3, 5] = numpy.sum(x100 * x238 * x398)
+    result[1, 3, 6] = numpy.sum(x168 * x417 * x418)
+    result[1, 3, 7] = numpy.sum(x413 * x419 * x95)
+    result[1, 3, 8] = numpy.sum(x154 * x404 * x419)
+    result[1, 3, 9] = numpy.sum(x244 * x343 * x398)
+    result[1, 3, 10] = numpy.sum(x420 * x427)
+    result[1, 3, 11] = numpy.sum(x417 * x428 * x47)
+    result[1, 3, 12] = numpy.sum(x120 * x432 * x47)
+    result[1, 3, 13] = numpy.sum(x185 * x433 * x47)
+    result[1, 3, 14] = numpy.sum(x159 * x420 * x434)
+    result[1, 4, 0] = numpy.sum(x207 * x435 * x55)
+    result[1, 4, 1] = numpy.sum(x377 * x436 * x85)
+    result[1, 4, 2] = numpy.sum(x208 * x437 * x85)
+    result[1, 4, 3] = numpy.sum(x100 * x207 * x438)
+    result[1, 4, 4] = numpy.sum(x100 * x254 * x377)
+    result[1, 4, 5] = numpy.sum(x100 * x258 * x373)
+    result[1, 4, 6] = numpy.sum(x343 * x384 * x436)
+    result[1, 4, 7] = numpy.sum(x254 * x343 * x380)
+    result[1, 4, 8] = numpy.sum(x214 * x377 * x439)
+    result[1, 4, 9] = numpy.sum(x211 * x437 * x440)
+    result[1, 4, 10] = numpy.sum(x394 * x441 * x442)
+    result[1, 4, 11] = numpy.sum(x201 * x384 * x444)
+    result[1, 4, 12] = numpy.sum(x205 * x438 * x443)
+    result[1, 4, 13] = numpy.sum(x211 * x377 * x444)
+    result[1, 4, 14] = numpy.sum(x219 * x435 * x443)
+    result[1, 5, 0] = numpy.sum(x307 * x322 * x55)
+    result[1, 5, 1] = numpy.sum(x268 * x347 * x85)
+    result[1, 5, 2] = numpy.sum(x308 * x322 * x85)
+    result[1, 5, 3] = numpy.sum(x268 * x341 * x407)
+    result[1, 5, 4] = numpy.sum(x100 * x330 * x445)
+    result[1, 5, 5] = numpy.sum(x275 * x371 * x407)
+    result[1, 5, 6] = numpy.sum(x268 * x358 * x418)
+    result[1, 5, 7] = numpy.sum(x277 * x341 * x419)
+    result[1, 5, 8] = numpy.sum(x330 * x419 * x446)
+    result[1, 5, 9] = numpy.sum(x280 * x371 * x418)
+    result[1, 5, 10] = numpy.sum(x368 * x447 * x47)
+    result[1, 5, 11] = numpy.sum(x358 * x449 * x47)
+    result[1, 5, 12] = numpy.sum(x341 * x450 * x47)
+    result[1, 5, 13] = numpy.sum(x280 * x347 * x443)
+    result[1, 5, 14] = numpy.sum(x322 * x420 * x451)
+    result[1, 6, 0] = numpy.sum(x452 * x455)
+    result[1, 6, 1] = numpy.sum(x168 * x456 * x457)
+    result[1, 6, 2] = numpy.sum(x455 * x457 * x95)
+    result[1, 6, 3] = numpy.sum(x168 * x458 * x459)
+    result[1, 6, 4] = numpy.sum(x36 * x360 * x456)
+    result[1, 6, 5] = numpy.sum(x292 * x36 * x454)
+    result[1, 6, 6] = numpy.sum(x460 * x461)
+    result[1, 6, 7] = numpy.sum(x3 * x428 * x458)
+    result[1, 6, 8] = numpy.sum(x138 * x3 * x462)
+    result[1, 6, 9] = numpy.sum(x143 * x3 * x463)
+    result[1, 6, 10] = numpy.sum(
+        x425
+        * x76
+        * (
+            x0
+            * (
+                x230 * (x422 + x423)
+                + x29 * (x191 + x388 + 5.0 * x390 + 4.0 * x414)
+                + 2.0 * x392
+                + 2.0 * x393
+                + 4.0 * x415
+                + 4.0 * x416
+            )
+            + x161 * x424
+        )
+    )
+    result[1, 6, 11] = numpy.sum(x460 * x96)
+    result[1, 6, 12] = numpy.sum(x120 * x458 * x464)
+    result[1, 6, 13] = numpy.sum(x143 * x462)
+    result[1, 6, 14] = numpy.sum(x160 * x463)
+    result[1, 7, 0] = numpy.sum(x197 * x399 * x53)
+    result[1, 7, 1] = numpy.sum(x207 * x404 * x465)
+    result[1, 7, 2] = numpy.sum(x300 * x39 * x398)
+    result[1, 7, 3] = numpy.sum(x197 * x413 * x466)
+    result[1, 7, 4] = numpy.sum(x301 * x36 * x404)
+    result[1, 7, 5] = numpy.sum(x302 * x36 * x398)
+    result[1, 7, 6] = numpy.sum(x417 * x442 * x467)
+    result[1, 7, 7] = numpy.sum(x201 * x412 * x469)
+    result[1, 7, 8] = numpy.sum(x205 * x433 * x468)
+    result[1, 7, 9] = numpy.sum(x212 * x3 * x434)
+    result[1, 7, 10] = numpy.sum(x198 * x427)
+    result[1, 7, 11] = numpy.sum(x201 * x417 * x448)
+    result[1, 7, 12] = numpy.sum(x205 * x432)
+    result[1, 7, 13] = numpy.sum(x212 * x433)
+    result[1, 7, 14] = numpy.sum(x220 * x434)
+    result[1, 8, 0] = numpy.sum(x307 * x373 * x53)
+    result[1, 8, 1] = numpy.sum(x268 * x377 * x465)
+    result[1, 8, 2] = numpy.sum(x308 * x373 * x39)
+    result[1, 8, 3] = numpy.sum(x268 * x380 * x466)
+    result[1, 8, 4] = numpy.sum(x36 * x377 * x445)
+    result[1, 8, 5] = numpy.sum(x373 * x446 * x466)
+    result[1, 8, 6] = numpy.sum(x260 * x384 * x470)
+    result[1, 8, 7] = numpy.sum(x270 * x380 * x471)
+    result[1, 8, 8] = numpy.sum(x275 * x377 * x469)
+    result[1, 8, 9] = numpy.sum(x3 * x373 * x472)
+    result[1, 8, 10] = numpy.sum(x394 * x447)
+    result[1, 8, 11] = numpy.sum(x384 * x449)
+    result[1, 8, 12] = numpy.sum(x380 * x450)
+    result[1, 8, 13] = numpy.sum(x377 * x472)
+    result[1, 8, 14] = numpy.sum(x374 * x451)
+    result[1, 9, 0] = numpy.sum(x314 * x322 * x452)
+    result[1, 9, 1] = numpy.sum(x314 * x330 * x457)
+    result[1, 9, 2] = numpy.sum(x313 * x371 * x457)
+    result[1, 9, 3] = numpy.sum(x314 * x341 * x459)
+    result[1, 9, 4] = numpy.sum(x313 * x347 * x473)
+    result[1, 9, 5] = numpy.sum(x316 * x371 * x459)
+    result[1, 9, 6] = numpy.sum(x3 * x309 * x475)
+    result[1, 9, 7] = numpy.sum(x313 * x341 * x470)
+    result[1, 9, 8] = numpy.sum(x316 * x347 * x471)
+    result[1, 9, 9] = numpy.sum(x3 * x322 * x476)
+    result[1, 9, 10] = numpy.sum(x309 * x368 * x477)
+    result[1, 9, 11] = numpy.sum(x313 * x475)
+    result[1, 9, 12] = numpy.sum(x316 * x341 * x464)
+    result[1, 9, 13] = numpy.sum(x330 * x476)
+    result[1, 9, 14] = numpy.sum(x319 * x322 * x477)
+    result[2, 0, 0] = numpy.sum(x310 * x326 * x480)
+    result[2, 0, 1] = numpy.sum(x480 * x481 * x81)
+    result[2, 0, 2] = numpy.sum(x481 * x485)
+    result[2, 0, 3] = numpy.sum(x112 * x346 * x486)
+    result[2, 0, 4] = numpy.sum(x315 * x346 * x485)
+    result[2, 0, 5] = numpy.sum(x123 * x346 * x491)
+    result[2, 0, 6] = numpy.sum(x128 * x350 * x486)
+    result[2, 0, 7] = numpy.sum(x136 * x350 * x492)
+    result[2, 0, 8] = numpy.sum(x315 * x350 * x491)
+    result[2, 0, 9] = numpy.sum(x350 * x501)
+    result[2, 0, 10] = numpy.sum(x148 * x370 * x486)
+    result[2, 0, 11] = numpy.sum(x128 * x370 * x492)
+    result[2, 0, 12] = numpy.sum(x112 * x370 * x502)
+    result[2, 0, 13] = numpy.sum(x370 * x501 * x81)
+    result[2, 0, 14] = numpy.sum(x310 * x370 * x509)
+    result[2, 1, 0] = numpy.sum(x161 * x480 * x511)
+    result[2, 1, 1] = numpy.sum(x305 * x334 * x480)
+    result[2, 1, 2] = numpy.sum(x161 * x485 * x512)
+    result[2, 1, 3] = numpy.sum(x173 * x345 * x486)
+    result[2, 1, 4] = numpy.sum(x306 * x345 * x485)
+    result[2, 1, 5] = numpy.sum(x161 * x491 * x513)
+    result[2, 1, 6] = numpy.sum(x181 * x349 * x486)
+    result[2, 1, 7] = numpy.sum(x172 * x386 * x492)
+    result[2, 1, 8] = numpy.sum(x306 * x349 * x491)
+    result[2, 1, 9] = numpy.sum(x161 * x500 * x514)
+    result[2, 1, 10] = numpy.sum(x192 * x397 * x480)
+    result[2, 1, 11] = numpy.sum(x181 * x397 * x485)
+    result[2, 1, 12] = numpy.sum(x173 * x397 * x491)
+    result[2, 1, 13] = numpy.sum(x305 * x369 * x500)
+    result[2, 1, 14] = numpy.sum(x161 * x509 * x515)
+    result[2, 2, 0] = numpy.sum(x511 * x517)
+    result[2, 2, 1] = numpy.sum(x512 * x517 * x81)
+    result[2, 2, 2] = numpy.sum(x512 * x519)
+    result[2, 2, 3] = numpy.sum(x203 * x345 * x520)
+    result[2, 2, 4] = numpy.sum(x345 * x519 * x521)
+    result[2, 2, 5] = numpy.sum(x513 * x523)
+    result[2, 2, 6] = numpy.sum(x206 * x349 * x520)
+    result[2, 2, 7] = numpy.sum(x111 * x386 * x524)
+    result[2, 2, 8] = numpy.sum(x269 * x386 * x523)
+    result[2, 2, 9] = numpy.sum(x514 * x526)
+    result[2, 2, 10] = numpy.sum(x213 * x397 * x517)
+    result[2, 2, 11] = numpy.sum(x206 * x397 * x519)
+    result[2, 2, 12] = numpy.sum(x203 * x397 * x523)
+    result[2, 2, 13] = numpy.sum(x315 * x369 * x526)
+    result[2, 2, 14] = numpy.sum(x515 * x534)
+    result[2, 3, 0] = numpy.sum(x223 * x486 * x55)
+    result[2, 3, 1] = numpy.sum(x227 * x405 * x486)
+    result[2, 3, 2] = numpy.sum(x222 * x405 * x492)
+    result[2, 3, 3] = numpy.sum(x234 * x407 * x486)
+    result[2, 3, 4] = numpy.sum(x100 * x237 * x492)
+    result[2, 3, 5] = numpy.sum(x222 * x407 * x502)
+    result[2, 3, 6] = numpy.sum(x241 * x480 * x535)
+    result[2, 3, 7] = numpy.sum(x234 * x419 * x492)
+    result[2, 3, 8] = numpy.sum(x227 * x419 * x502)
+    result[2, 3, 9] = numpy.sum(x222 * x500 * x535)
+    result[2, 3, 10] = numpy.sum(x443 * x480 * x536)
+    result[2, 3, 11] = numpy.sum(x47 * x485 * x537)
+    result[2, 3, 12] = numpy.sum(x47 * x491 * x538)
+    result[2, 3, 13] = numpy.sum(x47 * x500 * x539)
+    result[2, 3, 14] = numpy.sum(x47 * x509 * x540)
+    result[2, 4, 0] = numpy.sum(35.3313566383285 * x255 * x517 * x55)
+    result[2, 4, 1] = numpy.sum(x195 * x541 * x85)
+    result[2, 4, 2] = numpy.sum(x519 * x542 * x85)
+    result[2, 4, 3] = numpy.sum(x100 * x250 * x520)
+    result[2, 4, 4] = numpy.sum(x100 * x251 * x519)
+    result[2, 4, 5] = numpy.sum(x100 * x176 * x252 * x523)
+    result[2, 4, 6] = numpy.sum(x180 * x440 * x541)
+    result[2, 4, 7] = numpy.sum(x172 * x439 * x524)
+    result[2, 4, 8] = numpy.sum(x251 * x343 * x523)
+    result[2, 4, 9] = numpy.sum(x343 * x526 * x542)
+    result[2, 4, 10] = numpy.sum(x191 * x441 * x543)
+    result[2, 4, 11] = numpy.sum(x180 * x444 * x519)
+    result[2, 4, 12] = numpy.sum(x250 * x443 * x523)
+    result[2, 4, 13] = numpy.sum(x167 * x444 * x526)
+    result[2, 4, 14] = numpy.sum(x441 * x534 * x545)
+    result[2, 5, 0] = numpy.sum(x547 * x55)
+    result[2, 5, 1] = numpy.sum(x546 * x548 * x81)
+    result[2, 5, 2] = numpy.sum(x548 * x553)
+    result[2, 5, 3] = numpy.sum(x100 * x153 * x203 * x546)
+    result[2, 5, 4] = numpy.sum(x100 * x521 * x553)
+    result[2, 5, 5] = numpy.sum(x407 * x559)
+    result[2, 5, 6] = numpy.sum(x206 * x440 * x546)
+    result[2, 5, 7] = numpy.sum(x111 * x153 * x419 * x553)
+    result[2, 5, 8] = numpy.sum(x419 * x559 * x81)
+    result[2, 5, 9] = numpy.sum(x176 * x418 * x563)
+    result[2, 5, 10] = numpy.sum(x213 * x47 * x564)
+    result[2, 5, 11] = numpy.sum(x206 * x47 * x565)
+    result[2, 5, 12] = numpy.sum(x203 * x47 * x566)
+    result[2, 5, 13] = numpy.sum(53.9695387335403 * x47 * x544 * x563 * x81)
+    result[2, 5, 14] = numpy.sum(x420 * x571)
+    result[2, 6, 0] = numpy.sum(x296 * x452 * x480)
+    result[2, 6, 1] = numpy.sum(x286 * x457 * x486)
+    result[2, 6, 2] = numpy.sum(x296 * x457 * x485)
+    result[2, 6, 3] = numpy.sum(x289 * x459 * x486)
+    result[2, 6, 4] = numpy.sum(x291 * x473 * x485)
+    result[2, 6, 5] = numpy.sum(x296 * x459 * x491)
+    result[2, 6, 6] = numpy.sum(x3 * x480 * x572)
+    result[2, 6, 7] = numpy.sum(x289 * x470 * x485)
+    result[2, 6, 8] = numpy.sum(x291 * x471 * x491)
+    result[2, 6, 9] = numpy.sum(x284 * x3 * x573)
+    result[2, 6, 10] = numpy.sum(x297 * x477 * x480)
+    result[2, 6, 11] = numpy.sum(x485 * x572)
+    result[2, 6, 12] = numpy.sum(x289 * x464 * x491)
+    result[2, 6, 13] = numpy.sum(x286 * x573)
+    result[2, 6, 14] = numpy.sum(x284 * x477 * x509)
+    result[2, 7, 0] = numpy.sum(x223 * x520 * x53)
+    result[2, 7, 1] = numpy.sum(x227 * x465 * x520)
+    result[2, 7, 2] = numpy.sum(x222 * x465 * x524)
+    result[2, 7, 3] = numpy.sum(x234 * x466 * x520)
+    result[2, 7, 4] = numpy.sum(x237 * x473 * x519)
+    result[2, 7, 5] = numpy.sum(x153 * x222 * x466 * x523)
+    result[2, 7, 6] = numpy.sum(x3 * x517 * x537)
+    result[2, 7, 7] = numpy.sum(x234 * x469 * x519)
+    result[2, 7, 8] = numpy.sum(x237 * x471 * x523)
+    result[2, 7, 9] = numpy.sum(x222 * x470 * x526)
+    result[2, 7, 10] = numpy.sum(x536 * x543)
+    result[2, 7, 11] = numpy.sum(x519 * x537)
+    result[2, 7, 12] = numpy.sum(x523 * x538)
+    result[2, 7, 13] = numpy.sum(x526 * x539)
+    result[2, 7, 14] = numpy.sum(x534 * x540)
+    result[2, 8, 0] = numpy.sum(x161 * x53 * x547)
+    result[2, 8, 1] = numpy.sum(x305 * x39 * x546)
+    result[2, 8, 2] = numpy.sum(x255 * x465 * x553)
+    result[2, 8, 3] = numpy.sum(x173 * x473 * x546)
+    result[2, 8, 4] = numpy.sum(x306 * x36 * x553)
+    result[2, 8, 5] = numpy.sum(x161 * x466 * x559)
+    result[2, 8, 6] = numpy.sum(x181 * x3 * x564)
+    result[2, 8, 7] = numpy.sum(x172 * x468 * x565)
+    result[2, 8, 8] = numpy.sum(x167 * x468 * x566)
+    result[2, 8, 9] = numpy.sum(x467 * x545 * x563)
+    result[2, 8, 10] = numpy.sum(x192 * x564)
+    result[2, 8, 11] = numpy.sum(x181 * x565)
+    result[2, 8, 12] = numpy.sum(x173 * x566)
+    result[2, 8, 13] = numpy.sum(x167 * x448 * x563)
+    result[2, 8, 14] = numpy.sum(x162 * x571)
+    result[2, 9, 0] = numpy.sum(x452 * x576)
+    result[2, 9, 1] = numpy.sum(x457 * x576 * x81)
+    result[2, 9, 2] = numpy.sum(x176 * x457 * x577)
+    result[2, 9, 3] = numpy.sum(x112 * x473 * x575)
+    result[2, 9, 4] = numpy.sum(x315 * x36 * x577)
+    result[2, 9, 5] = numpy.sum(x176 * x459 * x578)
+    result[2, 9, 6] = numpy.sum(x128 * x3 * x579)
+    result[2, 9, 7] = numpy.sum(x136 * x3 * x580)
+    result[2, 9, 8] = numpy.sum(x116 * x467 * x581)
+    result[2, 9, 9] = numpy.sum(x461 * x582)
+    result[2, 9, 10] = numpy.sum(x148 * x579)
+    result[2, 9, 11] = numpy.sum(x128 * x580)
+    result[2, 9, 12] = numpy.sum(x114 * x581)
+    result[2, 9, 13] = numpy.sum(x582 * x82)
+    result[2, 9, 14] = numpy.sum(
+        9.12251705727742
+        * x544
+        * (
+            x0
+            * (
+                x271 * (x568 + x569)
+                + x29 * (x219 + x528 + 5.0 * x530 + 4.0 * x560)
+                + 2.0 * x532
+                + 2.0 * x533
+                + 4.0 * x561
+                + 4.0 * x562
+            )
+            + x197 * x570
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_40(a, A, b, B, C):
+def diag_quadrupole3d_40(ax, da, A, bx, db, B, C):
     """Cartesian 3D (gs) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 15, 1), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - A[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3**2 * x7
-    x9 = x0 * x7
-    x10 = 3.0 * x9
-    x11 = 2.0 * x3
-    x12 = -x2 - C[0]
-    x13 = x12 * x7
-    x14 = x10 + x11 * x13
-    x15 = 2.0 * x0
-    x16 = x3 * x7
-    x17 = x0 * (x13 + x16)
-    x18 = x3 * (x12 * x16 + x9)
-    x19 = x12**2 * x7
-    x20 = x0 * (x14 + x19)
-    x21 = x19 + x9
-    x22 = x21 * x3
-    x23 = x13 * x15 + x22
-    x24 = x23 * x3
-    x25 = x20 + x24
-    x26 = x0 * (4.0 * x0 * x13 + 2.0 * x17 + 2.0 * x18 + 2.0 * x22) + x25 * x3
-    x27 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
-    x28 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x29 = 3.14159265358979 * x1 * x28
-    x30 = x27 * x29
-    x31 = -x1 * (a * A[1] + b * B[1])
-    x32 = -x31 - A[1]
-    x33 = x26 * x30
-    x34 = -x1 * (a * A[2] + b * B[2])
-    x35 = -x34 - A[2]
-    x36 = x27 * x6
-    x37 = x32**2 * x36
-    x38 = x0 * x36
-    x39 = x37 + x38
-    x40 = x28 * x6
-    x41 = x35**2 * x40
-    x42 = x0 * x40
-    x43 = x41 + x42
-    x44 = x32 * x36
-    x45 = x15 * x44 + x32 * x39
-    x46 = x35 * x40
-    x47 = x15 * x46 + x35 * x43
-    x48 = 3.0 * x38
-    x49 = x0 * (3.0 * x37 + x48) + x32 * x45
-    x50 = 3.0 * x42
-    x51 = x0 * (3.0 * x41 + x50) + x35 * x47
-    x52 = -x31 - C[1]
-    x53 = x36 * x52**2
-    x54 = x38 + x53
-    x55 = x8 + x9
-    x56 = x15 * x16 + x3 * x55
-    x57 = x0 * (x10 + 3.0 * x8) + x3 * x56
-    x58 = x32 * x54
-    x59 = x36 * x52
-    x60 = x15 * x59 + x58
-    x61 = 2.0 * x32
-    x62 = x48 + x59 * x61
-    x63 = x0 * (x53 + x62)
-    x64 = x32 * x60
-    x65 = x63 + x64
-    x66 = x0 * (x44 + x59)
-    x67 = x32 * (x38 + x44 * x52)
-    x68 = x0 * (4.0 * x38 * x52 + 2.0 * x58 + 2.0 * x66 + 2.0 * x67) + x32 * x65
-    x69 = x29 * x5
-    x70 = x68 * x69
-    x71 = -x34 - C[2]
-    x72 = x40 * x71**2
-    x73 = x42 + x72
-    x74 = x35 * x73
-    x75 = x40 * x71
-    x76 = x15 * x75 + x74
-    x77 = 2.0 * x35
-    x78 = x50 + x75 * x77
-    x79 = x0 * (x72 + x78)
-    x80 = x35 * x76
-    x81 = x79 + x80
-    x82 = 3.14159265358979 * x1 * x27 * x5
-    x83 = x0 * (x46 + x75)
-    x84 = x35 * (x42 + x46 * x71)
-    x85 = x0 * (4.0 * x42 * x71 + 2.0 * x74 + 2.0 * x83 + 2.0 * x84) + x35 * x81
-    x86 = x82 * x85
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3**2 * x8
+    x10 = x0 * x8
+    x11 = 3.0 * x10
+    x12 = 2.0 * x3
+    x13 = -x2 - C[0]
+    x14 = x13 * x8
+    x15 = x11 + x12 * x14
+    x16 = 2.0 * x0
+    x17 = x3 * x8
+    x18 = x0 * (x14 + x17)
+    x19 = x3 * (x10 + x13 * x17)
+    x20 = x13**2 * x8
+    x21 = x0 * (x15 + x20)
+    x22 = x10 + x20
+    x23 = x22 * x3
+    x24 = x14 * x16 + x23
+    x25 = x24 * x3
+    x26 = x21 + x25
+    x27 = 2.0 * x0 * (2.0 * x0 * x14 + x18 + x19 + x23) + x26 * x3
+    x28 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x29 = 4.41641957979107 * x28
+    x30 = 0.564189583547756
+    x31 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
+    x32 = da * db * numpy.sqrt(ax**5.5) * numpy.sqrt(bx**1.5)
+    x33 = x31 * x32
+    x34 = x1 * x30 * x33
+    x35 = -x1 * (ax * A[1] + bx * B[1])
+    x36 = -x35 - A[1]
+    x37 = 11.6847478934435 * x36
+    x38 = x28 * x37
+    x39 = x27 * x34
+    x40 = -x1 * (ax * A[2] + bx * B[2])
+    x41 = -x40 - A[2]
+    x42 = 11.6847478934435 * x41
+    x43 = x28 * x7
+    x44 = x36**2 * x43
+    x45 = x0 * x43
+    x46 = x44 + x45
+    x47 = 15.084944665313 * x46
+    x48 = 0.318309886183791 * x6
+    x49 = x26 * x48
+    x50 = 26.1278905896872 * x41
+    x51 = x28 * x32
+    x52 = x31 * x7
+    x53 = x41**2 * x52
+    x54 = x0 * x52
+    x55 = x53 + x54
+    x56 = 15.084944665313 * x55
+    x57 = x36 * x43
+    x58 = x16 * x57 + x36 * x46
+    x59 = x33 * x48
+    x60 = 11.6847478934435 * x24
+    x61 = 26.1278905896872 * x24
+    x62 = x48 * x51
+    x63 = x41 * x52
+    x64 = x16 * x63 + x41 * x55
+    x65 = x48 * x64
+    x66 = 3.0 * x45
+    x67 = 4.41641957979107 * x0 * (3.0 * x44 + x66) + 4.41641957979107 * x36 * x58
+    x68 = x22 * x32
+    x69 = x48 * x68
+    x70 = x31 * x69
+    x71 = 0.179587122125167
+    x72 = x55 * x71
+    x73 = 3.0 * x54
+    x74 = x0 * (3.0 * x53 + x73) + x41 * x64
+    x75 = x10 + x9
+    x76 = x16 * x17 + x3 * x75
+    x77 = x0 * (x11 + 3.0 * x9) + x3 * x76
+    x78 = -x35 - C[1]
+    x79 = x43 * x78**2
+    x80 = x45 + x79
+    x81 = 4.41641957979107 * x80
+    x82 = x36 * x80
+    x83 = x43 * x78
+    x84 = x16 * x83 + x82
+    x85 = 11.6847478934435 * x84
+    x86 = x59 * x76
+    x87 = x32 * x75
+    x88 = 15.084944665313 * x87
+    x89 = 2.0 * x36
+    x90 = x66 + x83 * x89
+    x91 = x0 * (x79 + x90)
+    x92 = x36 * x84
+    x93 = x91 + x92
+    x94 = x48 * x93
+    x95 = 26.1278905896872 * x84
+    x96 = 11.6847478934435 * x3
+    x97 = x0 * (x57 + x83)
+    x98 = x36 * (x45 + x57 * x78)
+    x99 = 2.0 * x0 * (2.0 * x45 * x78 + x82 + x97 + x98) + x36 * x93
+    x100 = x34 * x5
+    x101 = x100 * x99
+    x102 = x32 * x5
+    x103 = x102 * x48
+    x104 = x103 * x3
+    x105 = x102 * x65
+    x106 = -x40 - C[2]
+    x107 = x106**2 * x52
+    x108 = x107 + x54
+    x109 = x108 * x48
+    x110 = x37 * x51
+    x111 = x108 * x41
+    x112 = x106 * x52
+    x113 = x111 + x112 * x16
+    x114 = 11.6847478934435 * x113
+    x115 = x28 * x48
+    x116 = 26.1278905896872 * x113
+    x117 = 2.0 * x41
+    x118 = x112 * x117 + x73
+    x119 = x0 * (x107 + x118)
+    x120 = x113 * x41
+    x121 = x119 + x120
+    x122 = x103 * x108
+    x123 = x1 * x30
+    x124 = x0 * (x112 + x63)
+    x125 = x41 * (x106 * x63 + x54)
+    x126 = 2.0 * x0 * (2.0 * x106 * x54 + x111 + x124 + x125) + x121 * x41
+    x127 = x123 * x126 * x5
 
     # 45 item(s)
-    return numpy.array(
-        [
-            x30
-            * (
-                x0 * (x11 * (x17 + x18) + x15 * (x14 + x8) + 3.0 * x20 + 3.0 * x24)
-                + x26 * x3
-            ),
-            x32 * x33,
-            x33 * x35,
-            x25 * x39 * x40,
-            x25 * x30 * x32 * x35,
-            x25 * x36 * x43,
-            x23 * x40 * x45,
-            x23 * x39 * x46,
-            x23 * x43 * x44,
-            x23 * x36 * x47,
-            x21 * x40 * x49,
-            x21 * x45 * x46,
-            x21 * x39 * x43,
-            x21 * x44 * x47,
-            x21 * x36 * x51,
-            x40 * x54 * x57,
-            x40 * x56 * x60,
-            x46 * x54 * x56,
-            x40 * x55 * x65,
-            x46 * x55 * x60,
-            x43 * x54 * x55,
-            x3 * x70,
-            x3 * x35 * x65 * x69,
-            x16 * x43 * x60,
-            x16 * x47 * x54,
-            x69
-            * (
-                x0 * (x15 * (x37 + x62) + x61 * (x66 + x67) + 3.0 * x63 + 3.0 * x64)
-                + x32 * x68
-            ),
-            x35 * x70,
-            x43 * x65 * x7,
-            x47 * x60 * x7,
-            x51 * x54 * x7,
-            x36 * x57 * x73,
-            x44 * x56 * x73,
-            x36 * x56 * x76,
-            x39 * x55 * x73,
-            x44 * x55 * x76,
-            x36 * x55 * x81,
-            x16 * x45 * x73,
-            x16 * x39 * x76,
-            x3 * x32 * x81 * x82,
-            x3 * x86,
-            x49 * x7 * x73,
-            x45 * x7 * x76,
-            x39 * x7 * x81,
-            x32 * x86,
-            x82
-            * (
-                x0 * (x15 * (x41 + x78) + x77 * (x83 + x84) + 3.0 * x79 + 3.0 * x80)
-                + x35 * x85
-            ),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x29
+        * x34
+        * (x0 * (x12 * (x18 + x19) + x16 * (x15 + x9) + 3.0 * x21 + 3.0 * x25) + x27 * x3)
     )
+    result[0, 1, 0] = numpy.sum(x38 * x39)
+    result[0, 2, 0] = numpy.sum(x28 * x39 * x42)
+    result[0, 3, 0] = numpy.sum(x33 * x47 * x49)
+    result[0, 4, 0] = numpy.sum(x26 * x28 * x34 * x36 * x50)
+    result[0, 5, 0] = numpy.sum(x49 * x51 * x56)
+    result[0, 6, 0] = numpy.sum(x58 * x59 * x60)
+    result[0, 7, 0] = numpy.sum(x41 * x46 * x59 * x61)
+    result[0, 8, 0] = numpy.sum(x36 * x55 * x61 * x62)
+    result[0, 9, 0] = numpy.sum(x51 * x60 * x65)
+    result[0, 10, 0] = numpy.sum(x67 * x70)
+    result[0, 11, 0] = numpy.sum(x42 * x58 * x70)
+    result[0, 12, 0] = numpy.sum(x47 * x68 * x72)
+    result[0, 13, 0] = numpy.sum(x38 * x65 * x68)
+    result[0, 14, 0] = numpy.sum(x29 * x69 * x74)
+    result[1, 0, 0] = numpy.sum(x59 * x77 * x81)
+    result[1, 1, 0] = numpy.sum(x85 * x86)
+    result[1, 2, 0] = numpy.sum(x42 * x80 * x86)
+    result[1, 3, 0] = numpy.sum(x31 * x88 * x94)
+    result[1, 4, 0] = numpy.sum(x31 * x41 * x48 * x87 * x95)
+    result[1, 5, 0] = numpy.sum(x72 * x80 * x88)
+    result[1, 6, 0] = numpy.sum(x101 * x96)
+    result[1, 7, 0] = numpy.sum(x100 * x3 * x50 * x93)
+    result[1, 8, 0] = numpy.sum(x104 * x55 * x95)
+    result[1, 9, 0] = numpy.sum(x105 * x80 * x96)
+    result[1, 10, 0] = numpy.sum(
+        4.41641957979107
+        * x100
+        * (
+            x0 * (x16 * (x44 + x90) + x89 * (x97 + x98) + 3.0 * x91 + 3.0 * x92)
+            + x36 * x99
+        )
+    )
+    result[1, 11, 0] = numpy.sum(x101 * x42)
+    result[1, 12, 0] = numpy.sum(x102 * x56 * x94)
+    result[1, 13, 0] = numpy.sum(x105 * x85)
+    result[1, 14, 0] = numpy.sum(x103 * x74 * x81)
+    result[2, 0, 0] = numpy.sum(x109 * x29 * x32 * x77)
+    result[2, 1, 0] = numpy.sum(x109 * x110 * x76)
+    result[2, 2, 0] = numpy.sum(x114 * x62 * x76)
+    result[2, 3, 0] = numpy.sum(x108 * x47 * x71 * x87)
+    result[2, 4, 0] = numpy.sum(x115 * x116 * x36 * x87)
+    result[2, 5, 0] = numpy.sum(x115 * x121 * x88)
+    result[2, 6, 0] = numpy.sum(x122 * x58 * x96)
+    result[2, 7, 0] = numpy.sum(x104 * x116 * x46)
+    result[2, 8, 0] = numpy.sum(26.1278905896872 * x121 * x123 * x3 * x36 * x5 * x51)
+    result[2, 9, 0] = numpy.sum(x127 * x51 * x96)
+    result[2, 10, 0] = numpy.sum(x122 * x67)
+    result[2, 11, 0] = numpy.sum(x103 * x114 * x58)
+    result[2, 12, 0] = numpy.sum(x103 * x121 * x47)
+    result[2, 13, 0] = numpy.sum(x110 * x127)
+    result[2, 14, 0] = numpy.sum(
+        x102
+        * x123
+        * x29
+        * (
+            x0 * (x117 * (x124 + x125) + 3.0 * x119 + 3.0 * x120 + x16 * (x118 + x53))
+            + x126 * x41
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_41(a, A, b, B, C):
+def diag_quadrupole3d_41(ax, da, A, bx, db, B, C):
     """Cartesian 3D (gp) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = 1.77245385090552 * numpy.sqrt(x1)
-    x3 = -x1 * (a * A[0] + b * B[0])
-    x4 = -x3 - A[0]
-    x5 = a * b * x1
-    x6 = numpy.exp(-x5 * (A[0] - B[0]) ** 2)
-    x7 = x4 * x6
-    x8 = x2 * x7
-    x9 = -x3 - C[0]
-    x10 = x2 * x6
-    x11 = x10 * x9
-    x12 = x0 * (x11 + x8)
-    x13 = x0 * x10
-    x14 = x8 * x9
-    x15 = x4 * (x13 + x14)
-    x16 = x12 + x15
-    x17 = -x3 - B[0]
-    x18 = x10 * x17
-    x19 = x0 * (x18 + x8)
-    x20 = x17 * x8
-    x21 = x13 + x20
-    x22 = x21 * x4
-    x23 = x19 + x22
-    x24 = x0 * (x11 + x18)
-    x25 = x11 * x17
-    x26 = x4 * (x13 + x25)
-    x27 = 2.0 * x24 + 2.0 * x26
-    x28 = 2.0 * x0
-    x29 = 3.0 * x13
-    x30 = x0 * (x14 + x20 + x25 + x29)
-    x31 = x4 * (x24 + x26)
-    x32 = 2.0 * x4
-    x33 = x10 * x9**2
-    x34 = x13 + x33
-    x35 = x34 * x4
-    x36 = x17 * x34
-    x37 = 4.0 * x0 * x11
-    x38 = x0 * (x27 + x35 + x36 + x37)
-    x39 = x29 + x33
-    x40 = x0 * (2.0 * x25 + x39)
-    x41 = x11 * x28
-    x42 = x36 + x41
-    x43 = x4 * x42
-    x44 = x40 + x43
-    x45 = x4 * x44
-    x46 = x11 * x32
-    x47 = x0 * (x39 + x46)
-    x48 = x35 + x41
-    x49 = x4 * x48
-    x50 = x47 + x49
-    x51 = x0 * (2.0 * x12 + 2.0 * x15 + 2.0 * x35 + x37) + x4 * x50
-    x52 = x38 + x45
-    x53 = x0 * (2.0 * x30 + 2.0 * x31 + 2.0 * x40 + 2.0 * x43 + x50) + x4 * x52
-    x54 = numpy.exp(-x5 * (A[1] - B[1]) ** 2)
-    x55 = numpy.exp(-x5 * (A[2] - B[2]) ** 2)
-    x56 = 3.14159265358979 * x1 * x55
-    x57 = x54 * x56
-    x58 = -x1 * (a * A[1] + b * B[1])
-    x59 = -x58 - B[1]
-    x60 = x10 * x4**2
-    x61 = x29 + x60
-    x62 = x57 * (x0 * (x16 * x32 + x28 * (x46 + x61) + 3.0 * x47 + 3.0 * x49) + x4 * x51)
-    x63 = -x1 * (a * A[2] + b * B[2])
-    x64 = -x63 - B[2]
-    x65 = -x58 - A[1]
-    x66 = x53 * x57
-    x67 = x0 * x2
-    x68 = x54 * x67
-    x69 = x2 * x54
-    x70 = x65 * x69
-    x71 = x59 * x70
-    x72 = x68 + x71
-    x73 = x2 * x55
-    x74 = x51 * x57
-    x75 = -x63 - A[2]
-    x76 = x55 * x67
-    x77 = x73 * x75
-    x78 = x64 * x77
-    x79 = x76 + x78
-    x80 = x65**2 * x69
-    x81 = x68 + x80
-    x82 = x59 * x69
-    x83 = x0 * (x70 + x82)
-    x84 = x65 * x72
-    x85 = x83 + x84
-    x86 = x64 * x73
-    x87 = x73 * x75**2
-    x88 = x76 + x87
-    x89 = x0 * (x77 + x86)
-    x90 = x75 * x79
-    x91 = x89 + x90
-    x92 = x28 * x70 + x65 * x81
-    x93 = 2.0 * x65
-    x94 = 3.0 * x68
-    x95 = x80 + x94
-    x96 = x0 * (x82 * x93 + x95) + x65 * x85
-    x97 = x28 * x77 + x75 * x88
-    x98 = 2.0 * x75
-    x99 = 3.0 * x76
-    x100 = x87 + x99
-    x101 = x0 * (x100 + x86 * x98) + x75 * x91
-    x102 = x0 * (3.0 * x80 + x94) + x65 * x92
-    x103 = x0 * (3.0 * x83 + 3.0 * x84 + x92) + x65 * x96
-    x104 = x0 * (3.0 * x87 + x99) + x75 * x97
-    x105 = x0 * (3.0 * x89 + 3.0 * x90 + x97) + x101 * x75
-    x106 = -x58 - C[1]
-    x107 = x106**2 * x69
-    x108 = x107 + x68
-    x109 = x13 + x60
-    x110 = x109 * x4 + x28 * x8
-    x111 = x0 * (x18 * x32 + x61) + x23 * x4
-    x112 = x0 * (x110 + 3.0 * x19 + 3.0 * x22) + x111 * x4
-    x113 = x108 * x59
-    x114 = x106 * x69
-    x115 = x114 * x28
-    x116 = x113 + x115
-    x117 = x0 * (x29 + 3.0 * x60) + x110 * x4
-    x118 = x108 * x65
-    x119 = x115 + x118
-    x120 = x106 * x82
-    x121 = x107 + x94
-    x122 = x0 * (2.0 * x120 + x121)
-    x123 = x116 * x65
-    x124 = x122 + x123
-    x125 = x114 * x93
-    x126 = x0 * (x121 + x125)
-    x127 = x119 * x65
-    x128 = x126 + x127
-    x129 = 4.0 * x106 * x68
-    x130 = x0 * (x114 + x82)
-    x131 = x65 * (x120 + x68)
-    x132 = 2.0 * x130 + 2.0 * x131
-    x133 = x0 * (x113 + x118 + x129 + x132)
-    x134 = x124 * x65
-    x135 = x133 + x134
-    x136 = x0 * (x114 + x70)
-    x137 = x106 * x70
-    x138 = x65 * (x137 + x68)
-    x139 = x0 * (2.0 * x118 + x129 + 2.0 * x136 + 2.0 * x138) + x128 * x65
-    x140 = x0 * (x120 + x137 + x71 + x94)
-    x141 = x65 * (x130 + x131)
-    x142 = x0 * (2.0 * x122 + 2.0 * x123 + x128 + 2.0 * x140 + 2.0 * x141) + x135 * x65
-    x143 = x56 * x7
-    x144 = x136 + x138
-    x145 = x56 * x6
-    x146 = x145 * (
-        x0 * (3.0 * x126 + 3.0 * x127 + x144 * x93 + x28 * (x125 + x95)) + x139 * x65
+    result = numpy.zeros((3, 15, 3), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = numpy.sqrt(x1)
+    x3 = 1.77245385090552 * x2
+    x4 = -x1 * (ax * A[0] + bx * B[0])
+    x5 = -x4 - A[0]
+    x6 = ax * bx * x1
+    x7 = numpy.exp(-x6 * (A[0] - B[0]) ** 2)
+    x8 = x5 * x7
+    x9 = x3 * x8
+    x10 = -x4 - C[0]
+    x11 = x3 * x7
+    x12 = x10 * x11
+    x13 = x0 * (x12 + x9)
+    x14 = x0 * x11
+    x15 = x10 * x9
+    x16 = x5 * (x14 + x15)
+    x17 = x13 + x16
+    x18 = -x4 - B[0]
+    x19 = x11 * x18
+    x20 = x0 * (x19 + x9)
+    x21 = x18 * x9
+    x22 = x14 + x21
+    x23 = x22 * x5
+    x24 = x20 + x23
+    x25 = x0 * (x12 + x19)
+    x26 = x12 * x18
+    x27 = x5 * (x14 + x26)
+    x28 = 2.0 * x25 + 2.0 * x27
+    x29 = 2.0 * x0
+    x30 = 3.0 * x14
+    x31 = x0 * (x15 + x21 + x26 + x30)
+    x32 = x5 * (x25 + x27)
+    x33 = 2.0 * x5
+    x34 = x10**2 * x11
+    x35 = x14 + x34
+    x36 = x35 * x5
+    x37 = x18 * x35
+    x38 = 4.0 * x0 * x12
+    x39 = x0 * (x28 + x36 + x37 + x38)
+    x40 = x30 + x34
+    x41 = x0 * (2.0 * x26 + x40)
+    x42 = x12 * x29
+    x43 = x37 + x42
+    x44 = x43 * x5
+    x45 = x41 + x44
+    x46 = x45 * x5
+    x47 = x12 * x33
+    x48 = x0 * (x40 + x47)
+    x49 = x36 + x42
+    x50 = x49 * x5
+    x51 = x48 + x50
+    x52 = x0 * (2.0 * x13 + 2.0 * x16 + 2.0 * x36 + x38) + x5 * x51
+    x53 = x39 + x46
+    x54 = x0 * (2.0 * x31 + 2.0 * x32 + 2.0 * x41 + 2.0 * x44 + x51) + x5 * x53
+    x55 = numpy.exp(-x6 * (A[2] - B[2]) ** 2)
+    x56 = da * db * numpy.sqrt(ax**5.5) * numpy.sqrt(bx**2.5)
+    x57 = x55 * x56
+    x58 = 8.83283915958214 * x57
+    x59 = numpy.exp(-x6 * (A[1] - B[1]) ** 2)
+    x60 = 0.564189583547756 * x1
+    x61 = x59 * x60
+    x62 = x58 * x61
+    x63 = -x1 * (ax * A[1] + bx * B[1])
+    x64 = -x63 - B[1]
+    x65 = x11 * x5**2
+    x66 = x30 + x65
+    x67 = x62 * (x0 * (x17 * x33 + x29 * (x47 + x66) + 3.0 * x48 + 3.0 * x50) + x5 * x52)
+    x68 = -x1 * (ax * A[2] + bx * B[2])
+    x69 = -x68 - B[2]
+    x70 = -x63 - A[1]
+    x71 = x61 * x70
+    x72 = 23.3694957868871 * x57
+    x73 = x54 * x72
+    x74 = x52 * x57
+    x75 = x0 * x3
+    x76 = x59 * x75
+    x77 = x3 * x59
+    x78 = x70 * x77
+    x79 = x64 * x78
+    x80 = x76 + x79
+    x81 = 23.3694957868871 * x80
+    x82 = 0.318309886183791 * x2
+    x83 = x81 * x82
+    x84 = 23.3694957868871 * x74
+    x85 = -x68 - A[2]
+    x86 = x61 * x85
+    x87 = x55 * x75
+    x88 = x3 * x55
+    x89 = x85 * x88
+    x90 = x69 * x89
+    x91 = x87 + x90
+    x92 = 23.3694957868871 * x82
+    x93 = x56 * x59
+    x94 = x92 * x93
+    x95 = x53 * x57
+    x96 = x70**2 * x77
+    x97 = x76 + x96
+    x98 = 30.169889330626 * x82
+    x99 = x97 * x98
+    x100 = x51 * x98
+    x101 = x64 * x77
+    x102 = x0 * (x101 + x78)
+    x103 = x70 * x80
+    x104 = x102 + x103
+    x105 = x104 * x57
+    x106 = x51 * x57
+    x107 = 52.2557811793745 * x85
+    x108 = 52.2557811793745 * x80
+    x109 = x82 * x85
+    x110 = x70 * x93
+    x111 = 52.2557811793745 * x82
+    x112 = x111 * x91
+    x113 = x85**2 * x88
+    x114 = x113 + x87
+    x115 = x114 * x98
+    x116 = x100 * x93
+    x117 = x69 * x88
+    x118 = x0 * (x117 + x89)
+    x119 = x85 * x91
+    x120 = x118 + x119
+    x121 = x29 * x78 + x70 * x97
+    x122 = 23.3694957868871 * x121
+    x123 = x122 * x82
+    x124 = x123 * x57
+    x125 = 2.0 * x70
+    x126 = 3.0 * x76
+    x127 = x126 + x96
+    x128 = x0 * (x101 * x125 + x127) + x104 * x70
+    x129 = x57 * x92
+    x130 = 52.2557811793745 * x97
+    x131 = x109 * x57
+    x132 = 0.179587122125167 * x56
+    x133 = x132 * x91
+    x134 = x110 * x111
+    x135 = x114 * x132
+    x136 = x114 * x85 + x29 * x89
+    x137 = x136 * x94
+    x138 = 2.0 * x85
+    x139 = 3.0 * x87
+    x140 = x113 + x139
+    x141 = x0 * (x117 * x138 + x140) + x120 * x85
+    x142 = x0 * (x126 + 3.0 * x96) + x121 * x70
+    x143 = x58 * x82
+    x144 = x142 * x143
+    x145 = x0 * (3.0 * x102 + 3.0 * x103 + x121) + x128 * x70
+    x146 = 23.3694957868871 * x35
+    x147 = 30.169889330626 * x135
+    x148 = 30.169889330626 * x132
+    x149 = x120 * x148
+    x150 = x132 * x136
+    x151 = x141 * x82
+    x152 = x0 * (3.0 * x113 + x139) + x136 * x85
+    x153 = 8.83283915958214 * x82
+    x154 = x153 * x93
+    x155 = x152 * x154
+    x156 = x0 * (3.0 * x118 + 3.0 * x119 + x136) + x141 * x85
+    x157 = x14 + x65
+    x158 = x157 * x5 + x29 * x9
+    x159 = x0 * (x19 * x33 + x66) + x24 * x5
+    x160 = x0 * (x158 + 3.0 * x20 + 3.0 * x23) + x159 * x5
+    x161 = -x63 - C[1]
+    x162 = x161**2 * x77
+    x163 = x162 + x76
+    x164 = x143 * x163
+    x165 = x163 * x64
+    x166 = x161 * x77
+    x167 = x166 * x29
+    x168 = x165 + x167
+    x169 = x0 * (x30 + 3.0 * x65) + x158 * x5
+    x170 = x163 * x70
+    x171 = x167 + x170
+    x172 = x129 * x171
+    x173 = x101 * x161
+    x174 = x126 + x162
+    x175 = x0 * (2.0 * x173 + x174)
+    x176 = x168 * x70
+    x177 = x175 + x176
+    x178 = x129 * x158
+    x179 = 23.3694957868871 * x163
+    x180 = x125 * x166
+    x181 = x0 * (x174 + x180)
+    x182 = x171 * x70
+    x183 = x181 + x182
+    x184 = x57 * x98
+    x185 = x183 * x184
+    x186 = 4.0 * x161 * x76
+    x187 = x0 * (x101 + x166)
+    x188 = x70 * (x173 + x76)
+    x189 = 2.0 * x187 + 2.0 * x188
+    x190 = x0 * (x165 + x170 + x186 + x189)
+    x191 = x177 * x70
+    x192 = x190 + x191
+    x193 = 52.2557811793745 * x171
+    x194 = 52.2557811793745 * x131
+    x195 = x0 * (x166 + x78)
+    x196 = x161 * x78
+    x197 = x70 * (x196 + x76)
+    x198 = x0 * (2.0 * x170 + x186 + 2.0 * x195 + 2.0 * x197) + x183 * x70
+    x199 = x0 * (x126 + x173 + x196 + x79)
+    x200 = x70 * (x187 + x188)
+    x201 = x0 * (2.0 * x175 + 2.0 * x176 + x183 + 2.0 * x199 + 2.0 * x200) + x192 * x70
+    x202 = x201 * x72
+    x203 = x60 * x8
+    x204 = x198 * x72
+    x205 = x56 * x8
+    x206 = x111 * x205
+    x207 = x205 * x82
+    x208 = x205 * x92
+    x209 = x195 + x197
+    x210 = x60 * x7
+    x211 = x210 * x58
+    x212 = x211 * (
+        x0 * (x125 * x209 + 3.0 * x181 + 3.0 * x182 + x29 * (x127 + x180)) + x198 * x70
     )
-    x147 = x145 * x75
-    x148 = -x63 - C[2]
-    x149 = x148**2 * x73
-    x150 = x149 + x76
-    x151 = x150 * x64
-    x152 = x148 * x73
-    x153 = x152 * x28
-    x154 = x151 + x153
-    x155 = x150 * x75
-    x156 = x153 + x155
-    x157 = x148 * x86
-    x158 = x149 + x99
-    x159 = x0 * (2.0 * x157 + x158)
-    x160 = x154 * x75
-    x161 = x159 + x160
-    x162 = x152 * x98
-    x163 = x0 * (x158 + x162)
-    x164 = x156 * x75
-    x165 = x163 + x164
-    x166 = 4.0 * x148 * x76
-    x167 = x0 * (x152 + x86)
-    x168 = x75 * (x157 + x76)
-    x169 = 2.0 * x167 + 2.0 * x168
-    x170 = x0 * (x151 + x155 + x166 + x169)
-    x171 = x161 * x75
-    x172 = x170 + x171
-    x173 = 3.14159265358979 * x1 * x54
-    x174 = x173 * x7
-    x175 = x0 * (x152 + x77)
-    x176 = x148 * x77
-    x177 = x75 * (x176 + x76)
-    x178 = x0 * (2.0 * x155 + x166 + 2.0 * x175 + 2.0 * x177) + x165 * x75
-    x179 = x0 * (x157 + x176 + x78 + x99)
-    x180 = x75 * (x167 + x168)
-    x181 = x0 * (2.0 * x159 + 2.0 * x160 + x165 + 2.0 * x179 + 2.0 * x180) + x172 * x75
-    x182 = x173 * x6
-    x183 = x182 * x65
-    x184 = x175 + x177
-    x185 = x182 * (
-        x0 * (3.0 * x163 + 3.0 * x164 + x184 * x98 + x28 * (x100 + x162)) + x178 * x75
+    x213 = x210 * x85
+    x214 = x56 * x7
+    x215 = x214 * x92
+    x216 = x115 * x214
+    x217 = x214 * x98
+    x218 = x136 * x215
+    x219 = x153 * x214
+    x220 = x152 * x219
+    x221 = -x68 - C[2]
+    x222 = x221**2 * x88
+    x223 = x222 + x87
+    x224 = x154 * x223
+    x225 = x223 * x69
+    x226 = x221 * x88
+    x227 = x226 * x29
+    x228 = x225 + x227
+    x229 = x159 * x94
+    x230 = x132 * x223
+    x231 = x158 * x94
+    x232 = x223 * x85
+    x233 = x227 + x232
+    x234 = x117 * x221
+    x235 = x139 + x222
+    x236 = x0 * (2.0 * x234 + x235)
+    x237 = x228 * x85
+    x238 = x236 + x237
+    x239 = x148 * x223
+    x240 = x132 * x233
+    x241 = x138 * x226
+    x242 = x0 * (x235 + x241)
+    x243 = x233 * x85
+    x244 = x242 + x243
+    x245 = x93 * x98
+    x246 = x244 * x245
+    x247 = 4.0 * x221 * x87
+    x248 = x0 * (x117 + x226)
+    x249 = x85 * (x234 + x87)
+    x250 = 2.0 * x248 + 2.0 * x249
+    x251 = x0 * (x225 + x232 + x247 + x250)
+    x252 = x238 * x85
+    x253 = x251 + x252
+    x254 = x0 * (x226 + x89)
+    x255 = x221 * x89
+    x256 = x85 * (x255 + x87)
+    x257 = x0 * (2.0 * x232 + x247 + 2.0 * x254 + 2.0 * x256) + x244 * x85
+    x258 = x205 * x61
+    x259 = x0 * (x139 + x234 + x255 + x90)
+    x260 = x85 * (x248 + x249)
+    x261 = x0 * (2.0 * x236 + 2.0 * x237 + x244 + 2.0 * x259 + 2.0 * x260) + x253 * x85
+    x262 = 23.3694957868871 * x261
+    x263 = x219 * x223
+    x264 = x123 * x214
+    x265 = x214 * x99
+    x266 = x214 * x257
+    x267 = x214 * x61
+    x268 = x254 + x256
+    x269 = 8.83283915958214 * x267
+    x270 = x269 * (
+        x0 * (x138 * x268 + 3.0 * x242 + 3.0 * x243 + x29 * (x140 + x241)) + x257 * x85
     )
 
     # 135 item(s)
-    return numpy.array(
-        [
-            x57
-            * (
-                x0
-                * (
-                    x28 * (x16 + x23 + x27)
-                    + x32 * (x30 + x31)
-                    + 3.0 * x38
-                    + 3.0 * x45
-                    + x51
-                )
-                + x4 * x53
-            ),
-            x59 * x62,
-            x62 * x64,
-            x65 * x66,
-            x51 * x72 * x73,
-            x64 * x65 * x74,
-            x66 * x75,
-            x59 * x74 * x75,
-            x51 * x69 * x79,
-            x52 * x73 * x81,
-            x50 * x73 * x85,
-            x50 * x81 * x86,
-            x52 * x57 * x65 * x75,
-            x50 * x72 * x77,
-            x50 * x70 * x79,
-            x52 * x69 * x88,
-            x50 * x82 * x88,
-            x50 * x69 * x91,
-            x44 * x73 * x92,
-            x48 * x73 * x96,
-            x48 * x86 * x92,
-            x44 * x77 * x81,
-            x48 * x77 * x85,
-            x48 * x79 * x81,
-            x44 * x70 * x88,
-            x48 * x72 * x88,
-            x48 * x70 * x91,
-            x44 * x69 * x97,
-            x48 * x82 * x97,
-            x101 * x48 * x69,
-            x102 * x42 * x73,
-            x103 * x34 * x73,
-            x102 * x34 * x86,
-            x42 * x77 * x92,
-            x34 * x77 * x96,
-            x34 * x79 * x92,
-            x42 * x81 * x88,
-            x34 * x85 * x88,
-            x34 * x81 * x91,
-            x42 * x70 * x97,
-            x34 * x72 * x97,
-            x101 * x34 * x70,
-            x104 * x42 * x69,
-            x104 * x34 * x82,
-            x105 * x34 * x69,
-            x108 * x112 * x73,
-            x116 * x117 * x73,
-            x108 * x117 * x86,
-            x111 * x119 * x73,
-            x110 * x124 * x73,
-            x110 * x119 * x86,
-            x108 * x111 * x77,
-            x110 * x116 * x77,
-            x108 * x110 * x79,
-            x128 * x23 * x73,
-            x109 * x135 * x73,
-            x109 * x128 * x86,
-            x119 * x23 * x77,
-            x109 * x124 * x77,
-            x109 * x119 * x79,
-            x108 * x23 * x88,
-            x109 * x116 * x88,
-            x108 * x109 * x91,
-            x139 * x21 * x73,
-            x142 * x143,
-            x139 * x143 * x64,
-            x128 * x21 * x77,
-            x135 * x143 * x75,
-            x128 * x79 * x8,
-            x119 * x21 * x88,
-            x124 * x8 * x88,
-            x119 * x8 * x91,
-            x108 * x21 * x97,
-            x116 * x8 * x97,
-            x101 * x108 * x8,
-            x146 * x17,
-            x145
-            * (
-                x0
-                * (
-                    3.0 * x133
-                    + 3.0 * x134
-                    + x139
-                    + x28 * (x132 + x144 + x85)
-                    + x93 * (x140 + x141)
-                )
-                + x142 * x65
-            ),
-            x146 * x64,
-            x139 * x147 * x17,
-            x142 * x147,
-            x10 * x139 * x79,
-            x128 * x18 * x88,
-            x10 * x135 * x88,
-            x10 * x128 * x91,
-            x119 * x18 * x97,
-            x10 * x124 * x97,
-            x10 * x101 * x119,
-            x104 * x108 * x18,
-            x10 * x104 * x116,
-            x10 * x105 * x108,
-            x112 * x150 * x69,
-            x117 * x150 * x82,
-            x117 * x154 * x69,
-            x111 * x150 * x70,
-            x110 * x150 * x72,
-            x110 * x154 * x70,
-            x111 * x156 * x69,
-            x110 * x156 * x82,
-            x110 * x161 * x69,
-            x150 * x23 * x81,
-            x109 * x150 * x85,
-            x109 * x154 * x81,
-            x156 * x23 * x70,
-            x109 * x156 * x72,
-            x109 * x161 * x70,
-            x165 * x23 * x69,
-            x109 * x165 * x82,
-            x109 * x172 * x69,
-            x150 * x21 * x92,
-            x150 * x8 * x96,
-            x154 * x8 * x92,
-            x156 * x21 * x81,
-            x156 * x8 * x85,
-            x161 * x8 * x81,
-            x165 * x21 * x70,
-            x165 * x72 * x8,
-            x172 * x174 * x65,
-            x178 * x21 * x69,
-            x174 * x178 * x59,
-            x174 * x181,
-            x102 * x150 * x18,
-            x10 * x103 * x150,
-            x10 * x102 * x154,
-            x156 * x18 * x92,
-            x10 * x156 * x96,
-            x10 * x161 * x92,
-            x165 * x18 * x81,
-            x10 * x165 * x85,
-            x10 * x172 * x81,
-            x17 * x178 * x183,
-            x10 * x178 * x72,
-            x181 * x183,
-            x17 * x185,
-            x185 * x59,
-            x182
-            * (
-                x0
-                * (
-                    3.0 * x170
-                    + 3.0 * x171
-                    + x178
-                    + x28 * (x169 + x184 + x91)
-                    + x98 * (x179 + x180)
-                )
-                + x181 * x75
-            ),
-        ]
+    result[0, 0, 0] = numpy.sum(
+        x62
+        * (
+            x0
+            * (x29 * (x17 + x24 + x28) + x33 * (x31 + x32) + 3.0 * x39 + 3.0 * x46 + x52)
+            + x5 * x54
+        )
     )
+    result[0, 0, 1] = numpy.sum(x64 * x67)
+    result[0, 0, 2] = numpy.sum(x67 * x69)
+    result[0, 1, 0] = numpy.sum(x71 * x73)
+    result[0, 1, 1] = numpy.sum(x74 * x83)
+    result[0, 1, 2] = numpy.sum(x69 * x71 * x84)
+    result[0, 2, 0] = numpy.sum(x73 * x86)
+    result[0, 2, 1] = numpy.sum(x64 * x84 * x86)
+    result[0, 2, 2] = numpy.sum(x52 * x91 * x94)
+    result[0, 3, 0] = numpy.sum(x95 * x99)
+    result[0, 3, 1] = numpy.sum(x100 * x105)
+    result[0, 3, 2] = numpy.sum(x106 * x69 * x99)
+    result[0, 4, 0] = numpy.sum(x107 * x71 * x95)
+    result[0, 4, 1] = numpy.sum(x106 * x108 * x109)
+    result[0, 4, 2] = numpy.sum(x110 * x112 * x51)
+    result[0, 5, 0] = numpy.sum(x115 * x53 * x93)
+    result[0, 5, 1] = numpy.sum(x114 * x116 * x64)
+    result[0, 5, 2] = numpy.sum(x116 * x120)
+    result[0, 6, 0] = numpy.sum(x124 * x45)
+    result[0, 6, 1] = numpy.sum(x128 * x129 * x49)
+    result[0, 6, 2] = numpy.sum(x124 * x49 * x69)
+    result[0, 7, 0] = numpy.sum(x130 * x131 * x45)
+    result[0, 7, 1] = numpy.sum(52.2557811793745 * x105 * x109 * x49)
+    result[0, 7, 2] = numpy.sum(x130 * x133 * x49)
+    result[0, 8, 0] = numpy.sum(x114 * x134 * x45)
+    result[0, 8, 1] = numpy.sum(x108 * x135 * x49)
+    result[0, 8, 2] = numpy.sum(x120 * x134 * x49)
+    result[0, 9, 0] = numpy.sum(x137 * x45)
+    result[0, 9, 1] = numpy.sum(x137 * x49 * x64)
+    result[0, 9, 2] = numpy.sum(x141 * x49 * x94)
+    result[0, 10, 0] = numpy.sum(x144 * x43)
+    result[0, 10, 1] = numpy.sum(x143 * x145 * x35)
+    result[0, 10, 2] = numpy.sum(x144 * x35 * x69)
+    result[0, 11, 0] = numpy.sum(x124 * x43 * x85)
+    result[0, 11, 1] = numpy.sum(x128 * x131 * x146)
+    result[0, 11, 2] = numpy.sum(x121 * x133 * x146)
+    result[0, 12, 0] = numpy.sum(x147 * x43 * x97)
+    result[0, 12, 1] = numpy.sum(x104 * x147 * x35)
+    result[0, 12, 2] = numpy.sum(x149 * x35 * x97)
+    result[0, 13, 0] = numpy.sum(x137 * x43 * x70)
+    result[0, 13, 1] = numpy.sum(x146 * x150 * x80)
+    result[0, 13, 2] = numpy.sum(x110 * x146 * x151)
+    result[0, 14, 0] = numpy.sum(x155 * x43)
+    result[0, 14, 1] = numpy.sum(x155 * x35 * x64)
+    result[0, 14, 2] = numpy.sum(x154 * x156 * x35)
+    result[1, 0, 0] = numpy.sum(x160 * x164)
+    result[1, 0, 1] = numpy.sum(x143 * x168 * x169)
+    result[1, 0, 2] = numpy.sum(x164 * x169 * x69)
+    result[1, 1, 0] = numpy.sum(x159 * x172)
+    result[1, 1, 1] = numpy.sum(x177 * x178)
+    result[1, 1, 2] = numpy.sum(x158 * x172 * x69)
+    result[1, 2, 0] = numpy.sum(x131 * x159 * x179)
+    result[1, 2, 1] = numpy.sum(x168 * x178 * x85)
+    result[1, 2, 2] = numpy.sum(x133 * x158 * x179)
+    result[1, 3, 0] = numpy.sum(x185 * x24)
+    result[1, 3, 1] = numpy.sum(x157 * x184 * x192)
+    result[1, 3, 2] = numpy.sum(x157 * x185 * x69)
+    result[1, 4, 0] = numpy.sum(x131 * x193 * x24)
+    result[1, 4, 1] = numpy.sum(x157 * x177 * x194)
+    result[1, 4, 2] = numpy.sum(x133 * x157 * x193)
+    result[1, 5, 0] = numpy.sum(x147 * x163 * x24)
+    result[1, 5, 1] = numpy.sum(x147 * x157 * x168)
+    result[1, 5, 2] = numpy.sum(x149 * x157 * x163)
+    result[1, 6, 0] = numpy.sum(x129 * x198 * x22)
+    result[1, 6, 1] = numpy.sum(x202 * x203)
+    result[1, 6, 2] = numpy.sum(x203 * x204 * x69)
+    result[1, 7, 0] = numpy.sum(x183 * x194 * x22)
+    result[1, 7, 1] = numpy.sum(x107 * x192 * x203 * x57)
+    result[1, 7, 2] = numpy.sum(x112 * x183 * x205)
+    result[1, 8, 0] = numpy.sum(x135 * x193 * x22)
+    result[1, 8, 1] = numpy.sum(x114 * x177 * x206)
+    result[1, 8, 2] = numpy.sum(x120 * x193 * x207)
+    result[1, 9, 0] = numpy.sum(x150 * x179 * x22)
+    result[1, 9, 1] = numpy.sum(x136 * x168 * x208)
+    result[1, 9, 2] = numpy.sum(x151 * x179 * x205)
+    result[1, 10, 0] = numpy.sum(x18 * x212)
+    result[1, 10, 1] = numpy.sum(
+        x211
+        * (
+            x0
+            * (
+                x125 * (x199 + x200)
+                + 3.0 * x190
+                + 3.0 * x191
+                + x198
+                + x29 * (x104 + x189 + x209)
+            )
+            + x201 * x70
+        )
+    )
+    result[1, 10, 2] = numpy.sum(x212 * x69)
+    result[1, 11, 0] = numpy.sum(x18 * x204 * x213)
+    result[1, 11, 1] = numpy.sum(x202 * x213)
+    result[1, 11, 2] = numpy.sum(x198 * x215 * x91)
+    result[1, 12, 0] = numpy.sum(x18 * x183 * x216)
+    result[1, 12, 1] = numpy.sum(x192 * x216)
+    result[1, 12, 2] = numpy.sum(x120 * x183 * x217)
+    result[1, 13, 0] = numpy.sum(x171 * x18 * x218)
+    result[1, 13, 1] = numpy.sum(x177 * x218)
+    result[1, 13, 2] = numpy.sum(x141 * x171 * x215)
+    result[1, 14, 0] = numpy.sum(x163 * x18 * x220)
+    result[1, 14, 1] = numpy.sum(x168 * x220)
+    result[1, 14, 2] = numpy.sum(x156 * x163 * x219)
+    result[2, 0, 0] = numpy.sum(x160 * x224)
+    result[2, 0, 1] = numpy.sum(x169 * x224 * x64)
+    result[2, 0, 2] = numpy.sum(x154 * x169 * x228)
+    result[2, 1, 0] = numpy.sum(x223 * x229 * x70)
+    result[2, 1, 1] = numpy.sum(x158 * x230 * x81)
+    result[2, 1, 2] = numpy.sum(x228 * x231 * x70)
+    result[2, 2, 0] = numpy.sum(x229 * x233)
+    result[2, 2, 1] = numpy.sum(x231 * x233 * x64)
+    result[2, 2, 2] = numpy.sum(x231 * x238)
+    result[2, 3, 0] = numpy.sum(x239 * x24 * x97)
+    result[2, 3, 1] = numpy.sum(x104 * x157 * x239)
+    result[2, 3, 2] = numpy.sum(x148 * x157 * x228 * x97)
+    result[2, 4, 0] = numpy.sum(x134 * x233 * x24)
+    result[2, 4, 1] = numpy.sum(x108 * x157 * x240)
+    result[2, 4, 2] = numpy.sum(x134 * x157 * x238)
+    result[2, 5, 0] = numpy.sum(x24 * x246)
+    result[2, 5, 1] = numpy.sum(x157 * x246 * x64)
+    result[2, 5, 2] = numpy.sum(x157 * x245 * x253)
+    result[2, 6, 0] = numpy.sum(x122 * x22 * x230)
+    result[2, 6, 1] = numpy.sum(x128 * x208 * x223)
+    result[2, 6, 2] = numpy.sum(x123 * x205 * x228)
+    result[2, 7, 0] = numpy.sum(x130 * x22 * x240)
+    result[2, 7, 1] = numpy.sum(x104 * x206 * x233)
+    result[2, 7, 2] = numpy.sum(x130 * x207 * x238)
+    result[2, 8, 0] = numpy.sum(x134 * x22 * x244)
+    result[2, 8, 1] = numpy.sum(x108 * x207 * x244)
+    result[2, 8, 2] = numpy.sum(52.2557811793745 * x205 * x253 * x71)
+    result[2, 9, 0] = numpy.sum(x22 * x257 * x94)
+    result[2, 9, 1] = numpy.sum(23.3694957868871 * x257 * x258 * x64)
+    result[2, 9, 2] = numpy.sum(x258 * x262)
+    result[2, 10, 0] = numpy.sum(x142 * x18 * x263)
+    result[2, 10, 1] = numpy.sum(x145 * x263)
+    result[2, 10, 2] = numpy.sum(x142 * x219 * x228)
+    result[2, 11, 0] = numpy.sum(x18 * x233 * x264)
+    result[2, 11, 1] = numpy.sum(x128 * x215 * x233)
+    result[2, 11, 2] = numpy.sum(x238 * x264)
+    result[2, 12, 0] = numpy.sum(x18 * x244 * x265)
+    result[2, 12, 1] = numpy.sum(x104 * x217 * x244)
+    result[2, 12, 2] = numpy.sum(x253 * x265)
+    result[2, 13, 0] = numpy.sum(23.3694957868871 * x18 * x266 * x71)
+    result[2, 13, 1] = numpy.sum(x266 * x83)
+    result[2, 13, 2] = numpy.sum(x262 * x267 * x70)
+    result[2, 14, 0] = numpy.sum(x18 * x270)
+    result[2, 14, 1] = numpy.sum(x270 * x64)
+    result[2, 14, 2] = numpy.sum(
+        x269
+        * (
+            x0
+            * (
+                x138 * (x259 + x260)
+                + 3.0 * x251
+                + 3.0 * x252
+                + x257
+                + x29 * (x120 + x250 + x268)
+            )
+            + x261 * x85
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_42(a, A, b, B, C):
+def diag_quadrupole3d_42(ax, da, A, bx, db, B, C):
     """Cartesian 3D (gd) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 15, 6), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - A[0]
     x4 = 2.0 * x3
     x5 = -x2 - B[0]
-    x6 = a * b * x1
+    x6 = ax * bx * x1
     x7 = numpy.exp(-x6 * (A[0] - B[0]) ** 2)
-    x8 = 1.77245385090552 * numpy.sqrt(x1)
-    x9 = x7 * x8
-    x10 = x5 * x9
-    x11 = x10 * x4
-    x12 = x5**2 * x9
-    x13 = x0 * x9
-    x14 = 3.0 * x13
-    x15 = x12 + x14
-    x16 = x0 * (x11 + x15)
-    x17 = x12 + x13
-    x18 = x17 * x3
-    x19 = 2.0 * x0
-    x20 = x10 * x19 + x18
-    x21 = x20 * x3
-    x22 = x16 + x21
-    x23 = -x2 - C[0]
-    x24 = x10 * x23
-    x25 = 2.0 * x24
-    x26 = x0 * (x15 + x25)
-    x27 = x23 * x9
-    x28 = x0 * (x10 + x27)
-    x29 = x13 + x24
-    x30 = x29 * x5
-    x31 = x3 * (x28 + x30)
-    x32 = 2.0 * x26 + 2.0 * x31
-    x33 = x10 * x3
-    x34 = x27 * x3
-    x35 = x0 * (x14 + x24 + x33 + x34)
-    x36 = x29 * x3
-    x37 = x3 * (x28 + x36)
-    x38 = 2.0 * x35 + 2.0 * x37
-    x39 = x23**2 * x9
-    x40 = x13 + x39
-    x41 = x40 * x5
-    x42 = x19 * x27
-    x43 = x41 + x42
-    x44 = x3 * x43
-    x45 = 2.0 * x44
-    x46 = x14 + x39
-    x47 = x0 * (x25 + x46)
-    x48 = x27 * x4
-    x49 = x0 * (x46 + x48)
-    x50 = x3 * x40
-    x51 = x42 + x50
-    x52 = x3 * x51
-    x53 = x49 + x52
-    x54 = x0 * (x38 + x45 + 2.0 * x47 + x53)
-    x55 = 2.0 * x36
-    x56 = x0 * (x20 + 3.0 * x28 + x30 + x55)
-    x57 = x3 * (x26 + x31)
-    x58 = 2.0 * x28
-    x59 = 4.0 * x13
-    x60 = x23 * x59
-    x61 = x58 + x60
-    x62 = x0 * (x41 + x50 + x55 + x61)
-    x63 = x44 + x47
-    x64 = x3 * x63
-    x65 = x62 + x64
-    x66 = x3 * x65
-    x67 = x43 * x5
-    x68 = x0 * (x32 + x45 + 3.0 * x47 + x67)
-    x69 = x0 * (2.0 * x30 + 2.0 * x41 + x61)
-    x70 = x47 + x67
-    x71 = x3 * x70
-    x72 = x69 + x71
-    x73 = x3 * x72
-    x74 = x68 + x73
-    x75 = (
-        x0 * (2.0 * x56 + 2.0 * x57 + 2.0 * x62 + 2.0 * x64 + 2.0 * x69 + 2.0 * x71)
-        + x3 * x74
-    )
-    x76 = numpy.exp(-x6 * (A[1] - B[1]) ** 2)
+    x8 = numpy.sqrt(x1)
+    x9 = 1.77245385090552 * x8
+    x10 = x7 * x9
+    x11 = x10 * x5
+    x12 = x11 * x4
+    x13 = x10 * x5**2
+    x14 = x0 * x10
+    x15 = 3.0 * x14
+    x16 = x13 + x15
+    x17 = x0 * (x12 + x16)
+    x18 = x13 + x14
+    x19 = x18 * x3
+    x20 = 2.0 * x0
+    x21 = x11 * x20 + x19
+    x22 = x21 * x3
+    x23 = x17 + x22
+    x24 = -x2 - C[0]
+    x25 = x11 * x24
+    x26 = 2.0 * x25
+    x27 = x0 * (x16 + x26)
+    x28 = x10 * x24
+    x29 = x0 * (x11 + x28)
+    x30 = x14 + x25
+    x31 = x30 * x5
+    x32 = x3 * (x29 + x31)
+    x33 = 2.0 * x27 + 2.0 * x32
+    x34 = x11 * x3
+    x35 = x28 * x3
+    x36 = x0 * (x15 + x25 + x34 + x35)
+    x37 = x3 * x30
+    x38 = x3 * (x29 + x37)
+    x39 = 2.0 * x36 + 2.0 * x38
+    x40 = x10 * x24**2
+    x41 = x14 + x40
+    x42 = x41 * x5
+    x43 = x20 * x28
+    x44 = x42 + x43
+    x45 = x3 * x44
+    x46 = 2.0 * x45
+    x47 = x15 + x40
+    x48 = x0 * (x26 + x47)
+    x49 = x28 * x4
+    x50 = x0 * (x47 + x49)
+    x51 = x3 * x41
+    x52 = x43 + x51
+    x53 = x3 * x52
+    x54 = x50 + x53
+    x55 = x0 * (x39 + x46 + 2.0 * x48 + x54)
+    x56 = 2.0 * x37
+    x57 = x0 * (x21 + 3.0 * x29 + x31 + x56)
+    x58 = x3 * (x27 + x32)
+    x59 = 2.0 * x29
+    x60 = 4.0 * x14
+    x61 = x24 * x60
+    x62 = x59 + x61
+    x63 = x0 * (x42 + x51 + x56 + x62)
+    x64 = x45 + x48
+    x65 = x3 * x64
+    x66 = x63 + x65
+    x67 = x3 * x66
+    x68 = x44 * x5
+    x69 = x0 * (x33 + x46 + 3.0 * x48 + x68)
+    x70 = x0 * (2.0 * x31 + 2.0 * x42 + x62)
+    x71 = x48 + x68
+    x72 = x3 * x71
+    x73 = x70 + x72
+    x74 = x3 * x73
+    x75 = x69 + x74
+    x76 = 2.0 * x0 * (x57 + x58 + x63 + x65 + x70 + x72) + x3 * x75
     x77 = numpy.exp(-x6 * (A[2] - B[2]) ** 2)
-    x78 = 3.14159265358979 * x1 * x77
-    x79 = x76 * x78
-    x80 = -x1 * (a * A[1] + b * B[1])
-    x81 = -x80 - B[1]
-    x82 = x3 * x9
-    x83 = x0 * (x27 + x82)
-    x84 = x3 * (x13 + x34)
-    x85 = x83 + x84
-    x86 = x0 * (x10 + x82)
-    x87 = x13 + x33
-    x88 = x3 * x87
-    x89 = x86 + x88
-    x90 = x0 * (2.0 * x50 + x60 + 2.0 * x83 + 2.0 * x84) + x3 * x53
-    x91 = x54 + x66
-    x92 = x79 * (
+    x78 = da * db * numpy.sqrt(ax**5.5) * numpy.sqrt(bx**3.5)
+    x79 = x77 * x78
+    x80 = 10.1992841329868 * x79
+    x81 = numpy.exp(-x6 * (A[1] - B[1]) ** 2)
+    x82 = 0.564189583547756 * x1
+    x83 = x81 * x82
+    x84 = -x1 * (ax * A[1] + bx * B[1])
+    x85 = -x84 - B[1]
+    x86 = 17.6656783191643 * x85
+    x87 = x10 * x3
+    x88 = x0 * (x28 + x87)
+    x89 = x3 * (x14 + x35)
+    x90 = x88 + x89
+    x91 = x0 * (x11 + x87)
+    x92 = x14 + x34
+    x93 = x3 * x92
+    x94 = x91 + x93
+    x95 = x0 * (2.0 * x51 + x61 + 2.0 * x88 + 2.0 * x89) + x3 * x54
+    x96 = x55 + x67
+    x97 = x79 * x83
+    x98 = x97 * (
         x0
-        * (x19 * (x55 + x58 + x85 + x89) + x4 * (x35 + x37) + 3.0 * x62 + 3.0 * x64 + x90)
-        + x3 * x91
+        * (x20 * (x56 + x59 + x90 + x94) + x4 * (x36 + x38) + 3.0 * x63 + 3.0 * x65 + x95)
+        + x3 * x96
     )
-    x93 = -x1 * (a * A[2] + b * B[2])
-    x94 = -x93 - B[2]
-    x95 = x76 * x8
-    x96 = x81**2 * x95
-    x97 = x0 * x95
-    x98 = x96 + x97
-    x99 = x3**2 * x9
-    x100 = x14 + x99
-    x101 = x0 * (x19 * (x100 + x48) + x4 * x85 + 3.0 * x49 + 3.0 * x52) + x3 * x90
-    x102 = x77 * x8
-    x103 = x79 * x94
-    x104 = x102 * x94**2
-    x105 = x0 * x102
-    x106 = x104 + x105
-    x107 = -x80 - A[1]
-    x108 = x75 * x79
-    x109 = x107 * x95
-    x110 = x109 * x81
-    x111 = x110 + x97
-    x112 = x107 * x98
-    x113 = x81 * x95
-    x114 = x112 + x113 * x19
-    x115 = x102 * x94
-    x116 = -x93 - A[2]
-    x117 = x116 * x79
-    x118 = x102 * x116
-    x119 = x118 * x94
-    x120 = x105 + x119
-    x121 = x106 * x116
-    x122 = x115 * x19 + x121
-    x123 = x107**2 * x95
-    x124 = x123 + x97
-    x125 = x0 * (x109 + x113)
-    x126 = x107 * x111
-    x127 = x125 + x126
-    x128 = 3.0 * x97
-    x129 = 2.0 * x107
-    x130 = x113 * x129 + x128
-    x131 = x0 * (x130 + x96)
-    x132 = x107 * x114
-    x133 = x131 + x132
-    x134 = x102 * x116**2
-    x135 = x105 + x134
-    x136 = x0 * (x115 + x118)
-    x137 = x116 * x120
-    x138 = x136 + x137
-    x139 = 3.0 * x105
-    x140 = 2.0 * x116
-    x141 = x115 * x140 + x139
-    x142 = x0 * (x104 + x141)
-    x143 = x116 * x122
-    x144 = x142 + x143
-    x145 = x107 * x124 + x109 * x19
-    x146 = x0 * (x123 + x130)
-    x147 = x107 * x127
-    x148 = x146 + x147
-    x149 = 4.0 * x97
-    x150 = x0 * (2.0 * x112 + 2.0 * x125 + 2.0 * x126 + x149 * x81) + x107 * x133
-    x151 = x116 * x135 + x118 * x19
-    x152 = x0 * (x134 + x141)
-    x153 = x116 * x138
+    x99 = -x1 * (ax * A[2] + bx * B[2])
+    x100 = -x99 - B[2]
+    x101 = 17.6656783191643 * x100
+    x102 = x10 * x3**2
+    x103 = x102 + x15
+    x104 = x0 * (x20 * (x103 + x49) + x4 * x90 + 3.0 * x50 + 3.0 * x53) + x3 * x95
+    x105 = x104 * x79
+    x106 = x81 * x9
+    x107 = x106 * x85**2
+    x108 = x0 * x106
+    x109 = x107 + x108
+    x110 = 10.1992841329868 * x109
+    x111 = 0.318309886183791 * x8
+    x112 = x110 * x111
+    x113 = x83 * x86
+    x114 = x77 * x9
+    x115 = x100**2 * x114
+    x116 = x0 * x114
+    x117 = x115 + x116
+    x118 = 10.1992841329868 * x117
+    x119 = x111 * x78
+    x120 = x119 * x81
+    x121 = -x84 - A[1]
+    x122 = 26.9847693667702 * x121
+    x123 = x76 * x97
+    x124 = x106 * x121
+    x125 = x124 * x85
+    x126 = x108 + x125
+    x127 = 46.7389915737742 * x126
+    x128 = x111 * x79
+    x129 = x127 * x128
+    x130 = 46.7389915737742 * x100
+    x131 = x96 * x97
+    x132 = x109 * x121
+    x133 = x106 * x85
+    x134 = x132 + x133 * x20
+    x135 = 26.9847693667702 * x128
+    x136 = x135 * x95
+    x137 = x120 * x95
+    x138 = -x99 - A[2]
+    x139 = 26.9847693667702 * x138
+    x140 = x114 * x138
+    x141 = x100 * x140
+    x142 = x116 + x141
+    x143 = 46.7389915737742 * x142
+    x144 = x120 * x143
+    x145 = x117 * x138
+    x146 = x100 * x114
+    x147 = x145 + x146 * x20
+    x148 = 26.9847693667702 * x147
+    x149 = x106 * x121**2
+    x150 = x108 + x149
+    x151 = 34.8371874529163 * x150
+    x152 = x0 * (x124 + x133)
+    x153 = x121 * x126
     x154 = x152 + x153
-    x155 = 4.0 * x105
-    x156 = x0 * (2.0 * x121 + 2.0 * x136 + 2.0 * x137 + x155 * x94) + x116 * x144
-    x157 = x0 * (3.0 * x123 + x128) + x107 * x145
-    x158 = x0 * (3.0 * x125 + 3.0 * x126 + x145) + x107 * x148
-    x159 = x0 * (3.0 * x131 + 3.0 * x132 + 2.0 * x146 + 2.0 * x147) + x107 * x150
-    x160 = x0 * (3.0 * x134 + x139) + x116 * x151
-    x161 = x0 * (3.0 * x136 + 3.0 * x137 + x151) + x116 * x154
-    x162 = x0 * (3.0 * x142 + 3.0 * x143 + 2.0 * x152 + 2.0 * x153) + x116 * x156
-    x163 = -x80 - C[1]
-    x164 = x163**2 * x95
-    x165 = x164 + x97
-    x166 = x0 * (x100 + x11)
-    x167 = x3 * x89
-    x168 = x0 * (2.0 * x18 + x5 * x59 + 2.0 * x86 + 2.0 * x88) + x22 * x3
-    x169 = x0 * (3.0 * x16 + 2.0 * x166 + 2.0 * x167 + 3.0 * x21) + x168 * x3
-    x170 = x165 * x81
-    x171 = x163 * x95
-    x172 = x171 * x19
-    x173 = x170 + x172
-    x174 = x13 + x99
-    x175 = x174 * x3 + x19 * x82
-    x176 = x166 + x167
-    x177 = x0 * (x175 + 3.0 * x86 + 3.0 * x88) + x176 * x3
-    x178 = x113 * x163
-    x179 = 2.0 * x178
-    x180 = x128 + x164
-    x181 = x0 * (x179 + x180)
-    x182 = x173 * x81
-    x183 = x181 + x182
-    x184 = x0 * (x14 + 3.0 * x99) + x175 * x3
-    x185 = x107 * x165
-    x186 = x172 + x185
-    x187 = x107 * x173
-    x188 = x181 + x187
-    x189 = x178 + x97
-    x190 = x189 * x81
-    x191 = x0 * (x113 + x171)
-    x192 = 2.0 * x191
-    x193 = x149 * x163
+    x155 = 60.3397786612521 * x154
+    x156 = x128 * x66
+    x157 = 60.3397786612521 * x100
+    x158 = 3.0 * x108
+    x159 = 2.0 * x121
+    x160 = x133 * x159 + x158
+    x161 = x0 * (x107 + x160)
+    x162 = x121 * x134
+    x163 = x161 + x162
+    x164 = 34.8371874529163 * x128
+    x165 = x128 * x54
+    x166 = 0.179587122125167 * x78
+    x167 = x166 * x54
+    x168 = 60.3397786612521 * x138
+    x169 = 104.511562358749 * x126
+    x170 = 104.511562358749 * x142
+    x171 = x120 * x66
+    x172 = x120 * x54
+    x173 = 60.3397786612521 * x121
+    x174 = x114 * x138**2
+    x175 = x116 + x174
+    x176 = 34.8371874529163 * x175
+    x177 = 60.3397786612521 * x175
+    x178 = x0 * (x140 + x146)
+    x179 = x138 * x142
+    x180 = x178 + x179
+    x181 = 60.3397786612521 * x180
+    x182 = 3.0 * x116
+    x183 = 2.0 * x138
+    x184 = x146 * x183 + x182
+    x185 = x0 * (x115 + x184)
+    x186 = x138 * x147
+    x187 = x185 + x186
+    x188 = 34.8371874529163 * x187
+    x189 = x121 * x150 + x124 * x20
+    x190 = 26.9847693667702 * x189
+    x191 = x128 * x73
+    x192 = x0 * (x149 + x160)
+    x193 = x121 * x154
     x194 = x192 + x193
-    x195 = x0 * (2.0 * x170 + 2.0 * x190 + x194)
-    x196 = x107 * x183
-    x197 = x195 + x196
-    x198 = x129 * x171
-    x199 = x0 * (x180 + x198)
-    x200 = x107 * x186
-    x201 = x199 + x200
-    x202 = x107 * x189
-    x203 = 2.0 * x202
-    x204 = x0 * (x170 + x185 + x194 + x203)
-    x205 = x107 * x188
-    x206 = x204 + x205
-    x207 = 2.0 * x187
-    x208 = x0 * (x128 + x179 + x96)
-    x209 = x107 * (x190 + x191)
-    x210 = 2.0 * x208 + 2.0 * x209
-    x211 = x0 * (3.0 * x181 + x182 + x207 + x210)
-    x212 = x107 * x197
-    x213 = x211 + x212
-    x214 = x0 * (x109 + x171)
-    x215 = x109 * x163
-    x216 = x107 * (x215 + x97)
-    x217 = x0 * (2.0 * x185 + x193 + 2.0 * x214 + 2.0 * x216) + x107 * x201
-    x218 = x0 * (x110 + x128 + x178 + x215)
-    x219 = x107 * (x191 + x202)
-    x220 = 2.0 * x218 + 2.0 * x219
-    x221 = x0 * (2.0 * x181 + x201 + x207 + x220)
-    x222 = x107 * x206
-    x223 = x221 + x222
-    x224 = x0 * (x114 + x190 + 3.0 * x191 + x203)
-    x225 = x107 * (x208 + x209)
-    x226 = (
-        x0 * (2.0 * x195 + 2.0 * x196 + 2.0 * x204 + 2.0 * x205 + 2.0 * x224 + 2.0 * x225)
-        + x107 * x213
+    x195 = 46.7389915737742 * x64
+    x196 = x128 * x195
+    x197 = 4.0 * x108
+    x198 = x0 * (2.0 * x132 + 2.0 * x152 + 2.0 * x153 + x197 * x85) + x121 * x163
+    x199 = x135 * x198
+    x200 = x128 * x52
+    x201 = x166 * x52
+    x202 = 104.511562358749 * x64
+    x203 = x128 * x138
+    x204 = x166 * x64
+    x205 = 60.3397786612521 * x201
+    x206 = x120 * x73
+    x207 = x120 * x121
+    x208 = x120 * x52
+    x209 = x138 * x175 + x140 * x20
+    x210 = 26.9847693667702 * x209
+    x211 = x120 * x195
+    x212 = x0 * (x174 + x184)
+    x213 = x138 * x180
+    x214 = x212 + x213
+    x215 = 46.7389915737742 * x214
+    x216 = 4.0 * x116
+    x217 = x0 * (x100 * x216 + 2.0 * x145 + 2.0 * x178 + 2.0 * x179) + x138 * x187
+    x218 = 26.9847693667702 * x120
+    x219 = x217 * x218
+    x220 = x0 * (3.0 * x149 + x158) + x121 * x189
+    x221 = 10.1992841329868 * x220
+    x222 = x128 * x71
+    x223 = x0 * (3.0 * x152 + 3.0 * x153 + x189) + x121 * x194
+    x224 = 17.6656783191643 * x44
+    x225 = x128 * x224
+    x226 = x0 * (3.0 * x161 + 3.0 * x162 + 2.0 * x192 + 2.0 * x193) + x121 * x198
+    x227 = x111 * x80
+    x228 = x166 * x41
+    x229 = x166 * x44
+    x230 = x166 * x175
+    x231 = 60.3397786612521 * x229
+    x232 = x120 * x71
+    x233 = x0 * (3.0 * x174 + x182) + x138 * x209
+    x234 = 10.1992841329868 * x233
+    x235 = x120 * x224
+    x236 = x0 * (3.0 * x178 + 3.0 * x179 + x209) + x138 * x214
+    x237 = x120 * x41
+    x238 = (
+        10.1992841329868 * x0 * (3.0 * x185 + 3.0 * x186 + 2.0 * x212 + 2.0 * x213)
+        + 10.1992841329868 * x138 * x217
     )
-    x227 = x7 * x78
-    x228 = x226 * x227
-    x229 = x227 * x3
-    x230 = x214 + x216
-    x231 = (
-        x0 * (x129 * x230 + x19 * (x123 + x128 + x198) + 3.0 * x199 + 3.0 * x200)
-        + x107 * x217
-    )
-    x232 = x227 * (
-        x0
-        * (
-            x129 * (x218 + x219)
-            + x19 * (x127 + x192 + x203 + x230)
-            + 3.0 * x204
-            + 3.0 * x205
-            + x217
-        )
-        + x107 * x223
-    )
-    x233 = x227 * x5
-    x234 = -x93 - C[2]
-    x235 = x102 * x234**2
-    x236 = x105 + x235
-    x237 = x236 * x94
-    x238 = x102 * x234
-    x239 = x19 * x238
-    x240 = x237 + x239
-    x241 = x115 * x234
-    x242 = 2.0 * x241
-    x243 = x139 + x235
-    x244 = x0 * (x242 + x243)
-    x245 = x240 * x94
-    x246 = x244 + x245
-    x247 = x116 * x236
-    x248 = x239 + x247
-    x249 = x116 * x240
-    x250 = x244 + x249
-    x251 = x105 + x241
-    x252 = x251 * x94
-    x253 = x0 * (x115 + x238)
-    x254 = 2.0 * x253
-    x255 = x155 * x234
-    x256 = x254 + x255
-    x257 = x0 * (2.0 * x237 + 2.0 * x252 + x256)
-    x258 = x116 * x246
-    x259 = x257 + x258
-    x260 = x140 * x238
-    x261 = x0 * (x243 + x260)
-    x262 = x116 * x248
-    x263 = x261 + x262
-    x264 = x116 * x251
-    x265 = 2.0 * x264
-    x266 = x0 * (x237 + x247 + x256 + x265)
-    x267 = x116 * x250
-    x268 = x266 + x267
-    x269 = 2.0 * x249
-    x270 = x0 * (x104 + x139 + x242)
-    x271 = x116 * (x252 + x253)
-    x272 = 2.0 * x270 + 2.0 * x271
-    x273 = x0 * (3.0 * x244 + x245 + x269 + x272)
-    x274 = x116 * x259
-    x275 = x273 + x274
-    x276 = 3.14159265358979 * x1 * x7 * x76
-    x277 = x276 * x3
-    x278 = x0 * (x118 + x238)
-    x279 = x118 * x234
-    x280 = x116 * (x105 + x279)
-    x281 = x0 * (2.0 * x247 + x255 + 2.0 * x278 + 2.0 * x280) + x116 * x263
-    x282 = x0 * (x119 + x139 + x241 + x279)
-    x283 = x116 * (x253 + x264)
-    x284 = 2.0 * x282 + 2.0 * x283
-    x285 = x0 * (2.0 * x244 + x263 + x269 + x284)
-    x286 = x116 * x268
+    x239 = -x84 - C[1]
+    x240 = x106 * x239**2
+    x241 = x108 + x240
+    x242 = x0 * (x103 + x12)
+    x243 = x3 * x94
+    x244 = x0 * (2.0 * x19 + x5 * x60 + 2.0 * x91 + 2.0 * x93) + x23 * x3
+    x245 = x0 * (3.0 * x17 + 3.0 * x22 + 2.0 * x242 + 2.0 * x243) + x244 * x3
+    x246 = x241 * x85
+    x247 = x106 * x239
+    x248 = x20 * x247
+    x249 = x246 + x248
+    x250 = 17.6656783191643 * x249
+    x251 = x102 + x14
+    x252 = x20 * x87 + x251 * x3
+    x253 = x242 + x243
+    x254 = x0 * (x252 + 3.0 * x91 + 3.0 * x93) + x253 * x3
+    x255 = x128 * x254
+    x256 = x133 * x239
+    x257 = 2.0 * x256
+    x258 = x158 + x240
+    x259 = x0 * (x257 + x258)
+    x260 = x249 * x85
+    x261 = x259 + x260
+    x262 = x0 * (3.0 * x102 + x15) + x252 * x3
+    x263 = x100 * x128
+    x264 = x166 * x241
+    x265 = x121 * x241
+    x266 = x248 + x265
+    x267 = 26.9847693667702 * x266
+    x268 = x121 * x249
+    x269 = x259 + x268
+    x270 = 46.7389915737742 * x269
+    x271 = x128 * x253
+    x272 = x108 + x256
+    x273 = x272 * x85
+    x274 = x0 * (x133 + x247)
+    x275 = 2.0 * x274
+    x276 = x197 * x239
+    x277 = x275 + x276
+    x278 = x0 * (2.0 * x246 + 2.0 * x273 + x277)
+    x279 = x121 * x261
+    x280 = x278 + x279
+    x281 = x135 * x252
+    x282 = x166 * x252
+    x283 = 46.7389915737742 * x249
+    x284 = x159 * x247
+    x285 = x0 * (x258 + x284)
+    x286 = x121 * x266
     x287 = x285 + x286
-    x288 = x0 * (x122 + x252 + 3.0 * x253 + x265)
-    x289 = x116 * (x270 + x271)
-    x290 = (
-        x0 * (2.0 * x257 + 2.0 * x258 + 2.0 * x266 + 2.0 * x267 + 2.0 * x288 + 2.0 * x289)
-        + x116 * x275
+    x288 = 34.8371874529163 * x287
+    x289 = x128 * x23
+    x290 = x121 * x272
+    x291 = 2.0 * x290
+    x292 = x0 * (x246 + x265 + x277 + x291)
+    x293 = x121 * x269
+    x294 = x292 + x293
+    x295 = 60.3397786612521 * x94
+    x296 = x128 * x295
+    x297 = 2.0 * x268
+    x298 = x0 * (x107 + x158 + x257)
+    x299 = x121 * (x273 + x274)
+    x300 = 2.0 * x298 + 2.0 * x299
+    x301 = x0 * (3.0 * x259 + x260 + x297 + x300)
+    x302 = x121 * x280
+    x303 = x301 + x302
+    x304 = x128 * x251
+    x305 = x166 * x251
+    x306 = 60.3397786612521 * x266
+    x307 = 104.511562358749 * x269
+    x308 = x166 * x170
+    x309 = x0 * (x124 + x247)
+    x310 = x124 * x239
+    x311 = x121 * (x108 + x310)
+    x312 = x0 * (2.0 * x265 + x276 + 2.0 * x309 + 2.0 * x311) + x121 * x287
+    x313 = x135 * x312
+    x314 = x0 * (x125 + x158 + x256 + x310)
+    x315 = x121 * (x274 + x290)
+    x316 = 2.0 * x314 + 2.0 * x315
+    x317 = x0 * (2.0 * x259 + x287 + x297 + x316)
+    x318 = x121 * x294
+    x319 = x317 + x318
+    x320 = 46.7389915737742 * x92
+    x321 = x128 * x320
+    x322 = 26.9847693667702 * x3
+    x323 = x0 * (x134 + x273 + 3.0 * x274 + x291)
+    x324 = x121 * (x298 + x299)
+    x325 = 2.0 * x0 * (x278 + x279 + x292 + x293 + x323 + x324) + x121 * x303
+    x326 = x7 * x82
+    x327 = x326 * x79
+    x328 = x325 * x327
+    x329 = x3 * x327
+    x330 = x119 * x7
+    x331 = x312 * x330
+    x332 = 104.511562358749 * x92
+    x333 = x294 * x330
+    x334 = 60.3397786612521 * x3
+    x335 = x287 * x330
+    x336 = x166 * x266
+    x337 = x280 * x330
+    x338 = x3 * x330
+    x339 = x187 * x330
+    x340 = x166 * x320
+    x341 = x261 * x330
+    x342 = x214 * x330
+    x343 = x217 * x330
+    x344 = x309 + x311
+    x345 = (
+        x0 * (x159 * x344 + x20 * (x149 + x158 + x284) + 3.0 * x285 + 3.0 * x286)
+        + x121 * x312
     )
-    x291 = x276 * x290
-    x292 = x276 * x5
-    x293 = x278 + x280
-    x294 = (
-        x0 * (x140 * x293 + x19 * (x134 + x139 + x260) + 3.0 * x261 + 3.0 * x262)
-        + x116 * x281
-    )
-    x295 = x276 * (
+    x346 = x327 * (
         x0
         * (
-            x140 * (x282 + x283)
-            + x19 * (x138 + x254 + x265 + x293)
-            + 3.0 * x266
-            + 3.0 * x267
-            + x281
+            x159 * (x314 + x315)
+            + x20 * (x154 + x275 + x291 + x344)
+            + 3.0 * x292
+            + 3.0 * x293
+            + x312
         )
-        + x116 * x287
+        + x121 * x319
+    )
+    x347 = 17.6656783191643 * x5
+    x348 = 46.7389915737742 * x5
+    x349 = x143 * x330
+    x350 = x166 * x18
+    x351 = x330 * x5
+    x352 = x250 * x330
+    x353 = x241 * x330
+    x354 = -x99 - C[2]
+    x355 = x114 * x354**2
+    x356 = x116 + x355
+    x357 = 10.1992841329868 * x120
+    x358 = x120 * x254
+    x359 = x100 * x356
+    x360 = x114 * x354
+    x361 = x20 * x360
+    x362 = x359 + x361
+    x363 = 17.6656783191643 * x362
+    x364 = x166 * x356
+    x365 = x120 * x85
+    x366 = x146 * x354
+    x367 = 2.0 * x366
+    x368 = x182 + x355
+    x369 = x0 * (x367 + x368)
+    x370 = x100 * x362
+    x371 = x369 + x370
+    x372 = x218 * x244
+    x373 = x120 * x253
+    x374 = 46.7389915737742 * x373
+    x375 = 26.9847693667702 * x282
+    x376 = x218 * x252
+    x377 = x138 * x356
+    x378 = x361 + x377
+    x379 = x138 * x362
+    x380 = x369 + x379
+    x381 = 46.7389915737742 * x380
+    x382 = x116 + x366
+    x383 = x100 * x382
+    x384 = x0 * (x146 + x360)
+    x385 = 2.0 * x384
+    x386 = x216 * x354
+    x387 = x385 + x386
+    x388 = x0 * (2.0 * x359 + 2.0 * x383 + x387)
+    x389 = x138 * x371
+    x390 = x388 + x389
+    x391 = x150 * x166
+    x392 = 34.8371874529163 * x305
+    x393 = 60.3397786612521 * x378
+    x394 = x166 * x378
+    x395 = 104.511562358749 * x380
+    x396 = x120 * x173
+    x397 = x183 * x360
+    x398 = x0 * (x368 + x397)
+    x399 = x138 * x378
+    x400 = x398 + x399
+    x401 = 34.8371874529163 * x120
+    x402 = x120 * x295
+    x403 = x138 * x382
+    x404 = 2.0 * x403
+    x405 = x0 * (x359 + x377 + x387 + x404)
+    x406 = x138 * x380
+    x407 = x405 + x406
+    x408 = 2.0 * x379
+    x409 = x0 * (x115 + x182 + x367)
+    x410 = x138 * (x383 + x384)
+    x411 = 2.0 * x409 + 2.0 * x410
+    x412 = x0 * (3.0 * x369 + x370 + x408 + x411)
+    x413 = x138 * x390
+    x414 = x412 + x413
+    x415 = x330 * x356
+    x416 = x194 * x330
+    x417 = 46.7389915737742 * x3
+    x418 = x330 * x371
+    x419 = x163 * x330
+    x420 = x330 * x390
+    x421 = x330 * x407
+    x422 = x7 * x78
+    x423 = x422 * x83
+    x424 = x0 * (x140 + x360)
+    x425 = x140 * x354
+    x426 = x138 * (x116 + x425)
+    x427 = x0 * (2.0 * x377 + x386 + 2.0 * x424 + 2.0 * x426) + x138 * x400
+    x428 = x218 * x427
+    x429 = x120 * x320
+    x430 = x0 * (x141 + x182 + x366 + x425)
+    x431 = x138 * (x384 + x403)
+    x432 = 2.0 * x430 + 2.0 * x431
+    x433 = x0 * (2.0 * x369 + x400 + x408 + x432)
+    x434 = x138 * x407
+    x435 = x433 + x434
+    x436 = 26.9847693667702 * x330
+    x437 = x427 * x436
+    x438 = x423 * x435
+    x439 = x0 * (x147 + x383 + 3.0 * x384 + x404)
+    x440 = x138 * (x409 + x410)
+    x441 = 2.0 * x0 * (x388 + x389 + x405 + x406 + x439 + x440) + x138 * x414
+    x442 = x423 * x441
+    x443 = x330 * x363
+    x444 = x127 * x330
+    x445 = x424 + x426
+    x446 = (
+        x0 * (x183 * x445 + x20 * (x174 + x182 + x397) + 3.0 * x398 + 3.0 * x399)
+        + x138 * x427
+    )
+    x447 = x422 * x446
+    x448 = x423 * (
+        x0
+        * (
+            x183 * (x430 + x431)
+            + x20 * (x180 + x385 + x404 + x445)
+            + 3.0 * x405
+            + 3.0 * x406
+            + x427
+        )
+        + x138 * x435
     )
 
     # 270 item(s)
-    return numpy.array(
-        [
-            x79
+    result[0, 0, 0] = numpy.sum(
+        x80
+        * x83
+        * (
+            x0
             * (
-                x0
-                * (
-                    x19 * (x22 + x32 + x38)
-                    + x4 * (x56 + x57)
-                    + 2.0 * x54
-                    + 2.0 * x66
-                    + 3.0 * x68
-                    + 3.0 * x73
-                )
-                + x3 * x75
-            ),
-            x81 * x92,
-            x92 * x94,
-            x101 * x102 * x98,
-            x101 * x103 * x81,
-            x101 * x106 * x95,
-            x107 * x108,
-            x102 * x111 * x91,
-            x103 * x107 * x91,
-            x102 * x114 * x90,
-            x111 * x115 * x90,
-            x106 * x109 * x90,
-            x108 * x116,
-            x117 * x81 * x91,
-            x120 * x91 * x95,
-            x118 * x90 * x98,
-            x113 * x120 * x90,
-            x122 * x90 * x95,
-            x102 * x124 * x74,
-            x102 * x127 * x65,
-            x115 * x124 * x65,
-            x102 * x133 * x53,
-            x115 * x127 * x53,
-            x106 * x124 * x53,
-            x107 * x117 * x74,
-            x111 * x118 * x65,
-            x109 * x120 * x65,
-            x114 * x118 * x53,
-            x111 * x120 * x53,
-            x109 * x122 * x53,
-            x135 * x74 * x95,
-            x113 * x135 * x65,
-            x138 * x65 * x95,
-            x135 * x53 * x98,
-            x113 * x138 * x53,
-            x144 * x53 * x95,
-            x102 * x145 * x72,
-            x102 * x148 * x63,
-            x115 * x145 * x63,
-            x102 * x150 * x51,
-            x115 * x148 * x51,
-            x106 * x145 * x51,
-            x118 * x124 * x72,
-            x118 * x127 * x63,
-            x120 * x124 * x63,
-            x118 * x133 * x51,
-            x120 * x127 * x51,
-            x122 * x124 * x51,
-            x109 * x135 * x72,
-            x111 * x135 * x63,
-            x109 * x138 * x63,
-            x114 * x135 * x51,
-            x111 * x138 * x51,
-            x109 * x144 * x51,
-            x151 * x72 * x95,
-            x113 * x151 * x63,
-            x154 * x63 * x95,
-            x151 * x51 * x98,
-            x113 * x154 * x51,
-            x156 * x51 * x95,
-            x102 * x157 * x70,
-            x102 * x158 * x43,
-            x115 * x157 * x43,
-            x102 * x159 * x40,
-            x115 * x158 * x40,
-            x106 * x157 * x40,
-            x118 * x145 * x70,
-            x118 * x148 * x43,
-            x120 * x145 * x43,
-            x118 * x150 * x40,
-            x120 * x148 * x40,
-            x122 * x145 * x40,
-            x124 * x135 * x70,
-            x127 * x135 * x43,
-            x124 * x138 * x43,
-            x133 * x135 * x40,
-            x127 * x138 * x40,
-            x124 * x144 * x40,
-            x109 * x151 * x70,
-            x111 * x151 * x43,
-            x109 * x154 * x43,
-            x114 * x151 * x40,
-            x111 * x154 * x40,
-            x109 * x156 * x40,
-            x160 * x70 * x95,
-            x113 * x160 * x43,
-            x161 * x43 * x95,
-            x160 * x40 * x98,
-            x113 * x161 * x40,
-            x162 * x40 * x95,
-            x102 * x165 * x169,
-            x102 * x173 * x177,
-            x115 * x165 * x177,
-            x102 * x183 * x184,
-            x115 * x173 * x184,
-            x106 * x165 * x184,
-            x102 * x168 * x186,
-            x102 * x176 * x188,
-            x115 * x176 * x186,
-            x102 * x175 * x197,
-            x115 * x175 * x188,
-            x106 * x175 * x186,
-            x118 * x165 * x168,
-            x118 * x173 * x176,
-            x120 * x165 * x176,
-            x118 * x175 * x183,
-            x120 * x173 * x175,
-            x122 * x165 * x175,
-            x102 * x201 * x22,
-            x102 * x206 * x89,
-            x115 * x201 * x89,
-            x102 * x174 * x213,
-            x115 * x174 * x206,
-            x106 * x174 * x201,
-            x118 * x186 * x22,
-            x118 * x188 * x89,
-            x120 * x186 * x89,
-            x118 * x174 * x197,
-            x120 * x174 * x188,
-            x122 * x174 * x186,
-            x135 * x165 * x22,
-            x135 * x173 * x89,
-            x138 * x165 * x89,
-            x135 * x174 * x183,
-            x138 * x173 * x174,
-            x144 * x165 * x174,
-            x102 * x20 * x217,
-            x102 * x223 * x87,
-            x115 * x217 * x87,
-            x228 * x3,
-            x223 * x229 * x94,
-            x106 * x217 * x82,
-            x118 * x20 * x201,
-            x118 * x206 * x87,
-            x120 * x201 * x87,
-            x116 * x213 * x229,
-            x120 * x206 * x82,
-            x122 * x201 * x82,
-            x135 * x186 * x20,
-            x135 * x188 * x87,
-            x138 * x186 * x87,
-            x135 * x197 * x82,
-            x138 * x188 * x82,
-            x144 * x186 * x82,
-            x151 * x165 * x20,
-            x151 * x173 * x87,
-            x154 * x165 * x87,
-            x151 * x183 * x82,
-            x154 * x173 * x82,
-            x156 * x165 * x82,
-            x102 * x17 * x231,
-            x232 * x5,
-            x231 * x233 * x94,
-            x227
-            * (
-                x0
-                * (
-                    x129 * (x224 + x225)
-                    + x19 * (x133 + x210 + x220)
-                    + 3.0 * x211
-                    + 3.0 * x212
-                    + 2.0 * x221
-                    + 2.0 * x222
-                )
-                + x107 * x226
-            ),
-            x232 * x94,
-            x106 * x231 * x9,
-            x118 * x17 * x217,
-            x116 * x223 * x233,
-            x10 * x120 * x217,
-            x116 * x228,
-            x120 * x223 * x9,
-            x122 * x217 * x9,
-            x135 * x17 * x201,
-            x10 * x135 * x206,
-            x10 * x138 * x201,
-            x135 * x213 * x9,
-            x138 * x206 * x9,
-            x144 * x201 * x9,
-            x151 * x17 * x186,
-            x10 * x151 * x188,
-            x10 * x154 * x186,
-            x151 * x197 * x9,
-            x154 * x188 * x9,
-            x156 * x186 * x9,
-            x160 * x165 * x17,
-            x10 * x160 * x173,
-            x10 * x161 * x165,
-            x160 * x183 * x9,
-            x161 * x173 * x9,
-            x162 * x165 * x9,
-            x169 * x236 * x95,
-            x113 * x177 * x236,
-            x177 * x240 * x95,
-            x184 * x236 * x98,
-            x113 * x184 * x240,
-            x184 * x246 * x95,
-            x109 * x168 * x236,
-            x111 * x176 * x236,
-            x109 * x176 * x240,
-            x114 * x175 * x236,
-            x111 * x175 * x240,
-            x109 * x175 * x246,
-            x168 * x248 * x95,
-            x113 * x176 * x248,
-            x176 * x250 * x95,
-            x175 * x248 * x98,
-            x113 * x175 * x250,
-            x175 * x259 * x95,
-            x124 * x22 * x236,
-            x127 * x236 * x89,
-            x124 * x240 * x89,
-            x133 * x174 * x236,
-            x127 * x174 * x240,
-            x124 * x174 * x246,
-            x109 * x22 * x248,
-            x111 * x248 * x89,
-            x109 * x250 * x89,
-            x114 * x174 * x248,
-            x111 * x174 * x250,
-            x109 * x174 * x259,
-            x22 * x263 * x95,
-            x113 * x263 * x89,
-            x268 * x89 * x95,
-            x174 * x263 * x98,
-            x113 * x174 * x268,
-            x174 * x275 * x95,
-            x145 * x20 * x236,
-            x148 * x236 * x87,
-            x145 * x240 * x87,
-            x150 * x236 * x82,
-            x148 * x240 * x82,
-            x145 * x246 * x82,
-            x124 * x20 * x248,
-            x127 * x248 * x87,
-            x124 * x250 * x87,
-            x133 * x248 * x82,
-            x127 * x250 * x82,
-            x124 * x259 * x82,
-            x109 * x20 * x263,
-            x111 * x263 * x87,
-            x109 * x268 * x87,
-            x114 * x263 * x82,
-            x111 * x268 * x82,
-            x107 * x275 * x277,
-            x20 * x281 * x95,
-            x113 * x281 * x87,
-            x287 * x87 * x95,
-            x281 * x82 * x98,
-            x277 * x287 * x81,
-            x291 * x3,
-            x157 * x17 * x236,
-            x10 * x158 * x236,
-            x10 * x157 * x240,
-            x159 * x236 * x9,
-            x158 * x240 * x9,
-            x157 * x246 * x9,
-            x145 * x17 * x248,
-            x10 * x148 * x248,
-            x10 * x145 * x250,
-            x150 * x248 * x9,
-            x148 * x250 * x9,
-            x145 * x259 * x9,
-            x124 * x17 * x263,
-            x10 * x127 * x263,
-            x10 * x124 * x268,
-            x133 * x263 * x9,
-            x127 * x268 * x9,
-            x124 * x275 * x9,
-            x109 * x17 * x281,
-            x10 * x111 * x281,
-            x107 * x287 * x292,
-            x114 * x281 * x9,
-            x111 * x287 * x9,
-            x107 * x291,
-            x17 * x294 * x95,
-            x292 * x294 * x81,
-            x295 * x5,
-            x294 * x9 * x98,
-            x295 * x81,
-            x276
-            * (
-                x0
-                * (
-                    x140 * (x288 + x289)
-                    + x19 * (x144 + x272 + x284)
-                    + 3.0 * x273
-                    + 3.0 * x274
-                    + 2.0 * x285
-                    + 2.0 * x286
-                )
-                + x116 * x290
-            ),
-        ]
+                x20 * (x23 + x33 + x39)
+                + x4 * (x57 + x58)
+                + 2.0 * x55
+                + 2.0 * x67
+                + 3.0 * x69
+                + 3.0 * x74
+            )
+            + x3 * x76
+        )
     )
+    result[0, 0, 1] = numpy.sum(x86 * x98)
+    result[0, 0, 2] = numpy.sum(x101 * x98)
+    result[0, 0, 3] = numpy.sum(x105 * x112)
+    result[0, 0, 4] = numpy.sum(x100 * x105 * x113)
+    result[0, 0, 5] = numpy.sum(x104 * x118 * x120)
+    result[0, 1, 0] = numpy.sum(x122 * x123)
+    result[0, 1, 1] = numpy.sum(x129 * x96)
+    result[0, 1, 2] = numpy.sum(x121 * x130 * x131)
+    result[0, 1, 3] = numpy.sum(x134 * x136)
+    result[0, 1, 4] = numpy.sum(x100 * x129 * x95)
+    result[0, 1, 5] = numpy.sum(x117 * x122 * x137)
+    result[0, 2, 0] = numpy.sum(x123 * x139)
+    result[0, 2, 1] = numpy.sum(46.7389915737742 * x131 * x138 * x85)
+    result[0, 2, 2] = numpy.sum(x144 * x96)
+    result[0, 2, 3] = numpy.sum(x109 * x136 * x138)
+    result[0, 2, 4] = numpy.sum(x144 * x85 * x95)
+    result[0, 2, 5] = numpy.sum(x137 * x148)
+    result[0, 3, 0] = numpy.sum(x128 * x151 * x75)
+    result[0, 3, 1] = numpy.sum(x155 * x156)
+    result[0, 3, 2] = numpy.sum(x150 * x156 * x157)
+    result[0, 3, 3] = numpy.sum(x163 * x164 * x54)
+    result[0, 3, 4] = numpy.sum(x100 * x155 * x165)
+    result[0, 3, 5] = numpy.sum(x117 * x151 * x167)
+    result[0, 4, 0] = numpy.sum(x121 * x168 * x75 * x97)
+    result[0, 4, 1] = numpy.sum(x138 * x156 * x169)
+    result[0, 4, 2] = numpy.sum(x121 * x170 * x171)
+    result[0, 4, 3] = numpy.sum(x134 * x165 * x168)
+    result[0, 4, 4] = numpy.sum(x126 * x167 * x170)
+    result[0, 4, 5] = numpy.sum(x147 * x172 * x173)
+    result[0, 5, 0] = numpy.sum(x120 * x176 * x75)
+    result[0, 5, 1] = numpy.sum(x171 * x177 * x85)
+    result[0, 5, 2] = numpy.sum(x171 * x181)
+    result[0, 5, 3] = numpy.sum(x109 * x167 * x176)
+    result[0, 5, 4] = numpy.sum(x172 * x181 * x85)
+    result[0, 5, 5] = numpy.sum(x172 * x188)
+    result[0, 6, 0] = numpy.sum(x190 * x191)
+    result[0, 6, 1] = numpy.sum(x194 * x196)
+    result[0, 6, 2] = numpy.sum(x100 * x189 * x196)
+    result[0, 6, 3] = numpy.sum(x199 * x52)
+    result[0, 6, 4] = numpy.sum(x130 * x194 * x200)
+    result[0, 6, 5] = numpy.sum(x117 * x190 * x201)
+    result[0, 7, 0] = numpy.sum(x150 * x168 * x191)
+    result[0, 7, 1] = numpy.sum(x154 * x202 * x203)
+    result[0, 7, 2] = numpy.sum(x150 * x170 * x204)
+    result[0, 7, 3] = numpy.sum(x163 * x168 * x200)
+    result[0, 7, 4] = numpy.sum(x154 * x170 * x201)
+    result[0, 7, 5] = numpy.sum(x147 * x150 * x205)
+    result[0, 8, 0] = numpy.sum(x173 * x175 * x206)
+    result[0, 8, 1] = numpy.sum(x169 * x175 * x204)
+    result[0, 8, 2] = numpy.sum(x180 * x202 * x207)
+    result[0, 8, 3] = numpy.sum(x134 * x175 * x205)
+    result[0, 8, 4] = numpy.sum(x169 * x180 * x201)
+    result[0, 8, 5] = numpy.sum(x173 * x187 * x208)
+    result[0, 9, 0] = numpy.sum(x206 * x210)
+    result[0, 9, 1] = numpy.sum(x209 * x211 * x85)
+    result[0, 9, 2] = numpy.sum(x211 * x214)
+    result[0, 9, 3] = numpy.sum(x109 * x201 * x210)
+    result[0, 9, 4] = numpy.sum(x208 * x215 * x85)
+    result[0, 9, 5] = numpy.sum(x219 * x52)
+    result[0, 10, 0] = numpy.sum(x221 * x222)
+    result[0, 10, 1] = numpy.sum(x223 * x225)
+    result[0, 10, 2] = numpy.sum(x100 * x220 * x225)
+    result[0, 10, 3] = numpy.sum(x226 * x227 * x41)
+    result[0, 10, 4] = numpy.sum(x101 * x128 * x223 * x41)
+    result[0, 10, 5] = numpy.sum(x118 * x220 * x228)
+    result[0, 11, 0] = numpy.sum(x138 * x190 * x222)
+    result[0, 11, 1] = numpy.sum(46.7389915737742 * x194 * x203 * x44)
+    result[0, 11, 2] = numpy.sum(x143 * x189 * x229)
+    result[0, 11, 3] = numpy.sum(x138 * x199 * x41)
+    result[0, 11, 4] = numpy.sum(x143 * x194 * x228)
+    result[0, 11, 5] = numpy.sum(x147 * x190 * x228)
+    result[0, 12, 0] = numpy.sum(x151 * x230 * x71)
+    result[0, 12, 1] = numpy.sum(x154 * x175 * x231)
+    result[0, 12, 2] = numpy.sum(x150 * x180 * x231)
+    result[0, 12, 3] = numpy.sum(x163 * x176 * x228)
+    result[0, 12, 4] = numpy.sum(x154 * x181 * x228)
+    result[0, 12, 5] = numpy.sum(x151 * x187 * x228)
+    result[0, 13, 0] = numpy.sum(x121 * x210 * x232)
+    result[0, 13, 1] = numpy.sum(x127 * x209 * x229)
+    result[0, 13, 2] = numpy.sum(x207 * x215 * x44)
+    result[0, 13, 3] = numpy.sum(x134 * x210 * x228)
+    result[0, 13, 4] = numpy.sum(x127 * x214 * x228)
+    result[0, 13, 5] = numpy.sum(x121 * x219 * x41)
+    result[0, 14, 0] = numpy.sum(x232 * x234)
+    result[0, 14, 1] = numpy.sum(x233 * x235 * x85)
+    result[0, 14, 2] = numpy.sum(x235 * x236)
+    result[0, 14, 3] = numpy.sum(x109 * x228 * x234)
+    result[0, 14, 4] = numpy.sum(x236 * x237 * x86)
+    result[0, 14, 5] = numpy.sum(x237 * x238)
+    result[1, 0, 0] = numpy.sum(x227 * x241 * x245)
+    result[1, 0, 1] = numpy.sum(x250 * x255)
+    result[1, 0, 2] = numpy.sum(x101 * x241 * x255)
+    result[1, 0, 3] = numpy.sum(x227 * x261 * x262)
+    result[1, 0, 4] = numpy.sum(x250 * x262 * x263)
+    result[1, 0, 5] = numpy.sum(x118 * x262 * x264)
+    result[1, 1, 0] = numpy.sum(x128 * x244 * x267)
+    result[1, 1, 1] = numpy.sum(x270 * x271)
+    result[1, 1, 2] = numpy.sum(x130 * x266 * x271)
+    result[1, 1, 3] = numpy.sum(x280 * x281)
+    result[1, 1, 4] = numpy.sum(x252 * x263 * x270)
+    result[1, 1, 5] = numpy.sum(x117 * x267 * x282)
+    result[1, 2, 0] = numpy.sum(x135 * x138 * x241 * x244)
+    result[1, 2, 1] = numpy.sum(x138 * x271 * x283)
+    result[1, 2, 2] = numpy.sum(x143 * x253 * x264)
+    result[1, 2, 3] = numpy.sum(x138 * x261 * x281)
+    result[1, 2, 4] = numpy.sum(x143 * x249 * x282)
+    result[1, 2, 5] = numpy.sum(x148 * x252 * x264)
+    result[1, 3, 0] = numpy.sum(x288 * x289)
+    result[1, 3, 1] = numpy.sum(x294 * x296)
+    result[1, 3, 2] = numpy.sum(x100 * x287 * x296)
+    result[1, 3, 3] = numpy.sum(x164 * x251 * x303)
+    result[1, 3, 4] = numpy.sum(x157 * x294 * x304)
+    result[1, 3, 5] = numpy.sum(x117 * x288 * x305)
+    result[1, 4, 0] = numpy.sum(x138 * x289 * x306)
+    result[1, 4, 1] = numpy.sum(x203 * x307 * x94)
+    result[1, 4, 2] = numpy.sum(x266 * x308 * x94)
+    result[1, 4, 3] = numpy.sum(x168 * x280 * x304)
+    result[1, 4, 4] = numpy.sum(x170 * x269 * x305)
+    result[1, 4, 5] = numpy.sum(x147 * x305 * x306)
+    result[1, 5, 0] = numpy.sum(x176 * x23 * x264)
+    result[1, 5, 1] = numpy.sum(x230 * x249 * x295)
+    result[1, 5, 2] = numpy.sum(x181 * x264 * x94)
+    result[1, 5, 3] = numpy.sum(x176 * x261 * x305)
+    result[1, 5, 4] = numpy.sum(x181 * x249 * x305)
+    result[1, 5, 5] = numpy.sum(x188 * x251 * x264)
+    result[1, 6, 0] = numpy.sum(x21 * x313)
+    result[1, 6, 1] = numpy.sum(x319 * x321)
+    result[1, 6, 2] = numpy.sum(x100 * x312 * x321)
+    result[1, 6, 3] = numpy.sum(x322 * x328)
+    result[1, 6, 4] = numpy.sum(x130 * x319 * x329)
+    result[1, 6, 5] = numpy.sum(x117 * x322 * x331)
+    result[1, 7, 0] = numpy.sum(x128 * x168 * x21 * x287)
+    result[1, 7, 1] = numpy.sum(x203 * x294 * x332)
+    result[1, 7, 2] = numpy.sum(x287 * x308 * x92)
+    result[1, 7, 3] = numpy.sum(x168 * x303 * x329)
+    result[1, 7, 4] = numpy.sum(x170 * x3 * x333)
+    result[1, 7, 5] = numpy.sum(x147 * x334 * x335)
+    result[1, 8, 0] = numpy.sum(x21 * x230 * x306)
+    result[1, 8, 1] = numpy.sum(x230 * x269 * x332)
+    result[1, 8, 2] = numpy.sum(x180 * x332 * x336)
+    result[1, 8, 3] = numpy.sum(x175 * x334 * x337)
+    result[1, 8, 4] = numpy.sum(x180 * x307 * x338)
+    result[1, 8, 5] = numpy.sum(x3 * x306 * x339)
+    result[1, 9, 0] = numpy.sum(x21 * x210 * x264)
+    result[1, 9, 1] = numpy.sum(x209 * x249 * x340)
+    result[1, 9, 2] = numpy.sum(x214 * x264 * x320)
+    result[1, 9, 3] = numpy.sum(x210 * x3 * x341)
+    result[1, 9, 4] = numpy.sum(x283 * x3 * x342)
+    result[1, 9, 5] = numpy.sum(x241 * x322 * x343)
+    result[1, 10, 0] = numpy.sum(x18 * x227 * x345)
+    result[1, 10, 1] = numpy.sum(x346 * x347)
+    result[1, 10, 2] = numpy.sum(x101 * x327 * x345 * x5)
+    result[1, 10, 3] = numpy.sum(
+        x326
+        * x80
+        * (
+            x0
+            * (
+                x159 * (x323 + x324)
+                + x20 * (x163 + x300 + x316)
+                + 3.0 * x301
+                + 3.0 * x302
+                + 2.0 * x317
+                + 2.0 * x318
+            )
+            + x121 * x325
+        )
+    )
+    result[1, 10, 4] = numpy.sum(x101 * x346)
+    result[1, 10, 5] = numpy.sum(x118 * x330 * x345)
+    result[1, 11, 0] = numpy.sum(x138 * x18 * x313)
+    result[1, 11, 1] = numpy.sum(x138 * x319 * x327 * x348)
+    result[1, 11, 2] = numpy.sum(x312 * x349 * x5)
+    result[1, 11, 3] = numpy.sum(x139 * x328)
+    result[1, 11, 4] = numpy.sum(x319 * x349)
+    result[1, 11, 5] = numpy.sum(x148 * x331)
+    result[1, 12, 0] = numpy.sum(x176 * x287 * x350)
+    result[1, 12, 1] = numpy.sum(x177 * x333 * x5)
+    result[1, 12, 2] = numpy.sum(x181 * x335 * x5)
+    result[1, 12, 3] = numpy.sum(x176 * x303 * x330)
+    result[1, 12, 4] = numpy.sum(x181 * x333)
+    result[1, 12, 5] = numpy.sum(x288 * x339)
+    result[1, 13, 0] = numpy.sum(x18 * x210 * x336)
+    result[1, 13, 1] = numpy.sum(x209 * x270 * x351)
+    result[1, 13, 2] = numpy.sum(x266 * x342 * x348)
+    result[1, 13, 3] = numpy.sum(x210 * x337)
+    result[1, 13, 4] = numpy.sum(x270 * x342)
+    result[1, 13, 5] = numpy.sum(x267 * x343)
+    result[1, 14, 0] = numpy.sum(x18 * x234 * x264)
+    result[1, 14, 1] = numpy.sum(x233 * x352 * x5)
+    result[1, 14, 2] = numpy.sum(x236 * x347 * x353)
+    result[1, 14, 3] = numpy.sum(x234 * x341)
+    result[1, 14, 4] = numpy.sum(x236 * x352)
+    result[1, 14, 5] = numpy.sum(x238 * x353)
+    result[2, 0, 0] = numpy.sum(x245 * x356 * x357)
+    result[2, 0, 1] = numpy.sum(x356 * x358 * x86)
+    result[2, 0, 2] = numpy.sum(x358 * x363)
+    result[2, 0, 3] = numpy.sum(x110 * x262 * x364)
+    result[2, 0, 4] = numpy.sum(x262 * x363 * x365)
+    result[2, 0, 5] = numpy.sum(x262 * x357 * x371)
+    result[2, 1, 0] = numpy.sum(x121 * x356 * x372)
+    result[2, 1, 1] = numpy.sum(x127 * x253 * x364)
+    result[2, 1, 2] = numpy.sum(x121 * x362 * x374)
+    result[2, 1, 3] = numpy.sum(x134 * x356 * x375)
+    result[2, 1, 4] = numpy.sum(x127 * x282 * x362)
+    result[2, 1, 5] = numpy.sum(x121 * x371 * x376)
+    result[2, 2, 0] = numpy.sum(x372 * x378)
+    result[2, 2, 1] = numpy.sum(x374 * x378 * x85)
+    result[2, 2, 2] = numpy.sum(x373 * x381)
+    result[2, 2, 3] = numpy.sum(x109 * x375 * x378)
+    result[2, 2, 4] = numpy.sum(x252 * x365 * x381)
+    result[2, 2, 5] = numpy.sum(x376 * x390)
+    result[2, 3, 0] = numpy.sum(x151 * x23 * x364)
+    result[2, 3, 1] = numpy.sum(x154 * x295 * x364)
+    result[2, 3, 2] = numpy.sum(x295 * x362 * x391)
+    result[2, 3, 3] = numpy.sum(x163 * x356 * x392)
+    result[2, 3, 4] = numpy.sum(x155 * x305 * x362)
+    result[2, 3, 5] = numpy.sum(x151 * x305 * x371)
+    result[2, 4, 0] = numpy.sum(x207 * x23 * x393)
+    result[2, 4, 1] = numpy.sum(x169 * x394 * x94)
+    result[2, 4, 2] = numpy.sum(x207 * x395 * x94)
+    result[2, 4, 3] = numpy.sum(x134 * x305 * x393)
+    result[2, 4, 4] = numpy.sum(x169 * x305 * x380)
+    result[2, 4, 5] = numpy.sum(x251 * x390 * x396)
+    result[2, 5, 0] = numpy.sum(x23 * x400 * x401)
+    result[2, 5, 1] = numpy.sum(x400 * x402 * x85)
+    result[2, 5, 2] = numpy.sum(x402 * x407)
+    result[2, 5, 3] = numpy.sum(x109 * x392 * x400)
+    result[2, 5, 4] = numpy.sum(60.3397786612521 * x251 * x365 * x407)
+    result[2, 5, 5] = numpy.sum(x251 * x401 * x414)
+    result[2, 6, 0] = numpy.sum(x190 * x21 * x364)
+    result[2, 6, 1] = numpy.sum(x194 * x340 * x356)
+    result[2, 6, 2] = numpy.sum(x189 * x340 * x362)
+    result[2, 6, 3] = numpy.sum(x198 * x322 * x415)
+    result[2, 6, 4] = numpy.sum(x362 * x416 * x417)
+    result[2, 6, 5] = numpy.sum(x190 * x3 * x418)
+    result[2, 7, 0] = numpy.sum(x21 * x391 * x393)
+    result[2, 7, 1] = numpy.sum(x154 * x332 * x394)
+    result[2, 7, 2] = numpy.sum(x332 * x380 * x391)
+    result[2, 7, 3] = numpy.sum(x3 * x393 * x419)
+    result[2, 7, 4] = numpy.sum(x154 * x338 * x395)
+    result[2, 7, 5] = numpy.sum(x150 * x334 * x420)
+    result[2, 8, 0] = numpy.sum(x21 * x396 * x400)
+    result[2, 8, 1] = numpy.sum(x166 * x169 * x400 * x92)
+    result[2, 8, 2] = numpy.sum(x207 * x332 * x407)
+    result[2, 8, 3] = numpy.sum(x134 * x330 * x334 * x400)
+    result[2, 8, 4] = numpy.sum(x169 * x3 * x421)
+    result[2, 8, 5] = numpy.sum(x173 * x3 * x414 * x423)
+    result[2, 9, 0] = numpy.sum(x21 * x428)
+    result[2, 9, 1] = numpy.sum(x427 * x429 * x85)
+    result[2, 9, 2] = numpy.sum(x429 * x435)
+    result[2, 9, 3] = numpy.sum(x109 * x3 * x437)
+    result[2, 9, 4] = numpy.sum(x417 * x438 * x85)
+    result[2, 9, 5] = numpy.sum(x322 * x442)
+    result[2, 10, 0] = numpy.sum(x221 * x350 * x356)
+    result[2, 10, 1] = numpy.sum(x223 * x347 * x415)
+    result[2, 10, 2] = numpy.sum(x220 * x443 * x5)
+    result[2, 10, 3] = numpy.sum(10.1992841329868 * x226 * x415)
+    result[2, 10, 4] = numpy.sum(x223 * x443)
+    result[2, 10, 5] = numpy.sum(x221 * x418)
+    result[2, 11, 0] = numpy.sum(x190 * x350 * x378)
+    result[2, 11, 1] = numpy.sum(x348 * x378 * x416)
+    result[2, 11, 2] = numpy.sum(x189 * x351 * x381)
+    result[2, 11, 3] = numpy.sum(x198 * x378 * x436)
+    result[2, 11, 4] = numpy.sum(x381 * x416)
+    result[2, 11, 5] = numpy.sum(x190 * x420)
+    result[2, 12, 0] = numpy.sum(x151 * x350 * x400)
+    result[2, 12, 1] = numpy.sum(x155 * x351 * x400)
+    result[2, 12, 2] = numpy.sum(60.3397786612521 * x150 * x421 * x5)
+    result[2, 12, 3] = numpy.sum(34.8371874529163 * x400 * x419)
+    result[2, 12, 4] = numpy.sum(x155 * x421)
+    result[2, 12, 5] = numpy.sum(x151 * x330 * x414)
+    result[2, 13, 0] = numpy.sum(x121 * x18 * x428)
+    result[2, 13, 1] = numpy.sum(x427 * x444 * x5)
+    result[2, 13, 2] = numpy.sum(x121 * x348 * x438)
+    result[2, 13, 3] = numpy.sum(x134 * x437)
+    result[2, 13, 4] = numpy.sum(x435 * x444)
+    result[2, 13, 5] = numpy.sum(x122 * x442)
+    result[2, 14, 0] = numpy.sum(x18 * x357 * x446)
+    result[2, 14, 1] = numpy.sum(x113 * x447 * x5)
+    result[2, 14, 2] = numpy.sum(x347 * x448)
+    result[2, 14, 3] = numpy.sum(x112 * x447)
+    result[2, 14, 4] = numpy.sum(x448 * x86)
+    result[2, 14, 5] = numpy.sum(
+        10.1992841329868
+        * x423
+        * (
+            x0
+            * (
+                x183 * (x439 + x440)
+                + x20 * (x187 + x411 + x432)
+                + 3.0 * x412
+                + 3.0 * x413
+                + 2.0 * x433
+                + 2.0 * x434
+            )
+            + x138 * x441
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_43(a, A, b, B, C):
+def diag_quadrupole3d_43(ax, da, A, bx, db, B, C):
     """Cartesian 3D (gf) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 15, 10), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x0 * x7
-    x9 = -x2 - C[0]
-    x10 = x3 * x7
-    x11 = x10 * x9
-    x12 = x11 + x8
-    x13 = x12 * x3
-    x14 = x7 * x9
-    x15 = x0 * (x10 + x14)
-    x16 = 3.0 * x15
-    x17 = -x2 - A[0]
-    x18 = x12 * x17
-    x19 = 2.0 * x18
-    x20 = x3**2 * x7
-    x21 = x20 + x8
-    x22 = x17 * x21
-    x23 = 2.0 * x0
-    x24 = x10 * x23
-    x25 = x22 + x24
-    x26 = x0 * (x13 + x16 + x19 + x25)
-    x27 = 3.0 * x8
-    x28 = 2.0 * x11 + x27
-    x29 = x0 * (x20 + x28)
-    x30 = x13 + x15
-    x31 = x17 * x30
-    x32 = x17 * (x29 + x31)
-    x33 = x21 * x3
-    x34 = x3 * x8
-    x35 = x0 * (3.0 * x22 + x33 + 8.0 * x34)
-    x36 = x0 * (3.0 * x20 + x27)
-    x37 = x24 + x33
-    x38 = x17 * x37
-    x39 = x36 + x38
-    x40 = x17 * x39
-    x41 = x35 + x40
-    x42 = x0 * (3.0 * x13 + x16 + x37)
-    x43 = x3 * x30
-    x44 = x17 * (x29 + x43)
-    x45 = 2.0 * x42 + 2.0 * x44
-    x46 = x0 * (4.0 * x29 + 3.0 * x31 + x39 + x43)
-    x47 = x17 * (x42 + x44)
-    x48 = 2.0 * x17
-    x49 = x7 * x9**2
-    x50 = x0 * (x28 + x49)
-    x51 = x49 + x8
-    x52 = x3 * x51
-    x53 = x14 * x23
-    x54 = x52 + x53
-    x55 = x3 * x54
-    x56 = x50 + x55
-    x57 = x3 * x56
-    x58 = x17 * x56
-    x59 = 2.0 * x15
-    x60 = 4.0 * x8 * x9
-    x61 = x59 + x60
-    x62 = x0 * (2.0 * x13 + 2.0 * x52 + x61)
-    x63 = x0 * (x45 + x57 + 3.0 * x58 + 4.0 * x62)
-    x64 = x17 * x51
-    x65 = x0 * (x19 + x52 + x61 + x64)
-    x66 = x17 * x54
-    x67 = x50 + x66
-    x68 = x17 * x67
-    x69 = x0 * (2.0 * x26 + 2.0 * x32 + 2.0 * x58 + 2.0 * x62 + 2.0 * x65 + 2.0 * x68)
-    x70 = 2.0 * x29
-    x71 = 3.0 * x50 + x70
-    x72 = x0 * (2.0 * x43 + 3.0 * x55 + x71)
-    x73 = x57 + x62
-    x74 = x17 * x73
-    x75 = x72 + x74
-    x76 = x17 * x75
-    x77 = 2.0 * x31
-    x78 = 2.0 * x66
-    x79 = x0 * (x55 + x71 + x77 + x78)
-    x80 = x58 + x62
-    x81 = x17 * x80
-    x82 = x79 + x81
-    x83 = x17 * x82
-    x84 = 3.0 * x79 + 3.0 * x81
-    x85 = x63 + x76
-    x86 = x0 * (2.0 * x46 + 2.0 * x47 + 2.0 * x72 + 2.0 * x74 + x84) + x17 * x85
-    x87 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x0 * x8
+    x10 = -x2 - C[0]
+    x11 = x3 * x8
+    x12 = x10 * x11
+    x13 = x12 + x9
+    x14 = x13 * x3
+    x15 = x10 * x8
+    x16 = x0 * (x11 + x15)
+    x17 = 3.0 * x16
+    x18 = -x2 - A[0]
+    x19 = x13 * x18
+    x20 = 2.0 * x19
+    x21 = x3**2 * x8
+    x22 = x21 + x9
+    x23 = x18 * x22
+    x24 = 2.0 * x0
+    x25 = x11 * x24
+    x26 = x23 + x25
+    x27 = x0 * (x14 + x17 + x20 + x26)
+    x28 = 3.0 * x9
+    x29 = 2.0 * x12 + x28
+    x30 = x0 * (x21 + x29)
+    x31 = x14 + x16
+    x32 = x18 * x31
+    x33 = x18 * (x30 + x32)
+    x34 = x22 * x3
+    x35 = x3 * x9
+    x36 = x0 * (3.0 * x23 + x34 + 8.0 * x35)
+    x37 = x0 * (3.0 * x21 + x28)
+    x38 = x25 + x34
+    x39 = x18 * x38
+    x40 = x37 + x39
+    x41 = x18 * x40
+    x42 = x36 + x41
+    x43 = x0 * (3.0 * x14 + x17 + x38)
+    x44 = x3 * x31
+    x45 = x18 * (x30 + x44)
+    x46 = 2.0 * x43 + 2.0 * x45
+    x47 = x0 * (4.0 * x30 + 3.0 * x32 + x40 + x44)
+    x48 = x18 * (x43 + x45)
+    x49 = 2.0 * x18
+    x50 = x10**2 * x8
+    x51 = x0 * (x29 + x50)
+    x52 = x50 + x9
+    x53 = x3 * x52
+    x54 = x15 * x24
+    x55 = x53 + x54
+    x56 = x3 * x55
+    x57 = x51 + x56
+    x58 = x3 * x57
+    x59 = x18 * x57
+    x60 = 2.0 * x16
+    x61 = 4.0 * x10 * x9
+    x62 = x60 + x61
+    x63 = x0 * (2.0 * x14 + 2.0 * x53 + x62)
+    x64 = x0 * (x46 + x58 + 3.0 * x59 + 4.0 * x63)
+    x65 = x18 * x52
+    x66 = x0 * (x20 + x53 + x62 + x65)
+    x67 = x18 * x55
+    x68 = x51 + x67
+    x69 = x18 * x68
+    x70 = 2.0 * x0 * (x27 + x33 + x59 + x63 + x66 + x69)
+    x71 = 2.0 * x30
+    x72 = 3.0 * x51 + x71
+    x73 = x0 * (2.0 * x44 + 3.0 * x56 + x72)
+    x74 = x58 + x63
+    x75 = x18 * x74
+    x76 = x73 + x75
+    x77 = x18 * x76
+    x78 = 2.0 * x32
+    x79 = 2.0 * x67
+    x80 = x0 * (x56 + x72 + x78 + x79)
+    x81 = x59 + x63
+    x82 = x18 * x81
+    x83 = x80 + x82
+    x84 = x18 * x83
+    x85 = 3.0 * x80 + 3.0 * x82
+    x86 = x64 + x77
+    x87 = x0 * (2.0 * x47 + 2.0 * x48 + 2.0 * x73 + 2.0 * x75 + x85) + x18 * x86
     x88 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x89 = 3.14159265358979 * x1 * x88
-    x90 = x87 * x89
-    x91 = -x1 * (a * A[1] + b * B[1])
-    x92 = -x91 - B[1]
-    x93 = x10 * x48 + x27
-    x94 = x0 * (x20 + x93)
-    x95 = x17 * x25
-    x96 = x94 + x95
-    x97 = x10 * x17
-    x98 = x14 * x17
-    x99 = x0 * (x11 + x27 + x97 + x98)
-    x100 = x17 * (x15 + x18)
-    x101 = 2.0 * x100 + 2.0 * x99
-    x102 = x14 * x48 + x27
-    x103 = x0 * (x102 + x49)
-    x104 = x53 + x64
-    x105 = x104 * x17
-    x106 = x103 + x105
-    x107 = x0 * (x101 + x106 + 2.0 * x50 + x78)
-    x108 = x65 + x68
-    x109 = x108 * x17
-    x110 = x69 + x83
-    x111 = x90 * (
+    x89 = da * db * numpy.sqrt(ax**5.5) * numpy.sqrt(bx**4.5)
+    x90 = x88 * x89
+    x91 = 9.12251705727742 * x90
+    x92 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x93 = 0.564189583547756 * x1
+    x94 = x92 * x93
+    x95 = -x1 * (ax * A[1] + bx * B[1])
+    x96 = -x95 - B[1]
+    x97 = 20.3985682659737 * x96
+    x98 = x11 * x49 + x28
+    x99 = x0 * (x21 + x98)
+    x100 = x18 * x26
+    x101 = x100 + x99
+    x102 = x11 * x18
+    x103 = x15 * x18
+    x104 = x0 * (x102 + x103 + x12 + x28)
+    x105 = x18 * (x16 + x19)
+    x106 = 2.0 * x104 + 2.0 * x105
+    x107 = x15 * x49 + x28
+    x108 = x0 * (x107 + x50)
+    x109 = x54 + x65
+    x110 = x109 * x18
+    x111 = x108 + x110
+    x112 = x0 * (x106 + x111 + 2.0 * x51 + x79)
+    x113 = x66 + x69
+    x114 = x113 * x18
+    x115 = x70 + x84
+    x116 = x90 * x94
+    x117 = x116 * (
         x0
         * (
-            2.0 * x107
-            + 2.0 * x109
-            + x23 * (x101 + x70 + x77 + x96)
-            + x48 * (x26 + x32)
-            + x84
+            2.0 * x112
+            + 2.0 * x114
+            + x24 * (x101 + x106 + x71 + x78)
+            + x49 * (x27 + x33)
+            + x85
         )
-        + x110 * x17
+        + x115 * x18
     )
-    x112 = -x1 * (a * A[2] + b * B[2])
-    x113 = -x112 - B[2]
-    x114 = x6 * x87
-    x115 = x114 * x92**2
-    x116 = x0 * x114
-    x117 = x115 + x116
-    x118 = x17 * x7
-    x119 = x0 * (x118 + x14)
-    x120 = x17 * (x8 + x98)
-    x121 = x119 + x120
-    x122 = x0 * (x10 + x118)
-    x123 = x8 + x97
-    x124 = x123 * x17
-    x125 = x122 + x124
-    x126 = x0 * (2.0 * x119 + 2.0 * x120 + x60 + 2.0 * x64) + x106 * x17
-    x127 = x107 + x109
-    x128 = (
+    x118 = -x1 * (ax * A[2] + bx * B[2])
+    x119 = -x118 - B[2]
+    x120 = 20.3985682659737 * x119
+    x121 = x18 * x8
+    x122 = x0 * (x121 + x15)
+    x123 = x18 * (x103 + x9)
+    x124 = x122 + x123
+    x125 = x0 * (x11 + x121)
+    x126 = x102 + x9
+    x127 = x126 * x18
+    x128 = x125 + x127
+    x129 = x0 * (2.0 * x122 + 2.0 * x123 + x61 + 2.0 * x65) + x111 * x18
+    x130 = x112 + x114
+    x131 = (
         x0
         * (
-            x126
-            + x23 * (x121 + x125 + x19 + x59)
-            + x48 * (x100 + x99)
-            + 3.0 * x65
-            + 3.0 * x68
+            x129
+            + x24 * (x124 + x128 + x20 + x60)
+            + x49 * (x104 + x105)
+            + 3.0 * x66
+            + 3.0 * x69
         )
-        + x127 * x17
+        + x130 * x18
     )
-    x129 = x6 * x88
-    x130 = x113 * x90
-    x131 = x113**2 * x129
-    x132 = x0 * x129
-    x133 = x131 + x132
-    x134 = x117 * x92
-    x135 = x114 * x92
-    x136 = x135 * x23
-    x137 = x134 + x136
-    x138 = x17**2 * x7
-    x139 = x0 * (3.0 * x103 + 3.0 * x105 + x121 * x48 + x23 * (x102 + x138)) + x126 * x17
-    x140 = x113 * x129
-    x141 = x113 * x133
-    x142 = x140 * x23
-    x143 = x141 + x142
-    x144 = -x91 - A[1]
-    x145 = x86 * x90
-    x146 = x114 * x144
-    x147 = x146 * x92
-    x148 = x116 + x147
-    x149 = x117 * x144
-    x150 = x136 + x149
-    x151 = 3.0 * x116
-    x152 = x0 * (3.0 * x115 + x151)
-    x153 = x137 * x144
-    x154 = x152 + x153
-    x155 = -x112 - A[2]
-    x156 = x155 * x90
-    x157 = x129 * x155
-    x158 = x113 * x157
-    x159 = x132 + x158
-    x160 = x133 * x155
-    x161 = x142 + x160
-    x162 = 3.0 * x132
-    x163 = x0 * (3.0 * x131 + x162)
-    x164 = x143 * x155
-    x165 = x163 + x164
-    x166 = x114 * x144**2
-    x167 = x116 + x166
-    x168 = x0 * (x135 + x146)
-    x169 = x144 * x148
-    x170 = x168 + x169
-    x171 = 2.0 * x144
-    x172 = x135 * x171 + x151
-    x173 = x0 * (x115 + x172)
-    x174 = x144 * x150
-    x175 = x173 + x174
-    x176 = x116 * x92
-    x177 = x0 * (x134 + 3.0 * x149 + 8.0 * x176)
-    x178 = x144 * x154
-    x179 = x177 + x178
-    x180 = x129 * x155**2
-    x181 = x132 + x180
-    x182 = x0 * (x140 + x157)
-    x183 = x155 * x159
+    x132 = x131 * x90
+    x133 = x7 * x92
+    x134 = x133 * x96**2
+    x135 = x0 * x133
+    x136 = x134 + x135
+    x137 = 20.3985682659737 * x136
+    x138 = 0.318309886183791 * x6
+    x139 = x137 * x138
+    x140 = 35.3313566383285 * x96
+    x141 = x7 * x88
+    x142 = x119**2 * x141
+    x143 = x0 * x141
+    x144 = x142 + x143
+    x145 = 20.3985682659737 * x138
+    x146 = x89 * x92
+    x147 = x145 * x146
+    x148 = x144 * x147
+    x149 = x136 * x96
+    x150 = x133 * x96
+    x151 = x150 * x24
+    x152 = x149 + x151
+    x153 = 9.12251705727742 * x152
+    x154 = x18**2 * x8
+    x155 = x0 * (3.0 * x108 + 3.0 * x110 + x124 * x49 + x24 * (x107 + x154)) + x129 * x18
+    x156 = x138 * x155
+    x157 = x119 * x90
+    x158 = x119 * x144
+    x159 = x119 * x141
+    x160 = x159 * x24
+    x161 = x158 + x160
+    x162 = 9.12251705727742 * x161
+    x163 = -x95 - A[1]
+    x164 = 24.1359114645008 * x163
+    x165 = x116 * x87
+    x166 = x133 * x163
+    x167 = x166 * x96
+    x168 = x135 + x167
+    x169 = 53.9695387335403 * x168
+    x170 = x138 * x90
+    x171 = 53.9695387335403 * x115
+    x172 = x116 * x171
+    x173 = x136 * x163
+    x174 = x151 + x173
+    x175 = 53.9695387335403 * x174
+    x176 = x130 * x170
+    x177 = 93.4779831475484 * x168
+    x178 = x138 * x146
+    x179 = x130 * x178
+    x180 = 53.9695387335403 * x163
+    x181 = 3.0 * x135
+    x182 = x0 * (3.0 * x134 + x181)
+    x183 = x152 * x163
     x184 = x182 + x183
-    x185 = 2.0 * x155
-    x186 = x140 * x185 + x162
-    x187 = x0 * (x131 + x186)
-    x188 = x155 * x161
-    x189 = x187 + x188
-    x190 = x113 * x132
-    x191 = x0 * (x141 + 3.0 * x160 + 8.0 * x190)
-    x192 = x155 * x165
-    x193 = x191 + x192
-    x194 = x144 * x167 + x146 * x23
-    x195 = x0 * (x166 + x172)
-    x196 = x144 * x170
-    x197 = x195 + x196
-    x198 = x0 * (2.0 * x149 + 2.0 * x168 + 2.0 * x169 + 4.0 * x176)
-    x199 = x144 * x175
-    x200 = x198 + x199
-    x201 = 3.0 * x173 + 3.0 * x174
-    x202 = x0 * (2.0 * x152 + 2.0 * x153 + x201) + x144 * x179
-    x203 = x155 * x181 + x157 * x23
-    x204 = x0 * (x180 + x186)
-    x205 = x155 * x184
-    x206 = x204 + x205
-    x207 = x0 * (2.0 * x160 + 2.0 * x182 + 2.0 * x183 + 4.0 * x190)
-    x208 = x155 * x189
-    x209 = x207 + x208
-    x210 = 3.0 * x187 + 3.0 * x188
-    x211 = x0 * (2.0 * x163 + 2.0 * x164 + x210) + x155 * x193
-    x212 = x0 * (x151 + 3.0 * x166) + x144 * x194
-    x213 = x0 * (3.0 * x168 + 3.0 * x169 + x194) + x144 * x197
-    x214 = x0 * (2.0 * x195 + 2.0 * x196 + x201) + x144 * x200
-    x215 = x0 * (3.0 * x177 + 3.0 * x178 + 3.0 * x198 + 3.0 * x199) + x144 * x202
-    x216 = x0 * (x162 + 3.0 * x180) + x155 * x203
-    x217 = x0 * (3.0 * x182 + 3.0 * x183 + x203) + x155 * x206
-    x218 = x0 * (2.0 * x204 + 2.0 * x205 + x210) + x155 * x209
-    x219 = x0 * (3.0 * x191 + 3.0 * x192 + 3.0 * x207 + 3.0 * x208) + x155 * x211
-    x220 = -x91 - C[1]
-    x221 = x114 * x220**2
-    x222 = x116 + x221
-    x223 = x0 * (2.0 * x122 + 2.0 * x124 + 2.0 * x22 + 4.0 * x34)
-    x224 = x17 * x96
-    x225 = 3.0 * x94 + 3.0 * x95
-    x226 = x0 * (x225 + 2.0 * x36 + 2.0 * x38) + x17 * x41
-    x227 = x0 * (3.0 * x223 + 3.0 * x224 + 3.0 * x35 + 3.0 * x40) + x17 * x226
-    x228 = x222 * x92
-    x229 = x114 * x220
-    x230 = x229 * x23
-    x231 = x228 + x230
-    x232 = x0 * (x138 + x93)
-    x233 = x125 * x17
-    x234 = x223 + x224
-    x235 = x0 * (x225 + 2.0 * x232 + 2.0 * x233) + x17 * x234
-    x236 = x135 * x220
-    x237 = x151 + 2.0 * x236
-    x238 = x0 * (x221 + x237)
-    x239 = x231 * x92
-    x240 = x238 + x239
-    x241 = x138 + x8
-    x242 = x118 * x23 + x17 * x241
-    x243 = x232 + x233
-    x244 = x0 * (3.0 * x122 + 3.0 * x124 + x242) + x17 * x243
-    x245 = x116 + x236
-    x246 = x245 * x92
-    x247 = x0 * (x135 + x229)
-    x248 = 2.0 * x247
-    x249 = 4.0 * x116 * x220
+    x185 = 24.1359114645008 * x170
+    x186 = x129 * x185
+    x187 = 53.9695387335403 * x129
+    x188 = x119 * x170
+    x189 = 0.179587122125167 * x89
+    x190 = x144 * x189
+    x191 = x129 * x178
+    x192 = -x118 - A[2]
+    x193 = 24.1359114645008 * x192
+    x194 = x141 * x192
+    x195 = x119 * x194
+    x196 = x143 + x195
+    x197 = x178 * x196
+    x198 = 53.9695387335403 * x136
+    x199 = 93.4779831475484 * x96
+    x200 = x144 * x192
+    x201 = x160 + x200
+    x202 = 53.9695387335403 * x201
+    x203 = x189 * x196
+    x204 = x178 * x96
+    x205 = 3.0 * x143
+    x206 = x0 * (3.0 * x142 + x205)
+    x207 = x161 * x192
+    x208 = x206 + x207
+    x209 = 24.1359114645008 * x208
+    x210 = x133 * x163**2
+    x211 = x135 + x210
+    x212 = 31.1593277158494 * x211
+    x213 = 69.6743749058326 * x83
+    x214 = x0 * (x150 + x166)
+    x215 = x163 * x168
+    x216 = x214 + x215
+    x217 = x170 * x216
+    x218 = 2.0 * x163
+    x219 = x150 * x218 + x181
+    x220 = x0 * (x134 + x219)
+    x221 = x163 * x174
+    x222 = x220 + x221
+    x223 = 69.6743749058326 * x222
+    x224 = x113 * x170
+    x225 = 120.679557322504 * x216
+    x226 = 69.6743749058326 * x190
+    x227 = x135 * x96
+    x228 = x0 * (x149 + 3.0 * x173 + 8.0 * x227)
+    x229 = x163 * x184
+    x230 = x228 + x229
+    x231 = 31.1593277158494 * x230
+    x232 = x111 * x170
+    x233 = x111 * x189
+    x234 = 120.679557322504 * x168
+    x235 = x170 * x192
+    x236 = 120.679557322504 * x163
+    x237 = 120.679557322504 * x192
+    x238 = 209.023124717498 * x203
+    x239 = 120.679557322504 * x201
+    x240 = x113 * x178
+    x241 = 53.9695387335403 * x184
+    x242 = 120.679557322504 * x203
+    x243 = x111 * x178
+    x244 = x141 * x192**2
+    x245 = x143 + x244
+    x246 = 31.1593277158494 * x245
+    x247 = x178 * x213
+    x248 = x0 * (x159 + x194)
+    x249 = x192 * x196
     x250 = x248 + x249
-    x251 = x0 * (2.0 * x228 + 2.0 * x246 + x250)
-    x252 = x240 * x92
-    x253 = x251 + x252
-    x254 = x0 * (3.0 * x138 + x27) + x17 * x242
-    x255 = x144 * x222
-    x256 = x230 + x255
-    x257 = x144 * x231
-    x258 = x238 + x257
-    x259 = x144 * x240
-    x260 = x251 + x259
-    x261 = x246 + x247
-    x262 = x261 * x92
-    x263 = x0 * (x115 + x237)
-    x264 = 2.0 * x263
-    x265 = 3.0 * x238 + x264
-    x266 = x0 * (3.0 * x239 + 2.0 * x262 + x265)
-    x267 = x144 * x253
-    x268 = x266 + x267
-    x269 = x151 + x171 * x229
-    x270 = x0 * (x221 + x269)
-    x271 = x144 * x256
-    x272 = x270 + x271
-    x273 = x144 * x245
-    x274 = 2.0 * x273
-    x275 = x0 * (x228 + x250 + x255 + x274)
-    x276 = x144 * x258
-    x277 = x275 + x276
-    x278 = x144 * x261
-    x279 = 2.0 * x278
-    x280 = 2.0 * x257
-    x281 = x0 * (x239 + x265 + x279 + x280)
-    x282 = x144 * x260
-    x283 = x281 + x282
-    x284 = 3.0 * x247
-    x285 = x0 * (x137 + 3.0 * x246 + x284)
-    x286 = x144 * (x262 + x263)
-    x287 = 2.0 * x285 + 2.0 * x286
-    x288 = x0 * (4.0 * x251 + x252 + 3.0 * x259 + x287)
-    x289 = x144 * x268
-    x290 = x288 + x289
-    x291 = x0 * (x146 + x229)
-    x292 = x146 * x220
-    x293 = x144 * (x116 + x292)
-    x294 = x0 * (x249 + 2.0 * x255 + 2.0 * x291 + 2.0 * x293) + x144 * x272
-    x295 = x0 * (x147 + x151 + x236 + x292)
-    x296 = x144 * (x247 + x273)
-    x297 = 2.0 * x295 + 2.0 * x296
-    x298 = x0 * (2.0 * x238 + x272 + x280 + x297)
-    x299 = x144 * x277
-    x300 = x298 + x299
-    x301 = x0 * (x150 + x246 + x274 + x284)
-    x302 = x144 * (x263 + x278)
-    x303 = x0 * (
-        2.0 * x251 + 2.0 * x259 + 2.0 * x275 + 2.0 * x276 + 2.0 * x301 + 2.0 * x302
+    x251 = 69.6743749058326 * x136
+    x252 = x189 * x245
+    x253 = 2.0 * x192
+    x254 = x159 * x253 + x205
+    x255 = x0 * (x142 + x254)
+    x256 = x192 * x201
+    x257 = x255 + x256
+    x258 = 69.6743749058326 * x257
+    x259 = 31.1593277158494 * x152
+    x260 = x119 * x143
+    x261 = x0 * (x158 + 3.0 * x200 + 8.0 * x260)
+    x262 = x192 * x208
+    x263 = x261 + x262
+    x264 = 31.1593277158494 * x263
+    x265 = x163 * x211 + x166 * x24
+    x266 = 24.1359114645008 * x265
+    x267 = x170 * x76
+    x268 = 53.9695387335403 * x81
+    x269 = x0 * (x210 + x219)
+    x270 = x163 * x216
+    x271 = x269 + x270
+    x272 = x170 * x271
+    x273 = 53.9695387335403 * x265
+    x274 = 2.0 * x0 * (x173 + x214 + x215 + 2.0 * x227)
+    x275 = x163 * x222
+    x276 = x274 + x275
+    x277 = 53.9695387335403 * x276
+    x278 = x170 * x68
+    x279 = 93.4779831475484 * x271
+    x280 = 53.9695387335403 * x190
+    x281 = 3.0 * x220 + 3.0 * x221
+    x282 = x0 * (2.0 * x182 + 2.0 * x183 + x281) + x163 * x230
+    x283 = x185 * x282
+    x284 = x109 * x189
+    x285 = 53.9695387335403 * x192
+    x286 = x189 * x68
+    x287 = 53.9695387335403 * x170
+    x288 = x192 * x287
+    x289 = 53.9695387335403 * x284
+    x290 = x178 * x76
+    x291 = 120.679557322504 * x252
+    x292 = x178 * x236
+    x293 = 209.023124717498 * x250
+    x294 = x178 * x68
+    x295 = 53.9695387335403 * x252
+    x296 = 120.679557322504 * x284
+    x297 = 53.9695387335403 * x178
+    x298 = x163 * x297
+    x299 = x192 * x245 + x194 * x24
+    x300 = 24.1359114645008 * x299
+    x301 = 53.9695387335403 * x299
+    x302 = x0 * (x244 + x254)
+    x303 = x192 * x250
+    x304 = x302 + x303
+    x305 = x178 * x304
+    x306 = 2.0 * x0 * (x200 + x248 + x249 + 2.0 * x260)
+    x307 = x192 * x257
+    x308 = x306 + x307
+    x309 = 53.9695387335403 * x308
+    x310 = 3.0 * x255 + 3.0 * x256
+    x311 = x0 * (2.0 * x206 + 2.0 * x207 + x310) + x192 * x263
+    x312 = 24.1359114645008 * x178
+    x313 = x311 * x312
+    x314 = x0 * (x181 + 3.0 * x210) + x163 * x265
+    x315 = 9.12251705727742 * x314
+    x316 = x170 * x74
+    x317 = x0 * (3.0 * x214 + 3.0 * x215 + x265) + x163 * x271
+    x318 = x145 * x90
+    x319 = x318 * x57
+    x320 = x0 * (2.0 * x269 + 2.0 * x270 + x281) + x163 * x276
+    x321 = x318 * x320
+    x322 = 35.3313566383285 * x55
+    x323 = 20.3985682659737 * x190
+    x324 = 3.0 * x0 * (x228 + x229 + x274 + x275) + x163 * x282
+    x325 = x138 * x91
+    x326 = x189 * x52
+    x327 = 93.4779831475484 * x55
+    x328 = x189 * x55
+    x329 = 53.9695387335403 * x203
+    x330 = 53.9695387335403 * x326
+    x331 = 69.6743749058326 * x57
+    x332 = x189 * x250
+    x333 = 31.1593277158494 * x252
+    x334 = x178 * x74
+    x335 = x169 * x189
+    x336 = x189 * x304
+    x337 = x0 * (x205 + 3.0 * x244) + x192 * x299
+    x338 = 9.12251705727742 * x337
+    x339 = x147 * x57
+    x340 = x0 * (3.0 * x248 + 3.0 * x249 + x299) + x192 * x304
+    x341 = x0 * (2.0 * x302 + 2.0 * x303 + x310) + x192 * x308
+    x342 = x147 * x341
+    x343 = (
+        27.3675511718323 * x0 * (x261 + x262 + x306 + x307)
+        + 9.12251705727742 * x192 * x311
     )
-    x304 = x144 * x283
-    x305 = x303 + x304
-    x306 = x0 * (x154 + x262 + 4.0 * x263 + 3.0 * x278)
-    x307 = x144 * (x285 + x286)
-    x308 = 3.0 * x281 + 3.0 * x282
-    x309 = x0 * (2.0 * x266 + 2.0 * x267 + 2.0 * x306 + 2.0 * x307 + x308) + x144 * x290
-    x310 = x5 * x89
-    x311 = x309 * x310
-    x312 = x17 * x310
-    x313 = x291 + x293
-    x314 = (
-        x0 * (x171 * x313 + x23 * (x166 + x269) + 3.0 * x270 + 3.0 * x271) + x144 * x294
+    x344 = -x95 - C[1]
+    x345 = x133 * x344**2
+    x346 = x135 + x345
+    x347 = 2.0 * x0 * (x125 + x127 + x23 + 2.0 * x35)
+    x348 = x101 * x18
+    x349 = 3.0 * x100 + 3.0 * x99
+    x350 = x0 * (x349 + 2.0 * x37 + 2.0 * x39) + x18 * x42
+    x351 = 3.0 * x0 * (x347 + x348 + x36 + x41) + x18 * x350
+    x352 = x346 * x96
+    x353 = x133 * x344
+    x354 = x24 * x353
+    x355 = x352 + x354
+    x356 = x0 * (x154 + x98)
+    x357 = x128 * x18
+    x358 = x347 + x348
+    x359 = x0 * (x349 + 2.0 * x356 + 2.0 * x357) + x18 * x358
+    x360 = x318 * x359
+    x361 = x154 + x9
+    x362 = x121 * x24 + x18 * x361
+    x363 = x356 + x357
+    x364 = x0 * (3.0 * x125 + 3.0 * x127 + x362) + x18 * x363
+    x365 = x150 * x344
+    x366 = x181 + 2.0 * x365
+    x367 = x0 * (x345 + x366)
+    x368 = x355 * x96
+    x369 = x367 + x368
+    x370 = x318 * x369
+    x371 = 35.3313566383285 * x355
+    x372 = x135 + x365
+    x373 = x372 * x96
+    x374 = x0 * (x150 + x353)
+    x375 = 2.0 * x374
+    x376 = 4.0 * x135 * x344
+    x377 = x375 + x376
+    x378 = x0 * (2.0 * x352 + 2.0 * x373 + x377)
+    x379 = x369 * x96
+    x380 = x378 + x379
+    x381 = x0 * (3.0 * x154 + x28) + x18 * x362
+    x382 = x189 * x346
+    x383 = x163 * x346
+    x384 = x354 + x383
+    x385 = 24.1359114645008 * x384
+    x386 = x163 * x355
+    x387 = x367 + x386
+    x388 = x287 * x358
+    x389 = 53.9695387335403 * x384
+    x390 = x163 * x369
+    x391 = x378 + x390
+    x392 = x287 * x391
+    x393 = 93.4779831475484 * x188
+    x394 = x373 + x374
+    x395 = x394 * x96
+    x396 = x0 * (x134 + x366)
+    x397 = 2.0 * x396
+    x398 = 3.0 * x367 + x397
+    x399 = x0 * (3.0 * x368 + 2.0 * x395 + x398)
+    x400 = x163 * x380
+    x401 = x399 + x400
+    x402 = x185 * x362
+    x403 = x189 * x362
+    x404 = 93.4779831475484 * x355
+    x405 = x181 + x218 * x353
+    x406 = x0 * (x345 + x405)
+    x407 = x163 * x384
+    x408 = x406 + x407
+    x409 = 31.1593277158494 * x408
+    x410 = x170 * x42
+    x411 = x163 * x372
+    x412 = 2.0 * x411
+    x413 = x0 * (x352 + x377 + x383 + x412)
+    x414 = x163 * x387
+    x415 = x413 + x414
+    x416 = 69.6743749058326 * x101
+    x417 = x170 * x416
+    x418 = x163 * x394
+    x419 = 2.0 * x418
+    x420 = 2.0 * x386
+    x421 = x0 * (x368 + x398 + x419 + x420)
+    x422 = x163 * x391
+    x423 = x421 + x422
+    x424 = 69.6743749058326 * x423
+    x425 = x128 * x170
+    x426 = 120.679557322504 * x128
+    x427 = 3.0 * x374
+    x428 = x0 * (x152 + 3.0 * x373 + x427)
+    x429 = x163 * (x395 + x396)
+    x430 = 2.0 * x428 + 2.0 * x429
+    x431 = x0 * (4.0 * x378 + x379 + 3.0 * x390 + x430)
+    x432 = x163 * x401
+    x433 = x431 + x432
+    x434 = 31.1593277158494 * x361
+    x435 = x189 * x361
+    x436 = 120.679557322504 * x235
+    x437 = x189 * x239
+    x438 = 69.6743749058326 * x369
+    x439 = x0 * (x166 + x353)
+    x440 = x166 * x344
+    x441 = x163 * (x135 + x440)
+    x442 = x0 * (x376 + 2.0 * x383 + 2.0 * x439 + 2.0 * x441) + x163 * x408
+    x443 = x185 * x442
+    x444 = x0 * (x167 + x181 + x365 + x440)
+    x445 = x163 * (x374 + x411)
+    x446 = 2.0 * x444 + 2.0 * x445
+    x447 = x0 * (2.0 * x367 + x408 + x420 + x446)
+    x448 = x163 * x415
+    x449 = x447 + x448
+    x450 = 53.9695387335403 * x26
+    x451 = x170 * x450
+    x452 = x0 * (x174 + x373 + x412 + x427)
+    x453 = x163 * (x396 + x418)
+    x454 = 2.0 * x0 * (x378 + x390 + x413 + x414 + x452 + x453)
+    x455 = x163 * x423
+    x456 = x454 + x455
+    x457 = 24.1359114645008 * x18
+    x458 = x0 * (x184 + x395 + 4.0 * x396 + 3.0 * x418)
+    x459 = x163 * (x428 + x429)
+    x460 = 3.0 * x421 + 3.0 * x422
+    x461 = x0 * (2.0 * x399 + 2.0 * x400 + 2.0 * x458 + 2.0 * x459 + x460) + x163 * x433
+    x462 = x5 * x93
+    x463 = x462 * x90
+    x464 = x461 * x463
+    x465 = x157 * x462
+    x466 = 53.9695387335403 * x18
+    x467 = x5 * x89
+    x468 = x138 * x467
+    x469 = 53.9695387335403 * x468
+    x470 = x18 * x469
+    x471 = x442 * x468
+    x472 = x285 * x463
+    x473 = 120.679557322504 * x18
+    x474 = x468 * x473
+    x475 = x415 * x468
+    x476 = 120.679557322504 * x384
+    x477 = x126 * x189
+    x478 = x250 * x468
+    x479 = x387 * x468
+    x480 = x263 * x468
+    x481 = x189 * x301
+    x482 = x300 * x468
+    x483 = x304 * x469
+    x484 = x18 * x468
+    x485 = x311 * x468
+    x486 = x439 + x441
+    x487 = (
+        x0 * (x218 * x486 + x24 * (x210 + x405) + 3.0 * x406 + 3.0 * x407) + x163 * x442
     )
-    x315 = (
+    x488 = (
         x0
         * (
-            x171 * (x295 + x296)
-            + x23 * (x170 + x248 + x274 + x313)
-            + 3.0 * x275
-            + 3.0 * x276
-            + x294
+            x218 * (x444 + x445)
+            + x24 * (x216 + x375 + x412 + x486)
+            + 3.0 * x413
+            + 3.0 * x414
+            + x442
         )
-        + x144 * x300
+        + x163 * x449
     )
-    x316 = x310 * (
+    x489 = 20.3985682659737 * x22
+    x490 = x170 * x489
+    x491 = x463 * (
         x0
         * (
-            x171 * (x301 + x302)
-            + x23 * (x175 + x264 + x279 + x297)
-            + 2.0 * x298
-            + 2.0 * x299
-            + x308
+            x218 * (x452 + x453)
+            + x24 * (x222 + x397 + x419 + x446)
+            + 2.0 * x447
+            + 2.0 * x448
+            + x460
         )
-        + x144 * x305
+        + x163 * x456
     )
-    x317 = x3 * x310
-    x318 = -x112 - C[2]
-    x319 = x129 * x318**2
-    x320 = x132 + x319
-    x321 = x113 * x320
-    x322 = x129 * x318
-    x323 = x23 * x322
-    x324 = x321 + x323
-    x325 = x140 * x318
-    x326 = x162 + 2.0 * x325
-    x327 = x0 * (x319 + x326)
-    x328 = x113 * x324
-    x329 = x327 + x328
-    x330 = x132 + x325
-    x331 = x113 * x330
-    x332 = x0 * (x140 + x322)
-    x333 = 2.0 * x332
-    x334 = 4.0 * x132 * x318
-    x335 = x333 + x334
-    x336 = x0 * (2.0 * x321 + 2.0 * x331 + x335)
-    x337 = x113 * x329
-    x338 = x336 + x337
-    x339 = x155 * x320
-    x340 = x323 + x339
-    x341 = x155 * x324
-    x342 = x327 + x341
-    x343 = x155 * x329
-    x344 = x336 + x343
-    x345 = x331 + x332
-    x346 = x113 * x345
-    x347 = x0 * (x131 + x326)
-    x348 = 2.0 * x347
-    x349 = 3.0 * x327 + x348
-    x350 = x0 * (3.0 * x328 + 2.0 * x346 + x349)
-    x351 = x155 * x338
-    x352 = x350 + x351
-    x353 = x162 + x185 * x322
-    x354 = x0 * (x319 + x353)
-    x355 = x155 * x340
-    x356 = x354 + x355
-    x357 = x155 * x330
-    x358 = 2.0 * x357
-    x359 = x0 * (x321 + x335 + x339 + x358)
-    x360 = x155 * x342
-    x361 = x359 + x360
-    x362 = x155 * x345
-    x363 = 2.0 * x362
-    x364 = 2.0 * x341
-    x365 = x0 * (x328 + x349 + x363 + x364)
-    x366 = x155 * x344
-    x367 = x365 + x366
-    x368 = 3.0 * x332
-    x369 = x0 * (x143 + 3.0 * x331 + x368)
-    x370 = x155 * (x346 + x347)
-    x371 = 2.0 * x369 + 2.0 * x370
-    x372 = x0 * (4.0 * x336 + x337 + 3.0 * x343 + x371)
-    x373 = x155 * x352
-    x374 = x372 + x373
-    x375 = 3.14159265358979 * x1 * x5 * x87
-    x376 = x17 * x375
-    x377 = x0 * (x157 + x322)
-    x378 = x157 * x318
-    x379 = x155 * (x132 + x378)
-    x380 = x0 * (x334 + 2.0 * x339 + 2.0 * x377 + 2.0 * x379) + x155 * x356
-    x381 = x0 * (x158 + x162 + x325 + x378)
-    x382 = x155 * (x332 + x357)
-    x383 = 2.0 * x381 + 2.0 * x382
-    x384 = x0 * (2.0 * x327 + x356 + x364 + x383)
-    x385 = x155 * x361
-    x386 = x384 + x385
-    x387 = x0 * (x161 + x331 + x358 + x368)
-    x388 = x155 * (x347 + x362)
-    x389 = x0 * (
-        2.0 * x336 + 2.0 * x343 + 2.0 * x359 + 2.0 * x360 + 2.0 * x387 + 2.0 * x388
+    x492 = 20.3985682659737 * x3
+    x493 = x145 * x467
+    x494 = x144 * x493
+    x495 = x449 * x468
+    x496 = 93.4779831475484 * x3
+    x497 = 69.6743749058326 * x22
+    x498 = x3 * x468
+    x499 = x189 * x38
+    x500 = x189 * x489
+    x501 = x369 * x493
+    x502 = x341 * x493
+    x503 = -x118 - C[2]
+    x504 = x141 * x503**2
+    x505 = x143 + x504
+    x506 = 9.12251705727742 * x178
+    x507 = x147 * x359
+    x508 = x119 * x505
+    x509 = x141 * x503
+    x510 = x24 * x509
+    x511 = x508 + x510
+    x512 = x189 * x505
+    x513 = 35.3313566383285 * x511
+    x514 = x159 * x503
+    x515 = x205 + 2.0 * x514
+    x516 = x0 * (x504 + x515)
+    x517 = x119 * x511
+    x518 = x516 + x517
+    x519 = x147 * x518
+    x520 = x189 * x511
+    x521 = x143 + x514
+    x522 = x119 * x521
+    x523 = x0 * (x159 + x509)
+    x524 = 2.0 * x523
+    x525 = 4.0 * x143 * x503
+    x526 = x524 + x525
+    x527 = x0 * (2.0 * x508 + 2.0 * x522 + x526)
+    x528 = x119 * x518
+    x529 = x527 + x528
+    x530 = x312 * x350
+    x531 = x297 * x358
+    x532 = x297 * x363
+    x533 = 24.1359114645008 * x403
+    x534 = x312 * x362
+    x535 = x192 * x505
+    x536 = x510 + x535
+    x537 = x192 * x511
+    x538 = x516 + x537
+    x539 = x189 * x536
+    x540 = x178 * x199
+    x541 = x192 * x518
+    x542 = x527 + x541
+    x543 = x522 + x523
+    x544 = x119 * x543
+    x545 = x0 * (x142 + x515)
+    x546 = 2.0 * x545
+    x547 = 3.0 * x516 + x546
+    x548 = x0 * (3.0 * x517 + 2.0 * x544 + x547)
+    x549 = x192 * x529
+    x550 = x548 + x549
+    x551 = 69.6743749058326 * x518
+    x552 = x128 * x189
+    x553 = 120.679557322504 * x539
+    x554 = 209.023124717498 * x538
+    x555 = x128 * x178
+    x556 = 120.679557322504 * x435
+    x557 = x205 + x253 * x509
+    x558 = x0 * (x504 + x557)
+    x559 = x192 * x536
+    x560 = x558 + x559
+    x561 = x178 * x560
+    x562 = x192 * x521
+    x563 = 2.0 * x562
+    x564 = x0 * (x508 + x526 + x535 + x563)
+    x565 = x192 * x538
+    x566 = x564 + x565
+    x567 = x178 * x566
+    x568 = x192 * x543
+    x569 = 2.0 * x568
+    x570 = 2.0 * x537
+    x571 = x0 * (x517 + x547 + x569 + x570)
+    x572 = x192 * x542
+    x573 = x571 + x572
+    x574 = 69.6743749058326 * x573
+    x575 = 3.0 * x523
+    x576 = x0 * (x161 + 3.0 * x522 + x575)
+    x577 = x192 * (x544 + x545)
+    x578 = 2.0 * x576 + 2.0 * x577
+    x579 = x0 * (4.0 * x527 + x528 + 3.0 * x541 + x578)
+    x580 = x192 * x550
+    x581 = x579 + x580
+    x582 = x468 * x505
+    x583 = x277 * x468
+    x584 = x271 * x469
+    x585 = x468 * x529
+    x586 = 53.9695387335403 * x539
+    x587 = 120.679557322504 * x211
+    x588 = x189 * x538
+    x589 = 120.679557322504 * x477
+    x590 = x216 * x468
+    x591 = x189 * x560
+    x592 = x468 * x560
+    x593 = x468 * x566
+    x594 = x467 * x94
+    x595 = x180 * x594
+    x596 = x0 * (x194 + x509)
+    x597 = x194 * x503
+    x598 = x192 * (x143 + x597)
+    x599 = x0 * (x525 + 2.0 * x535 + 2.0 * x596 + 2.0 * x598) + x192 * x560
+    x600 = x312 * x599
+    x601 = x178 * x450
+    x602 = x0 * (x195 + x205 + x514 + x597)
+    x603 = x192 * (x523 + x562)
+    x604 = 2.0 * x602 + 2.0 * x603
+    x605 = x0 * (2.0 * x516 + x560 + x570 + x604)
+    x606 = x192 * x566
+    x607 = x605 + x606
+    x608 = x0 * (x201 + x522 + x563 + x575)
+    x609 = x192 * (x545 + x568)
+    x610 = 2.0 * x0 * (x527 + x541 + x564 + x565 + x608 + x609)
+    x611 = x192 * x573
+    x612 = x610 + x611
+    x613 = 24.1359114645008 * x468
+    x614 = x599 * x613
+    x615 = x468 * x607
+    x616 = x0 * (x208 + x544 + 4.0 * x545 + 3.0 * x568)
+    x617 = x192 * (x576 + x577)
+    x618 = 3.0 * x571 + 3.0 * x572
+    x619 = x0 * (2.0 * x548 + 2.0 * x549 + 2.0 * x616 + 2.0 * x617 + x618) + x192 * x581
+    x620 = x594 * x619
+    x621 = x320 * x493
+    x622 = x493 * x518
+    x623 = x596 + x598
+    x624 = (
+        x0 * (x24 * (x244 + x557) + x253 * x623 + 3.0 * x558 + 3.0 * x559) + x192 * x599
     )
-    x390 = x155 * x367
-    x391 = x389 + x390
-    x392 = x0 * (x165 + x346 + 4.0 * x347 + 3.0 * x362)
-    x393 = x155 * (x369 + x370)
-    x394 = 3.0 * x365 + 3.0 * x366
-    x395 = x0 * (2.0 * x350 + 2.0 * x351 + 2.0 * x392 + 2.0 * x393 + x394) + x155 * x374
-    x396 = x375 * x395
-    x397 = x3 * x375
-    x398 = x377 + x379
-    x399 = (
-        x0 * (x185 * x398 + x23 * (x180 + x353) + 3.0 * x354 + 3.0 * x355) + x155 * x380
-    )
-    x400 = (
+    x625 = x178 * x489
+    x626 = (
         x0
         * (
-            x185 * (x381 + x382)
-            + x23 * (x184 + x333 + x358 + x398)
-            + 3.0 * x359
-            + 3.0 * x360
-            + x380
+            x24 * (x250 + x524 + x563 + x623)
+            + x253 * (x602 + x603)
+            + 3.0 * x564
+            + 3.0 * x565
+            + x599
         )
-        + x155 * x386
+        + x192 * x607
     )
-    x401 = x375 * (
+    x627 = x139 * x467
+    x628 = x594 * (
         x0
         * (
-            x185 * (x387 + x388)
-            + x23 * (x189 + x348 + x363 + x383)
-            + 2.0 * x384
-            + 2.0 * x385
-            + x394
+            x24 * (x257 + x546 + x569 + x604)
+            + x253 * (x608 + x609)
+            + 2.0 * x605
+            + 2.0 * x606
+            + x618
         )
-        + x155 * x391
+        + x192 * x612
     )
 
     # 450 item(s)
-    return numpy.array(
-        [
-            x90
+    result[0, 0, 0] = numpy.sum(
+        x91
+        * x94
+        * (
+            x0
             * (
-                x0
-                * (
-                    x23 * (3.0 * x26 + 3.0 * x32 + x41 + x45)
-                    + x48 * (x46 + x47)
-                    + 3.0 * x63
-                    + 3.0 * x69
-                    + 3.0 * x76
-                    + 3.0 * x83
-                )
-                + x17 * x86
-            ),
-            x111 * x92,
-            x111 * x113,
-            x117 * x128 * x129,
-            x128 * x130 * x92,
-            x114 * x128 * x133,
-            x129 * x137 * x139,
-            x117 * x139 * x140,
-            x133 * x135 * x139,
-            x114 * x139 * x143,
-            x144 * x145,
-            x110 * x129 * x148,
-            x110 * x130 * x144,
-            x127 * x129 * x150,
-            x127 * x140 * x148,
-            x127 * x133 * x146,
-            x126 * x129 * x154,
-            x126 * x140 * x150,
-            x126 * x133 * x148,
-            x126 * x143 * x146,
-            x145 * x155,
-            x110 * x156 * x92,
-            x110 * x114 * x159,
-            x117 * x127 * x157,
-            x127 * x135 * x159,
-            x114 * x127 * x161,
-            x126 * x137 * x157,
-            x117 * x126 * x159,
-            x126 * x135 * x161,
-            x114 * x126 * x165,
-            x129 * x167 * x85,
-            x129 * x170 * x82,
-            x140 * x167 * x82,
-            x108 * x129 * x175,
-            x108 * x140 * x170,
-            x108 * x133 * x167,
-            x106 * x129 * x179,
-            x106 * x140 * x175,
-            x106 * x133 * x170,
-            x106 * x143 * x167,
-            x144 * x156 * x85,
-            x148 * x157 * x82,
-            x146 * x159 * x82,
-            x108 * x150 * x157,
-            x108 * x148 * x159,
-            x108 * x146 * x161,
-            x106 * x154 * x157,
-            x106 * x150 * x159,
-            x106 * x148 * x161,
-            x106 * x146 * x165,
-            x114 * x181 * x85,
-            x135 * x181 * x82,
-            x114 * x184 * x82,
-            x108 * x117 * x181,
-            x108 * x135 * x184,
-            x108 * x114 * x189,
-            x106 * x137 * x181,
-            x106 * x117 * x184,
-            x106 * x135 * x189,
-            x106 * x114 * x193,
-            x129 * x194 * x75,
-            x129 * x197 * x80,
-            x140 * x194 * x80,
-            x129 * x200 * x67,
-            x140 * x197 * x67,
-            x133 * x194 * x67,
-            x104 * x129 * x202,
-            x104 * x140 * x200,
-            x104 * x133 * x197,
-            x104 * x143 * x194,
-            x157 * x167 * x75,
-            x157 * x170 * x80,
-            x159 * x167 * x80,
-            x157 * x175 * x67,
-            x159 * x170 * x67,
-            x161 * x167 * x67,
-            x104 * x157 * x179,
-            x104 * x159 * x175,
-            x104 * x161 * x170,
-            x104 * x165 * x167,
-            x146 * x181 * x75,
-            x148 * x181 * x80,
-            x146 * x184 * x80,
-            x150 * x181 * x67,
-            x148 * x184 * x67,
-            x146 * x189 * x67,
-            x104 * x154 * x181,
-            x104 * x150 * x184,
-            x104 * x148 * x189,
-            x104 * x146 * x193,
-            x114 * x203 * x75,
-            x135 * x203 * x80,
-            x114 * x206 * x80,
-            x117 * x203 * x67,
-            x135 * x206 * x67,
-            x114 * x209 * x67,
-            x104 * x137 * x203,
-            x104 * x117 * x206,
-            x104 * x135 * x209,
-            x104 * x114 * x211,
-            x129 * x212 * x73,
-            x129 * x213 * x56,
-            x140 * x212 * x56,
-            x129 * x214 * x54,
-            x140 * x213 * x54,
-            x133 * x212 * x54,
-            x129 * x215 * x51,
-            x140 * x214 * x51,
-            x133 * x213 * x51,
-            x143 * x212 * x51,
-            x157 * x194 * x73,
-            x157 * x197 * x56,
-            x159 * x194 * x56,
-            x157 * x200 * x54,
-            x159 * x197 * x54,
-            x161 * x194 * x54,
-            x157 * x202 * x51,
-            x159 * x200 * x51,
-            x161 * x197 * x51,
-            x165 * x194 * x51,
-            x167 * x181 * x73,
-            x170 * x181 * x56,
-            x167 * x184 * x56,
-            x175 * x181 * x54,
-            x170 * x184 * x54,
-            x167 * x189 * x54,
-            x179 * x181 * x51,
-            x175 * x184 * x51,
-            x170 * x189 * x51,
-            x167 * x193 * x51,
-            x146 * x203 * x73,
-            x148 * x203 * x56,
-            x146 * x206 * x56,
-            x150 * x203 * x54,
-            x148 * x206 * x54,
-            x146 * x209 * x54,
-            x154 * x203 * x51,
-            x150 * x206 * x51,
-            x148 * x209 * x51,
-            x146 * x211 * x51,
-            x114 * x216 * x73,
-            x135 * x216 * x56,
-            x114 * x217 * x56,
-            x117 * x216 * x54,
-            x135 * x217 * x54,
-            x114 * x218 * x54,
-            x137 * x216 * x51,
-            x117 * x217 * x51,
-            x135 * x218 * x51,
-            x114 * x219 * x51,
-            x129 * x222 * x227,
-            x129 * x231 * x235,
-            x140 * x222 * x235,
-            x129 * x240 * x244,
-            x140 * x231 * x244,
-            x133 * x222 * x244,
-            x129 * x253 * x254,
-            x140 * x240 * x254,
-            x133 * x231 * x254,
-            x143 * x222 * x254,
-            x129 * x226 * x256,
-            x129 * x234 * x258,
-            x140 * x234 * x256,
-            x129 * x243 * x260,
-            x140 * x243 * x258,
-            x133 * x243 * x256,
-            x129 * x242 * x268,
-            x140 * x242 * x260,
-            x133 * x242 * x258,
-            x143 * x242 * x256,
-            x157 * x222 * x226,
-            x157 * x231 * x234,
-            x159 * x222 * x234,
-            x157 * x240 * x243,
-            x159 * x231 * x243,
-            x161 * x222 * x243,
-            x157 * x242 * x253,
-            x159 * x240 * x242,
-            x161 * x231 * x242,
-            x165 * x222 * x242,
-            x129 * x272 * x41,
-            x129 * x277 * x96,
-            x140 * x272 * x96,
-            x125 * x129 * x283,
-            x125 * x140 * x277,
-            x125 * x133 * x272,
-            x129 * x241 * x290,
-            x140 * x241 * x283,
-            x133 * x241 * x277,
-            x143 * x241 * x272,
-            x157 * x256 * x41,
-            x157 * x258 * x96,
-            x159 * x256 * x96,
-            x125 * x157 * x260,
-            x125 * x159 * x258,
-            x125 * x161 * x256,
-            x157 * x241 * x268,
-            x159 * x241 * x260,
-            x161 * x241 * x258,
-            x165 * x241 * x256,
-            x181 * x222 * x41,
-            x181 * x231 * x96,
-            x184 * x222 * x96,
-            x125 * x181 * x240,
-            x125 * x184 * x231,
-            x125 * x189 * x222,
-            x181 * x241 * x253,
-            x184 * x240 * x241,
-            x189 * x231 * x241,
-            x193 * x222 * x241,
-            x129 * x294 * x39,
-            x129 * x25 * x300,
-            x140 * x25 * x294,
-            x123 * x129 * x305,
-            x123 * x140 * x300,
-            x123 * x133 * x294,
-            x17 * x311,
-            x113 * x305 * x312,
-            x118 * x133 * x300,
-            x118 * x143 * x294,
-            x157 * x272 * x39,
-            x157 * x25 * x277,
-            x159 * x25 * x272,
-            x123 * x157 * x283,
-            x123 * x159 * x277,
-            x123 * x161 * x272,
-            x155 * x290 * x312,
-            x118 * x159 * x283,
-            x118 * x161 * x277,
-            x118 * x165 * x272,
-            x181 * x256 * x39,
-            x181 * x25 * x258,
-            x184 * x25 * x256,
-            x123 * x181 * x260,
-            x123 * x184 * x258,
-            x123 * x189 * x256,
-            x118 * x181 * x268,
-            x118 * x184 * x260,
-            x118 * x189 * x258,
-            x118 * x193 * x256,
-            x203 * x222 * x39,
-            x203 * x231 * x25,
-            x206 * x222 * x25,
-            x123 * x203 * x240,
-            x123 * x206 * x231,
-            x123 * x209 * x222,
-            x118 * x203 * x253,
-            x118 * x206 * x240,
-            x118 * x209 * x231,
-            x118 * x211 * x222,
-            x129 * x314 * x37,
-            x129 * x21 * x315,
-            x140 * x21 * x314,
-            x3 * x316,
-            x113 * x315 * x317,
-            x10 * x133 * x314,
-            x310
-            * (
-                x0
-                * (
-                    x171 * (x306 + x307)
-                    + x23 * (x179 + x287 + 3.0 * x301 + 3.0 * x302)
-                    + 3.0 * x288
-                    + 3.0 * x289
-                    + 3.0 * x303
-                    + 3.0 * x304
-                )
-                + x144 * x309
-            ),
-            x113 * x316,
-            x133 * x315 * x7,
-            x143 * x314 * x7,
-            x157 * x294 * x37,
-            x157 * x21 * x300,
-            x159 * x21 * x294,
-            x155 * x305 * x317,
-            x10 * x159 * x300,
-            x10 * x161 * x294,
-            x155 * x311,
-            x159 * x305 * x7,
-            x161 * x300 * x7,
-            x165 * x294 * x7,
-            x181 * x272 * x37,
-            x181 * x21 * x277,
-            x184 * x21 * x272,
-            x10 * x181 * x283,
-            x10 * x184 * x277,
-            x10 * x189 * x272,
-            x181 * x290 * x7,
-            x184 * x283 * x7,
-            x189 * x277 * x7,
-            x193 * x272 * x7,
-            x203 * x256 * x37,
-            x203 * x21 * x258,
-            x206 * x21 * x256,
-            x10 * x203 * x260,
-            x10 * x206 * x258,
-            x10 * x209 * x256,
-            x203 * x268 * x7,
-            x206 * x260 * x7,
-            x209 * x258 * x7,
-            x211 * x256 * x7,
-            x216 * x222 * x37,
-            x21 * x216 * x231,
-            x21 * x217 * x222,
-            x10 * x216 * x240,
-            x10 * x217 * x231,
-            x10 * x218 * x222,
-            x216 * x253 * x7,
-            x217 * x240 * x7,
-            x218 * x231 * x7,
-            x219 * x222 * x7,
-            x114 * x227 * x320,
-            x135 * x235 * x320,
-            x114 * x235 * x324,
-            x117 * x244 * x320,
-            x135 * x244 * x324,
-            x114 * x244 * x329,
-            x137 * x254 * x320,
-            x117 * x254 * x324,
-            x135 * x254 * x329,
-            x114 * x254 * x338,
-            x146 * x226 * x320,
-            x148 * x234 * x320,
-            x146 * x234 * x324,
-            x150 * x243 * x320,
-            x148 * x243 * x324,
-            x146 * x243 * x329,
-            x154 * x242 * x320,
-            x150 * x242 * x324,
-            x148 * x242 * x329,
-            x146 * x242 * x338,
-            x114 * x226 * x340,
-            x135 * x234 * x340,
-            x114 * x234 * x342,
-            x117 * x243 * x340,
-            x135 * x243 * x342,
-            x114 * x243 * x344,
-            x137 * x242 * x340,
-            x117 * x242 * x342,
-            x135 * x242 * x344,
-            x114 * x242 * x352,
-            x167 * x320 * x41,
-            x170 * x320 * x96,
-            x167 * x324 * x96,
-            x125 * x175 * x320,
-            x125 * x170 * x324,
-            x125 * x167 * x329,
-            x179 * x241 * x320,
-            x175 * x241 * x324,
-            x170 * x241 * x329,
-            x167 * x241 * x338,
-            x146 * x340 * x41,
-            x148 * x340 * x96,
-            x146 * x342 * x96,
-            x125 * x150 * x340,
-            x125 * x148 * x342,
-            x125 * x146 * x344,
-            x154 * x241 * x340,
-            x150 * x241 * x342,
-            x148 * x241 * x344,
-            x146 * x241 * x352,
-            x114 * x356 * x41,
-            x135 * x356 * x96,
-            x114 * x361 * x96,
-            x117 * x125 * x356,
-            x125 * x135 * x361,
-            x114 * x125 * x367,
-            x137 * x241 * x356,
-            x117 * x241 * x361,
-            x135 * x241 * x367,
-            x114 * x241 * x374,
-            x194 * x320 * x39,
-            x197 * x25 * x320,
-            x194 * x25 * x324,
-            x123 * x200 * x320,
-            x123 * x197 * x324,
-            x123 * x194 * x329,
-            x118 * x202 * x320,
-            x118 * x200 * x324,
-            x118 * x197 * x329,
-            x118 * x194 * x338,
-            x167 * x340 * x39,
-            x170 * x25 * x340,
-            x167 * x25 * x342,
-            x123 * x175 * x340,
-            x123 * x170 * x342,
-            x123 * x167 * x344,
-            x118 * x179 * x340,
-            x118 * x175 * x342,
-            x118 * x170 * x344,
-            x118 * x167 * x352,
-            x146 * x356 * x39,
-            x148 * x25 * x356,
-            x146 * x25 * x361,
-            x123 * x150 * x356,
-            x123 * x148 * x361,
-            x123 * x146 * x367,
-            x118 * x154 * x356,
-            x118 * x150 * x361,
-            x118 * x148 * x367,
-            x144 * x374 * x376,
-            x114 * x380 * x39,
-            x135 * x25 * x380,
-            x114 * x25 * x386,
-            x117 * x123 * x380,
-            x123 * x135 * x386,
-            x114 * x123 * x391,
-            x118 * x137 * x380,
-            x117 * x118 * x386,
-            x376 * x391 * x92,
-            x17 * x396,
-            x212 * x320 * x37,
-            x21 * x213 * x320,
-            x21 * x212 * x324,
-            x10 * x214 * x320,
-            x10 * x213 * x324,
-            x10 * x212 * x329,
-            x215 * x320 * x7,
-            x214 * x324 * x7,
-            x213 * x329 * x7,
-            x212 * x338 * x7,
-            x194 * x340 * x37,
-            x197 * x21 * x340,
-            x194 * x21 * x342,
-            x10 * x200 * x340,
-            x10 * x197 * x342,
-            x10 * x194 * x344,
-            x202 * x340 * x7,
-            x200 * x342 * x7,
-            x197 * x344 * x7,
-            x194 * x352 * x7,
-            x167 * x356 * x37,
-            x170 * x21 * x356,
-            x167 * x21 * x361,
-            x10 * x175 * x356,
-            x10 * x170 * x361,
-            x10 * x167 * x367,
-            x179 * x356 * x7,
-            x175 * x361 * x7,
-            x170 * x367 * x7,
-            x167 * x374 * x7,
-            x146 * x37 * x380,
-            x148 * x21 * x380,
-            x146 * x21 * x386,
-            x10 * x150 * x380,
-            x10 * x148 * x386,
-            x144 * x391 * x397,
-            x154 * x380 * x7,
-            x150 * x386 * x7,
-            x148 * x391 * x7,
-            x144 * x396,
-            x114 * x37 * x399,
-            x135 * x21 * x399,
-            x114 * x21 * x400,
-            x10 * x117 * x399,
-            x397 * x400 * x92,
-            x3 * x401,
-            x137 * x399 * x7,
-            x117 * x400 * x7,
-            x401 * x92,
-            x375
-            * (
-                x0
-                * (
-                    x185 * (x392 + x393)
-                    + x23 * (x193 + x371 + 3.0 * x387 + 3.0 * x388)
-                    + 3.0 * x372
-                    + 3.0 * x373
-                    + 3.0 * x389
-                    + 3.0 * x390
-                )
-                + x155 * x395
-            ),
-        ]
+                x24 * (3.0 * x27 + 3.0 * x33 + x42 + x46)
+                + x49 * (x47 + x48)
+                + 3.0 * x64
+                + 3.0 * x70
+                + 3.0 * x77
+                + 3.0 * x84
+            )
+            + x18 * x87
+        )
     )
+    result[0, 0, 1] = numpy.sum(x117 * x97)
+    result[0, 0, 2] = numpy.sum(x117 * x120)
+    result[0, 0, 3] = numpy.sum(x132 * x139)
+    result[0, 0, 4] = numpy.sum(x119 * x132 * x140 * x94)
+    result[0, 0, 5] = numpy.sum(x131 * x148)
+    result[0, 0, 6] = numpy.sum(x153 * x156 * x90)
+    result[0, 0, 7] = numpy.sum(x139 * x155 * x157)
+    result[0, 0, 8] = numpy.sum(x148 * x155 * x96)
+    result[0, 0, 9] = numpy.sum(x146 * x156 * x162)
+    result[0, 1, 0] = numpy.sum(x164 * x165)
+    result[0, 1, 1] = numpy.sum(x115 * x169 * x170)
+    result[0, 1, 2] = numpy.sum(x119 * x163 * x172)
+    result[0, 1, 3] = numpy.sum(x175 * x176)
+    result[0, 1, 4] = numpy.sum(x119 * x176 * x177)
+    result[0, 1, 5] = numpy.sum(x144 * x179 * x180)
+    result[0, 1, 6] = numpy.sum(x184 * x186)
+    result[0, 1, 7] = numpy.sum(x174 * x187 * x188)
+    result[0, 1, 8] = numpy.sum(x129 * x169 * x190)
+    result[0, 1, 9] = numpy.sum(x161 * x164 * x191)
+    result[0, 2, 0] = numpy.sum(x165 * x193)
+    result[0, 2, 1] = numpy.sum(x172 * x192 * x96)
+    result[0, 2, 2] = numpy.sum(x171 * x197)
+    result[0, 2, 3] = numpy.sum(x176 * x192 * x198)
+    result[0, 2, 4] = numpy.sum(x130 * x197 * x199)
+    result[0, 2, 5] = numpy.sum(x179 * x202)
+    result[0, 2, 6] = numpy.sum(x152 * x186 * x192)
+    result[0, 2, 7] = numpy.sum(x136 * x187 * x203)
+    result[0, 2, 8] = numpy.sum(x187 * x201 * x204)
+    result[0, 2, 9] = numpy.sum(x191 * x209)
+    result[0, 3, 0] = numpy.sum(x170 * x212 * x86)
+    result[0, 3, 1] = numpy.sum(x213 * x217)
+    result[0, 3, 2] = numpy.sum(x188 * x211 * x213)
+    result[0, 3, 3] = numpy.sum(x223 * x224)
+    result[0, 3, 4] = numpy.sum(x119 * x224 * x225)
+    result[0, 3, 5] = numpy.sum(x113 * x211 * x226)
+    result[0, 3, 6] = numpy.sum(x231 * x232)
+    result[0, 3, 7] = numpy.sum(x119 * x223 * x232)
+    result[0, 3, 8] = numpy.sum(x111 * x216 * x226)
+    result[0, 3, 9] = numpy.sum(x161 * x212 * x233)
+    result[0, 4, 0] = numpy.sum(x116 * x180 * x192 * x86)
+    result[0, 4, 1] = numpy.sum(x234 * x235 * x83)
+    result[0, 4, 2] = numpy.sum(x197 * x236 * x83)
+    result[0, 4, 3] = numpy.sum(x174 * x224 * x237)
+    result[0, 4, 4] = numpy.sum(x113 * x168 * x238)
+    result[0, 4, 5] = numpy.sum(x163 * x239 * x240)
+    result[0, 4, 6] = numpy.sum(x192 * x232 * x241)
+    result[0, 4, 7] = numpy.sum(x111 * x174 * x242)
+    result[0, 4, 8] = numpy.sum(x168 * x233 * x239)
+    result[0, 4, 9] = numpy.sum(x180 * x208 * x243)
+    result[0, 5, 0] = numpy.sum(x178 * x246 * x86)
+    result[0, 5, 1] = numpy.sum(x245 * x247 * x96)
+    result[0, 5, 2] = numpy.sum(x247 * x250)
+    result[0, 5, 3] = numpy.sum(x113 * x251 * x252)
+    result[0, 5, 4] = numpy.sum(120.679557322504 * x240 * x250 * x96)
+    result[0, 5, 5] = numpy.sum(x240 * x258)
+    result[0, 5, 6] = numpy.sum(x233 * x245 * x259)
+    result[0, 5, 7] = numpy.sum(x233 * x250 * x251)
+    result[0, 5, 8] = numpy.sum(x243 * x258 * x96)
+    result[0, 5, 9] = numpy.sum(x243 * x264)
+    result[0, 6, 0] = numpy.sum(x266 * x267)
+    result[0, 6, 1] = numpy.sum(x268 * x272)
+    result[0, 6, 2] = numpy.sum(x188 * x273 * x81)
+    result[0, 6, 3] = numpy.sum(x277 * x278)
+    result[0, 6, 4] = numpy.sum(x119 * x278 * x279)
+    result[0, 6, 5] = numpy.sum(x265 * x280 * x68)
+    result[0, 6, 6] = numpy.sum(x109 * x283)
+    result[0, 6, 7] = numpy.sum(x109 * x188 * x277)
+    result[0, 6, 8] = numpy.sum(x109 * x271 * x280)
+    result[0, 6, 9] = numpy.sum(x161 * x266 * x284)
+    result[0, 7, 0] = numpy.sum(x211 * x267 * x285)
+    result[0, 7, 1] = numpy.sum(x217 * x237 * x81)
+    result[0, 7, 2] = numpy.sum(x211 * x242 * x81)
+    result[0, 7, 3] = numpy.sum(x222 * x237 * x278)
+    result[0, 7, 4] = numpy.sum(x216 * x238 * x68)
+    result[0, 7, 5] = numpy.sum(x211 * x239 * x286)
+    result[0, 7, 6] = numpy.sum(x109 * x230 * x288)
+    result[0, 7, 7] = numpy.sum(x109 * x222 * x242)
+    result[0, 7, 8] = numpy.sum(x216 * x239 * x284)
+    result[0, 7, 9] = numpy.sum(x208 * x211 * x289)
+    result[0, 8, 0] = numpy.sum(x180 * x245 * x290)
+    result[0, 8, 1] = numpy.sum(x168 * x291 * x81)
+    result[0, 8, 2] = numpy.sum(x250 * x292 * x81)
+    result[0, 8, 3] = numpy.sum(x174 * x291 * x68)
+    result[0, 8, 4] = numpy.sum(x168 * x286 * x293)
+    result[0, 8, 5] = numpy.sum(x236 * x257 * x294)
+    result[0, 8, 6] = numpy.sum(x109 * x184 * x295)
+    result[0, 8, 7] = numpy.sum(x174 * x250 * x296)
+    result[0, 8, 8] = numpy.sum(x168 * x257 * x296)
+    result[0, 8, 9] = numpy.sum(x109 * x263 * x298)
+    result[0, 9, 0] = numpy.sum(x290 * x300)
+    result[0, 9, 1] = numpy.sum(x204 * x301 * x81)
+    result[0, 9, 2] = numpy.sum(x268 * x305)
+    result[0, 9, 3] = numpy.sum(x136 * x286 * x301)
+    result[0, 9, 4] = numpy.sum(x199 * x305 * x68)
+    result[0, 9, 5] = numpy.sum(x294 * x309)
+    result[0, 9, 6] = numpy.sum(x152 * x284 * x300)
+    result[0, 9, 7] = numpy.sum(x136 * x289 * x304)
+    result[0, 9, 8] = numpy.sum(x109 * x204 * x309)
+    result[0, 9, 9] = numpy.sum(x109 * x313)
+    result[0, 10, 0] = numpy.sum(x315 * x316)
+    result[0, 10, 1] = numpy.sum(x317 * x319)
+    result[0, 10, 2] = numpy.sum(x119 * x314 * x319)
+    result[0, 10, 3] = numpy.sum(x321 * x55)
+    result[0, 10, 4] = numpy.sum(x188 * x317 * x322)
+    result[0, 10, 5] = numpy.sum(x314 * x323 * x55)
+    result[0, 10, 6] = numpy.sum(x324 * x325 * x52)
+    result[0, 10, 7] = numpy.sum(x119 * x321 * x52)
+    result[0, 10, 8] = numpy.sum(x317 * x323 * x52)
+    result[0, 10, 9] = numpy.sum(x162 * x314 * x326)
+    result[0, 11, 0] = numpy.sum(x192 * x266 * x316)
+    result[0, 11, 1] = numpy.sum(x272 * x285 * x57)
+    result[0, 11, 2] = numpy.sum(x203 * x273 * x57)
+    result[0, 11, 3] = numpy.sum(x235 * x277 * x55)
+    result[0, 11, 4] = numpy.sum(x203 * x271 * x327)
+    result[0, 11, 5] = numpy.sum(x201 * x273 * x328)
+    result[0, 11, 6] = numpy.sum(x192 * x283 * x52)
+    result[0, 11, 7] = numpy.sum(x276 * x329 * x52)
+    result[0, 11, 8] = numpy.sum(x201 * x271 * x330)
+    result[0, 11, 9] = numpy.sum(x208 * x266 * x326)
+    result[0, 12, 0] = numpy.sum(x212 * x252 * x74)
+    result[0, 12, 1] = numpy.sum(x216 * x252 * x331)
+    result[0, 12, 2] = numpy.sum(x211 * x331 * x332)
+    result[0, 12, 3] = numpy.sum(x223 * x252 * x55)
+    result[0, 12, 4] = numpy.sum(x225 * x250 * x328)
+    result[0, 12, 5] = numpy.sum(x211 * x258 * x328)
+    result[0, 12, 6] = numpy.sum(x230 * x333 * x52)
+    result[0, 12, 7] = numpy.sum(x223 * x250 * x326)
+    result[0, 12, 8] = numpy.sum(x216 * x258 * x326)
+    result[0, 12, 9] = numpy.sum(x212 * x263 * x326)
+    result[0, 13, 0] = numpy.sum(x163 * x300 * x334)
+    result[0, 13, 1] = numpy.sum(x299 * x335 * x57)
+    result[0, 13, 2] = numpy.sum(x180 * x305 * x57)
+    result[0, 13, 3] = numpy.sum(x174 * x301 * x328)
+    result[0, 13, 4] = numpy.sum(x168 * x327 * x336)
+    result[0, 13, 5] = numpy.sum(x163 * x178 * x309 * x55)
+    result[0, 13, 6] = numpy.sum(x184 * x300 * x326)
+    result[0, 13, 7] = numpy.sum(x174 * x304 * x330)
+    result[0, 13, 8] = numpy.sum(x169 * x308 * x326)
+    result[0, 13, 9] = numpy.sum(x163 * x313 * x52)
+    result[0, 14, 0] = numpy.sum(x334 * x338)
+    result[0, 14, 1] = numpy.sum(x337 * x339 * x96)
+    result[0, 14, 2] = numpy.sum(x339 * x340)
+    result[0, 14, 3] = numpy.sum(x137 * x328 * x337)
+    result[0, 14, 4] = numpy.sum(x204 * x322 * x340)
+    result[0, 14, 5] = numpy.sum(x342 * x55)
+    result[0, 14, 6] = numpy.sum(x152 * x326 * x338)
+    result[0, 14, 7] = numpy.sum(x137 * x326 * x340)
+    result[0, 14, 8] = numpy.sum(x342 * x52 * x96)
+    result[0, 14, 9] = numpy.sum(x178 * x343 * x52)
+    result[1, 0, 0] = numpy.sum(x325 * x346 * x351)
+    result[1, 0, 1] = numpy.sum(x355 * x360)
+    result[1, 0, 2] = numpy.sum(x119 * x346 * x360)
+    result[1, 0, 3] = numpy.sum(x364 * x370)
+    result[1, 0, 4] = numpy.sum(x188 * x364 * x371)
+    result[1, 0, 5] = numpy.sum(x323 * x346 * x364)
+    result[1, 0, 6] = numpy.sum(x325 * x380 * x381)
+    result[1, 0, 7] = numpy.sum(x119 * x370 * x381)
+    result[1, 0, 8] = numpy.sum(x323 * x355 * x381)
+    result[1, 0, 9] = numpy.sum(x162 * x381 * x382)
+    result[1, 1, 0] = numpy.sum(x170 * x350 * x385)
+    result[1, 1, 1] = numpy.sum(x387 * x388)
+    result[1, 1, 2] = numpy.sum(x188 * x358 * x389)
+    result[1, 1, 3] = numpy.sum(x363 * x392)
+    result[1, 1, 4] = numpy.sum(x363 * x387 * x393)
+    result[1, 1, 5] = numpy.sum(x280 * x363 * x384)
+    result[1, 1, 6] = numpy.sum(x401 * x402)
+    result[1, 1, 7] = numpy.sum(x119 * x362 * x392)
+    result[1, 1, 8] = numpy.sum(x280 * x362 * x387)
+    result[1, 1, 9] = numpy.sum(x161 * x385 * x403)
+    result[1, 2, 0] = numpy.sum(x185 * x192 * x346 * x350)
+    result[1, 2, 1] = numpy.sum(x192 * x355 * x388)
+    result[1, 2, 2] = numpy.sum(x329 * x346 * x358)
+    result[1, 2, 3] = numpy.sum(x288 * x363 * x369)
+    result[1, 2, 4] = numpy.sum(x203 * x363 * x404)
+    result[1, 2, 5] = numpy.sum(x202 * x363 * x382)
+    result[1, 2, 6] = numpy.sum(x192 * x380 * x402)
+    result[1, 2, 7] = numpy.sum(x329 * x362 * x369)
+    result[1, 2, 8] = numpy.sum(x202 * x355 * x403)
+    result[1, 2, 9] = numpy.sum(x209 * x362 * x382)
+    result[1, 3, 0] = numpy.sum(x409 * x410)
+    result[1, 3, 1] = numpy.sum(x415 * x417)
+    result[1, 3, 2] = numpy.sum(x119 * x408 * x417)
+    result[1, 3, 3] = numpy.sum(x424 * x425)
+    result[1, 3, 4] = numpy.sum(x188 * x415 * x426)
+    result[1, 3, 5] = numpy.sum(x128 * x226 * x408)
+    result[1, 3, 6] = numpy.sum(x170 * x433 * x434)
+    result[1, 3, 7] = numpy.sum(x188 * x361 * x424)
+    result[1, 3, 8] = numpy.sum(x226 * x361 * x415)
+    result[1, 3, 9] = numpy.sum(x161 * x409 * x435)
+    result[1, 4, 0] = numpy.sum(x192 * x389 * x410)
+    result[1, 4, 1] = numpy.sum(x101 * x387 * x436)
+    result[1, 4, 2] = numpy.sum(x101 * x242 * x384)
+    result[1, 4, 3] = numpy.sum(x237 * x391 * x425)
+    result[1, 4, 4] = numpy.sum(x128 * x238 * x387)
+    result[1, 4, 5] = numpy.sum(x128 * x384 * x437)
+    result[1, 4, 6] = numpy.sum(x288 * x361 * x401)
+    result[1, 4, 7] = numpy.sum(x242 * x361 * x391)
+    result[1, 4, 8] = numpy.sum(x239 * x387 * x435)
+    result[1, 4, 9] = numpy.sum(x208 * x389 * x435)
+    result[1, 5, 0] = numpy.sum(x333 * x346 * x42)
+    result[1, 5, 1] = numpy.sum(x252 * x355 * x416)
+    result[1, 5, 2] = numpy.sum(x332 * x346 * x416)
+    result[1, 5, 3] = numpy.sum(x128 * x252 * x438)
+    result[1, 5, 4] = numpy.sum(x332 * x355 * x426)
+    result[1, 5, 5] = numpy.sum(x128 * x258 * x382)
+    result[1, 5, 6] = numpy.sum(x333 * x361 * x380)
+    result[1, 5, 7] = numpy.sum(x332 * x361 * x438)
+    result[1, 5, 8] = numpy.sum(x258 * x355 * x435)
+    result[1, 5, 9] = numpy.sum(x264 * x361 * x382)
+    result[1, 6, 0] = numpy.sum(x40 * x443)
+    result[1, 6, 1] = numpy.sum(x449 * x451)
+    result[1, 6, 2] = numpy.sum(x119 * x442 * x451)
+    result[1, 6, 3] = numpy.sum(x126 * x287 * x456)
+    result[1, 6, 4] = numpy.sum(x126 * x393 * x449)
+    result[1, 6, 5] = numpy.sum(x126 * x280 * x442)
+    result[1, 6, 6] = numpy.sum(x457 * x464)
+    result[1, 6, 7] = numpy.sum(x456 * x465 * x466)
+    result[1, 6, 8] = numpy.sum(x144 * x449 * x470)
+    result[1, 6, 9] = numpy.sum(x161 * x457 * x471)
+    result[1, 7, 0] = numpy.sum(x288 * x40 * x408)
+    result[1, 7, 1] = numpy.sum(x26 * x415 * x436)
+    result[1, 7, 2] = numpy.sum(x242 * x26 * x408)
+    result[1, 7, 3] = numpy.sum(x126 * x423 * x436)
+    result[1, 7, 4] = numpy.sum(x126 * x238 * x415)
+    result[1, 7, 5] = numpy.sum(x126 * x408 * x437)
+    result[1, 7, 6] = numpy.sum(x18 * x433 * x472)
+    result[1, 7, 7] = numpy.sum(x196 * x423 * x474)
+    result[1, 7, 8] = numpy.sum(x18 * x239 * x475)
+    result[1, 7, 9] = numpy.sum(x208 * x408 * x470)
+    result[1, 8, 0] = numpy.sum(x295 * x384 * x40)
+    result[1, 8, 1] = numpy.sum(x26 * x291 * x387)
+    result[1, 8, 2] = numpy.sum(x26 * x332 * x476)
+    result[1, 8, 3] = numpy.sum(x126 * x291 * x391)
+    result[1, 8, 4] = numpy.sum(x293 * x387 * x477)
+    result[1, 8, 5] = numpy.sum(x257 * x476 * x477)
+    result[1, 8, 6] = numpy.sum(x245 * x401 * x470)
+    result[1, 8, 7] = numpy.sum(x391 * x473 * x478)
+    result[1, 8, 8] = numpy.sum(x257 * x473 * x479)
+    result[1, 8, 9] = numpy.sum(x18 * x389 * x480)
+    result[1, 9, 0] = numpy.sum(x300 * x382 * x40)
+    result[1, 9, 1] = numpy.sum(x26 * x355 * x481)
+    result[1, 9, 2] = numpy.sum(x336 * x346 * x450)
+    result[1, 9, 3] = numpy.sum(x301 * x369 * x477)
+    result[1, 9, 4] = numpy.sum(x126 * x336 * x404)
+    result[1, 9, 5] = numpy.sum(x126 * x309 * x382)
+    result[1, 9, 6] = numpy.sum(x18 * x380 * x482)
+    result[1, 9, 7] = numpy.sum(x18 * x369 * x483)
+    result[1, 9, 8] = numpy.sum(x309 * x355 * x484)
+    result[1, 9, 9] = numpy.sum(x346 * x457 * x485)
+    result[1, 10, 0] = numpy.sum(x325 * x38 * x487)
+    result[1, 10, 1] = numpy.sum(x488 * x490)
+    result[1, 10, 2] = numpy.sum(x119 * x487 * x490)
+    result[1, 10, 3] = numpy.sum(x491 * x492)
+    result[1, 10, 4] = numpy.sum(35.3313566383285 * x3 * x465 * x488)
+    result[1, 10, 5] = numpy.sum(x3 * x487 * x494)
+    result[1, 10, 6] = numpy.sum(
+        x462
+        * x91
+        * (
+            x0
+            * (
+                x218 * (x458 + x459)
+                + x24 * (x230 + x430 + 3.0 * x452 + 3.0 * x453)
+                + 3.0 * x431
+                + 3.0 * x432
+                + 3.0 * x454
+                + 3.0 * x455
+            )
+            + x163 * x461
+        )
+    )
+    result[1, 10, 7] = numpy.sum(x120 * x491)
+    result[1, 10, 8] = numpy.sum(x488 * x494)
+    result[1, 10, 9] = numpy.sum(x162 * x468 * x487)
+    result[1, 11, 0] = numpy.sum(x192 * x38 * x443)
+    result[1, 11, 1] = numpy.sum(x22 * x288 * x449)
+    result[1, 11, 2] = numpy.sum(x22 * x329 * x442)
+    result[1, 11, 3] = numpy.sum(x3 * x456 * x472)
+    result[1, 11, 4] = numpy.sum(x196 * x495 * x496)
+    result[1, 11, 5] = numpy.sum(x202 * x3 * x471)
+    result[1, 11, 6] = numpy.sum(x193 * x464)
+    result[1, 11, 7] = numpy.sum(x196 * x456 * x469)
+    result[1, 11, 8] = numpy.sum(x202 * x495)
+    result[1, 11, 9] = numpy.sum(x209 * x471)
+    result[1, 12, 0] = numpy.sum(x333 * x38 * x408)
+    result[1, 12, 1] = numpy.sum(x252 * x415 * x497)
+    result[1, 12, 2] = numpy.sum(x332 * x408 * x497)
+    result[1, 12, 3] = numpy.sum(x245 * x424 * x498)
+    result[1, 12, 4] = numpy.sum(120.679557322504 * x3 * x415 * x478)
+    result[1, 12, 5] = numpy.sum(x258 * x408 * x498)
+    result[1, 12, 6] = numpy.sum(x246 * x433 * x468)
+    result[1, 12, 7] = numpy.sum(x424 * x478)
+    result[1, 12, 8] = numpy.sum(x258 * x475)
+    result[1, 12, 9] = numpy.sum(x409 * x480)
+    result[1, 13, 0] = numpy.sum(x300 * x384 * x499)
+    result[1, 13, 1] = numpy.sum(x22 * x387 * x481)
+    result[1, 13, 2] = numpy.sum(x22 * x336 * x389)
+    result[1, 13, 3] = numpy.sum(x301 * x391 * x498)
+    result[1, 13, 4] = numpy.sum(x304 * x479 * x496)
+    result[1, 13, 5] = numpy.sum(x308 * x389 * x498)
+    result[1, 13, 6] = numpy.sum(x401 * x482)
+    result[1, 13, 7] = numpy.sum(x391 * x483)
+    result[1, 13, 8] = numpy.sum(x309 * x479)
+    result[1, 13, 9] = numpy.sum(x385 * x485)
+    result[1, 14, 0] = numpy.sum(x338 * x38 * x382)
+    result[1, 14, 1] = numpy.sum(x337 * x355 * x500)
+    result[1, 14, 2] = numpy.sum(x340 * x382 * x489)
+    result[1, 14, 3] = numpy.sum(x3 * x337 * x501)
+    result[1, 14, 4] = numpy.sum(x340 * x371 * x498)
+    result[1, 14, 5] = numpy.sum(x3 * x346 * x502)
+    result[1, 14, 6] = numpy.sum(x338 * x380 * x468)
+    result[1, 14, 7] = numpy.sum(x340 * x501)
+    result[1, 14, 8] = numpy.sum(x355 * x502)
+    result[1, 14, 9] = numpy.sum(x343 * x346 * x468)
+    result[2, 0, 0] = numpy.sum(x351 * x505 * x506)
+    result[2, 0, 1] = numpy.sum(x505 * x507 * x96)
+    result[2, 0, 2] = numpy.sum(x507 * x511)
+    result[2, 0, 3] = numpy.sum(x137 * x364 * x512)
+    result[2, 0, 4] = numpy.sum(x204 * x364 * x513)
+    result[2, 0, 5] = numpy.sum(x364 * x519)
+    result[2, 0, 6] = numpy.sum(x153 * x381 * x512)
+    result[2, 0, 7] = numpy.sum(x137 * x381 * x520)
+    result[2, 0, 8] = numpy.sum(x381 * x519 * x96)
+    result[2, 0, 9] = numpy.sum(x381 * x506 * x529)
+    result[2, 1, 0] = numpy.sum(x163 * x505 * x530)
+    result[2, 1, 1] = numpy.sum(x335 * x358 * x505)
+    result[2, 1, 2] = numpy.sum(x163 * x511 * x531)
+    result[2, 1, 3] = numpy.sum(x175 * x363 * x512)
+    result[2, 1, 4] = numpy.sum(x177 * x363 * x520)
+    result[2, 1, 5] = numpy.sum(x163 * x518 * x532)
+    result[2, 1, 6] = numpy.sum(x184 * x505 * x533)
+    result[2, 1, 7] = numpy.sum(x175 * x403 * x511)
+    result[2, 1, 8] = numpy.sum(x335 * x362 * x518)
+    result[2, 1, 9] = numpy.sum(x163 * x529 * x534)
+    result[2, 2, 0] = numpy.sum(x530 * x536)
+    result[2, 2, 1] = numpy.sum(x531 * x536 * x96)
+    result[2, 2, 2] = numpy.sum(x531 * x538)
+    result[2, 2, 3] = numpy.sum(x198 * x363 * x539)
+    result[2, 2, 4] = numpy.sum(x363 * x538 * x540)
+    result[2, 2, 5] = numpy.sum(x532 * x542)
+    result[2, 2, 6] = numpy.sum(x152 * x533 * x536)
+    result[2, 2, 7] = numpy.sum(x198 * x403 * x538)
+    result[2, 2, 8] = numpy.sum(x297 * x362 * x542 * x96)
+    result[2, 2, 9] = numpy.sum(x534 * x550)
+    result[2, 3, 0] = numpy.sum(x212 * x42 * x512)
+    result[2, 3, 1] = numpy.sum(x216 * x416 * x512)
+    result[2, 3, 2] = numpy.sum(x211 * x416 * x520)
+    result[2, 3, 3] = numpy.sum(x128 * x223 * x512)
+    result[2, 3, 4] = numpy.sum(x128 * x225 * x520)
+    result[2, 3, 5] = numpy.sum(x211 * x551 * x552)
+    result[2, 3, 6] = numpy.sum(x231 * x435 * x505)
+    result[2, 3, 7] = numpy.sum(x223 * x435 * x511)
+    result[2, 3, 8] = numpy.sum(x216 * x435 * x551)
+    result[2, 3, 9] = numpy.sum(x212 * x435 * x529)
+    result[2, 4, 0] = numpy.sum(x298 * x42 * x536)
+    result[2, 4, 1] = numpy.sum(x101 * x168 * x553)
+    result[2, 4, 2] = numpy.sum(x101 * x292 * x538)
+    result[2, 4, 3] = numpy.sum(x128 * x174 * x553)
+    result[2, 4, 4] = numpy.sum(x168 * x552 * x554)
+    result[2, 4, 5] = numpy.sum(x236 * x542 * x555)
+    result[2, 4, 6] = numpy.sum(x241 * x435 * x536)
+    result[2, 4, 7] = numpy.sum(x174 * x538 * x556)
+    result[2, 4, 8] = numpy.sum(x168 * x542 * x556)
+    result[2, 4, 9] = numpy.sum(x298 * x361 * x550)
+    result[2, 5, 0] = numpy.sum(31.1593277158494 * x42 * x561)
+    result[2, 5, 1] = numpy.sum(x416 * x561 * x96)
+    result[2, 5, 2] = numpy.sum(x416 * x567)
+    result[2, 5, 3] = numpy.sum(x251 * x552 * x560)
+    result[2, 5, 4] = numpy.sum(x426 * x567 * x96)
+    result[2, 5, 5] = numpy.sum(x555 * x574)
+    result[2, 5, 6] = numpy.sum(x259 * x435 * x560)
+    result[2, 5, 7] = numpy.sum(x251 * x435 * x566)
+    result[2, 5, 8] = numpy.sum(x204 * x361 * x574)
+    result[2, 5, 9] = numpy.sum(x178 * x434 * x581)
+    result[2, 6, 0] = numpy.sum(x266 * x40 * x512)
+    result[2, 6, 1] = numpy.sum(x271 * x450 * x512)
+    result[2, 6, 2] = numpy.sum(x26 * x273 * x520)
+    result[2, 6, 3] = numpy.sum(x277 * x477 * x505)
+    result[2, 6, 4] = numpy.sum(x279 * x477 * x511)
+    result[2, 6, 5] = numpy.sum(x273 * x477 * x518)
+    result[2, 6, 6] = numpy.sum(x282 * x457 * x582)
+    result[2, 6, 7] = numpy.sum(x18 * x511 * x583)
+    result[2, 6, 8] = numpy.sum(x18 * x518 * x584)
+    result[2, 6, 9] = numpy.sum(x18 * x266 * x585)
+    result[2, 7, 0] = numpy.sum(x211 * x40 * x586)
+    result[2, 7, 1] = numpy.sum(x216 * x26 * x553)
+    result[2, 7, 2] = numpy.sum(x26 * x587 * x588)
+    result[2, 7, 3] = numpy.sum(x222 * x536 * x589)
+    result[2, 7, 4] = numpy.sum(x216 * x477 * x554)
+    result[2, 7, 5] = numpy.sum(x477 * x542 * x587)
+    result[2, 7, 6] = numpy.sum(x230 * x470 * x536)
+    result[2, 7, 7] = numpy.sum(x222 * x474 * x538)
+    result[2, 7, 8] = numpy.sum(x473 * x542 * x590)
+    result[2, 7, 9] = numpy.sum(x211 * x470 * x550)
+    result[2, 8, 0] = numpy.sum(x298 * x40 * x560)
+    result[2, 8, 1] = numpy.sum(x234 * x26 * x591)
+    result[2, 8, 2] = numpy.sum(x236 * x26 * x567)
+    result[2, 8, 3] = numpy.sum(x174 * x560 * x589)
+    result[2, 8, 4] = numpy.sum(209.023124717498 * x168 * x477 * x566)
+    result[2, 8, 5] = numpy.sum(x126 * x292 * x573)
+    result[2, 8, 6] = numpy.sum(x18 * x241 * x592)
+    result[2, 8, 7] = numpy.sum(x174 * x473 * x593)
+    result[2, 8, 8] = numpy.sum(x234 * x484 * x573)
+    result[2, 8, 9] = numpy.sum(x18 * x581 * x595)
+    result[2, 9, 0] = numpy.sum(x40 * x600)
+    result[2, 9, 1] = numpy.sum(x599 * x601 * x96)
+    result[2, 9, 2] = numpy.sum(x601 * x607)
+    result[2, 9, 3] = numpy.sum(x198 * x477 * x599)
+    result[2, 9, 4] = numpy.sum(x126 * x540 * x607)
+    result[2, 9, 5] = numpy.sum(x126 * x297 * x612)
+    result[2, 9, 6] = numpy.sum(x152 * x18 * x614)
+    result[2, 9, 7] = numpy.sum(x18 * x198 * x615)
+    result[2, 9, 8] = numpy.sum(x466 * x594 * x612 * x96)
+    result[2, 9, 9] = numpy.sum(x457 * x620)
+    result[2, 10, 0] = numpy.sum(x315 * x499 * x505)
+    result[2, 10, 1] = numpy.sum(x317 * x500 * x505)
+    result[2, 10, 2] = numpy.sum(x314 * x500 * x511)
+    result[2, 10, 3] = numpy.sum(x3 * x505 * x621)
+    result[2, 10, 4] = numpy.sum(x317 * x498 * x513)
+    result[2, 10, 5] = numpy.sum(x3 * x314 * x622)
+    result[2, 10, 6] = numpy.sum(9.12251705727742 * x324 * x582)
+    result[2, 10, 7] = numpy.sum(x511 * x621)
+    result[2, 10, 8] = numpy.sum(x317 * x622)
+    result[2, 10, 9] = numpy.sum(x315 * x585)
+    result[2, 11, 0] = numpy.sum(x266 * x499 * x536)
+    result[2, 11, 1] = numpy.sum(x22 * x271 * x586)
+    result[2, 11, 2] = numpy.sum(x22 * x273 * x588)
+    result[2, 11, 3] = numpy.sum(x3 * x536 * x583)
+    result[2, 11, 4] = numpy.sum(x279 * x498 * x538)
+    result[2, 11, 5] = numpy.sum(x273 * x498 * x542)
+    result[2, 11, 6] = numpy.sum(x282 * x536 * x613)
+    result[2, 11, 7] = numpy.sum(x538 * x583)
+    result[2, 11, 8] = numpy.sum(x542 * x584)
+    result[2, 11, 9] = numpy.sum(x266 * x468 * x550)
+    result[2, 12, 0] = numpy.sum(x212 * x499 * x560)
+    result[2, 12, 1] = numpy.sum(x216 * x497 * x591)
+    result[2, 12, 2] = numpy.sum(x189 * x211 * x497 * x566)
+    result[2, 12, 3] = numpy.sum(x223 * x3 * x592)
+    result[2, 12, 4] = numpy.sum(x225 * x3 * x593)
+    result[2, 12, 5] = numpy.sum(x211 * x498 * x574)
+    result[2, 12, 6] = numpy.sum(x231 * x592)
+    result[2, 12, 7] = numpy.sum(x223 * x593)
+    result[2, 12, 8] = numpy.sum(x574 * x590)
+    result[2, 12, 9] = numpy.sum(x212 * x468 * x581)
+    result[2, 13, 0] = numpy.sum(x163 * x38 * x600)
+    result[2, 13, 1] = numpy.sum(x22 * x335 * x599)
+    result[2, 13, 2] = numpy.sum(x22 * x298 * x607)
+    result[2, 13, 3] = numpy.sum(x175 * x498 * x599)
+    result[2, 13, 4] = numpy.sum(x177 * x3 * x615)
+    result[2, 13, 5] = numpy.sum(x3 * x595 * x612)
+    result[2, 13, 6] = numpy.sum(x184 * x614)
+    result[2, 13, 7] = numpy.sum(x175 * x615)
+    result[2, 13, 8] = numpy.sum(x169 * x468 * x612)
+    result[2, 13, 9] = numpy.sum(x164 * x620)
+    result[2, 14, 0] = numpy.sum(x38 * x506 * x624)
+    result[2, 14, 1] = numpy.sum(x624 * x625 * x96)
+    result[2, 14, 2] = numpy.sum(x625 * x626)
+    result[2, 14, 3] = numpy.sum(x3 * x624 * x627)
+    result[2, 14, 4] = numpy.sum(x140 * x3 * x594 * x626)
+    result[2, 14, 5] = numpy.sum(x492 * x628)
+    result[2, 14, 6] = numpy.sum(x153 * x468 * x624)
+    result[2, 14, 7] = numpy.sum(x626 * x627)
+    result[2, 14, 8] = numpy.sum(x628 * x97)
+    result[2, 14, 9] = numpy.sum(
+        9.12251705727742
+        * x594
+        * (
+            x0
+            * (
+                x24 * (x263 + x578 + 3.0 * x608 + 3.0 * x609)
+                + x253 * (x616 + x617)
+                + 3.0 * x579
+                + 3.0 * x580
+                + 3.0 * x610
+                + 3.0 * x611
+            )
+            + x192 * x619
+        )
+    )
+    return result
 
 
-def diag_quadrupole3d_44(a, A, b, B, C):
+def diag_quadrupole3d_44(ax, da, A, bx, db, B, C):
     """Cartesian 3D (gg) quadrupole moment integrals
     for operators x², y² and z². The origin is at C.
 
     Generated code; DO NOT modify by hand!"""
 
-    x0 = (2.0 * a + 2.0 * b) ** (-1.0)
-    x1 = (a + b) ** (-1.0)
-    x2 = -x1 * (a * A[0] + b * B[0])
+    result = numpy.zeros((3, 15, 15), dtype=float)
+
+    x0 = 0.5 / (ax + bx)
+    x1 = (ax + bx) ** (-1.0)
+    x2 = -x1 * (ax * A[0] + bx * B[0])
     x3 = -x2 - B[0]
-    x4 = a * b * x1
+    x4 = ax * bx * x1
     x5 = numpy.exp(-x4 * (A[0] - B[0]) ** 2)
-    x6 = 1.77245385090552 * numpy.sqrt(x1)
-    x7 = x5 * x6
-    x8 = x3 * x7
-    x9 = -x2 - C[0]
-    x10 = x7 * x9
-    x11 = x0 * (x10 + x8)
-    x12 = x0 * x7
-    x13 = x8 * x9
-    x14 = x12 + x13
-    x15 = x14 * x3
-    x16 = x11 + x15
-    x17 = x16 * x3
-    x18 = x3**2 * x7
-    x19 = 3.0 * x12
-    x20 = 2.0 * x13 + x19
-    x21 = x0 * (x18 + x20)
-    x22 = 4.0 * x21
-    x23 = -x2 - A[0]
-    x24 = x16 * x23
-    x25 = x0 * (3.0 * x18 + x19)
-    x26 = x12 + x18
-    x27 = x26 * x3
-    x28 = 2.0 * x0
-    x29 = x28 * x8
-    x30 = x27 + x29
-    x31 = x23 * x30
-    x32 = x25 + x31
-    x33 = x0 * (x17 + x22 + 3.0 * x24 + x32)
-    x34 = 3.0 * x11
-    x35 = x0 * (3.0 * x15 + x30 + x34)
-    x36 = x17 + x21
-    x37 = x23 * x36
-    x38 = x23 * (x35 + x37)
-    x39 = x3 * x30
-    x40 = x0 * (5.0 * x25 + 4.0 * x31 + x39)
-    x41 = x12 * x3
-    x42 = 8.0 * x41
-    x43 = x0 * (4.0 * x27 + x42)
-    x44 = x25 + x39
-    x45 = x23 * x44
-    x46 = x43 + x45
-    x47 = x23 * x46
-    x48 = x40 + x47
-    x49 = x0 * (4.0 * x17 + x22 + x44)
-    x50 = x3 * x36
-    x51 = x23 * (x35 + x50)
-    x52 = 2.0 * x49 + 2.0 * x51
-    x53 = x0 * (5.0 * x35 + 4.0 * x37 + x46 + x50)
-    x54 = x23 * (x49 + x51)
-    x55 = 2.0 * x23
-    x56 = x7 * x9**2
-    x57 = x12 + x56
-    x58 = x3 * x57
-    x59 = 2.0 * x11
-    x60 = 4.0 * x12 * x9
-    x61 = x59 + x60
-    x62 = x0 * (2.0 * x15 + 2.0 * x58 + x61)
-    x63 = x0 * (x20 + x56)
-    x64 = x10 * x28
-    x65 = x58 + x64
-    x66 = x3 * x65
-    x67 = x63 + x66
-    x68 = x3 * x67
-    x69 = x62 + x68
-    x70 = x3 * x69
-    x71 = x23 * x69
-    x72 = 2.0 * x21
-    x73 = 3.0 * x63 + x72
-    x74 = x0 * (2.0 * x17 + 3.0 * x66 + x73)
-    x75 = x0 * (x52 + x70 + 4.0 * x71 + 5.0 * x74)
-    x76 = 2.0 * x35
-    x77 = 4.0 * x62 + x76
-    x78 = x0 * (2.0 * x50 + 4.0 * x68 + x77)
-    x79 = x70 + x74
-    x80 = x23 * x79
-    x81 = x78 + x80
-    x82 = x23 * x81
-    x83 = 2.0 * x24
-    x84 = x23 * x65
-    x85 = 2.0 * x84
-    x86 = x0 * (x66 + x73 + x83 + x85)
-    x87 = x23 * x67
-    x88 = x62 + x87
-    x89 = x23 * x88
-    x90 = 3.0 * x86 + 3.0 * x89
-    x91 = x0 * (2.0 * x33 + 2.0 * x38 + 2.0 * x71 + 2.0 * x74 + x90)
-    x92 = 2.0 * x37
-    x93 = x0 * (x68 + x77 + 3.0 * x87 + x92)
-    x94 = x71 + x74
-    x95 = x23 * x94
-    x96 = x93 + x95
-    x97 = x23 * x96
-    x98 = x75 + x82
-    x99 = (
-        x0 * (2.0 * x53 + 2.0 * x54 + 2.0 * x78 + 2.0 * x80 + 4.0 * x93 + 4.0 * x95)
-        + x23 * x98
-    )
-    x100 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x6 = numpy.sqrt(x1)
+    x7 = 1.77245385090552 * x6
+    x8 = x5 * x7
+    x9 = x3 * x8
+    x10 = -x2 - C[0]
+    x11 = x10 * x8
+    x12 = x0 * (x11 + x9)
+    x13 = x0 * x8
+    x14 = x10 * x9
+    x15 = x13 + x14
+    x16 = x15 * x3
+    x17 = x12 + x16
+    x18 = x17 * x3
+    x19 = x3**2 * x8
+    x20 = 3.0 * x13
+    x21 = 2.0 * x14 + x20
+    x22 = x0 * (x19 + x21)
+    x23 = 4.0 * x22
+    x24 = -x2 - A[0]
+    x25 = x17 * x24
+    x26 = x0 * (3.0 * x19 + x20)
+    x27 = x13 + x19
+    x28 = x27 * x3
+    x29 = 2.0 * x0
+    x30 = x29 * x9
+    x31 = x28 + x30
+    x32 = x24 * x31
+    x33 = x26 + x32
+    x34 = x0 * (x18 + x23 + 3.0 * x25 + x33)
+    x35 = 3.0 * x12
+    x36 = x0 * (3.0 * x16 + x31 + x35)
+    x37 = x18 + x22
+    x38 = x24 * x37
+    x39 = x24 * (x36 + x38)
+    x40 = x3 * x31
+    x41 = x0 * (5.0 * x26 + 4.0 * x32 + x40)
+    x42 = x13 * x3
+    x43 = 8.0 * x42
+    x44 = x0 * (4.0 * x28 + x43)
+    x45 = x26 + x40
+    x46 = x24 * x45
+    x47 = x44 + x46
+    x48 = x24 * x47
+    x49 = x41 + x48
+    x50 = x0 * (4.0 * x18 + x23 + x45)
+    x51 = x3 * x37
+    x52 = x24 * (x36 + x51)
+    x53 = 2.0 * x50 + 2.0 * x52
+    x54 = x0 * (5.0 * x36 + 4.0 * x38 + x47 + x51)
+    x55 = x24 * (x50 + x52)
+    x56 = 2.0 * x24
+    x57 = x10**2 * x8
+    x58 = x13 + x57
+    x59 = x3 * x58
+    x60 = 2.0 * x12
+    x61 = 4.0 * x10 * x13
+    x62 = x60 + x61
+    x63 = x0 * (2.0 * x16 + 2.0 * x59 + x62)
+    x64 = x0 * (x21 + x57)
+    x65 = x11 * x29
+    x66 = x59 + x65
+    x67 = x3 * x66
+    x68 = x64 + x67
+    x69 = x3 * x68
+    x70 = x63 + x69
+    x71 = x3 * x70
+    x72 = x24 * x70
+    x73 = 2.0 * x22
+    x74 = 3.0 * x64 + x73
+    x75 = x0 * (2.0 * x18 + 3.0 * x67 + x74)
+    x76 = x0 * (x53 + x71 + 4.0 * x72 + 5.0 * x75)
+    x77 = 2.0 * x36
+    x78 = 4.0 * x63 + x77
+    x79 = x0 * (2.0 * x51 + 4.0 * x69 + x78)
+    x80 = x71 + x75
+    x81 = x24 * x80
+    x82 = x79 + x81
+    x83 = x24 * x82
+    x84 = 2.0 * x25
+    x85 = x24 * x66
+    x86 = 2.0 * x85
+    x87 = x0 * (x67 + x74 + x84 + x86)
+    x88 = x24 * x68
+    x89 = x63 + x88
+    x90 = x24 * x89
+    x91 = 3.0 * x87 + 3.0 * x90
+    x92 = x0 * (2.0 * x34 + 2.0 * x39 + 2.0 * x72 + 2.0 * x75 + x91)
+    x93 = 2.0 * x38
+    x94 = x0 * (x69 + x78 + 3.0 * x88 + x93)
+    x95 = x72 + x75
+    x96 = x24 * x95
+    x97 = x94 + x96
+    x98 = x24 * x97
+    x99 = x76 + x83
+    x100 = 2.0 * x0 * (x54 + x55 + x79 + x81 + 2.0 * x94 + 2.0 * x96) + x24 * x99
     x101 = numpy.exp(-x4 * (A[2] - B[2]) ** 2)
-    x102 = 3.14159265358979 * x1 * x101
-    x103 = x100 * x102
-    x104 = -x1 * (a * A[1] + b * B[1])
-    x105 = -x104 - B[1]
-    x106 = x14 * x23
-    x107 = 2.0 * x106
-    x108 = x23 * x26
-    x109 = x108 + x29
-    x110 = x0 * (x107 + x109 + x15 + x34)
-    x111 = x23 * (x21 + x24)
-    x112 = x0 * (3.0 * x108 + x27 + x42)
-    x113 = x23 * x32
-    x114 = x112 + x113
-    x115 = x23 * x57
-    x116 = x0 * (x107 + x115 + x58 + x61)
-    x117 = x63 + x84
-    x118 = x117 * x23
-    x119 = x0 * (
-        2.0 * x110 + 2.0 * x111 + 2.0 * x116 + 2.0 * x118 + 2.0 * x62 + 2.0 * x87
-    )
-    x120 = x86 + x89
-    x121 = x120 * x23
-    x122 = x91 + x97
-    x123 = x103 * (
+    x102 = da * db * numpy.sqrt(ax**5.5) * numpy.sqrt(bx**5.5)
+    x103 = x101 * x102
+    x104 = 6.89597470414309 * x103
+    x105 = numpy.exp(-x4 * (A[1] - B[1]) ** 2)
+    x106 = 0.564189583547756 * x1
+    x107 = x105 * x106
+    x108 = -x1 * (ax * A[1] + bx * B[1])
+    x109 = -x108 - B[1]
+    x110 = x107 * x109
+    x111 = x15 * x24
+    x112 = 2.0 * x111
+    x113 = x24 * x27
+    x114 = x113 + x30
+    x115 = x0 * (x112 + x114 + x16 + x35)
+    x116 = x24 * (x22 + x25)
+    x117 = x0 * (3.0 * x113 + x28 + x43)
+    x118 = x24 * x33
+    x119 = x117 + x118
+    x120 = x24 * x58
+    x121 = x0 * (x112 + x120 + x59 + x62)
+    x122 = x64 + x85
+    x123 = x122 * x24
+    x124 = 2.0 * x0 * (x115 + x116 + x121 + x123 + x63 + x88)
+    x125 = x87 + x90
+    x126 = x125 * x24
+    x127 = x92 + x98
+    x128 = 18.2450341145548 * x103
+    x129 = x128 * (
         x0
         * (
-            3.0 * x119
-            + 3.0 * x121
-            + x28 * (3.0 * x110 + 3.0 * x111 + x114 + x76 + x92)
-            + x55 * (x33 + x38)
-            + 3.0 * x93
-            + 3.0 * x95
+            3.0 * x124
+            + 3.0 * x126
+            + x29 * (3.0 * x115 + 3.0 * x116 + x119 + x77 + x93)
+            + x56 * (x34 + x39)
+            + 3.0 * x94
+            + 3.0 * x96
         )
-        + x122 * x23
+        + x127 * x24
     )
-    x124 = -x1 * (a * A[2] + b * B[2])
-    x125 = -x124 - B[2]
-    x126 = x100 * x6
-    x127 = x105**2 * x126
-    x128 = x0 * x126
-    x129 = x127 + x128
-    x130 = x19 + x55 * x8
-    x131 = x0 * (x130 + x18)
-    x132 = x109 * x23
-    x133 = x131 + x132
-    x134 = x23 * x8
-    x135 = x10 * x23
-    x136 = x0 * (x13 + x134 + x135 + x19)
-    x137 = x23 * (x106 + x11)
-    x138 = 2.0 * x136 + 2.0 * x137
-    x139 = x10 * x55 + x19
-    x140 = x0 * (x139 + x56)
-    x141 = x115 + x64
-    x142 = x141 * x23
-    x143 = x140 + x142
-    x144 = x0 * (x138 + x143 + 2.0 * x63 + x85)
-    x145 = x116 + x118
-    x146 = x145 * x23
-    x147 = x119 + x121
-    x148 = (
+    x130 = -x1 * (ax * A[2] + bx * B[2])
+    x131 = -x130 - B[2]
+    x132 = x107 * x131
+    x133 = x20 + x56 * x9
+    x134 = x0 * (x133 + x19)
+    x135 = x114 * x24
+    x136 = x134 + x135
+    x137 = x24 * x9
+    x138 = x11 * x24
+    x139 = x0 * (x137 + x138 + x14 + x20)
+    x140 = x24 * (x111 + x12)
+    x141 = 2.0 * x139 + 2.0 * x140
+    x142 = x11 * x56 + x20
+    x143 = x0 * (x142 + x57)
+    x144 = x120 + x65
+    x145 = x144 * x24
+    x146 = x143 + x145
+    x147 = x0 * (x141 + x146 + 2.0 * x64 + x86)
+    x148 = x121 + x123
+    x149 = x148 * x24
+    x150 = x124 + x126
+    x151 = (
         x0
         * (
-            2.0 * x144
-            + 2.0 * x146
-            + x28 * (x133 + x138 + x72 + x83)
-            + x55 * (x110 + x111)
-            + x90
+            2.0 * x147
+            + 2.0 * x149
+            + x29 * (x136 + x141 + x73 + x84)
+            + x56 * (x115 + x116)
+            + x91
         )
-        + x147 * x23
+        + x150 * x24
     )
-    x149 = x101 * x6
-    x150 = x103 * x125
-    x151 = x125**2 * x149
-    x152 = x0 * x149
-    x153 = x151 + x152
-    x154 = x105 * x129
-    x155 = x105 * x126
-    x156 = x155 * x28
-    x157 = x154 + x156
-    x158 = x23 * x7
-    x159 = x0 * (x10 + x158)
-    x160 = x23 * (x12 + x135)
-    x161 = x159 + x160
-    x162 = x0 * (x158 + x8)
-    x163 = x12 + x134
-    x164 = x163 * x23
-    x165 = x162 + x164
-    x166 = x0 * (2.0 * x115 + 2.0 * x159 + 2.0 * x160 + x60) + x143 * x23
-    x167 = x144 + x146
-    x168 = (
-        x0
-        * (
-            3.0 * x116
-            + 3.0 * x118
-            + x166
-            + x28 * (x107 + x161 + x165 + x59)
-            + x55 * (x136 + x137)
-        )
-        + x167 * x23
-    )
-    x169 = x125 * x149
-    x170 = x125 * x153
-    x171 = x169 * x28
-    x172 = x170 + x171
-    x173 = 3.0 * x128
-    x174 = x0 * (3.0 * x127 + x173)
-    x175 = x105 * x157
+    x152 = x103 * x151
+    x153 = x105 * x7
+    x154 = x109**2 * x153
+    x155 = x0 * x153
+    x156 = x154 + x155
+    x157 = 23.5542377588857 * x156
+    x158 = 0.318309886183791 * x6
+    x159 = x157 * x158
+    x160 = 40.7971365319473 * x131
+    x161 = x101 * x7
+    x162 = x131**2 * x161
+    x163 = x0 * x161
+    x164 = x162 + x163
+    x165 = 23.5542377588857 * x158
+    x166 = x102 * x105
+    x167 = x165 * x166
+    x168 = x109 * x156
+    x169 = x109 * x153
+    x170 = x169 * x29
+    x171 = x168 + x170
+    x172 = 18.2450341145548 * x171
+    x173 = x24 * x8
+    x174 = x0 * (x11 + x173)
+    x175 = x24 * (x13 + x138)
     x176 = x174 + x175
-    x177 = x23**2 * x7
-    x178 = x0 * (3.0 * x140 + 3.0 * x142 + x161 * x55 + x28 * (x139 + x177)) + x166 * x23
-    x179 = 3.0 * x152
-    x180 = x0 * (3.0 * x151 + x179)
-    x181 = x125 * x172
-    x182 = x180 + x181
-    x183 = -x104 - A[1]
-    x184 = x103 * x99
-    x185 = x126 * x183
-    x186 = x105 * x185
-    x187 = x128 + x186
-    x188 = x129 * x183
-    x189 = x156 + x188
-    x190 = x157 * x183
-    x191 = x174 + x190
-    x192 = x105 * x128
-    x193 = 8.0 * x192
-    x194 = x0 * (4.0 * x154 + x193)
-    x195 = x176 * x183
-    x196 = x194 + x195
-    x197 = -x124 - A[2]
-    x198 = x103 * x197
-    x199 = x149 * x197
-    x200 = x125 * x199
-    x201 = x152 + x200
-    x202 = x153 * x197
-    x203 = x171 + x202
-    x204 = x172 * x197
-    x205 = x180 + x204
-    x206 = x125 * x152
-    x207 = 8.0 * x206
-    x208 = x0 * (4.0 * x170 + x207)
-    x209 = x182 * x197
-    x210 = x208 + x209
-    x211 = x126 * x183**2
-    x212 = x128 + x211
-    x213 = x0 * (x155 + x185)
-    x214 = x183 * x187
-    x215 = x213 + x214
-    x216 = 2.0 * x183
-    x217 = x155 * x216 + x173
-    x218 = x0 * (x127 + x217)
-    x219 = x183 * x189
-    x220 = x218 + x219
-    x221 = x0 * (x154 + 3.0 * x188 + x193)
-    x222 = x183 * x191
-    x223 = x221 + x222
-    x224 = x0 * (5.0 * x174 + x175 + 4.0 * x190)
-    x225 = x183 * x196
-    x226 = x224 + x225
-    x227 = x149 * x197**2
-    x228 = x152 + x227
-    x229 = x0 * (x169 + x199)
-    x230 = x197 * x201
-    x231 = x229 + x230
-    x232 = 2.0 * x197
-    x233 = x169 * x232 + x179
-    x234 = x0 * (x151 + x233)
-    x235 = x197 * x203
-    x236 = x234 + x235
-    x237 = x0 * (x170 + 3.0 * x202 + x207)
-    x238 = x197 * x205
-    x239 = x237 + x238
-    x240 = x0 * (5.0 * x180 + x181 + 4.0 * x204)
-    x241 = x197 * x210
-    x242 = x240 + x241
-    x243 = x183 * x212 + x185 * x28
-    x244 = x0 * (x211 + x217)
-    x245 = x183 * x215
-    x246 = x244 + x245
-    x247 = x0 * (2.0 * x188 + 4.0 * x192 + 2.0 * x213 + 2.0 * x214)
-    x248 = x183 * x220
-    x249 = x247 + x248
-    x250 = 3.0 * x218 + 3.0 * x219
-    x251 = x0 * (2.0 * x174 + 2.0 * x190 + x250)
-    x252 = x183 * x223
-    x253 = x251 + x252
-    x254 = x0 * (2.0 * x194 + 2.0 * x195 + 4.0 * x221 + 4.0 * x222) + x183 * x226
-    x255 = x197 * x228 + x199 * x28
-    x256 = x0 * (x227 + x233)
-    x257 = x197 * x231
-    x258 = x256 + x257
-    x259 = x0 * (2.0 * x202 + 4.0 * x206 + 2.0 * x229 + 2.0 * x230)
-    x260 = x197 * x236
-    x261 = x259 + x260
-    x262 = 3.0 * x234 + 3.0 * x235
-    x263 = x0 * (2.0 * x180 + 2.0 * x204 + x262)
-    x264 = x197 * x239
+    x177 = x0 * (x173 + x9)
+    x178 = x13 + x137
+    x179 = x178 * x24
+    x180 = x177 + x179
+    x181 = x0 * (2.0 * x120 + 2.0 * x174 + 2.0 * x175 + x61) + x146 * x24
+    x182 = x147 + x149
+    x183 = x158 * (
+        x0
+        * (
+            3.0 * x121
+            + 3.0 * x123
+            + x181
+            + x29 * (x112 + x176 + x180 + x60)
+            + x56 * (x139 + x140)
+        )
+        + x182 * x24
+    )
+    x184 = x103 * x183
+    x185 = 40.7971365319473 * x109
+    x186 = x131 * x164
+    x187 = x131 * x161
+    x188 = x187 * x29
+    x189 = x186 + x188
+    x190 = 18.2450341145548 * x166
+    x191 = x189 * x190
+    x192 = 3.0 * x155
+    x193 = x0 * (3.0 * x154 + x192)
+    x194 = x109 * x171
+    x195 = x193 + x194
+    x196 = 6.89597470414309 * x195
+    x197 = x24**2 * x8
+    x198 = x0 * (3.0 * x143 + 3.0 * x145 + x176 * x56 + x29 * (x142 + x197)) + x181 * x24
+    x199 = x158 * x198
+    x200 = x103 * x199
+    x201 = 0.179587122125167 * x102
+    x202 = x164 * x201
+    x203 = 3.0 * x163
+    x204 = x0 * (3.0 * x162 + x203)
+    x205 = x131 * x189
+    x206 = x204 + x205
+    x207 = 6.89597470414309 * x206
+    x208 = -x108 - A[1]
+    x209 = x107 * x208
+    x210 = x100 * x128
+    x211 = x153 * x208
+    x212 = x109 * x211
+    x213 = x155 + x212
+    x214 = 48.2718229290016 * x213
+    x215 = x103 * x158
+    x216 = 48.2718229290016 * x127
+    x217 = x103 * x216
+    x218 = x156 * x208
+    x219 = x170 + x218
+    x220 = 62.3186554316989 * x219
+    x221 = x150 * x215
+    x222 = 107.939077467081 * x213
+    x223 = x158 * x166
+    x224 = 62.3186554316989 * x223
+    x225 = x150 * x224
+    x226 = x171 * x208
+    x227 = x193 + x226
+    x228 = 48.2718229290016 * x227
+    x229 = x215 * x228
+    x230 = 107.939077467081 * x182
+    x231 = x131 * x215
+    x232 = x182 * x223
+    x233 = 48.2718229290016 * x208
+    x234 = x109 * x155
+    x235 = 8.0 * x234
+    x236 = x0 * (4.0 * x168 + x235)
+    x237 = x195 * x208
+    x238 = x236 + x237
+    x239 = 18.2450341145548 * x215
+    x240 = x181 * x239
+    x241 = 62.3186554316989 * x181
+    x242 = x189 * x201
+    x243 = x158 * x190
+    x244 = x181 * x243
+    x245 = -x130 - A[2]
+    x246 = x161 * x245
+    x247 = x131 * x246
+    x248 = x163 + x247
+    x249 = x223 * x248
+    x250 = 107.939077467081 * x249
+    x251 = x164 * x245
+    x252 = x188 + x251
+    x253 = 48.2718229290016 * x171
+    x254 = x215 * x245
+    x255 = x201 * x248
+    x256 = x109 * x223
+    x257 = x189 * x245
+    x258 = x204 + x257
+    x259 = 48.2718229290016 * x258
+    x260 = x201 * x252
+    x261 = x131 * x163
+    x262 = 8.0 * x261
+    x263 = x0 * (4.0 * x186 + x262)
+    x264 = x206 * x245
     x265 = x263 + x264
-    x266 = x0 * (2.0 * x208 + 2.0 * x209 + 4.0 * x237 + 4.0 * x238) + x197 * x242
-    x267 = x0 * (x173 + 3.0 * x211) + x183 * x243
-    x268 = x0 * (3.0 * x213 + 3.0 * x214 + x243) + x183 * x246
-    x269 = x0 * (2.0 * x244 + 2.0 * x245 + x250) + x183 * x249
-    x270 = x0 * (3.0 * x221 + 3.0 * x222 + 3.0 * x247 + 3.0 * x248) + x183 * x253
-    x271 = x0 * (3.0 * x224 + 3.0 * x225 + 4.0 * x251 + 4.0 * x252) + x183 * x254
-    x272 = x0 * (x179 + 3.0 * x227) + x197 * x255
-    x273 = x0 * (3.0 * x229 + 3.0 * x230 + x255) + x197 * x258
-    x274 = x0 * (2.0 * x256 + 2.0 * x257 + x262) + x197 * x261
-    x275 = x0 * (3.0 * x237 + 3.0 * x238 + 3.0 * x259 + 3.0 * x260) + x197 * x265
-    x276 = x0 * (3.0 * x240 + 3.0 * x241 + 4.0 * x263 + 4.0 * x264) + x197 * x266
-    x277 = -x104 - C[1]
-    x278 = x126 * x277**2
-    x279 = x128 + x278
-    x280 = 3.0 * x131 + 3.0 * x132
-    x281 = x0 * (2.0 * x25 + x280 + 2.0 * x31)
-    x282 = x114 * x23
-    x283 = x0 * (4.0 * x112 + 4.0 * x113 + 2.0 * x43 + 2.0 * x45) + x23 * x48
-    x284 = x0 * (4.0 * x281 + 4.0 * x282 + 3.0 * x40 + 3.0 * x47) + x23 * x283
-    x285 = x105 * x279
-    x286 = x126 * x277
-    x287 = x28 * x286
-    x288 = x285 + x287
-    x289 = x0 * (2.0 * x108 + 2.0 * x162 + 2.0 * x164 + 4.0 * x41)
-    x290 = x133 * x23
-    x291 = x281 + x282
-    x292 = x0 * (3.0 * x112 + 3.0 * x113 + 3.0 * x289 + 3.0 * x290) + x23 * x291
-    x293 = x155 * x277
-    x294 = x173 + 2.0 * x293
-    x295 = x0 * (x278 + x294)
-    x296 = x105 * x288
-    x297 = x295 + x296
-    x298 = x0 * (x130 + x177)
-    x299 = x165 * x23
-    x300 = x289 + x290
-    x301 = x0 * (x280 + 2.0 * x298 + 2.0 * x299) + x23 * x300
-    x302 = x128 + x293
-    x303 = x105 * x302
-    x304 = x0 * (x155 + x286)
-    x305 = 2.0 * x304
-    x306 = 4.0 * x128 * x277
-    x307 = x305 + x306
-    x308 = x0 * (2.0 * x285 + 2.0 * x303 + x307)
-    x309 = x105 * x297
-    x310 = x308 + x309
-    x311 = x12 + x177
-    x312 = x158 * x28 + x23 * x311
-    x313 = x298 + x299
-    x314 = x0 * (3.0 * x162 + 3.0 * x164 + x312) + x23 * x313
-    x315 = x303 + x304
-    x316 = x105 * x315
-    x317 = x0 * (x127 + x294)
-    x318 = 2.0 * x317
-    x319 = 3.0 * x295 + x318
-    x320 = x0 * (3.0 * x296 + 2.0 * x316 + x319)
-    x321 = x105 * x310
+    x266 = x153 * x208**2
+    x267 = x155 + x266
+    x268 = 23.5542377588857 * x267
+    x269 = x0 * (x169 + x211)
+    x270 = x208 * x213
+    x271 = x269 + x270
+    x272 = 62.3186554316989 * x215
+    x273 = x272 * x97
+    x274 = 2.0 * x208
+    x275 = x169 * x274 + x192
+    x276 = x0 * (x154 + x275)
+    x277 = x208 * x219
+    x278 = x276 + x277
+    x279 = 80.4530382150027 * x278
+    x280 = x125 * x215
+    x281 = 139.348749811665 * x271
+    x282 = 80.4530382150027 * x202
+    x283 = x0 * (x168 + 3.0 * x218 + x235)
+    x284 = x208 * x227
+    x285 = x283 + x284
+    x286 = 62.3186554316989 * x285
+    x287 = x215 * x286
+    x288 = 139.348749811665 * x148
+    x289 = 62.3186554316989 * x242
+    x290 = x0 * (5.0 * x193 + x194 + 4.0 * x226)
+    x291 = x208 * x238
+    x292 = x290 + x291
+    x293 = 23.5542377588857 * x292
+    x294 = x146 * x215
+    x295 = x146 * x201
+    x296 = 40.7971365319473 * x103 * x245
+    x297 = 139.348749811665 * x219
+    x298 = 241.359114645008 * x255
+    x299 = x125 * x223
+    x300 = 139.348749811665 * x299
+    x301 = 107.939077467081 * x227
+    x302 = 241.359114645008 * x260
+    x303 = 107.939077467081 * x258
+    x304 = x148 * x223
+    x305 = 40.7971365319473 * x238
+    x306 = 107.939077467081 * x255
+    x307 = 139.348749811665 * x260
+    x308 = 40.7971365319473 * x265
+    x309 = x208 * x223
+    x310 = x161 * x245**2
+    x311 = x163 + x310
+    x312 = x224 * x97
+    x313 = x0 * (x187 + x246)
+    x314 = x245 * x248
+    x315 = x313 + x314
+    x316 = x201 * x311
+    x317 = 80.4530382150027 * x156
+    x318 = 2.0 * x245
+    x319 = x187 * x318 + x203
+    x320 = x0 * (x162 + x319)
+    x321 = x245 * x252
     x322 = x320 + x321
-    x323 = x0 * (3.0 * x177 + x19) + x23 * x312
-    x324 = x183 * x279
-    x325 = x287 + x324
-    x326 = x183 * x288
-    x327 = x295 + x326
-    x328 = x183 * x297
-    x329 = x308 + x328
-    x330 = x183 * x310
-    x331 = x320 + x330
-    x332 = x316 + x317
-    x333 = x105 * x332
-    x334 = 3.0 * x304
-    x335 = x0 * (x157 + 3.0 * x303 + x334)
-    x336 = 2.0 * x335
-    x337 = 4.0 * x308 + x336
-    x338 = x0 * (4.0 * x309 + 2.0 * x333 + x337)
-    x339 = x183 * x322
+    x323 = 80.4530382150027 * x322
+    x324 = 62.3186554316989 * x171
+    x325 = x201 * x315
+    x326 = x0 * (x186 + 3.0 * x251 + x262)
+    x327 = x245 * x258
+    x328 = x326 + x327
+    x329 = 62.3186554316989 * x328
+    x330 = 23.5542377588857 * x195
+    x331 = x0 * (5.0 * x204 + x205 + 4.0 * x257)
+    x332 = x245 * x265
+    x333 = x331 + x332
+    x334 = x208 * x267 + x211 * x29
+    x335 = 18.2450341145548 * x334
+    x336 = x215 * x82
+    x337 = 48.2718229290016 * x95
+    x338 = x0 * (x266 + x275)
+    x339 = x208 * x271
     x340 = x338 + x339
-    x341 = x173 + x216 * x286
-    x342 = x0 * (x278 + x341)
-    x343 = x183 * x325
-    x344 = x342 + x343
-    x345 = x183 * x302
-    x346 = 2.0 * x345
-    x347 = x0 * (x285 + x307 + x324 + x346)
-    x348 = x183 * x327
-    x349 = x347 + x348
-    x350 = x183 * x315
-    x351 = 2.0 * x350
-    x352 = 2.0 * x326
-    x353 = x0 * (x296 + x319 + x351 + x352)
-    x354 = x183 * x329
-    x355 = x353 + x354
-    x356 = x183 * x332
-    x357 = 2.0 * x356
-    x358 = x0 * (x309 + 3.0 * x328 + x337 + x357)
-    x359 = x183 * x331
-    x360 = x358 + x359
-    x361 = 4.0 * x317
-    x362 = x0 * (x176 + 4.0 * x316 + x361)
-    x363 = x183 * (x333 + x335)
-    x364 = 2.0 * x362 + 2.0 * x363
-    x365 = x0 * (5.0 * x320 + x321 + 4.0 * x330 + x364)
-    x366 = x183 * x340
-    x367 = x365 + x366
-    x368 = x0 * (x185 + x286)
-    x369 = x185 * x277
-    x370 = x183 * (x128 + x369)
-    x371 = x0 * (x306 + 2.0 * x324 + 2.0 * x368 + 2.0 * x370) + x183 * x344
-    x372 = x0 * (x173 + x186 + x293 + x369)
-    x373 = x183 * (x304 + x345)
-    x374 = 2.0 * x372 + 2.0 * x373
-    x375 = x0 * (2.0 * x295 + x344 + x352 + x374)
-    x376 = x183 * x349
+    x341 = x215 * x340
+    x342 = 48.2718229290016 * x334
+    x343 = 62.3186554316989 * x89
+    x344 = 2.0 * x0 * (x218 + 2.0 * x234 + x269 + x270)
+    x345 = x208 * x278
+    x346 = x344 + x345
+    x347 = x215 * x346
+    x348 = 107.939077467081 * x340
+    x349 = 62.3186554316989 * x202
+    x350 = 3.0 * x276 + 3.0 * x277
+    x351 = x0 * (2.0 * x193 + 2.0 * x226 + x350)
+    x352 = x208 * x285
+    x353 = x351 + x352
+    x354 = 48.2718229290016 * x353
+    x355 = x215 * x354
+    x356 = 107.939077467081 * x122
+    x357 = 48.2718229290016 * x242
+    x358 = 2.0 * x0 * (x236 + x237 + 2.0 * x283 + 2.0 * x284) + x208 * x292
+    x359 = x239 * x358
+    x360 = x144 * x201
+    x361 = 40.7971365319473 * x267
+    x362 = 107.939077467081 * x95
+    x363 = 139.348749811665 * x89
+    x364 = x122 * x201
+    x365 = 40.7971365319473 * x144
+    x366 = x223 * x82
+    x367 = 40.7971365319473 * x311
+    x368 = 241.359114645008 * x325
+    x369 = 241.359114645008 * x322
+    x370 = 40.7971365319473 * x316
+    x371 = 107.939077467081 * x325
+    x372 = x245 * x311 + x246 * x29
+    x373 = 18.2450341145548 * x372
+    x374 = x223 * x337
+    x375 = x0 * (x310 + x319)
+    x376 = x245 * x315
     x377 = x375 + x376
-    x378 = x0 * (x189 + x303 + x334 + x346)
-    x379 = x183 * (x317 + x350)
-    x380 = x0 * (
-        2.0 * x308 + 2.0 * x328 + 2.0 * x347 + 2.0 * x348 + 2.0 * x378 + 2.0 * x379
-    )
-    x381 = x183 * x355
+    x378 = x156 * x201
+    x379 = 107.939077467081 * x377
+    x380 = 2.0 * x0 * (x251 + 2.0 * x261 + x313 + x314)
+    x381 = x245 * x322
     x382 = x380 + x381
-    x383 = x0 * (x191 + x316 + 3.0 * x350 + x361)
-    x384 = x183 * (x335 + x356)
-    x385 = 3.0 * x353 + 3.0 * x354
-    x386 = x0 * (2.0 * x320 + 2.0 * x330 + 2.0 * x383 + 2.0 * x384 + x385)
-    x387 = x183 * x360
-    x388 = x386 + x387
-    x389 = x0 * (x196 + x333 + 5.0 * x335 + 4.0 * x356)
-    x390 = x183 * (x362 + x363)
-    x391 = (
-        x0 * (2.0 * x338 + 2.0 * x339 + 4.0 * x358 + 4.0 * x359 + 2.0 * x389 + 2.0 * x390)
-        + x183 * x367
+    x383 = x223 * x382
+    x384 = 3.0 * x320 + 3.0 * x321
+    x385 = x0 * (2.0 * x204 + 2.0 * x257 + x384)
+    x386 = x245 * x328
+    x387 = x385 + x386
+    x388 = 48.2718229290016 * x387
+    x389 = x223 * x388
+    x390 = 62.3186554316989 * x382
+    x391 = 2.0 * x0 * (x263 + x264 + 2.0 * x326 + 2.0 * x327) + x245 * x333
+    x392 = x243 * x391
+    x393 = x0 * (x192 + 3.0 * x266) + x208 * x334
+    x394 = x104 * x158
+    x395 = x0 * (3.0 * x269 + 3.0 * x270 + x334) + x208 * x340
+    x396 = x239 * x70
+    x397 = x0 * (2.0 * x338 + 2.0 * x339 + x350) + x208 * x346
+    x398 = x103 * x165
+    x399 = x160 * x215
+    x400 = 23.5542377588857 * x202
+    x401 = 3.0 * x0 * (x283 + x284 + x344 + x345) + x208 * x353
+    x402 = x239 * x401
+    x403 = 40.7971365319473 * x66
+    x404 = 18.2450341145548 * x242
+    x405 = x0 * (3.0 * x290 + 3.0 * x291 + 4.0 * x351 + 4.0 * x352) + x208 * x358
+    x406 = x201 * x58
+    x407 = 48.2718229290016 * x245
+    x408 = x245 * x272
+    x409 = 62.3186554316989 * x260
+    x410 = 107.939077467081 * x66
+    x411 = x201 * x66
+    x412 = 48.2718229290016 * x255
+    x413 = 48.2718229290016 * x406
+    x414 = 62.3186554316989 * x70
+    x415 = 80.4530382150027 * x68
+    x416 = 139.348749811665 * x325
+    x417 = x201 * x322
+    x418 = 23.5542377588857 * x316
+    x419 = x201 * x372
+    x420 = 48.2718229290016 * x223
+    x421 = 62.3186554316989 * x419
+    x422 = x201 * x377
+    x423 = x0 * (x203 + 3.0 * x310) + x245 * x372
+    x424 = 6.89597470414309 * x223
+    x425 = x243 * x70
+    x426 = x0 * (3.0 * x313 + 3.0 * x314 + x372) + x245 * x377
+    x427 = x201 * x423
+    x428 = x185 * x223
+    x429 = x0 * (2.0 * x375 + 2.0 * x376 + x384) + x245 * x382
+    x430 = 3.0 * x0 * (x326 + x327 + x380 + x381) + x245 * x387
+    x431 = x243 * x430
+    x432 = x0 * (3.0 * x331 + 3.0 * x332 + 4.0 * x385 + 4.0 * x386) + x245 * x391
+    x433 = -x108 - C[1]
+    x434 = x153 * x433**2
+    x435 = x155 + x434
+    x436 = 3.0 * x134 + 3.0 * x135
+    x437 = x0 * (2.0 * x26 + 2.0 * x32 + x436)
+    x438 = x119 * x24
+    x439 = 2.0 * x0 * (2.0 * x117 + 2.0 * x118 + x44 + x46) + x24 * x49
+    x440 = x0 * (3.0 * x41 + 4.0 * x437 + 4.0 * x438 + 3.0 * x48) + x24 * x439
+    x441 = x109 * x435
+    x442 = x153 * x433
+    x443 = x29 * x442
+    x444 = x441 + x443
+    x445 = 2.0 * x0 * (x113 + x177 + x179 + 2.0 * x42)
+    x446 = x136 * x24
+    x447 = x437 + x438
+    x448 = 3.0 * x0 * (x117 + x118 + x445 + x446) + x24 * x447
+    x449 = x239 * x448
+    x450 = x169 * x433
+    x451 = x192 + 2.0 * x450
+    x452 = x0 * (x434 + x451)
+    x453 = x109 * x444
+    x454 = x452 + x453
+    x455 = x0 * (x133 + x197)
+    x456 = x180 * x24
+    x457 = x445 + x446
+    x458 = x0 * (x436 + 2.0 * x455 + 2.0 * x456) + x24 * x457
+    x459 = 40.7971365319473 * x444
+    x460 = x13 + x197
+    x461 = x173 * x29 + x24 * x460
+    x462 = x455 + x456
+    x463 = x0 * (3.0 * x177 + 3.0 * x179 + x461) + x24 * x462
+    x464 = x155 + x450
+    x465 = x109 * x464
+    x466 = x0 * (x169 + x442)
+    x467 = 2.0 * x466
+    x468 = 4.0 * x155 * x433
+    x469 = x467 + x468
+    x470 = x0 * (2.0 * x441 + 2.0 * x465 + x469)
+    x471 = x109 * x454
+    x472 = x470 + x471
+    x473 = x239 * x472
+    x474 = x465 + x466
+    x475 = x109 * x474
+    x476 = x0 * (x154 + x451)
+    x477 = 2.0 * x476
+    x478 = 3.0 * x452 + x477
+    x479 = x0 * (3.0 * x453 + 2.0 * x475 + x478)
+    x480 = x109 * x472
+    x481 = x479 + x480
+    x482 = x0 * (3.0 * x197 + x20) + x24 * x461
+    x483 = x201 * x435
+    x484 = x208 * x435
+    x485 = x443 + x484
+    x486 = 18.2450341145548 * x485
+    x487 = x208 * x444
+    x488 = x452 + x487
+    x489 = 48.2718229290016 * x215
+    x490 = x447 * x489
+    x491 = x208 * x454
+    x492 = x470 + x491
+    x493 = x272 * x457
+    x494 = 107.939077467081 * x488
+    x495 = x208 * x472
+    x496 = x479 + x495
+    x497 = x489 * x496
+    x498 = 107.939077467081 * x462
+    x499 = x475 + x476
+    x500 = x109 * x499
+    x501 = 3.0 * x466
+    x502 = x0 * (x171 + 3.0 * x465 + x501)
+    x503 = 2.0 * x502
+    x504 = 4.0 * x470 + x503
+    x505 = x0 * (4.0 * x471 + 2.0 * x500 + x504)
+    x506 = x208 * x481
+    x507 = x505 + x506
+    x508 = x239 * x461
+    x509 = x201 * x461
+    x510 = 18.2450341145548 * x483
+    x511 = x192 + x274 * x442
+    x512 = x0 * (x434 + x511)
+    x513 = x208 * x485
+    x514 = x512 + x513
+    x515 = 23.5542377588857 * x514
+    x516 = x215 * x49
+    x517 = x208 * x464
+    x518 = 2.0 * x517
+    x519 = x0 * (x441 + x469 + x484 + x518)
+    x520 = x208 * x488
+    x521 = x519 + x520
+    x522 = 62.3186554316989 * x119
+    x523 = x215 * x522
+    x524 = 80.4530382150027 * x136
+    x525 = x208 * x474
+    x526 = 2.0 * x525
+    x527 = 2.0 * x487
+    x528 = x0 * (x453 + x478 + x526 + x527)
+    x529 = x208 * x492
+    x530 = x528 + x529
+    x531 = x215 * x530
+    x532 = 139.348749811665 * x136
+    x533 = x208 * x499
+    x534 = 2.0 * x533
+    x535 = x0 * (x471 + 3.0 * x491 + x504 + x534)
+    x536 = x208 * x496
+    x537 = x535 + x536
+    x538 = x272 * x537
+    x539 = 139.348749811665 * x180
+    x540 = 4.0 * x476
+    x541 = x0 * (x195 + 4.0 * x475 + x540)
+    x542 = x208 * (x500 + x502)
+    x543 = 2.0 * x541 + 2.0 * x542
+    x544 = x0 * (5.0 * x479 + x480 + 4.0 * x495 + x543)
+    x545 = x208 * x507
+    x546 = x544 + x545
+    x547 = x201 * x460
+    x548 = 40.7971365319473 * x485
+    x549 = 107.939077467081 * x496
+    x550 = x201 * x303
+    x551 = 40.7971365319473 * x254
+    x552 = 62.3186554316989 * x472
+    x553 = 80.4530382150027 * x417
+    x554 = 23.5542377588857 * x483
+    x555 = x0 * (x211 + x442)
+    x556 = x211 * x433
+    x557 = x208 * (x155 + x556)
+    x558 = x0 * (x468 + 2.0 * x484 + 2.0 * x555 + 2.0 * x557) + x208 * x514
+    x559 = x239 * x558
+    x560 = x0 * (x192 + x212 + x450 + x556)
+    x561 = x208 * (x466 + x517)
+    x562 = 2.0 * x560 + 2.0 * x561
+    x563 = x0 * (2.0 * x452 + x514 + x527 + x562)
+    x564 = x208 * x521
+    x565 = x563 + x564
+    x566 = 48.2718229290016 * x33
+    x567 = x215 * x566
+    x568 = 62.3186554316989 * x114
+    x569 = x0 * (x219 + x465 + x501 + x518)
+    x570 = x208 * (x476 + x525)
+    x571 = 2.0 * x0 * (x470 + x491 + x519 + x520 + x569 + x570)
+    x572 = x208 * x530
+    x573 = x571 + x572
+    x574 = x215 * x573
+    x575 = 107.939077467081 * x114
+    x576 = x0 * (x227 + x475 + 3.0 * x525 + x540)
+    x577 = x208 * (x502 + x533)
+    x578 = 3.0 * x528 + 3.0 * x529
+    x579 = x0 * (2.0 * x479 + 2.0 * x495 + 2.0 * x576 + 2.0 * x577 + x578)
+    x580 = x208 * x537
+    x581 = x579 + x580
+    x582 = 48.2718229290016 * x178
+    x583 = 107.939077467081 * x178
+    x584 = x0 * (x238 + x500 + 5.0 * x502 + 4.0 * x533)
+    x585 = x208 * (x541 + x542)
+    x586 = 2.0 * x0 * (x505 + x506 + 2.0 * x535 + 2.0 * x536 + x584 + x585) + x208 * x546
+    x587 = x106 * x5
+    x588 = x128 * x587
+    x589 = x586 * x588
+    x590 = x24 * x587
+    x591 = x103 * x581
+    x592 = x102 * x5
+    x593 = x158 * x592
+    x594 = 62.3186554316989 * x593
+    x595 = x573 * x594
+    x596 = 48.2718229290016 * x593
+    x597 = 18.2450341145548 * x593
+    x598 = x558 * x597
+    x599 = 107.939077467081 * x33
+    x600 = 139.348749811665 * x114
+    x601 = x24 * x593
+    x602 = 107.939077467081 * x248
+    x603 = x530 * x593
+    x604 = 139.348749811665 * x24
+    x605 = x521 * x593
+    x606 = x178 * x201
+    x607 = x201 * x583
+    x608 = x507 * x593
+    x609 = x492 * x593
+    x610 = x333 * x593
+    x611 = x377 * x596
+    x612 = x388 * x593
+    x613 = 6.89597470414309 * x45
+    x614 = x555 + x557
+    x615 = (
+        x0 * (x274 * x614 + x29 * (x266 + x511) + 3.0 * x512 + 3.0 * x513) + x208 * x558
     )
-    x392 = x102 * x5
-    x393 = x391 * x392
-    x394 = x23 * x392
-    x395 = x368 + x370
-    x396 = (
-        x0 * (x216 * x395 + x28 * (x211 + x341) + 3.0 * x342 + 3.0 * x343) + x183 * x371
-    )
-    x397 = (
+    x616 = x215 * x615
+    x617 = 18.2450341145548 * x31
+    x618 = (
         x0
         * (
-            x216 * (x372 + x373)
-            + x28 * (x215 + x305 + x346 + x395)
-            + 3.0 * x347
-            + 3.0 * x348
-            + x371
+            x274 * (x560 + x561)
+            + x29 * (x271 + x467 + x518 + x614)
+            + 3.0 * x519
+            + 3.0 * x520
+            + x558
         )
-        + x183 * x377
+        + x208 * x565
     )
-    x398 = (
+    x619 = x215 * x618
+    x620 = (
         x0
         * (
-            x216 * (x378 + x379)
-            + x28 * (x220 + x318 + x351 + x374)
-            + 2.0 * x375
-            + 2.0 * x376
-            + x385
+            x274 * (x569 + x570)
+            + x29 * (x278 + x477 + x526 + x562)
+            + 2.0 * x563
+            + 2.0 * x564
+            + x578
         )
-        + x183 * x382
+        + x208 * x573
     )
-    x399 = x392 * (
+    x621 = 23.5542377588857 * x27
+    x622 = x588 * (
         x0
         * (
-            x216 * (x383 + x384)
-            + x28 * (x223 + x336 + x357 + 3.0 * x378 + 3.0 * x379)
-            + 3.0 * x358
-            + 3.0 * x359
-            + 3.0 * x380
-            + 3.0 * x381
+            x274 * (x576 + x577)
+            + x29 * (x285 + x503 + x534 + 3.0 * x569 + 3.0 * x570)
+            + 3.0 * x535
+            + 3.0 * x536
+            + 3.0 * x571
+            + 3.0 * x572
         )
-        + x183 * x388
+        + x208 * x581
     )
-    x400 = x3 * x392
-    x401 = -x124 - C[2]
-    x402 = x149 * x401**2
-    x403 = x152 + x402
-    x404 = x125 * x403
-    x405 = x149 * x401
-    x406 = x28 * x405
-    x407 = x404 + x406
-    x408 = x169 * x401
-    x409 = x179 + 2.0 * x408
-    x410 = x0 * (x402 + x409)
-    x411 = x125 * x407
-    x412 = x410 + x411
-    x413 = x152 + x408
-    x414 = x125 * x413
-    x415 = x0 * (x169 + x405)
-    x416 = 2.0 * x415
-    x417 = 4.0 * x152 * x401
-    x418 = x416 + x417
-    x419 = x0 * (2.0 * x404 + 2.0 * x414 + x418)
-    x420 = x125 * x412
-    x421 = x419 + x420
-    x422 = x414 + x415
-    x423 = x125 * x422
-    x424 = x0 * (x151 + x409)
-    x425 = 2.0 * x424
-    x426 = 3.0 * x410 + x425
-    x427 = x0 * (3.0 * x411 + 2.0 * x423 + x426)
-    x428 = x125 * x421
-    x429 = x427 + x428
-    x430 = x197 * x403
-    x431 = x406 + x430
-    x432 = x197 * x407
-    x433 = x410 + x432
-    x434 = x197 * x412
-    x435 = x419 + x434
-    x436 = x197 * x421
-    x437 = x427 + x436
-    x438 = x423 + x424
-    x439 = x125 * x438
-    x440 = 3.0 * x415
-    x441 = x0 * (x172 + 3.0 * x414 + x440)
-    x442 = 2.0 * x441
-    x443 = 4.0 * x419 + x442
-    x444 = x0 * (4.0 * x420 + 2.0 * x439 + x443)
-    x445 = x197 * x429
-    x446 = x444 + x445
-    x447 = x179 + x232 * x405
-    x448 = x0 * (x402 + x447)
-    x449 = x197 * x431
-    x450 = x448 + x449
-    x451 = x197 * x413
-    x452 = 2.0 * x451
-    x453 = x0 * (x404 + x418 + x430 + x452)
-    x454 = x197 * x433
-    x455 = x453 + x454
-    x456 = x197 * x422
-    x457 = 2.0 * x456
-    x458 = 2.0 * x432
-    x459 = x0 * (x411 + x426 + x457 + x458)
-    x460 = x197 * x435
-    x461 = x459 + x460
-    x462 = x197 * x438
-    x463 = 2.0 * x462
-    x464 = x0 * (x420 + 3.0 * x434 + x443 + x463)
-    x465 = x197 * x437
-    x466 = x464 + x465
-    x467 = 4.0 * x424
-    x468 = x0 * (x182 + 4.0 * x423 + x467)
-    x469 = x197 * (x439 + x441)
-    x470 = 2.0 * x468 + 2.0 * x469
-    x471 = x0 * (5.0 * x427 + x428 + 4.0 * x436 + x470)
-    x472 = x197 * x446
-    x473 = x471 + x472
-    x474 = 3.14159265358979 * x1 * x100 * x5
-    x475 = x23 * x474
-    x476 = x0 * (x199 + x405)
-    x477 = x199 * x401
-    x478 = x197 * (x152 + x477)
-    x479 = x0 * (x417 + 2.0 * x430 + 2.0 * x476 + 2.0 * x478) + x197 * x450
-    x480 = x0 * (x179 + x200 + x408 + x477)
-    x481 = x197 * (x415 + x451)
-    x482 = 2.0 * x480 + 2.0 * x481
-    x483 = x0 * (2.0 * x410 + x450 + x458 + x482)
-    x484 = x197 * x455
-    x485 = x483 + x484
-    x486 = x0 * (x203 + x414 + x440 + x452)
-    x487 = x197 * (x424 + x456)
-    x488 = x0 * (
-        2.0 * x419 + 2.0 * x434 + 2.0 * x453 + 2.0 * x454 + 2.0 * x486 + 2.0 * x487
+    x623 = x3 * x587
+    x624 = x3 * x593
+    x625 = 40.7971365319473 * x624
+    x626 = x189 * x597
+    x627 = x165 * x592
+    x628 = 48.2718229290016 * x31
+    x629 = x565 * x593
+    x630 = 107.939077467081 * x3
+    x631 = 62.3186554316989 * x31
+    x632 = 80.4530382150027 * x27
+    x633 = x537 * x594
+    x634 = 139.348749811665 * x3
+    x635 = x201 * x485
+    x636 = x201 * x27
+    x637 = x472 * x597
+    x638 = x430 * x597
+    x639 = 6.89597470414309 * x593
+    x640 = -x130 - C[2]
+    x641 = x161 * x640**2
+    x642 = x163 + x641
+    x643 = x243 * x448
+    x644 = x131 * x642
+    x645 = x161 * x640
+    x646 = x29 * x645
+    x647 = x644 + x646
+    x648 = x201 * x642
+    x649 = 40.7971365319473 * x647
+    x650 = x187 * x640
+    x651 = x203 + 2.0 * x650
+    x652 = x0 * (x641 + x651)
+    x653 = x131 * x647
+    x654 = x652 + x653
+    x655 = x163 + x650
+    x656 = x131 * x655
+    x657 = x0 * (x187 + x645)
+    x658 = 2.0 * x657
+    x659 = 4.0 * x163 * x640
+    x660 = x658 + x659
+    x661 = x0 * (2.0 * x644 + 2.0 * x656 + x660)
+    x662 = x131 * x654
+    x663 = x661 + x662
+    x664 = x243 * x663
+    x665 = x201 * x482
+    x666 = x656 + x657
+    x667 = x131 * x666
+    x668 = x0 * (x162 + x651)
+    x669 = 2.0 * x668
+    x670 = 3.0 * x652 + x669
+    x671 = x0 * (3.0 * x653 + 2.0 * x667 + x670)
+    x672 = x131 * x663
+    x673 = x671 + x672
+    x674 = x243 * x439
+    x675 = x420 * x447
+    x676 = x201 * x647
+    x677 = x224 * x457
+    x678 = x201 * x462
+    x679 = x420 * x462
+    x680 = 18.2450341145548 * x509
+    x681 = x243 * x461
+    x682 = x245 * x642
+    x683 = x646 + x682
+    x684 = x245 * x647
+    x685 = x652 + x684
+    x686 = 62.3186554316989 * x378
+    x687 = 107.939077467081 * x685
+    x688 = x245 * x654
+    x689 = x661 + x688
+    x690 = x245 * x663
+    x691 = x671 + x690
+    x692 = x667 + x668
+    x693 = x131 * x692
+    x694 = 3.0 * x657
+    x695 = x0 * (x189 + 3.0 * x656 + x694)
+    x696 = 2.0 * x695
+    x697 = 4.0 * x661 + x696
+    x698 = x0 * (4.0 * x662 + 2.0 * x693 + x697)
+    x699 = x245 * x673
+    x700 = x698 + x699
+    x701 = x201 * x654
+    x702 = 62.3186554316989 * x663
+    x703 = x180 * x201
+    x704 = 40.7971365319473 * x309
+    x705 = x201 * x683
+    x706 = 241.359114645008 * x685
+    x707 = x136 * x201
+    x708 = 241.359114645008 * x689
+    x709 = 107.939077467081 * x691
+    x710 = x203 + x318 * x645
+    x711 = x0 * (x641 + x710)
+    x712 = x245 * x683
+    x713 = x711 + x712
+    x714 = x223 * x522
+    x715 = x245 * x655
+    x716 = 2.0 * x715
+    x717 = x0 * (x644 + x660 + x682 + x716)
+    x718 = x245 * x685
+    x719 = x717 + x718
+    x720 = x245 * x666
+    x721 = 2.0 * x720
+    x722 = 2.0 * x684
+    x723 = x0 * (x653 + x670 + x721 + x722)
+    x724 = x245 * x689
+    x725 = x723 + x724
+    x726 = x223 * x725
+    x727 = x245 * x692
+    x728 = 2.0 * x727
+    x729 = x0 * (x662 + 3.0 * x688 + x697 + x728)
+    x730 = x245 * x691
+    x731 = x729 + x730
+    x732 = x224 * x731
+    x733 = 4.0 * x668
+    x734 = x0 * (x206 + 4.0 * x667 + x733)
+    x735 = x245 * (x693 + x695)
+    x736 = 2.0 * x734 + 2.0 * x735
+    x737 = x0 * (5.0 * x671 + x672 + 4.0 * x690 + x736)
+    x738 = x245 * x700
+    x739 = x737 + x738
+    x740 = x358 * x597
+    x741 = x354 * x593
+    x742 = x346 * x594
+    x743 = x340 * x596
+    x744 = x335 * x593
+    x745 = x201 * x267
+    x746 = x114 * x201
+    x747 = x201 * x713
+    x748 = 241.359114645008 * x719
+    x749 = x593 * x713
+    x750 = x593 * x719
+    x751 = x593 * x725
+    x752 = x107 * x592
+    x753 = x24 * x752
+    x754 = x0 * (x246 + x645)
+    x755 = x246 * x640
+    x756 = x245 * (x163 + x755)
+    x757 = x0 * (x659 + 2.0 * x682 + 2.0 * x754 + 2.0 * x756) + x245 * x713
+    x758 = x243 * x757
+    x759 = x223 * x566
+    x760 = x0 * (x203 + x247 + x650 + x755)
+    x761 = x245 * (x657 + x715)
+    x762 = 2.0 * x760 + 2.0 * x761
+    x763 = x0 * (2.0 * x652 + x713 + x722 + x762)
+    x764 = x245 * x719
+    x765 = x763 + x764
+    x766 = x0 * (x252 + x656 + x694 + x716)
+    x767 = x245 * (x668 + x720)
+    x768 = 2.0 * x0 * (x661 + x688 + x717 + x718 + x766 + x767)
+    x769 = x245 * x725
+    x770 = x768 + x769
+    x771 = x223 * x770
+    x772 = x0 * (x258 + x667 + 3.0 * x720 + x733)
+    x773 = x245 * (x695 + x727)
+    x774 = 3.0 * x723 + 3.0 * x724
+    x775 = x0 * (2.0 * x671 + 2.0 * x690 + 2.0 * x772 + 2.0 * x773 + x774)
+    x776 = x245 * x731
+    x777 = x775 + x776
+    x778 = x597 * x757
+    x779 = x593 * x765
+    x780 = x0 * (x265 + x693 + 5.0 * x695 + 4.0 * x727)
+    x781 = x245 * (x734 + x735)
+    x782 = 2.0 * x0 * (x698 + x699 + 2.0 * x729 + 2.0 * x730 + x780 + x781) + x245 * x739
+    x783 = 18.2450341145548 * x752
+    x784 = x782 * x783
+    x785 = x401 * x597
+    x786 = x597 * x663
+    x787 = x201 * x31
+    x788 = 62.3186554316989 * x636
+    x789 = x594 * x731
+    x790 = x593 * x770
+    x791 = x754 + x756
+    x792 = (
+        x0 * (x29 * (x310 + x710) + x318 * x791 + 3.0 * x711 + 3.0 * x712) + x245 * x757
     )
-    x489 = x197 * x461
-    x490 = x488 + x489
-    x491 = x0 * (x205 + x423 + 3.0 * x456 + x467)
-    x492 = x197 * (x441 + x462)
-    x493 = 3.0 * x459 + 3.0 * x460
-    x494 = x0 * (2.0 * x427 + 2.0 * x436 + 2.0 * x491 + 2.0 * x492 + x493)
-    x495 = x197 * x466
-    x496 = x494 + x495
-    x497 = x0 * (x210 + x439 + 5.0 * x441 + 4.0 * x462)
-    x498 = x197 * (x468 + x469)
-    x499 = (
-        x0 * (2.0 * x444 + 2.0 * x445 + 4.0 * x464 + 4.0 * x465 + 2.0 * x497 + 2.0 * x498)
-        + x197 * x473
-    )
-    x500 = x474 * x499
-    x501 = x3 * x474
-    x502 = x476 + x478
-    x503 = (
-        x0 * (x232 * x502 + x28 * (x227 + x447) + 3.0 * x448 + 3.0 * x449) + x197 * x479
-    )
-    x504 = (
+    x793 = x223 * x792
+    x794 = (
         x0
         * (
-            x232 * (x480 + x481)
-            + x28 * (x231 + x416 + x452 + x502)
-            + 3.0 * x453
-            + 3.0 * x454
-            + x479
+            x29 * (x315 + x658 + x716 + x791)
+            + x318 * (x760 + x761)
+            + 3.0 * x717
+            + 3.0 * x718
+            + x757
         )
-        + x197 * x485
+        + x245 * x765
     )
-    x505 = (
+    x795 = x223 * x794
+    x796 = (
         x0
         * (
-            x232 * (x486 + x487)
-            + x28 * (x236 + x425 + x457 + x482)
-            + 2.0 * x483
-            + 2.0 * x484
-            + x493
+            x29 * (x322 + x669 + x721 + x762)
+            + x318 * (x766 + x767)
+            + 2.0 * x763
+            + 2.0 * x764
+            + x774
         )
-        + x197 * x490
+        + x245 * x770
     )
-    x506 = x474 * (
+    x797 = x593 * x792
+    x798 = x593 * x794
+    x799 = 40.7971365319473 * x3
+    x800 = x592 * x796
+    x801 = x783 * (
         x0
         * (
-            x232 * (x491 + x492)
-            + x28 * (x239 + x442 + x463 + 3.0 * x486 + 3.0 * x487)
-            + 3.0 * x464
-            + 3.0 * x465
-            + 3.0 * x488
-            + 3.0 * x489
+            x29 * (x328 + x696 + x728 + 3.0 * x766 + 3.0 * x767)
+            + x318 * (x772 + x773)
+            + 3.0 * x729
+            + 3.0 * x730
+            + 3.0 * x768
+            + 3.0 * x769
         )
-        + x197 * x496
+        + x245 * x777
     )
 
     # 675 item(s)
-    return numpy.array(
-        [
-            x103
+    result[0, 0, 0] = numpy.sum(
+        x104
+        * x107
+        * (
+            x0
             * (
-                x0
-                * (
-                    x28 * (4.0 * x33 + 4.0 * x38 + x48 + x52)
-                    + x55 * (x53 + x54)
-                    + 3.0 * x75
-                    + 3.0 * x82
-                    + 4.0 * x91
-                    + 4.0 * x97
-                )
-                + x23 * x99
-            ),
-            x105 * x123,
-            x123 * x125,
-            x129 * x148 * x149,
-            x105 * x148 * x150,
-            x126 * x148 * x153,
-            x149 * x157 * x168,
-            x129 * x168 * x169,
-            x153 * x155 * x168,
-            x126 * x168 * x172,
-            x149 * x176 * x178,
-            x157 * x169 * x178,
-            x129 * x153 * x178,
-            x155 * x172 * x178,
-            x126 * x178 * x182,
-            x183 * x184,
-            x122 * x149 * x187,
-            x122 * x150 * x183,
-            x147 * x149 * x189,
-            x147 * x169 * x187,
-            x147 * x153 * x185,
-            x149 * x167 * x191,
-            x167 * x169 * x189,
-            x153 * x167 * x187,
-            x167 * x172 * x185,
-            x149 * x166 * x196,
-            x166 * x169 * x191,
-            x153 * x166 * x189,
-            x166 * x172 * x187,
-            x166 * x182 * x185,
-            x184 * x197,
-            x105 * x122 * x198,
-            x122 * x126 * x201,
-            x129 * x147 * x199,
-            x147 * x155 * x201,
-            x126 * x147 * x203,
-            x157 * x167 * x199,
-            x129 * x167 * x201,
-            x155 * x167 * x203,
-            x126 * x167 * x205,
-            x166 * x176 * x199,
-            x157 * x166 * x201,
-            x129 * x166 * x203,
-            x155 * x166 * x205,
-            x126 * x166 * x210,
-            x149 * x212 * x98,
-            x149 * x215 * x96,
-            x169 * x212 * x96,
-            x120 * x149 * x220,
-            x120 * x169 * x215,
-            x120 * x153 * x212,
-            x145 * x149 * x223,
-            x145 * x169 * x220,
-            x145 * x153 * x215,
-            x145 * x172 * x212,
-            x143 * x149 * x226,
-            x143 * x169 * x223,
-            x143 * x153 * x220,
-            x143 * x172 * x215,
-            x143 * x182 * x212,
-            x183 * x198 * x98,
-            x187 * x199 * x96,
-            x185 * x201 * x96,
-            x120 * x189 * x199,
-            x120 * x187 * x201,
-            x120 * x185 * x203,
-            x145 * x191 * x199,
-            x145 * x189 * x201,
-            x145 * x187 * x203,
-            x145 * x185 * x205,
-            x143 * x196 * x199,
-            x143 * x191 * x201,
-            x143 * x189 * x203,
-            x143 * x187 * x205,
-            x143 * x185 * x210,
-            x126 * x228 * x98,
-            x155 * x228 * x96,
-            x126 * x231 * x96,
-            x120 * x129 * x228,
-            x120 * x155 * x231,
-            x120 * x126 * x236,
-            x145 * x157 * x228,
-            x129 * x145 * x231,
-            x145 * x155 * x236,
-            x126 * x145 * x239,
-            x143 * x176 * x228,
-            x143 * x157 * x231,
-            x129 * x143 * x236,
-            x143 * x155 * x239,
-            x126 * x143 * x242,
-            x149 * x243 * x81,
-            x149 * x246 * x94,
-            x169 * x243 * x94,
-            x149 * x249 * x88,
-            x169 * x246 * x88,
-            x153 * x243 * x88,
-            x117 * x149 * x253,
-            x117 * x169 * x249,
-            x117 * x153 * x246,
-            x117 * x172 * x243,
-            x141 * x149 * x254,
-            x141 * x169 * x253,
-            x141 * x153 * x249,
-            x141 * x172 * x246,
-            x141 * x182 * x243,
-            x199 * x212 * x81,
-            x199 * x215 * x94,
-            x201 * x212 * x94,
-            x199 * x220 * x88,
-            x201 * x215 * x88,
-            x203 * x212 * x88,
-            x117 * x199 * x223,
-            x117 * x201 * x220,
-            x117 * x203 * x215,
-            x117 * x205 * x212,
-            x141 * x199 * x226,
-            x141 * x201 * x223,
-            x141 * x203 * x220,
-            x141 * x205 * x215,
-            x141 * x210 * x212,
-            x185 * x228 * x81,
-            x187 * x228 * x94,
-            x185 * x231 * x94,
-            x189 * x228 * x88,
-            x187 * x231 * x88,
-            x185 * x236 * x88,
-            x117 * x191 * x228,
-            x117 * x189 * x231,
-            x117 * x187 * x236,
-            x117 * x185 * x239,
-            x141 * x196 * x228,
-            x141 * x191 * x231,
-            x141 * x189 * x236,
-            x141 * x187 * x239,
-            x141 * x185 * x242,
-            x126 * x255 * x81,
-            x155 * x255 * x94,
-            x126 * x258 * x94,
-            x129 * x255 * x88,
-            x155 * x258 * x88,
-            x126 * x261 * x88,
-            x117 * x157 * x255,
-            x117 * x129 * x258,
-            x117 * x155 * x261,
-            x117 * x126 * x265,
-            x141 * x176 * x255,
-            x141 * x157 * x258,
-            x129 * x141 * x261,
-            x141 * x155 * x265,
-            x126 * x141 * x266,
-            x149 * x267 * x79,
-            x149 * x268 * x69,
-            x169 * x267 * x69,
-            x149 * x269 * x67,
-            x169 * x268 * x67,
-            x153 * x267 * x67,
-            x149 * x270 * x65,
-            x169 * x269 * x65,
-            x153 * x268 * x65,
-            x172 * x267 * x65,
-            x149 * x271 * x57,
-            x169 * x270 * x57,
-            x153 * x269 * x57,
-            x172 * x268 * x57,
-            x182 * x267 * x57,
-            x199 * x243 * x79,
-            x199 * x246 * x69,
-            x201 * x243 * x69,
-            x199 * x249 * x67,
-            x201 * x246 * x67,
-            x203 * x243 * x67,
-            x199 * x253 * x65,
-            x201 * x249 * x65,
-            x203 * x246 * x65,
-            x205 * x243 * x65,
-            x199 * x254 * x57,
-            x201 * x253 * x57,
-            x203 * x249 * x57,
-            x205 * x246 * x57,
-            x210 * x243 * x57,
-            x212 * x228 * x79,
-            x215 * x228 * x69,
-            x212 * x231 * x69,
-            x220 * x228 * x67,
-            x215 * x231 * x67,
-            x212 * x236 * x67,
-            x223 * x228 * x65,
-            x220 * x231 * x65,
-            x215 * x236 * x65,
-            x212 * x239 * x65,
-            x226 * x228 * x57,
-            x223 * x231 * x57,
-            x220 * x236 * x57,
-            x215 * x239 * x57,
-            x212 * x242 * x57,
-            x185 * x255 * x79,
-            x187 * x255 * x69,
-            x185 * x258 * x69,
-            x189 * x255 * x67,
-            x187 * x258 * x67,
-            x185 * x261 * x67,
-            x191 * x255 * x65,
-            x189 * x258 * x65,
-            x187 * x261 * x65,
-            x185 * x265 * x65,
-            x196 * x255 * x57,
-            x191 * x258 * x57,
-            x189 * x261 * x57,
-            x187 * x265 * x57,
-            x185 * x266 * x57,
-            x126 * x272 * x79,
-            x155 * x272 * x69,
-            x126 * x273 * x69,
-            x129 * x272 * x67,
-            x155 * x273 * x67,
-            x126 * x274 * x67,
-            x157 * x272 * x65,
-            x129 * x273 * x65,
-            x155 * x274 * x65,
-            x126 * x275 * x65,
-            x176 * x272 * x57,
-            x157 * x273 * x57,
-            x129 * x274 * x57,
-            x155 * x275 * x57,
-            x126 * x276 * x57,
-            x149 * x279 * x284,
-            x149 * x288 * x292,
-            x169 * x279 * x292,
-            x149 * x297 * x301,
-            x169 * x288 * x301,
-            x153 * x279 * x301,
-            x149 * x310 * x314,
-            x169 * x297 * x314,
-            x153 * x288 * x314,
-            x172 * x279 * x314,
-            x149 * x322 * x323,
-            x169 * x310 * x323,
-            x153 * x297 * x323,
-            x172 * x288 * x323,
-            x182 * x279 * x323,
-            x149 * x283 * x325,
-            x149 * x291 * x327,
-            x169 * x291 * x325,
-            x149 * x300 * x329,
-            x169 * x300 * x327,
-            x153 * x300 * x325,
-            x149 * x313 * x331,
-            x169 * x313 * x329,
-            x153 * x313 * x327,
-            x172 * x313 * x325,
-            x149 * x312 * x340,
-            x169 * x312 * x331,
-            x153 * x312 * x329,
-            x172 * x312 * x327,
-            x182 * x312 * x325,
-            x199 * x279 * x283,
-            x199 * x288 * x291,
-            x201 * x279 * x291,
-            x199 * x297 * x300,
-            x201 * x288 * x300,
-            x203 * x279 * x300,
-            x199 * x310 * x313,
-            x201 * x297 * x313,
-            x203 * x288 * x313,
-            x205 * x279 * x313,
-            x199 * x312 * x322,
-            x201 * x310 * x312,
-            x203 * x297 * x312,
-            x205 * x288 * x312,
-            x210 * x279 * x312,
-            x149 * x344 * x48,
-            x114 * x149 * x349,
-            x114 * x169 * x344,
-            x133 * x149 * x355,
-            x133 * x169 * x349,
-            x133 * x153 * x344,
-            x149 * x165 * x360,
-            x165 * x169 * x355,
-            x153 * x165 * x349,
-            x165 * x172 * x344,
-            x149 * x311 * x367,
-            x169 * x311 * x360,
-            x153 * x311 * x355,
-            x172 * x311 * x349,
-            x182 * x311 * x344,
-            x199 * x325 * x48,
-            x114 * x199 * x327,
-            x114 * x201 * x325,
-            x133 * x199 * x329,
-            x133 * x201 * x327,
-            x133 * x203 * x325,
-            x165 * x199 * x331,
-            x165 * x201 * x329,
-            x165 * x203 * x327,
-            x165 * x205 * x325,
-            x199 * x311 * x340,
-            x201 * x311 * x331,
-            x203 * x311 * x329,
-            x205 * x311 * x327,
-            x210 * x311 * x325,
-            x228 * x279 * x48,
-            x114 * x228 * x288,
-            x114 * x231 * x279,
-            x133 * x228 * x297,
-            x133 * x231 * x288,
-            x133 * x236 * x279,
-            x165 * x228 * x310,
-            x165 * x231 * x297,
-            x165 * x236 * x288,
-            x165 * x239 * x279,
-            x228 * x311 * x322,
-            x231 * x310 * x311,
-            x236 * x297 * x311,
-            x239 * x288 * x311,
-            x242 * x279 * x311,
-            x149 * x371 * x46,
-            x149 * x32 * x377,
-            x169 * x32 * x371,
-            x109 * x149 * x382,
-            x109 * x169 * x377,
-            x109 * x153 * x371,
-            x149 * x163 * x388,
-            x163 * x169 * x382,
-            x153 * x163 * x377,
-            x163 * x172 * x371,
-            x23 * x393,
-            x125 * x388 * x394,
-            x153 * x158 * x382,
-            x158 * x172 * x377,
-            x158 * x182 * x371,
-            x199 * x344 * x46,
-            x199 * x32 * x349,
-            x201 * x32 * x344,
-            x109 * x199 * x355,
-            x109 * x201 * x349,
-            x109 * x203 * x344,
-            x163 * x199 * x360,
-            x163 * x201 * x355,
-            x163 * x203 * x349,
-            x163 * x205 * x344,
-            x197 * x367 * x394,
-            x158 * x201 * x360,
-            x158 * x203 * x355,
-            x158 * x205 * x349,
-            x158 * x210 * x344,
-            x228 * x325 * x46,
-            x228 * x32 * x327,
-            x231 * x32 * x325,
-            x109 * x228 * x329,
-            x109 * x231 * x327,
-            x109 * x236 * x325,
-            x163 * x228 * x331,
-            x163 * x231 * x329,
-            x163 * x236 * x327,
-            x163 * x239 * x325,
-            x158 * x228 * x340,
-            x158 * x231 * x331,
-            x158 * x236 * x329,
-            x158 * x239 * x327,
-            x158 * x242 * x325,
-            x255 * x279 * x46,
-            x255 * x288 * x32,
-            x258 * x279 * x32,
-            x109 * x255 * x297,
-            x109 * x258 * x288,
-            x109 * x261 * x279,
-            x163 * x255 * x310,
-            x163 * x258 * x297,
-            x163 * x261 * x288,
-            x163 * x265 * x279,
-            x158 * x255 * x322,
-            x158 * x258 * x310,
-            x158 * x261 * x297,
-            x158 * x265 * x288,
-            x158 * x266 * x279,
-            x149 * x396 * x44,
-            x149 * x30 * x397,
-            x169 * x30 * x396,
-            x149 * x26 * x398,
-            x169 * x26 * x397,
-            x153 * x26 * x396,
-            x3 * x399,
-            x125 * x398 * x400,
-            x153 * x397 * x8,
-            x172 * x396 * x8,
-            x392
-            * (
-                x0
-                * (
-                    x216 * (x389 + x390)
-                    + x28 * (x226 + x364 + 4.0 * x383 + 4.0 * x384)
-                    + 3.0 * x365
-                    + 3.0 * x366
-                    + 4.0 * x386
-                    + 4.0 * x387
-                )
-                + x183 * x391
-            ),
-            x125 * x399,
-            x153 * x398 * x7,
-            x172 * x397 * x7,
-            x182 * x396 * x7,
-            x199 * x371 * x44,
-            x199 * x30 * x377,
-            x201 * x30 * x371,
-            x199 * x26 * x382,
-            x201 * x26 * x377,
-            x203 * x26 * x371,
-            x197 * x388 * x400,
-            x201 * x382 * x8,
-            x203 * x377 * x8,
-            x205 * x371 * x8,
-            x197 * x393,
-            x201 * x388 * x7,
-            x203 * x382 * x7,
-            x205 * x377 * x7,
-            x210 * x371 * x7,
-            x228 * x344 * x44,
-            x228 * x30 * x349,
-            x231 * x30 * x344,
-            x228 * x26 * x355,
-            x231 * x26 * x349,
-            x236 * x26 * x344,
-            x228 * x360 * x8,
-            x231 * x355 * x8,
-            x236 * x349 * x8,
-            x239 * x344 * x8,
-            x228 * x367 * x7,
-            x231 * x360 * x7,
-            x236 * x355 * x7,
-            x239 * x349 * x7,
-            x242 * x344 * x7,
-            x255 * x325 * x44,
-            x255 * x30 * x327,
-            x258 * x30 * x325,
-            x255 * x26 * x329,
-            x258 * x26 * x327,
-            x26 * x261 * x325,
-            x255 * x331 * x8,
-            x258 * x329 * x8,
-            x261 * x327 * x8,
-            x265 * x325 * x8,
-            x255 * x340 * x7,
-            x258 * x331 * x7,
-            x261 * x329 * x7,
-            x265 * x327 * x7,
-            x266 * x325 * x7,
-            x272 * x279 * x44,
-            x272 * x288 * x30,
-            x273 * x279 * x30,
-            x26 * x272 * x297,
-            x26 * x273 * x288,
-            x26 * x274 * x279,
-            x272 * x310 * x8,
-            x273 * x297 * x8,
-            x274 * x288 * x8,
-            x275 * x279 * x8,
-            x272 * x322 * x7,
-            x273 * x310 * x7,
-            x274 * x297 * x7,
-            x275 * x288 * x7,
-            x276 * x279 * x7,
-            x126 * x284 * x403,
-            x155 * x292 * x403,
-            x126 * x292 * x407,
-            x129 * x301 * x403,
-            x155 * x301 * x407,
-            x126 * x301 * x412,
-            x157 * x314 * x403,
-            x129 * x314 * x407,
-            x155 * x314 * x412,
-            x126 * x314 * x421,
-            x176 * x323 * x403,
-            x157 * x323 * x407,
-            x129 * x323 * x412,
-            x155 * x323 * x421,
-            x126 * x323 * x429,
-            x185 * x283 * x403,
-            x187 * x291 * x403,
-            x185 * x291 * x407,
-            x189 * x300 * x403,
-            x187 * x300 * x407,
-            x185 * x300 * x412,
-            x191 * x313 * x403,
-            x189 * x313 * x407,
-            x187 * x313 * x412,
-            x185 * x313 * x421,
-            x196 * x312 * x403,
-            x191 * x312 * x407,
-            x189 * x312 * x412,
-            x187 * x312 * x421,
-            x185 * x312 * x429,
-            x126 * x283 * x431,
-            x155 * x291 * x431,
-            x126 * x291 * x433,
-            x129 * x300 * x431,
-            x155 * x300 * x433,
-            x126 * x300 * x435,
-            x157 * x313 * x431,
-            x129 * x313 * x433,
-            x155 * x313 * x435,
-            x126 * x313 * x437,
-            x176 * x312 * x431,
-            x157 * x312 * x433,
-            x129 * x312 * x435,
-            x155 * x312 * x437,
-            x126 * x312 * x446,
-            x212 * x403 * x48,
-            x114 * x215 * x403,
-            x114 * x212 * x407,
-            x133 * x220 * x403,
-            x133 * x215 * x407,
-            x133 * x212 * x412,
-            x165 * x223 * x403,
-            x165 * x220 * x407,
-            x165 * x215 * x412,
-            x165 * x212 * x421,
-            x226 * x311 * x403,
-            x223 * x311 * x407,
-            x220 * x311 * x412,
-            x215 * x311 * x421,
-            x212 * x311 * x429,
-            x185 * x431 * x48,
-            x114 * x187 * x431,
-            x114 * x185 * x433,
-            x133 * x189 * x431,
-            x133 * x187 * x433,
-            x133 * x185 * x435,
-            x165 * x191 * x431,
-            x165 * x189 * x433,
-            x165 * x187 * x435,
-            x165 * x185 * x437,
-            x196 * x311 * x431,
-            x191 * x311 * x433,
-            x189 * x311 * x435,
-            x187 * x311 * x437,
-            x185 * x311 * x446,
-            x126 * x450 * x48,
-            x114 * x155 * x450,
-            x114 * x126 * x455,
-            x129 * x133 * x450,
-            x133 * x155 * x455,
-            x126 * x133 * x461,
-            x157 * x165 * x450,
-            x129 * x165 * x455,
-            x155 * x165 * x461,
-            x126 * x165 * x466,
-            x176 * x311 * x450,
-            x157 * x311 * x455,
-            x129 * x311 * x461,
-            x155 * x311 * x466,
-            x126 * x311 * x473,
-            x243 * x403 * x46,
-            x246 * x32 * x403,
-            x243 * x32 * x407,
-            x109 * x249 * x403,
-            x109 * x246 * x407,
-            x109 * x243 * x412,
-            x163 * x253 * x403,
-            x163 * x249 * x407,
-            x163 * x246 * x412,
-            x163 * x243 * x421,
-            x158 * x254 * x403,
-            x158 * x253 * x407,
-            x158 * x249 * x412,
-            x158 * x246 * x421,
-            x158 * x243 * x429,
-            x212 * x431 * x46,
-            x215 * x32 * x431,
-            x212 * x32 * x433,
-            x109 * x220 * x431,
-            x109 * x215 * x433,
-            x109 * x212 * x435,
-            x163 * x223 * x431,
-            x163 * x220 * x433,
-            x163 * x215 * x435,
-            x163 * x212 * x437,
-            x158 * x226 * x431,
-            x158 * x223 * x433,
-            x158 * x220 * x435,
-            x158 * x215 * x437,
-            x158 * x212 * x446,
-            x185 * x450 * x46,
-            x187 * x32 * x450,
-            x185 * x32 * x455,
-            x109 * x189 * x450,
-            x109 * x187 * x455,
-            x109 * x185 * x461,
-            x163 * x191 * x450,
-            x163 * x189 * x455,
-            x163 * x187 * x461,
-            x163 * x185 * x466,
-            x158 * x196 * x450,
-            x158 * x191 * x455,
-            x158 * x189 * x461,
-            x158 * x187 * x466,
-            x183 * x473 * x475,
-            x126 * x46 * x479,
-            x155 * x32 * x479,
-            x126 * x32 * x485,
-            x109 * x129 * x479,
-            x109 * x155 * x485,
-            x109 * x126 * x490,
-            x157 * x163 * x479,
-            x129 * x163 * x485,
-            x155 * x163 * x490,
-            x126 * x163 * x496,
-            x158 * x176 * x479,
-            x157 * x158 * x485,
-            x129 * x158 * x490,
-            x105 * x475 * x496,
-            x23 * x500,
-            x267 * x403 * x44,
-            x268 * x30 * x403,
-            x267 * x30 * x407,
-            x26 * x269 * x403,
-            x26 * x268 * x407,
-            x26 * x267 * x412,
-            x270 * x403 * x8,
-            x269 * x407 * x8,
-            x268 * x412 * x8,
-            x267 * x421 * x8,
-            x271 * x403 * x7,
-            x270 * x407 * x7,
-            x269 * x412 * x7,
-            x268 * x421 * x7,
-            x267 * x429 * x7,
-            x243 * x431 * x44,
-            x246 * x30 * x431,
-            x243 * x30 * x433,
-            x249 * x26 * x431,
-            x246 * x26 * x433,
-            x243 * x26 * x435,
-            x253 * x431 * x8,
-            x249 * x433 * x8,
-            x246 * x435 * x8,
-            x243 * x437 * x8,
-            x254 * x431 * x7,
-            x253 * x433 * x7,
-            x249 * x435 * x7,
-            x246 * x437 * x7,
-            x243 * x446 * x7,
-            x212 * x44 * x450,
-            x215 * x30 * x450,
-            x212 * x30 * x455,
-            x220 * x26 * x450,
-            x215 * x26 * x455,
-            x212 * x26 * x461,
-            x223 * x450 * x8,
-            x220 * x455 * x8,
-            x215 * x461 * x8,
-            x212 * x466 * x8,
-            x226 * x450 * x7,
-            x223 * x455 * x7,
-            x220 * x461 * x7,
-            x215 * x466 * x7,
-            x212 * x473 * x7,
-            x185 * x44 * x479,
-            x187 * x30 * x479,
-            x185 * x30 * x485,
-            x189 * x26 * x479,
-            x187 * x26 * x485,
-            x185 * x26 * x490,
-            x191 * x479 * x8,
-            x189 * x485 * x8,
-            x187 * x490 * x8,
-            x183 * x496 * x501,
-            x196 * x479 * x7,
-            x191 * x485 * x7,
-            x189 * x490 * x7,
-            x187 * x496 * x7,
-            x183 * x500,
-            x126 * x44 * x503,
-            x155 * x30 * x503,
-            x126 * x30 * x504,
-            x129 * x26 * x503,
-            x155 * x26 * x504,
-            x126 * x26 * x505,
-            x157 * x503 * x8,
-            x129 * x504 * x8,
-            x105 * x501 * x505,
-            x3 * x506,
-            x176 * x503 * x7,
-            x157 * x504 * x7,
-            x129 * x505 * x7,
-            x105 * x506,
-            x474
-            * (
-                x0
-                * (
-                    x232 * (x497 + x498)
-                    + x28 * (x242 + x470 + 4.0 * x491 + 4.0 * x492)
-                    + 3.0 * x471
-                    + 3.0 * x472
-                    + 4.0 * x494
-                    + 4.0 * x495
-                )
-                + x197 * x499
-            ),
-        ]
+                x29 * (4.0 * x34 + 4.0 * x39 + x49 + x53)
+                + x56 * (x54 + x55)
+                + 3.0 * x76
+                + 3.0 * x83
+                + 4.0 * x92
+                + 4.0 * x98
+            )
+            + x100 * x24
+        )
     )
+    result[0, 0, 1] = numpy.sum(x110 * x129)
+    result[0, 0, 2] = numpy.sum(x129 * x132)
+    result[0, 0, 3] = numpy.sum(x152 * x159)
+    result[0, 0, 4] = numpy.sum(x110 * x152 * x160)
+    result[0, 0, 5] = numpy.sum(x151 * x164 * x167)
+    result[0, 0, 6] = numpy.sum(x172 * x184)
+    result[0, 0, 7] = numpy.sum(x156 * x160 * x184)
+    result[0, 0, 8] = numpy.sum(x164 * x166 * x183 * x185)
+    result[0, 0, 9] = numpy.sum(x183 * x191)
+    result[0, 0, 10] = numpy.sum(x196 * x200)
+    result[0, 0, 11] = numpy.sum(x131 * x172 * x200)
+    result[0, 0, 12] = numpy.sum(x157 * x198 * x202)
+    result[0, 0, 13] = numpy.sum(x109 * x191 * x199)
+    result[0, 0, 14] = numpy.sum(x166 * x199 * x207)
+    result[0, 1, 0] = numpy.sum(x209 * x210)
+    result[0, 1, 1] = numpy.sum(x127 * x214 * x215)
+    result[0, 1, 2] = numpy.sum(x132 * x208 * x217)
+    result[0, 1, 3] = numpy.sum(x220 * x221)
+    result[0, 1, 4] = numpy.sum(x131 * x221 * x222)
+    result[0, 1, 5] = numpy.sum(x164 * x208 * x225)
+    result[0, 1, 6] = numpy.sum(x182 * x229)
+    result[0, 1, 7] = numpy.sum(x219 * x230 * x231)
+    result[0, 1, 8] = numpy.sum(x202 * x213 * x230)
+    result[0, 1, 9] = numpy.sum(x189 * x232 * x233)
+    result[0, 1, 10] = numpy.sum(x238 * x240)
+    result[0, 1, 11] = numpy.sum(x131 * x181 * x229)
+    result[0, 1, 12] = numpy.sum(x202 * x219 * x241)
+    result[0, 1, 13] = numpy.sum(x181 * x214 * x242)
+    result[0, 1, 14] = numpy.sum(x206 * x208 * x244)
+    result[0, 2, 0] = numpy.sum(x107 * x210 * x245)
+    result[0, 2, 1] = numpy.sum(x110 * x217 * x245)
+    result[0, 2, 2] = numpy.sum(x216 * x249)
+    result[0, 2, 3] = numpy.sum(62.3186554316989 * x156 * x221 * x245)
+    result[0, 2, 4] = numpy.sum(x109 * x150 * x250)
+    result[0, 2, 5] = numpy.sum(x225 * x252)
+    result[0, 2, 6] = numpy.sum(x182 * x253 * x254)
+    result[0, 2, 7] = numpy.sum(x156 * x230 * x255)
+    result[0, 2, 8] = numpy.sum(x230 * x252 * x256)
+    result[0, 2, 9] = numpy.sum(x232 * x259)
+    result[0, 2, 10] = numpy.sum(x195 * x240 * x245)
+    result[0, 2, 11] = numpy.sum(x181 * x253 * x255)
+    result[0, 2, 12] = numpy.sum(x156 * x241 * x260)
+    result[0, 2, 13] = numpy.sum(x181 * x256 * x259)
+    result[0, 2, 14] = numpy.sum(x244 * x265)
+    result[0, 3, 0] = numpy.sum(x215 * x268 * x99)
+    result[0, 3, 1] = numpy.sum(x271 * x273)
+    result[0, 3, 2] = numpy.sum(x131 * x267 * x273)
+    result[0, 3, 3] = numpy.sum(x279 * x280)
+    result[0, 3, 4] = numpy.sum(x131 * x280 * x281)
+    result[0, 3, 5] = numpy.sum(x125 * x267 * x282)
+    result[0, 3, 6] = numpy.sum(x148 * x287)
+    result[0, 3, 7] = numpy.sum(x231 * x278 * x288)
+    result[0, 3, 8] = numpy.sum(x202 * x271 * x288)
+    result[0, 3, 9] = numpy.sum(x148 * x267 * x289)
+    result[0, 3, 10] = numpy.sum(x293 * x294)
+    result[0, 3, 11] = numpy.sum(x131 * x146 * x287)
+    result[0, 3, 12] = numpy.sum(x146 * x278 * x282)
+    result[0, 3, 13] = numpy.sum(x146 * x271 * x289)
+    result[0, 3, 14] = numpy.sum(x206 * x268 * x295)
+    result[0, 4, 0] = numpy.sum(x209 * x296 * x99)
+    result[0, 4, 1] = numpy.sum(x222 * x254 * x97)
+    result[0, 4, 2] = numpy.sum(x208 * x250 * x97)
+    result[0, 4, 3] = numpy.sum(x245 * x280 * x297)
+    result[0, 4, 4] = numpy.sum(x125 * x213 * x298)
+    result[0, 4, 5] = numpy.sum(x208 * x252 * x300)
+    result[0, 4, 6] = numpy.sum(x148 * x254 * x301)
+    result[0, 4, 7] = numpy.sum(x148 * x219 * x298)
+    result[0, 4, 8] = numpy.sum(x148 * x213 * x302)
+    result[0, 4, 9] = numpy.sum(x208 * x303 * x304)
+    result[0, 4, 10] = numpy.sum(x245 * x294 * x305)
+    result[0, 4, 11] = numpy.sum(x146 * x227 * x306)
+    result[0, 4, 12] = numpy.sum(x146 * x219 * x307)
+    result[0, 4, 13] = numpy.sum(x213 * x295 * x303)
+    result[0, 4, 14] = numpy.sum(x146 * x308 * x309)
+    result[0, 5, 0] = numpy.sum(x167 * x311 * x99)
+    result[0, 5, 1] = numpy.sum(x109 * x311 * x312)
+    result[0, 5, 2] = numpy.sum(x312 * x315)
+    result[0, 5, 3] = numpy.sum(x125 * x316 * x317)
+    result[0, 5, 4] = numpy.sum(x109 * x300 * x315)
+    result[0, 5, 5] = numpy.sum(x299 * x323)
+    result[0, 5, 6] = numpy.sum(x148 * x316 * x324)
+    result[0, 5, 7] = numpy.sum(x156 * x288 * x325)
+    result[0, 5, 8] = numpy.sum(x256 * x288 * x322)
+    result[0, 5, 9] = numpy.sum(x304 * x329)
+    result[0, 5, 10] = numpy.sum(x295 * x311 * x330)
+    result[0, 5, 11] = numpy.sum(x295 * x315 * x324)
+    result[0, 5, 12] = numpy.sum(x295 * x317 * x322)
+    result[0, 5, 13] = numpy.sum(x146 * x256 * x329)
+    result[0, 5, 14] = numpy.sum(x146 * x167 * x333)
+    result[0, 6, 0] = numpy.sum(x335 * x336)
+    result[0, 6, 1] = numpy.sum(x337 * x341)
+    result[0, 6, 2] = numpy.sum(x231 * x342 * x95)
+    result[0, 6, 3] = numpy.sum(x343 * x347)
+    result[0, 6, 4] = numpy.sum(x231 * x348 * x89)
+    result[0, 6, 5] = numpy.sum(x334 * x349 * x89)
+    result[0, 6, 6] = numpy.sum(x122 * x355)
+    result[0, 6, 7] = numpy.sum(x131 * x347 * x356)
+    result[0, 6, 8] = numpy.sum(x202 * x340 * x356)
+    result[0, 6, 9] = numpy.sum(x122 * x334 * x357)
+    result[0, 6, 10] = numpy.sum(x144 * x359)
+    result[0, 6, 11] = numpy.sum(x131 * x144 * x355)
+    result[0, 6, 12] = numpy.sum(x144 * x346 * x349)
+    result[0, 6, 13] = numpy.sum(x144 * x340 * x357)
+    result[0, 6, 14] = numpy.sum(x206 * x335 * x360)
+    result[0, 7, 0] = numpy.sum(x245 * x336 * x361)
+    result[0, 7, 1] = numpy.sum(x254 * x271 * x362)
+    result[0, 7, 2] = numpy.sum(x267 * x306 * x95)
+    result[0, 7, 3] = numpy.sum(x254 * x278 * x363)
+    result[0, 7, 4] = numpy.sum(x271 * x298 * x89)
+    result[0, 7, 5] = numpy.sum(x267 * x307 * x89)
+    result[0, 7, 6] = numpy.sum(x254 * x285 * x356)
+    result[0, 7, 7] = numpy.sum(x122 * x278 * x298)
+    result[0, 7, 8] = numpy.sum(x122 * x271 * x302)
+    result[0, 7, 9] = numpy.sum(x267 * x303 * x364)
+    result[0, 7, 10] = numpy.sum(x254 * x292 * x365)
+    result[0, 7, 11] = numpy.sum(x144 * x285 * x306)
+    result[0, 7, 12] = numpy.sum(x144 * x278 * x307)
+    result[0, 7, 13] = numpy.sum(x271 * x303 * x360)
+    result[0, 7, 14] = numpy.sum(x267 * x308 * x360)
+    result[0, 8, 0] = numpy.sum(x208 * x366 * x367)
+    result[0, 8, 1] = numpy.sum(x222 * x316 * x95)
+    result[0, 8, 2] = numpy.sum(x309 * x315 * x362)
+    result[0, 8, 3] = numpy.sum(x297 * x316 * x89)
+    result[0, 8, 4] = numpy.sum(x213 * x368 * x89)
+    result[0, 8, 5] = numpy.sum(x309 * x322 * x363)
+    result[0, 8, 6] = numpy.sum(x227 * x316 * x356)
+    result[0, 8, 7] = numpy.sum(x122 * x219 * x368)
+    result[0, 8, 8] = numpy.sum(x213 * x364 * x369)
+    result[0, 8, 9] = numpy.sum(x309 * x328 * x356)
+    result[0, 8, 10] = numpy.sum(x144 * x238 * x370)
+    result[0, 8, 11] = numpy.sum(x144 * x227 * x371)
+    result[0, 8, 12] = numpy.sum(x297 * x322 * x360)
+    result[0, 8, 13] = numpy.sum(x222 * x328 * x360)
+    result[0, 8, 14] = numpy.sum(x309 * x333 * x365)
+    result[0, 9, 0] = numpy.sum(x366 * x373)
+    result[0, 9, 1] = numpy.sum(x109 * x372 * x374)
+    result[0, 9, 2] = numpy.sum(x374 * x377)
+    result[0, 9, 3] = numpy.sum(x343 * x372 * x378)
+    result[0, 9, 4] = numpy.sum(x256 * x379 * x89)
+    result[0, 9, 5] = numpy.sum(x343 * x383)
+    result[0, 9, 6] = numpy.sum(x253 * x364 * x372)
+    result[0, 9, 7] = numpy.sum(x356 * x377 * x378)
+    result[0, 9, 8] = numpy.sum(x109 * x356 * x383)
+    result[0, 9, 9] = numpy.sum(x122 * x389)
+    result[0, 9, 10] = numpy.sum(x195 * x360 * x373)
+    result[0, 9, 11] = numpy.sum(x253 * x360 * x377)
+    result[0, 9, 12] = numpy.sum(x156 * x360 * x390)
+    result[0, 9, 13] = numpy.sum(x109 * x144 * x389)
+    result[0, 9, 14] = numpy.sum(x144 * x392)
+    result[0, 10, 0] = numpy.sum(x393 * x394 * x80)
+    result[0, 10, 1] = numpy.sum(x395 * x396)
+    result[0, 10, 2] = numpy.sum(x131 * x393 * x396)
+    result[0, 10, 3] = numpy.sum(x397 * x398 * x68)
+    result[0, 10, 4] = numpy.sum(x395 * x399 * x68)
+    result[0, 10, 5] = numpy.sum(x393 * x400 * x68)
+    result[0, 10, 6] = numpy.sum(x402 * x66)
+    result[0, 10, 7] = numpy.sum(x231 * x397 * x403)
+    result[0, 10, 8] = numpy.sum(x202 * x395 * x403)
+    result[0, 10, 9] = numpy.sum(x393 * x404 * x66)
+    result[0, 10, 10] = numpy.sum(x394 * x405 * x58)
+    result[0, 10, 11] = numpy.sum(x131 * x402 * x58)
+    result[0, 10, 12] = numpy.sum(x397 * x400 * x58)
+    result[0, 10, 13] = numpy.sum(x395 * x404 * x58)
+    result[0, 10, 14] = numpy.sum(x207 * x393 * x406)
+    result[0, 11, 0] = numpy.sum(x254 * x335 * x80)
+    result[0, 11, 1] = numpy.sum(x341 * x407 * x70)
+    result[0, 11, 2] = numpy.sum(x255 * x342 * x70)
+    result[0, 11, 3] = numpy.sum(x346 * x408 * x68)
+    result[0, 11, 4] = numpy.sum(x306 * x340 * x68)
+    result[0, 11, 5] = numpy.sum(x334 * x409 * x68)
+    result[0, 11, 6] = numpy.sum(x245 * x355 * x66)
+    result[0, 11, 7] = numpy.sum(x306 * x346 * x66)
+    result[0, 11, 8] = numpy.sum(x260 * x340 * x410)
+    result[0, 11, 9] = numpy.sum(x258 * x342 * x411)
+    result[0, 11, 10] = numpy.sum(x245 * x359 * x58)
+    result[0, 11, 11] = numpy.sum(x353 * x412 * x58)
+    result[0, 11, 12] = numpy.sum(x346 * x409 * x58)
+    result[0, 11, 13] = numpy.sum(x258 * x340 * x413)
+    result[0, 11, 14] = numpy.sum(x265 * x335 * x406)
+    result[0, 12, 0] = numpy.sum(x268 * x316 * x80)
+    result[0, 12, 1] = numpy.sum(x271 * x316 * x414)
+    result[0, 12, 2] = numpy.sum(x267 * x325 * x414)
+    result[0, 12, 3] = numpy.sum(x278 * x316 * x415)
+    result[0, 12, 4] = numpy.sum(x271 * x416 * x68)
+    result[0, 12, 5] = numpy.sum(x267 * x415 * x417)
+    result[0, 12, 6] = numpy.sum(x286 * x316 * x66)
+    result[0, 12, 7] = numpy.sum(x278 * x416 * x66)
+    result[0, 12, 8] = numpy.sum(x281 * x322 * x411)
+    result[0, 12, 9] = numpy.sum(x267 * x329 * x411)
+    result[0, 12, 10] = numpy.sum(x292 * x418 * x58)
+    result[0, 12, 11] = numpy.sum(x286 * x325 * x58)
+    result[0, 12, 12] = numpy.sum(x279 * x322 * x406)
+    result[0, 12, 13] = numpy.sum(x271 * x329 * x406)
+    result[0, 12, 14] = numpy.sum(x268 * x333 * x406)
+    result[0, 13, 0] = numpy.sum(x309 * x373 * x80)
+    result[0, 13, 1] = numpy.sum(x214 * x419 * x70)
+    result[0, 13, 2] = numpy.sum(x208 * x377 * x420 * x70)
+    result[0, 13, 3] = numpy.sum(x219 * x421 * x68)
+    result[0, 13, 4] = numpy.sum(x222 * x422 * x68)
+    result[0, 13, 5] = numpy.sum(x309 * x390 * x68)
+    result[0, 13, 6] = numpy.sum(x228 * x372 * x411)
+    result[0, 13, 7] = numpy.sum(x219 * x410 * x422)
+    result[0, 13, 8] = numpy.sum(x222 * x382 * x411)
+    result[0, 13, 9] = numpy.sum(x208 * x389 * x66)
+    result[0, 13, 10] = numpy.sum(x238 * x373 * x406)
+    result[0, 13, 11] = numpy.sum(x227 * x377 * x413)
+    result[0, 13, 12] = numpy.sum(x219 * x390 * x406)
+    result[0, 13, 13] = numpy.sum(x214 * x387 * x406)
+    result[0, 13, 14] = numpy.sum(x208 * x392 * x58)
+    result[0, 14, 0] = numpy.sum(x423 * x424 * x80)
+    result[0, 14, 1] = numpy.sum(x109 * x423 * x425)
+    result[0, 14, 2] = numpy.sum(x425 * x426)
+    result[0, 14, 3] = numpy.sum(x157 * x427 * x68)
+    result[0, 14, 4] = numpy.sum(x426 * x428 * x68)
+    result[0, 14, 5] = numpy.sum(x167 * x429 * x68)
+    result[0, 14, 6] = numpy.sum(x172 * x411 * x423)
+    result[0, 14, 7] = numpy.sum(x378 * x403 * x426)
+    result[0, 14, 8] = numpy.sum(x256 * x403 * x429)
+    result[0, 14, 9] = numpy.sum(x431 * x66)
+    result[0, 14, 10] = numpy.sum(x196 * x406 * x423)
+    result[0, 14, 11] = numpy.sum(x172 * x406 * x426)
+    result[0, 14, 12] = numpy.sum(x157 * x406 * x429)
+    result[0, 14, 13] = numpy.sum(x109 * x431 * x58)
+    result[0, 14, 14] = numpy.sum(x424 * x432 * x58)
+    result[1, 0, 0] = numpy.sum(x394 * x435 * x440)
+    result[1, 0, 1] = numpy.sum(x444 * x449)
+    result[1, 0, 2] = numpy.sum(x131 * x435 * x449)
+    result[1, 0, 3] = numpy.sum(x398 * x454 * x458)
+    result[1, 0, 4] = numpy.sum(x231 * x458 * x459)
+    result[1, 0, 5] = numpy.sum(x400 * x435 * x458)
+    result[1, 0, 6] = numpy.sum(x463 * x473)
+    result[1, 0, 7] = numpy.sum(x399 * x454 * x463)
+    result[1, 0, 8] = numpy.sum(x202 * x459 * x463)
+    result[1, 0, 9] = numpy.sum(x404 * x435 * x463)
+    result[1, 0, 10] = numpy.sum(x394 * x481 * x482)
+    result[1, 0, 11] = numpy.sum(x131 * x473 * x482)
+    result[1, 0, 12] = numpy.sum(x400 * x454 * x482)
+    result[1, 0, 13] = numpy.sum(x404 * x444 * x482)
+    result[1, 0, 14] = numpy.sum(x207 * x482 * x483)
+    result[1, 1, 0] = numpy.sum(x215 * x439 * x486)
+    result[1, 1, 1] = numpy.sum(x488 * x490)
+    result[1, 1, 2] = numpy.sum(x131 * x485 * x490)
+    result[1, 1, 3] = numpy.sum(x492 * x493)
+    result[1, 1, 4] = numpy.sum(x231 * x457 * x494)
+    result[1, 1, 5] = numpy.sum(x349 * x457 * x485)
+    result[1, 1, 6] = numpy.sum(x462 * x497)
+    result[1, 1, 7] = numpy.sum(x231 * x492 * x498)
+    result[1, 1, 8] = numpy.sum(x202 * x488 * x498)
+    result[1, 1, 9] = numpy.sum(x357 * x462 * x485)
+    result[1, 1, 10] = numpy.sum(x507 * x508)
+    result[1, 1, 11] = numpy.sum(x131 * x461 * x497)
+    result[1, 1, 12] = numpy.sum(x349 * x461 * x492)
+    result[1, 1, 13] = numpy.sum(x357 * x461 * x488)
+    result[1, 1, 14] = numpy.sum(x206 * x486 * x509)
+    result[1, 2, 0] = numpy.sum(x239 * x245 * x435 * x439)
+    result[1, 2, 1] = numpy.sum(x245 * x444 * x490)
+    result[1, 2, 2] = numpy.sum(x412 * x435 * x447)
+    result[1, 2, 3] = numpy.sum(x245 * x454 * x493)
+    result[1, 2, 4] = numpy.sum(x306 * x444 * x457)
+    result[1, 2, 5] = numpy.sum(x409 * x435 * x457)
+    result[1, 2, 6] = numpy.sum(x245 * x462 * x472 * x489)
+    result[1, 2, 7] = numpy.sum(x306 * x454 * x462)
+    result[1, 2, 8] = numpy.sum(x260 * x444 * x498)
+    result[1, 2, 9] = numpy.sum(x259 * x462 * x483)
+    result[1, 2, 10] = numpy.sum(x245 * x481 * x508)
+    result[1, 2, 11] = numpy.sum(x412 * x461 * x472)
+    result[1, 2, 12] = numpy.sum(x409 * x454 * x461)
+    result[1, 2, 13] = numpy.sum(x259 * x444 * x509)
+    result[1, 2, 14] = numpy.sum(x265 * x461 * x510)
+    result[1, 3, 0] = numpy.sum(x515 * x516)
+    result[1, 3, 1] = numpy.sum(x521 * x523)
+    result[1, 3, 2] = numpy.sum(x131 * x514 * x523)
+    result[1, 3, 3] = numpy.sum(x524 * x531)
+    result[1, 3, 4] = numpy.sum(x231 * x521 * x532)
+    result[1, 3, 5] = numpy.sum(x136 * x282 * x514)
+    result[1, 3, 6] = numpy.sum(x180 * x538)
+    result[1, 3, 7] = numpy.sum(x131 * x531 * x539)
+    result[1, 3, 8] = numpy.sum(x202 * x521 * x539)
+    result[1, 3, 9] = numpy.sum(x180 * x289 * x514)
+    result[1, 3, 10] = numpy.sum(x398 * x460 * x546)
+    result[1, 3, 11] = numpy.sum(x131 * x460 * x538)
+    result[1, 3, 12] = numpy.sum(x282 * x460 * x530)
+    result[1, 3, 13] = numpy.sum(x289 * x460 * x521)
+    result[1, 3, 14] = numpy.sum(x206 * x515 * x547)
+    result[1, 4, 0] = numpy.sum(x245 * x516 * x548)
+    result[1, 4, 1] = numpy.sum(x119 * x254 * x494)
+    result[1, 4, 2] = numpy.sum(x119 * x306 * x485)
+    result[1, 4, 3] = numpy.sum(x254 * x492 * x532)
+    result[1, 4, 4] = numpy.sum(x136 * x298 * x488)
+    result[1, 4, 5] = numpy.sum(x136 * x307 * x485)
+    result[1, 4, 6] = numpy.sum(x180 * x254 * x549)
+    result[1, 4, 7] = numpy.sum(x180 * x298 * x492)
+    result[1, 4, 8] = numpy.sum(x180 * x302 * x488)
+    result[1, 4, 9] = numpy.sum(x180 * x485 * x550)
+    result[1, 4, 10] = numpy.sum(x460 * x507 * x551)
+    result[1, 4, 11] = numpy.sum(x306 * x460 * x496)
+    result[1, 4, 12] = numpy.sum(x307 * x460 * x492)
+    result[1, 4, 13] = numpy.sum(x303 * x488 * x547)
+    result[1, 4, 14] = numpy.sum(x308 * x485 * x547)
+    result[1, 5, 0] = numpy.sum(x418 * x435 * x49)
+    result[1, 5, 1] = numpy.sum(x316 * x444 * x522)
+    result[1, 5, 2] = numpy.sum(x325 * x435 * x522)
+    result[1, 5, 3] = numpy.sum(x316 * x454 * x524)
+    result[1, 5, 4] = numpy.sum(x136 * x416 * x444)
+    result[1, 5, 5] = numpy.sum(x417 * x435 * x524)
+    result[1, 5, 6] = numpy.sum(x180 * x316 * x552)
+    result[1, 5, 7] = numpy.sum(x180 * x416 * x454)
+    result[1, 5, 8] = numpy.sum(x417 * x444 * x539)
+    result[1, 5, 9] = numpy.sum(x180 * x329 * x483)
+    result[1, 5, 10] = numpy.sum(x418 * x460 * x481)
+    result[1, 5, 11] = numpy.sum(x325 * x460 * x552)
+    result[1, 5, 12] = numpy.sum(x454 * x460 * x553)
+    result[1, 5, 13] = numpy.sum(x329 * x444 * x547)
+    result[1, 5, 14] = numpy.sum(x333 * x460 * x554)
+    result[1, 6, 0] = numpy.sum(x47 * x559)
+    result[1, 6, 1] = numpy.sum(x565 * x567)
+    result[1, 6, 2] = numpy.sum(x131 * x558 * x567)
+    result[1, 6, 3] = numpy.sum(x568 * x574)
+    result[1, 6, 4] = numpy.sum(x231 * x565 * x575)
+    result[1, 6, 5] = numpy.sum(x114 * x349 * x558)
+    result[1, 6, 6] = numpy.sum(x215 * x581 * x582)
+    result[1, 6, 7] = numpy.sum(x131 * x574 * x583)
+    result[1, 6, 8] = numpy.sum(x202 * x565 * x583)
+    result[1, 6, 9] = numpy.sum(x178 * x357 * x558)
+    result[1, 6, 10] = numpy.sum(x24 * x589)
+    result[1, 6, 11] = numpy.sum(48.2718229290016 * x131 * x590 * x591)
+    result[1, 6, 12] = numpy.sum(x164 * x24 * x595)
+    result[1, 6, 13] = numpy.sum(x189 * x24 * x565 * x596)
+    result[1, 6, 14] = numpy.sum(x206 * x24 * x598)
+    result[1, 7, 0] = numpy.sum(x47 * x514 * x551)
+    result[1, 7, 1] = numpy.sum(x254 * x521 * x599)
+    result[1, 7, 2] = numpy.sum(x306 * x33 * x514)
+    result[1, 7, 3] = numpy.sum(x245 * x531 * x600)
+    result[1, 7, 4] = numpy.sum(x114 * x298 * x521)
+    result[1, 7, 5] = numpy.sum(x114 * x307 * x514)
+    result[1, 7, 6] = numpy.sum(x254 * x537 * x583)
+    result[1, 7, 7] = numpy.sum(x178 * x298 * x530)
+    result[1, 7, 8] = numpy.sum(x178 * x302 * x521)
+    result[1, 7, 9] = numpy.sum(x178 * x514 * x550)
+    result[1, 7, 10] = numpy.sum(x296 * x546 * x590)
+    result[1, 7, 11] = numpy.sum(x537 * x601 * x602)
+    result[1, 7, 12] = numpy.sum(x252 * x603 * x604)
+    result[1, 7, 13] = numpy.sum(x24 * x303 * x605)
+    result[1, 7, 14] = numpy.sum(x308 * x514 * x601)
+    result[1, 8, 0] = numpy.sum(x370 * x47 * x485)
+    result[1, 8, 1] = numpy.sum(x316 * x33 * x494)
+    result[1, 8, 2] = numpy.sum(x33 * x371 * x485)
+    result[1, 8, 3] = numpy.sum(x316 * x492 * x600)
+    result[1, 8, 4] = numpy.sum(x114 * x368 * x488)
+    result[1, 8, 5] = numpy.sum(x417 * x485 * x600)
+    result[1, 8, 6] = numpy.sum(x316 * x496 * x583)
+    result[1, 8, 7] = numpy.sum(x178 * x368 * x492)
+    result[1, 8, 8] = numpy.sum(x369 * x488 * x606)
+    result[1, 8, 9] = numpy.sum(x328 * x485 * x607)
+    result[1, 8, 10] = numpy.sum(x24 * x367 * x608)
+    result[1, 8, 11] = numpy.sum(x315 * x549 * x601)
+    result[1, 8, 12] = numpy.sum(x322 * x604 * x609)
+    result[1, 8, 13] = numpy.sum(x328 * x494 * x601)
+    result[1, 8, 14] = numpy.sum(x24 * x548 * x610)
+    result[1, 9, 0] = numpy.sum(x373 * x47 * x483)
+    result[1, 9, 1] = numpy.sum(x419 * x444 * x566)
+    result[1, 9, 2] = numpy.sum(x422 * x435 * x566)
+    result[1, 9, 3] = numpy.sum(x114 * x421 * x454)
+    result[1, 9, 4] = numpy.sum(x422 * x444 * x575)
+    result[1, 9, 5] = numpy.sum(x114 * x390 * x483)
+    result[1, 9, 6] = numpy.sum(x419 * x472 * x582)
+    result[1, 9, 7] = numpy.sum(x422 * x454 * x583)
+    result[1, 9, 8] = numpy.sum(x382 * x444 * x607)
+    result[1, 9, 9] = numpy.sum(x387 * x483 * x582)
+    result[1, 9, 10] = numpy.sum(x373 * x481 * x601)
+    result[1, 9, 11] = numpy.sum(x24 * x472 * x611)
+    result[1, 9, 12] = numpy.sum(x390 * x454 * x601)
+    result[1, 9, 13] = numpy.sum(x24 * x444 * x612)
+    result[1, 9, 14] = numpy.sum(x24 * x391 * x435 * x597)
+    result[1, 10, 0] = numpy.sum(x613 * x616)
+    result[1, 10, 1] = numpy.sum(x617 * x619)
+    result[1, 10, 2] = numpy.sum(x131 * x616 * x617)
+    result[1, 10, 3] = numpy.sum(x215 * x620 * x621)
+    result[1, 10, 4] = numpy.sum(x160 * x27 * x619)
+    result[1, 10, 5] = numpy.sum(x27 * x400 * x615)
+    result[1, 10, 6] = numpy.sum(x3 * x622)
+    result[1, 10, 7] = numpy.sum(x103 * x160 * x620 * x623)
+    result[1, 10, 8] = numpy.sum(x164 * x618 * x625)
+    result[1, 10, 9] = numpy.sum(x3 * x615 * x626)
+    result[1, 10, 10] = numpy.sum(
+        x104
+        * x587
+        * (
+            x0
+            * (
+                x274 * (x584 + x585)
+                + x29 * (x292 + x543 + 4.0 * x576 + 4.0 * x577)
+                + 3.0 * x544
+                + 3.0 * x545
+                + 4.0 * x579
+                + 4.0 * x580
+            )
+            + x208 * x586
+        )
+    )
+    result[1, 10, 11] = numpy.sum(x131 * x622)
+    result[1, 10, 12] = numpy.sum(x164 * x620 * x627)
+    result[1, 10, 13] = numpy.sum(x618 * x626)
+    result[1, 10, 14] = numpy.sum(x207 * x593 * x615)
+    result[1, 11, 0] = numpy.sum(x245 * x45 * x559)
+    result[1, 11, 1] = numpy.sum(x254 * x565 * x628)
+    result[1, 11, 2] = numpy.sum(x31 * x412 * x558)
+    result[1, 11, 3] = numpy.sum(x27 * x408 * x573)
+    result[1, 11, 4] = numpy.sum(x27 * x306 * x565)
+    result[1, 11, 5] = numpy.sum(x27 * x409 * x558)
+    result[1, 11, 6] = numpy.sum(x407 * x591 * x623)
+    result[1, 11, 7] = numpy.sum(x573 * x602 * x624)
+    result[1, 11, 8] = numpy.sum(x252 * x629 * x630)
+    result[1, 11, 9] = numpy.sum(x259 * x558 * x624)
+    result[1, 11, 10] = numpy.sum(x245 * x589)
+    result[1, 11, 11] = numpy.sum(x248 * x581 * x596)
+    result[1, 11, 12] = numpy.sum(x252 * x595)
+    result[1, 11, 13] = numpy.sum(x259 * x629)
+    result[1, 11, 14] = numpy.sum(x265 * x598)
+    result[1, 12, 0] = numpy.sum(x418 * x45 * x514)
+    result[1, 12, 1] = numpy.sum(x316 * x521 * x631)
+    result[1, 12, 2] = numpy.sum(x325 * x514 * x631)
+    result[1, 12, 3] = numpy.sum(x316 * x530 * x632)
+    result[1, 12, 4] = numpy.sum(x27 * x416 * x521)
+    result[1, 12, 5] = numpy.sum(x27 * x514 * x553)
+    result[1, 12, 6] = numpy.sum(x3 * x311 * x633)
+    result[1, 12, 7] = numpy.sum(x315 * x603 * x634)
+    result[1, 12, 8] = numpy.sum(x322 * x605 * x634)
+    result[1, 12, 9] = numpy.sum(x329 * x514 * x624)
+    result[1, 12, 10] = numpy.sum(x311 * x546 * x627)
+    result[1, 12, 11] = numpy.sum(x315 * x633)
+    result[1, 12, 12] = numpy.sum(x323 * x603)
+    result[1, 12, 13] = numpy.sum(x329 * x605)
+    result[1, 12, 14] = numpy.sum(x515 * x610)
+    result[1, 13, 0] = numpy.sum(x373 * x45 * x635)
+    result[1, 13, 1] = numpy.sum(x419 * x488 * x628)
+    result[1, 13, 2] = numpy.sum(x422 * x485 * x628)
+    result[1, 13, 3] = numpy.sum(x27 * x421 * x492)
+    result[1, 13, 4] = numpy.sum(x27 * x422 * x494)
+    result[1, 13, 5] = numpy.sum(x27 * x390 * x635)
+    result[1, 13, 6] = numpy.sum(x3 * x372 * x496 * x596)
+    result[1, 13, 7] = numpy.sum(x3 * x379 * x609)
+    result[1, 13, 8] = numpy.sum(x382 * x494 * x624)
+    result[1, 13, 9] = numpy.sum(x3 * x485 * x612)
+    result[1, 13, 10] = numpy.sum(x373 * x608)
+    result[1, 13, 11] = numpy.sum(x496 * x611)
+    result[1, 13, 12] = numpy.sum(x390 * x609)
+    result[1, 13, 13] = numpy.sum(x488 * x612)
+    result[1, 13, 14] = numpy.sum(x391 * x486 * x593)
+    result[1, 14, 0] = numpy.sum(x427 * x435 * x613)
+    result[1, 14, 1] = numpy.sum(x427 * x444 * x617)
+    result[1, 14, 2] = numpy.sum(x31 * x426 * x510)
+    result[1, 14, 3] = numpy.sum(x427 * x454 * x621)
+    result[1, 14, 4] = numpy.sum(x426 * x459 * x636)
+    result[1, 14, 5] = numpy.sum(x27 * x429 * x554)
+    result[1, 14, 6] = numpy.sum(x3 * x423 * x637)
+    result[1, 14, 7] = numpy.sum(x426 * x454 * x625)
+    result[1, 14, 8] = numpy.sum(x429 * x459 * x624)
+    result[1, 14, 9] = numpy.sum(x3 * x435 * x638)
+    result[1, 14, 10] = numpy.sum(x423 * x481 * x639)
+    result[1, 14, 11] = numpy.sum(x426 * x637)
+    result[1, 14, 12] = numpy.sum(x429 * x454 * x627)
+    result[1, 14, 13] = numpy.sum(x444 * x638)
+    result[1, 14, 14] = numpy.sum(x432 * x435 * x639)
+    result[2, 0, 0] = numpy.sum(x424 * x440 * x642)
+    result[2, 0, 1] = numpy.sum(x109 * x642 * x643)
+    result[2, 0, 2] = numpy.sum(x643 * x647)
+    result[2, 0, 3] = numpy.sum(x157 * x458 * x648)
+    result[2, 0, 4] = numpy.sum(x256 * x458 * x649)
+    result[2, 0, 5] = numpy.sum(x167 * x458 * x654)
+    result[2, 0, 6] = numpy.sum(x172 * x463 * x648)
+    result[2, 0, 7] = numpy.sum(x378 * x463 * x649)
+    result[2, 0, 8] = numpy.sum(x428 * x463 * x654)
+    result[2, 0, 9] = numpy.sum(x463 * x664)
+    result[2, 0, 10] = numpy.sum(x196 * x482 * x648)
+    result[2, 0, 11] = numpy.sum(x172 * x647 * x665)
+    result[2, 0, 12] = numpy.sum(x157 * x654 * x665)
+    result[2, 0, 13] = numpy.sum(x109 * x482 * x664)
+    result[2, 0, 14] = numpy.sum(x424 * x482 * x673)
+    result[2, 1, 0] = numpy.sum(x208 * x642 * x674)
+    result[2, 1, 1] = numpy.sum(x214 * x447 * x648)
+    result[2, 1, 2] = numpy.sum(x208 * x647 * x675)
+    result[2, 1, 3] = numpy.sum(x220 * x457 * x648)
+    result[2, 1, 4] = numpy.sum(x222 * x457 * x676)
+    result[2, 1, 5] = numpy.sum(x208 * x654 * x677)
+    result[2, 1, 6] = numpy.sum(x228 * x462 * x648)
+    result[2, 1, 7] = numpy.sum(x219 * x498 * x676)
+    result[2, 1, 8] = numpy.sum(x222 * x654 * x678)
+    result[2, 1, 9] = numpy.sum(x208 * x663 * x679)
+    result[2, 1, 10] = numpy.sum(x238 * x642 * x680)
+    result[2, 1, 11] = numpy.sum(x228 * x509 * x647)
+    result[2, 1, 12] = numpy.sum(x220 * x509 * x654)
+    result[2, 1, 13] = numpy.sum(x214 * x509 * x663)
+    result[2, 1, 14] = numpy.sum(x208 * x673 * x681)
+    result[2, 2, 0] = numpy.sum(x674 * x683)
+    result[2, 2, 1] = numpy.sum(x109 * x675 * x683)
+    result[2, 2, 2] = numpy.sum(x675 * x685)
+    result[2, 2, 3] = numpy.sum(x457 * x683 * x686)
+    result[2, 2, 4] = numpy.sum(x256 * x457 * x687)
+    result[2, 2, 5] = numpy.sum(x677 * x689)
+    result[2, 2, 6] = numpy.sum(x253 * x678 * x683)
+    result[2, 2, 7] = numpy.sum(x378 * x498 * x685)
+    result[2, 2, 8] = numpy.sum(x256 * x498 * x689)
+    result[2, 2, 9] = numpy.sum(x679 * x691)
+    result[2, 2, 10] = numpy.sum(x195 * x680 * x683)
+    result[2, 2, 11] = numpy.sum(x253 * x509 * x685)
+    result[2, 2, 12] = numpy.sum(x461 * x686 * x689)
+    result[2, 2, 13] = numpy.sum(x109 * x420 * x461 * x691)
+    result[2, 2, 14] = numpy.sum(x681 * x700)
+    result[2, 3, 0] = numpy.sum(x268 * x49 * x648)
+    result[2, 3, 1] = numpy.sum(x271 * x522 * x648)
+    result[2, 3, 2] = numpy.sum(x267 * x522 * x676)
+    result[2, 3, 3] = numpy.sum(x136 * x279 * x648)
+    result[2, 3, 4] = numpy.sum(x136 * x281 * x676)
+    result[2, 3, 5] = numpy.sum(x267 * x524 * x701)
+    result[2, 3, 6] = numpy.sum(x180 * x286 * x648)
+    result[2, 3, 7] = numpy.sum(x278 * x539 * x676)
+    result[2, 3, 8] = numpy.sum(x180 * x281 * x701)
+    result[2, 3, 9] = numpy.sum(x267 * x702 * x703)
+    result[2, 3, 10] = numpy.sum(x293 * x547 * x642)
+    result[2, 3, 11] = numpy.sum(x286 * x547 * x647)
+    result[2, 3, 12] = numpy.sum(x279 * x547 * x654)
+    result[2, 3, 13] = numpy.sum(x271 * x547 * x702)
+    result[2, 3, 14] = numpy.sum(x268 * x547 * x673)
+    result[2, 4, 0] = numpy.sum(x49 * x683 * x704)
+    result[2, 4, 1] = numpy.sum(x119 * x222 * x705)
+    result[2, 4, 2] = numpy.sum(x119 * x309 * x687)
+    result[2, 4, 3] = numpy.sum(x136 * x297 * x705)
+    result[2, 4, 4] = numpy.sum(x213 * x706 * x707)
+    result[2, 4, 5] = numpy.sum(x309 * x532 * x689)
+    result[2, 4, 6] = numpy.sum(x301 * x683 * x703)
+    result[2, 4, 7] = numpy.sum(x219 * x703 * x706)
+    result[2, 4, 8] = numpy.sum(x213 * x703 * x708)
+    result[2, 4, 9] = numpy.sum(x180 * x309 * x709)
+    result[2, 4, 10] = numpy.sum(x305 * x547 * x683)
+    result[2, 4, 11] = numpy.sum(x301 * x547 * x685)
+    result[2, 4, 12] = numpy.sum(x297 * x547 * x689)
+    result[2, 4, 13] = numpy.sum(x222 * x547 * x691)
+    result[2, 4, 14] = numpy.sum(x460 * x700 * x704)
+    result[2, 5, 0] = numpy.sum(x167 * x49 * x713)
+    result[2, 5, 1] = numpy.sum(x109 * x713 * x714)
+    result[2, 5, 2] = numpy.sum(x714 * x719)
+    result[2, 5, 3] = numpy.sum(x317 * x707 * x713)
+    result[2, 5, 4] = numpy.sum(x256 * x532 * x719)
+    result[2, 5, 5] = numpy.sum(x524 * x726)
+    result[2, 5, 6] = numpy.sum(x324 * x703 * x713)
+    result[2, 5, 7] = numpy.sum(x378 * x539 * x719)
+    result[2, 5, 8] = numpy.sum(x109 * x539 * x726)
+    result[2, 5, 9] = numpy.sum(x180 * x732)
+    result[2, 5, 10] = numpy.sum(x330 * x547 * x713)
+    result[2, 5, 11] = numpy.sum(x324 * x547 * x719)
+    result[2, 5, 12] = numpy.sum(x317 * x547 * x725)
+    result[2, 5, 13] = numpy.sum(x109 * x460 * x732)
+    result[2, 5, 14] = numpy.sum(x167 * x460 * x739)
+    result[2, 6, 0] = numpy.sum(x335 * x47 * x648)
+    result[2, 6, 1] = numpy.sum(x340 * x566 * x648)
+    result[2, 6, 2] = numpy.sum(x33 * x342 * x676)
+    result[2, 6, 3] = numpy.sum(x346 * x568 * x648)
+    result[2, 6, 4] = numpy.sum(x340 * x575 * x676)
+    result[2, 6, 5] = numpy.sum(x334 * x568 * x701)
+    result[2, 6, 6] = numpy.sum(x354 * x606 * x642)
+    result[2, 6, 7] = numpy.sum(x346 * x607 * x647)
+    result[2, 6, 8] = numpy.sum(x340 * x607 * x654)
+    result[2, 6, 9] = numpy.sum(x342 * x606 * x663)
+    result[2, 6, 10] = numpy.sum(x24 * x642 * x740)
+    result[2, 6, 11] = numpy.sum(x24 * x647 * x741)
+    result[2, 6, 12] = numpy.sum(x24 * x654 * x742)
+    result[2, 6, 13] = numpy.sum(x24 * x663 * x743)
+    result[2, 6, 14] = numpy.sum(x24 * x673 * x744)
+    result[2, 7, 0] = numpy.sum(x361 * x47 * x705)
+    result[2, 7, 1] = numpy.sum(x271 * x599 * x705)
+    result[2, 7, 2] = numpy.sum(x599 * x685 * x745)
+    result[2, 7, 3] = numpy.sum(x278 * x600 * x705)
+    result[2, 7, 4] = numpy.sum(x271 * x706 * x746)
+    result[2, 7, 5] = numpy.sum(x600 * x689 * x745)
+    result[2, 7, 6] = numpy.sum(x285 * x607 * x683)
+    result[2, 7, 7] = numpy.sum(x278 * x606 * x706)
+    result[2, 7, 8] = numpy.sum(x271 * x606 * x708)
+    result[2, 7, 9] = numpy.sum(x267 * x607 * x691)
+    result[2, 7, 10] = numpy.sum(40.7971365319473 * x292 * x601 * x683)
+    result[2, 7, 11] = numpy.sum(x285 * x601 * x687)
+    result[2, 7, 12] = numpy.sum(139.348749811665 * x278 * x601 * x689)
+    result[2, 7, 13] = numpy.sum(x271 * x601 * x709)
+    result[2, 7, 14] = numpy.sum(x361 * x601 * x700)
+    result[2, 8, 0] = numpy.sum(x47 * x704 * x713)
+    result[2, 8, 1] = numpy.sum(x222 * x33 * x747)
+    result[2, 8, 2] = numpy.sum(x309 * x599 * x719)
+    result[2, 8, 3] = numpy.sum(x297 * x713 * x746)
+    result[2, 8, 4] = numpy.sum(x213 * x746 * x748)
+    result[2, 8, 5] = numpy.sum(x208 * x600 * x726)
+    result[2, 8, 6] = numpy.sum(x227 * x607 * x713)
+    result[2, 8, 7] = numpy.sum(x219 * x606 * x748)
+    result[2, 8, 8] = numpy.sum(241.359114645008 * x213 * x606 * x725)
+    result[2, 8, 9] = numpy.sum(x309 * x583 * x731)
+    result[2, 8, 10] = numpy.sum(x24 * x305 * x749)
+    result[2, 8, 11] = numpy.sum(x24 * x301 * x750)
+    result[2, 8, 12] = numpy.sum(x24 * x297 * x751)
+    result[2, 8, 13] = numpy.sum(x222 * x601 * x731)
+    result[2, 8, 14] = numpy.sum(40.7971365319473 * x208 * x739 * x753)
+    result[2, 9, 0] = numpy.sum(x47 * x758)
+    result[2, 9, 1] = numpy.sum(x109 * x757 * x759)
+    result[2, 9, 2] = numpy.sum(x759 * x765)
+    result[2, 9, 3] = numpy.sum(x114 * x686 * x757)
+    result[2, 9, 4] = numpy.sum(x256 * x575 * x765)
+    result[2, 9, 5] = numpy.sum(x568 * x771)
+    result[2, 9, 6] = numpy.sum(x253 * x606 * x757)
+    result[2, 9, 7] = numpy.sum(x378 * x583 * x765)
+    result[2, 9, 8] = numpy.sum(x109 * x583 * x771)
+    result[2, 9, 9] = numpy.sum(x223 * x582 * x777)
+    result[2, 9, 10] = numpy.sum(x195 * x24 * x778)
+    result[2, 9, 11] = numpy.sum(x24 * x253 * x779)
+    result[2, 9, 12] = numpy.sum(x156 * x24 * x594 * x770)
+    result[2, 9, 13] = numpy.sum(48.2718229290016 * x109 * x753 * x777)
+    result[2, 9, 14] = numpy.sum(x24 * x784)
+    result[2, 10, 0] = numpy.sum(x393 * x613 * x648)
+    result[2, 10, 1] = numpy.sum(x395 * x617 * x648)
+    result[2, 10, 2] = numpy.sum(x393 * x617 * x676)
+    result[2, 10, 3] = numpy.sum(x397 * x621 * x648)
+    result[2, 10, 4] = numpy.sum(x395 * x636 * x649)
+    result[2, 10, 5] = numpy.sum(x393 * x621 * x701)
+    result[2, 10, 6] = numpy.sum(x3 * x642 * x785)
+    result[2, 10, 7] = numpy.sum(x397 * x624 * x649)
+    result[2, 10, 8] = numpy.sum(x395 * x625 * x654)
+    result[2, 10, 9] = numpy.sum(x3 * x393 * x786)
+    result[2, 10, 10] = numpy.sum(x405 * x639 * x642)
+    result[2, 10, 11] = numpy.sum(x647 * x785)
+    result[2, 10, 12] = numpy.sum(x397 * x627 * x654)
+    result[2, 10, 13] = numpy.sum(x395 * x786)
+    result[2, 10, 14] = numpy.sum(x393 * x639 * x673)
+    result[2, 11, 0] = numpy.sum(x335 * x45 * x705)
+    result[2, 11, 1] = numpy.sum(x340 * x628 * x705)
+    result[2, 11, 2] = numpy.sum(x342 * x685 * x787)
+    result[2, 11, 3] = numpy.sum(x346 * x683 * x788)
+    result[2, 11, 4] = numpy.sum(x348 * x636 * x685)
+    result[2, 11, 5] = numpy.sum(x334 * x689 * x788)
+    result[2, 11, 6] = numpy.sum(x3 * x683 * x741)
+    result[2, 11, 7] = numpy.sum(x346 * x624 * x687)
+    result[2, 11, 8] = numpy.sum(x348 * x624 * x689)
+    result[2, 11, 9] = numpy.sum(x342 * x624 * x691)
+    result[2, 11, 10] = numpy.sum(x683 * x740)
+    result[2, 11, 11] = numpy.sum(x685 * x741)
+    result[2, 11, 12] = numpy.sum(x689 * x742)
+    result[2, 11, 13] = numpy.sum(x691 * x743)
+    result[2, 11, 14] = numpy.sum(x700 * x744)
+    result[2, 12, 0] = numpy.sum(x268 * x45 * x747)
+    result[2, 12, 1] = numpy.sum(x271 * x631 * x747)
+    result[2, 12, 2] = numpy.sum(x631 * x719 * x745)
+    result[2, 12, 3] = numpy.sum(x279 * x636 * x713)
+    result[2, 12, 4] = numpy.sum(x281 * x636 * x719)
+    result[2, 12, 5] = numpy.sum(x632 * x725 * x745)
+    result[2, 12, 6] = numpy.sum(x286 * x3 * x749)
+    result[2, 12, 7] = numpy.sum(x278 * x634 * x750)
+    result[2, 12, 8] = numpy.sum(x281 * x3 * x751)
+    result[2, 12, 9] = numpy.sum(x267 * x3 * x789)
+    result[2, 12, 10] = numpy.sum(x293 * x749)
+    result[2, 12, 11] = numpy.sum(x286 * x750)
+    result[2, 12, 12] = numpy.sum(x279 * x751)
+    result[2, 12, 13] = numpy.sum(x271 * x789)
+    result[2, 12, 14] = numpy.sum(x268 * x593 * x739)
+    result[2, 13, 0] = numpy.sum(x208 * x45 * x758)
+    result[2, 13, 1] = numpy.sum(x214 * x757 * x787)
+    result[2, 13, 2] = numpy.sum(x309 * x628 * x765)
+    result[2, 13, 3] = numpy.sum(x220 * x636 * x757)
+    result[2, 13, 4] = numpy.sum(x222 * x636 * x765)
+    result[2, 13, 5] = numpy.sum(x208 * x224 * x27 * x770)
+    result[2, 13, 6] = numpy.sum(x228 * x624 * x757)
+    result[2, 13, 7] = numpy.sum(x219 * x630 * x779)
+    result[2, 13, 8] = numpy.sum(x222 * x3 * x790)
+    result[2, 13, 9] = numpy.sum(x233 * x3 * x752 * x777)
+    result[2, 13, 10] = numpy.sum(x238 * x778)
+    result[2, 13, 11] = numpy.sum(x228 * x779)
+    result[2, 13, 12] = numpy.sum(x220 * x790)
+    result[2, 13, 13] = numpy.sum(x214 * x593 * x777)
+    result[2, 13, 14] = numpy.sum(x208 * x784)
+    result[2, 14, 0] = numpy.sum(x613 * x793)
+    result[2, 14, 1] = numpy.sum(x109 * x617 * x793)
+    result[2, 14, 2] = numpy.sum(x617 * x795)
+    result[2, 14, 3] = numpy.sum(x157 * x636 * x792)
+    result[2, 14, 4] = numpy.sum(x185 * x27 * x795)
+    result[2, 14, 5] = numpy.sum(x223 * x621 * x796)
+    result[2, 14, 6] = numpy.sum(x172 * x3 * x797)
+    result[2, 14, 7] = numpy.sum(x156 * x798 * x799)
+    result[2, 14, 8] = numpy.sum(x110 * x799 * x800)
+    result[2, 14, 9] = numpy.sum(x3 * x801)
+    result[2, 14, 10] = numpy.sum(x196 * x797)
+    result[2, 14, 11] = numpy.sum(x172 * x798)
+    result[2, 14, 12] = numpy.sum(x159 * x800)
+    result[2, 14, 13] = numpy.sum(x109 * x801)
+    result[2, 14, 14] = numpy.sum(
+        6.89597470414309
+        * x752
+        * (
+            x0
+            * (
+                x29 * (x333 + x736 + 4.0 * x772 + 4.0 * x773)
+                + x318 * (x780 + x781)
+                + 3.0 * x737
+                + 3.0 * x738
+                + 4.0 * x775
+                + 4.0 * x776
+            )
+            + x245 * x782
+        )
+    )
+    return result
+
+
+diag_quadrupole3d = {
+    (0, 0): diag_quadrupole3d_00,
+    (0, 1): diag_quadrupole3d_01,
+    (0, 2): diag_quadrupole3d_02,
+    (0, 3): diag_quadrupole3d_03,
+    (0, 4): diag_quadrupole3d_04,
+    (1, 0): diag_quadrupole3d_10,
+    (1, 1): diag_quadrupole3d_11,
+    (1, 2): diag_quadrupole3d_12,
+    (1, 3): diag_quadrupole3d_13,
+    (1, 4): diag_quadrupole3d_14,
+    (2, 0): diag_quadrupole3d_20,
+    (2, 1): diag_quadrupole3d_21,
+    (2, 2): diag_quadrupole3d_22,
+    (2, 3): diag_quadrupole3d_23,
+    (2, 4): diag_quadrupole3d_24,
+    (3, 0): diag_quadrupole3d_30,
+    (3, 1): diag_quadrupole3d_31,
+    (3, 2): diag_quadrupole3d_32,
+    (3, 3): diag_quadrupole3d_33,
+    (3, 4): diag_quadrupole3d_34,
+    (4, 0): diag_quadrupole3d_40,
+    (4, 1): diag_quadrupole3d_41,
+    (4, 2): diag_quadrupole3d_42,
+    (4, 3): diag_quadrupole3d_43,
+    (4, 4): diag_quadrupole3d_44,
+}

@@ -20,6 +20,7 @@ from pysisyphus.elem_data import (
     nuc_charges_for_atoms,
 )
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.linalg import multi_component_sym_mat
 from pysisyphus.wavefunction.helpers import (
     canonical_order,
     get_l,
@@ -28,15 +29,15 @@ from pysisyphus.wavefunction.helpers import (
 )
 
 from pysisyphus.wavefunction.ints import (
+    boys,
+    cart_gto3d,
     coulomb3d,
     diag_quadrupole3d,
     dipole3d,
-    gto3d,
     kinetic3d,
     ovlp3d,
     quadrupole3d,
     _2center2el3d,
-    _3center2el3d,
     _3center2el3d_sph,
 )
 
@@ -91,28 +92,6 @@ def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
     return cgto_norm, pgto_norm
 
 
-def eval_pgtos(xyz, center, exponents, cart_powers):
-    """Evaluate primititve Cartesian GTOs at points xyz."""
-
-    xa, ya, za = (xyz - center).T
-    # Indepdendent of Cartesian powers, but dependent on contraction degree
-    exp_term = np.exp(-exponents[:, None] * (xa**2 + ya**2 + za**2))
-    # Indepdendent of contraction degree, but dependent on Cartesian powers
-    xpow, ypow, zpow = cart_powers.T
-    prefac = xa ** xpow[:, None] * ya ** ypow[:, None] * za ** zpow[:, None]
-    return prefac[:, None, :] * exp_term
-
-
-def eval_shell(xyz, center, cart_powers, contr_coeffs, exponents):
-    # pgtos shape is (nbf, npgto, nxyz)
-    # that is
-    # (number of basis funcs in shell, number of primitives, number of points)
-    pgtos = eval_pgtos(xyz, center, exponents, cart_powers)
-    # shape of contr_coeffs is (number of bfs in shell, number of primitives)
-    pgtos *= contr_coeffs[..., None]
-    return pgtos.sum(axis=1)
-
-
 class Shell:
     def __init__(
         self,
@@ -127,9 +106,10 @@ class Shell:
     ):
         self.L = get_l(L)
         self.center = np.array(center, dtype=float)  # (x, y, z), 1d array
+        # Store original copy of contraction coefficients
+        self.coeffs_org = np.array(coeffs, dtype=float)
         # Contraction coefficients, 2d array, shape (bfs in shell, number of primitives)
-        self.org_coeffs = np.array(coeffs, dtype=float)
-        self.coeffs = np.atleast_2d(self.org_coeffs.copy())
+        self.coeffs = np.atleast_2d(self.coeffs_org.copy())
         self.exps = np.array(exps, dtype=float)  # Orbital exponents, 1d array
         assert self.coeffs.shape[1] == self.exps.size
         self.center_ind = int(center_ind)
@@ -141,12 +121,9 @@ class Shell:
         if index is not None:
             self.index = index
 
-        # Store original copy of contraction coefficients
-        self.coeffs_org = self.coeffs.copy()
         # Compute norms and multiply them onto the contraction coefficients
         cgto_norms, pgto_norm = self.get_norms()
         self.coeffs = self.coeffs * pgto_norm
-        # self.coeffs = self.org_coeffs[None, :] * cgto_norms[:, None]
 
     def get_norms(self, coeffs=None):
         """Shape (nbfs, nprimitives).
@@ -162,7 +139,7 @@ class Shell:
         return cgto_norm, pgto_norm
 
     def as_tuple(self):
-        return self.L, self.center, self.coeffs, self.exps, self.index, self.size
+        return self.L, self.center, self.coeffs_org, self.exps, self.index, self.size
 
     def exps_coeffs_iter(self):
         return zip(self.exps, self.coeffs)
@@ -211,95 +188,6 @@ class Shell:
 
     def __repr__(self):
         return self.__str__()
-
-
-def get_map(module, func_base_name, Ls=(L_MAX, L_MAX)):
-    """Return dict that holds the different integrals functions."""
-    func_map = dict()
-    L_ranges = [range(L + 1) for L in Ls]
-    for ls in it.product(*L_ranges):
-        ls_str = "".join([str(l) for l in ls])
-        try:
-            func_map[ls] = getattr(module, f"{func_base_name}_{ls_str}")
-        except AttributeError:
-            pass
-    return func_map
-
-
-CGTOmap = get_map(gto3d, "cart_gto3d", Ls=(L_MAX,))  # Cartesian GTO shells
-Smap = get_map(ovlp3d, "ovlp3d")  # Overlap integrals
-Tmap = get_map(kinetic3d, "kinetic3d")  # Kinetic energy integrals
-Vmap = get_map(coulomb3d, "coulomb3d")  # 1el Coulomb integrals
-DPMmap = get_map(dipole3d, "dipole3d")  # Dipole moments integrals
-QPMmap = get_map(quadrupole3d, "quadrupole3d")  # Quadrupole moments integrals
-DQPMmap = get_map(
-    diag_quadrupole3d, "diag_quadrupole3d"
-)  # Diagonal quadrupole moments integrals
-_2c2elMap = get_map(_2center2el3d, "_2center2el3d", Ls=(L_AUX_MAX, L_AUX_MAX))
-_3c2elMap = get_map(_3center2el3d, "_3center2el3d", Ls=(L_MAX, L_MAX, L_AUX_MAX))
-_3c2elSphMap = get_map(
-    _3center2el3d_sph, "_3center2el3d_sph", Ls=(L_MAX, L_MAX, L_AUX_MAX)
-)
-
-
-def cart_gto(l_tot, a, Xa, Ya, Za):
-    """Wrapper for evaluation of cartesian GTO shells."""
-    func = CGTOmap[(l_tot,)]
-    return func(a, Xa, Ya, Za)
-
-
-def ovlp(la_tot, lb_tot, a, A, b, B):
-    """Wrapper for overlap integrals."""
-    func = Smap[(la_tot, lb_tot)]
-    return func(a, A, b, B)
-
-
-def kinetic(la_tot, lb_tot, a, A, b, B):
-    """Wrapper for kinetic energy integrals."""
-    func = Tmap[(la_tot, lb_tot)]
-    return func(a, A, b, B)
-
-
-def coulomb(la_tot, lb_tot, a, A, b, B, C):
-    """Wrapper for 1el Coulomb integrals."""
-    func = Vmap[(la_tot, lb_tot)]
-    return func(a, A, b, B, C)
-
-
-def dipole(la_tot, lb_tot, a, A, b, B, C):
-    """Wrapper for linear moment integrals (dipole moment)."""
-    func = DPMmap[(la_tot, lb_tot)]
-    return func(a, A, b, B, C)
-
-
-def quadrupole(la_tot, lb_tot, a, A, b, B, C):
-    """Wrapper for quadratic moment integrals (quadrupole moment)."""
-    func = QPMmap[(la_tot, lb_tot)]
-    return func(a, A, b, B, C)
-
-
-def diag_quadrupole(la_tot, lb_tot, a, A, b, B, C):
-    """Wrapper for diagonal entries of quadratic moment integrals."""
-    func = DQPMmap[(la_tot, lb_tot)]
-    return func(a, A, b, B, C)
-
-
-def _2center2electron(la_tot, lb_tot, a, A, b, B):
-    """Wrapper for 2-center-2-electron integrals."""
-    func = _2c2elMap[(la_tot, lb_tot)]
-    return func(a, A, b, B)
-
-
-def _3center2electron(la_tot, lb_tot, lc_tot, a, A, b, B, c, C):
-    """Wrapper for 3-center-2-electron integrals."""
-    func = _3c2elMap[(la_tot, lb_tot, lc_tot)]
-    return func(a, A, b, B, c, C)
-
-
-def _3center2electron_sph(la_tot, lb_tot, lc_tot, a, A, b, B, c, C):
-    """Wrapper for 3-center-2-electron integrals."""
-    func = _3c2elSphMap[(la_tot, lb_tot, lc_tot)]
-    return func(a, A, b, B, c, C)
 
 
 Ordering = Literal["native", "pysis"]
@@ -407,7 +295,7 @@ class Shells:
         for shell_ind, shell in enumerate(self.shells):
             # L, center, coeffs, exponents, index, size = shell.as_tuple()
             L, _, _, exponents, _, _ = shell.as_tuple()
-            contr_coeffs = shell.org_coeffs
+            contr_coeffs = shell.coeffs_org
             nprim = len(contr_coeffs)
             # ncontr is hardcoded to 1 for now, as there are no special functions
             # to handle general contractions.
@@ -588,43 +476,27 @@ class Shells:
             precontr = self.cart2sph_coeffs.T @ self.P_sph.T
         else:
             precontr = self.P_cart.T
+        ncbfs = precontr.shape[0]
+        npoints = len(xyz)
 
         coords3d = self.coords3d
-        all_vals = list()
+        grid_vals = np.zeros((npoints, ncbfs))
         for center_ind, shells in self.center_shell_iter():
             center = coords3d[center_ind]
-            Xa, Ya, Za = (xyz - center).T
-            for shell in shells:
-                L_tot, _, contr_coeffs, exponents, *_ = shell.as_tuple()
-                # shape (nbfs in shell, number of primitives, number of points)
-                vals = cart_gto(L_tot, exponents[:, None], Xa, Ya, Za)
-                vals *= contr_coeffs[..., None]
-                vals = vals.sum(axis=1)  # Contract primitives
-                all_vals.append(vals)
-        all_vals = np.concatenate(all_vals, axis=0).T
-        all_vals = all_vals @ precontr
-        return all_vals
-
-    def eval_manual(self, xyz, spherical=False):
-        """Evaluate all basis functions at points xyz using handwritten code."""
-        all_vals = list()
-        if spherical:
-            precontr = self.cart2sph_coeffs.T @ self.P_sph.T
-        else:
-            precontr = self.P_cart.T
-
-        for shell in self.shells:
-            _, center, contr_coeffs, exponents, *_ = shell.as_tuple()
-            cart_powers = shell.cart_powers
-            vals = eval_shell(xyz, center, cart_powers, contr_coeffs, exponents)
-            all_vals.append(vals)
-        all_vals = np.concatenate(all_vals, axis=0).T
-        all_vals = all_vals @ precontr
-        return all_vals
+            # Create list from the shells iterator, otherwise it will be empty
+            # after the first pass over all points.
+            shells = list(shells)
+            for i, (X, Y, Z) in enumerate(xyz - center):
+                for shell in shells:
+                    La, A, da, ax, a_ind, a_size = shell.as_tuple()
+                    grid_vals[i, a_ind : a_ind + a_size] = cart_gto3d.cart_gto3d[(La,)](
+                        ax, da, X, Y, Z
+                    )
+        return grid_vals @ precontr
 
     def get_1el_ints_cart(
         self,
-        func,
+        func_dict,
         other=None,
         can_reorder=True,
         components=0,
@@ -649,7 +521,7 @@ class Shells:
             screen_func = lambda *args: True
 
         for i, shell_a in enumerate(shells_a):
-            La, A, dA, ax, a_ind, a_size = shell_a.as_tuple()
+            La, A, da, ax, a_ind, a_size = shell_a.as_tuple()
             a_slice = slice(a_ind, a_ind + a_size)
             # When we don't deal with symmetric matrices we have to iterate over
             # all other basis functions in shells_b, so we reset i to 0.
@@ -657,26 +529,31 @@ class Shells:
                 i = 0
             a_min_exp = ax.min()  # Minimum exponent used for screening
             for shell_b in shells_b[i:]:
-                Lb, B, dB, bx, b_ind, b_size = shell_b.as_tuple()
+                Lb, B, db, bx, b_ind, b_size = shell_b.as_tuple()
+                b_slice = slice(b_ind, b_ind + b_size)
                 # Screen shell pair
                 b_min_exp = bx.min()  # Minimum exponent used for screening
                 R_ab = np.linalg.norm(A - B)  # Shell center distance
                 b_size = get_shell_shape(Lb)[0]
                 if not screen_func(a_min_exp, b_min_exp, R_ab):
                     continue
-                shell_shape = (a_size, b_size)
-                shape = (components, *shell_shape)
-                ints_ = func(La, Lb, ax[:, None], A, bx[None, :], B, **kwargs)
-                ints_ = ints_.reshape(*shape, len(ax), len(bx))  # 5d
-                ints_ *= dA[None, :, None, :, None] * dB[None, None, :, None, :]
-                ints_ = ints_.sum(axis=(3, 4))
-                b_slice = slice(b_ind, b_ind + b_size)
-                integrals[:, a_slice, b_slice] = ints_
-                # Fill up the lower tringular part of the matrix
-                # TODO: this is probably better done outside of this loop, after
+                integrals[:, a_slice, b_slice] = func_dict[(La, Lb)](
+                    ax[:, None],
+                    da[:, None],
+                    A,
+                    bx[None, :],
+                    db[None, :],
+                    B,
+                    **kwargs,
+                )
+                # Fill up the lower tringular part of the matrix in the symmetric
+                # case.
+                # TODO: this may be (?) better done outside of this loop, after
                 # everything is calculated...
                 if symmetric:
-                    integrals[:, b_slice, a_slice] = np.transpose(ints_, axes=(0, 2, 1))
+                    integrals[:, b_slice, a_slice] = np.transpose(
+                        integrals[:, a_slice, b_slice], axes=(0, 2, 1)
+                    )
 
         # Return plain 2d array if components is set to 0, i.e., remove first axis.
         if is_2d:
@@ -714,60 +591,61 @@ class Shells:
         return int_matrix_sph
 
     def get_2c2el_ints_cart(self):
-        return self.get_1el_ints_cart(_2center2electron)
+        return self.get_1el_ints_cart(_2center2el3d._2center2el3d)
 
     def get_2c2el_ints_sph(self):
-        return self.get_1el_ints_sph(_2center2electron)
+        return self.get_1el_ints_sph(_2center2el3d._2center2el3d)
 
-    def get_3c2el_ints_cart(self, shells_aux, int_func=_3center2electron):
+    def get_3c2el_ints_cart(self, shells_aux):
+        """Cartesian 3-center-2-electron integrals.
+
+        DO NOT USE THESE INTEGRALS AS THEY ARE RETURNED FROM THIS METHOD.
+        These integrals utilize recurrence relations that are only valid,
+        when the resulting Cartesian integrals are transformed into spherical
+        integrals.
+
+        Contrary to the general function 'get_1el_ints_cart', that supports
+        different 'func_dict' arguments and cross-integrals between two
+        different shells this function is less general. This function is
+        restricted to '_3center2el_sph' and always uses 'self.shells' as well as
+        'self.shells_aux'.
+        """
         shells_a = self
         cart_bf_num_a = shells_a.cart_bf_num
         cart_bf_num_aux = shells_aux.cart_bf_num
 
         integrals = np.zeros((cart_bf_num_a, cart_bf_num_a, cart_bf_num_aux))
-        symmetric = True
+        func_dict = _3center2el3d_sph._3center2el3d_sph
 
         for i, shell_a in enumerate(shells_a):
-            La, A, dA, ax, a_ind, a_size = shell_a.as_tuple()
+            La, A, da, ax, a_ind, a_size = shell_a.as_tuple()
             a_slice = slice(a_ind, a_ind + a_size)
-            if not symmetric:
-                i = 0
+            # As noted in the docstring, we iterate over pairs of self.shells (shells_a)
             for shell_b in shells_a[i:]:
-                Lb, B, dB, bx, b_ind, b_size = shell_b.as_tuple()
+                Lb, B, db, bx, b_ind, b_size = shell_b.as_tuple()
                 b_slice = slice(b_ind, b_ind + b_size)
-                dAB = (
-                    dA[:, None, None, :, None, None] * dB[None, :, None, None, :, None]
-                )
                 c_ind = 0
                 for shell_c in shells_aux:
-                    Lc, C, dC, cx, c_ind, c_size = shell_c.as_tuple()
+                    Lc, C, dc, cx, c_ind, c_size = shell_c.as_tuple()
                     c_slice = slice(c_ind, c_ind + c_size)
-                    shape = (a_size, b_size, c_size)
-                    ints_ = int_func(
-                        La,
-                        Lb,
-                        Lc,
+                    integrals[a_slice, b_slice, c_slice] = func_dict[(La, Lb, Lc)](
                         ax[:, None, None],
+                        da[:, None, None],
                         A,
                         bx[None, :, None],
+                        db[None, :, None],
                         B,
                         cx[None, None, :],
+                        dc[None, None, :],
                         C,
                     )
-                    ints_ = ints_.reshape(*shape, len(ax), len(bx), len(cx))  # 6D
-                    ints_ *= dAB * dC[None, None, :, None, None, :]
-                    ints_ = ints_.sum(axis=(3, 4, 5))
-                    integrals[a_slice, b_slice, c_slice] = ints_
-                    if symmetric:
-                        integrals[b_slice, a_slice, c_slice] = np.transpose(
-                            ints_, axes=(1, 0, 2)
-                        )
+            integrals[b_slice, a_slice, c_slice] = np.transpose(
+                integrals[a_slice, b_slice, c_slice], axes=(1, 0, 2)
+            )
         return integrals
 
     def get_3c2el_ints_sph(self, shells_aux):
-        int_matrix = self.get_3c2el_ints_cart(
-            shells_aux, int_func=_3center2electron_sph
-        )
+        int_matrix = self.get_3c2el_ints_cart(shells_aux)
 
         PC_a = self.reorder_c2s_coeffs
         PC_c = shells_aux.reorder_c2s_coeffs
@@ -814,10 +692,15 @@ class Shells:
         )
 
     def get_S_cart(self, other=None) -> NDArray:
-        return self.get_1el_ints_cart(ovlp, other=other, screen_func=Shells.screen_S)
+        # return self.get_1el_ints_cart(ovlp, other=other, screen_func=Shells.screen_S)
+        return self.get_1el_ints_cart(
+            ovlp3d.ovlp3d, other=other, screen_func=Shells.screen_S
+        )
 
     def get_S_sph(self, other=None) -> NDArray:
-        return self.get_1el_ints_sph(ovlp, other=other, screen_func=Shells.screen_S)
+        return self.get_1el_ints_sph(
+            ovlp3d.ovlp3d, other=other, screen_func=Shells.screen_S
+        )
 
     @property
     def S_cart(self):
@@ -832,10 +715,11 @@ class Shells:
     ############################
 
     def get_T_cart(self, other=None) -> NDArray:
-        return self.get_1el_ints_cart(kinetic, other=other)
+        # return self.get_1el_ints_cart(kinetic, other=other)
+        return self.get_1el_ints_cart(kinetic3d.kinetic3d, other=other)
 
     def get_T_sph(self, other=None) -> NDArray:
-        return self.get_1el_ints_sph(kinetic, other=other)
+        return self.get_1el_ints_sph(kinetic3d.kinetic3d, other=other)
 
     @property
     def T_cart(self):
@@ -850,9 +734,12 @@ class Shells:
     ################################
 
     def get_V_cart(self, coords3d=None, charges=None, **kwargs):
-        # Coordinates and charges must be omitted/given together
-        # Alternatively, this function could also take one array that
-        # combines coords3c and charges.
+        """Nuclear attraction integrals.
+
+        Coordinates and charges must be either be omitted or given together.
+        Alternatively, this function could also take one array that combines
+        coords3c and charges (not yet implemented).
+        """
         assert ((coords3d is None) and (charges is None)) or (
             (coords3d is not None) and (charges is not None)
         )
@@ -860,13 +747,23 @@ class Shells:
             atoms, coords3d = self.atoms_coords3d
             charges = nuc_charges_for_atoms(atoms)
 
+        # def boys_1c1el(n_max, ax, A, bx, B, C):
+            # ax = ax[:, None]
+            # bx = bx[None, :]
+            # p = ax + bx
+            # P = -(ax * A + bx * B) / p
+            # R_PC2 = ((P - C)**2).sum()
+            # pR_PC2 = p * R_PC2
+            # return np.array([boys.boys(n, pR_PC2) for n in range(n_max+1)])
+
         cart_bf_num = self.cart_bf_num
         V_nuc = np.zeros((cart_bf_num, cart_bf_num))
         # Loop over all centers and add their contributions
         for C, Z in zip(coords3d, charges):
+
             # -Z = -1 * Z, because electrons have negative charge.
             V_nuc += -Z * self.get_1el_ints_cart(
-                coulomb,
+                coulomb3d.coulomb3d,
                 C=C,
                 **kwargs,
             )
@@ -890,12 +787,12 @@ class Shells:
 
     def get_dipole_ints_cart(self, origin):
         return self.get_1el_ints_cart(
-            dipole, components=3, C=origin, screen_func=Shells.screen_S
+            dipole3d.dipole3d, components=3, C=origin, screen_func=Shells.screen_S
         )
 
     def get_dipole_ints_sph(self, origin) -> NDArray:
         return self.get_1el_ints_sph(
-            dipole, components=3, C=origin, screen_func=Shells.screen_S
+            dipole3d.dipole3d, components=3, C=origin, screen_func=Shells.screen_S
         )
 
     ##################################################
@@ -904,12 +801,18 @@ class Shells:
 
     def get_diag_quadrupole_ints_cart(self, origin):
         return self.get_1el_ints_cart(
-            diag_quadrupole, components=3, C=origin, screen_func=Shells.screen_S
+            diag_quadrupole3d.diag_quadrupole3d,
+            components=3,
+            C=origin,
+            screen_func=Shells.screen_S,
         )
 
     def get_diag_quadrupole_ints_sph(self, origin):
         return self.get_1el_ints_sph(
-            diag_quadrupole, components=3, C=origin, screen_func=Shells.screen_S
+            diag_quadrupole3d.diag_quadrupole3d,
+            components=3,
+            C=origin,
+            screen_func=Shells.screen_S,
         )
 
     ###############################
@@ -917,30 +820,22 @@ class Shells:
     ###############################
 
     def get_quadrupole_ints_cart(self, origin):
-        _ = self.get_1el_ints_cart(
-            quadrupole, components=6, C=origin, screen_func=Shells.screen_S
+        ints_flat = self.get_1el_ints_cart(
+            quadrupole3d.quadrupole3d,
+            components=6,
+            C=origin,
+            screen_func=Shells.screen_S,
         )
-        shape = _.shape
-        sym = np.zeros((3, 3, *shape[1:]))
-        triu = np.triu_indices(3)
-        triu1 = np.triu_indices(3, k=1)
-        tril1 = np.tril_indices(3, k=-1)
-        sym[triu] = _
-        sym[tril1] = sym[triu1]
-        return sym.reshape(3, 3, *shape[1:])
+        return multi_component_sym_mat(ints_flat, 3)
 
     def get_quadrupole_ints_sph(self, origin) -> NDArray:
-        _ = self.get_1el_ints_sph(
-            quadrupole, components=6, C=origin, screen_func=Shells.screen_S
+        ints_flat = self.get_1el_ints_sph(
+            quadrupole3d.quadrupole3d,
+            components=6,
+            C=origin,
+            screen_func=Shells.screen_S,
         )
-        shape = _.shape
-        sym = np.zeros((3, 3, *shape[1:]))
-        triu = np.triu_indices(3)
-        triu1 = np.triu_indices(3, k=1)
-        tril1 = np.tril_indices(3, k=-1)
-        sym[triu] = _
-        sym[tril1] = sym[triu1]
-        return sym.reshape(3, 3, *shape[1:])
+        return multi_component_sym_mat(ints_flat, 3)
 
     def __str__(self):
         return f"{self.__class__.__name__}({len(self.shells)} shells, ordering={self.ordering})"
