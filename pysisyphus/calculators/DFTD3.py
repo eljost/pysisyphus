@@ -7,9 +7,9 @@ class DFTD3(Calculator):
     
     conf_key = "dftd3"
 
-    def __init__(self, atoms, functional, bjdamping=False, **kwargs):
+    def __init__(self, geom, functional, bjdamping=False, **kwargs):
         super(DFTD3, self).__init__(**kwargs)
-        self.atoms = atoms
+        self.atoms = geom.atoms
         self.functional = functional.lower()
         self.bjdamping = bjdamping
 
