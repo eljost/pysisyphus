@@ -23,13 +23,13 @@ class DFTD3(Calculator):
             text = handle.read()
         mobj = re.search(r"Edisp /kcal,au:\s+([\d\-\.]+)\s+([\d\-\.]+)", text)
         results={
-            "energy": float(mobj[-1]),
+            "energy": float(mobj.group(2)),
         }
         return results
 
     def parse_gradient(self, path):
         grad = np.loadtxt(os.path.join(path,"dftd3_gradient"))
-        energy = self.parse_energy(path)
+        energy = self.parse_energy(path)["energy"]
         results={
             "energy": energy,
             "grad": grad.flatten(),
@@ -39,7 +39,7 @@ class DFTD3(Calculator):
     def calc(self, coords3d, gradient=False):
         inp = self.prepare_turbo_coords(self.atoms, coords3d.flatten())
         
-        args = [f"-func {self.functional}"]
+        args = ["-func", self.functional]
         if self.bjdamping:
             args.append("-bj")
         if gradient:
