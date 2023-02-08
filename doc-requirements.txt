@@ -27,7 +27,7 @@ cloudpickle==2.0.0
     # via
     #   dask
     #   distributed
-cryptography==36.0.2
+cryptography==39.0.1
     # via paramiko
 cycler==0.11.0
     # via matplotlib
