@@ -1,14 +1,16 @@
-from pysisyphus.calculators.Calculator import Calculator
 import re
+
 import numpy as np
-import os.path
+
+from pysisyphus.calculators.Calculator import Calculator
+
 
 class DFTD3(Calculator):
     
     conf_key = "dftd3"
 
     def __init__(self, geom, functional, bjdamping=False, **kwargs):
-        super(DFTD3, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.atoms = geom.atoms
         self.functional = functional.lower()
         self.bjdamping = bjdamping
@@ -28,7 +30,7 @@ class DFTD3(Calculator):
         return results
 
     def parse_gradient(self, path):
-        grad = np.loadtxt(os.path.join(path,"dftd3_gradient"))
+        grad = np.loadtxt(path / "dftd3_gradient")
         energy = self.parse_energy(path)["energy"]
         results={
             "energy": energy,
