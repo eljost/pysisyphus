@@ -282,6 +282,35 @@ RMSD
     :members:
     :undoc-members:
 
+DFT-D3
+----
+Method to add DFT-D3 dispersion corrections as an external potential
+via the program developed by the Grimme group <https://www.chemie.uni-bonn.de/grimme/de/software/dft-d3/get_dft-d3>.
+
+This is for use with calculators that do not natively provide D3 corrections (e.g. OpenMolcas).
+Usage mirrors that of other external potentials, with an example given below.
+
+.. code:: yaml
+    
+    # General input structure for restraints
+    calc:
+     type: ext
+     # Multiple potentials could be specified here as a list
+     potentials:
+       # Add atom-pairwise D3 dispersion correction as a differentiable, external potential
+       - type: d3
+         # Functional is specified in TURBOMOLE format, all lower case.
+         functional: pbe
+         # Optional Becke-Johnson damping, default false, recommended true
+         bjdamping: true
+
+    calc:
+     type: [actual calculator that is wrapped by ExternalPotential]
+
+.. automodule:: pysisyphus.calculators.DFTD3
+    :members:
+    :undoc-members:
+
 AFIR
 ----
 .. automodule:: pysisyphus.calculators.AFIR

@@ -11,7 +11,7 @@ from pysisyphus.intcoords.PrimTypes import prims_from_prim_inputs
 from pysisyphus.intcoords.update import correct_dihedrals
 from pysisyphus.intcoords import Torsion
 from pysisyphus.linalg import rmsd_grad
-
+from pysisyphus.calculators.DFTD3 import DFTD3
 
 class LogFermi:
     def __init__(self, beta, radius, T=300, origin=(0.0, 0.0, 0.0), geom=None):
@@ -200,6 +200,7 @@ class ExternalPotential(Calculator):
         "harmonic_sphere": HarmonicSphere,
         "restraint": Restraint,
         "rmsd": RMSD,
+        "d3": DFTD3,
     }
 
     def __init__(self, calculator=None, potentials=None, geom=None, **kwargs):
