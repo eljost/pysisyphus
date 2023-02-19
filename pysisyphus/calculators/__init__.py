@@ -33,6 +33,7 @@ __all__ = [
     "Turbomole",
     "TransTorque",
     "XTB",
+    "CFOUR",
 ]
 
 
