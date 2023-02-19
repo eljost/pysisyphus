@@ -362,7 +362,7 @@ class Calculator:
         coord_str += "$end"
         return coord_str
 
-    def prepare_coords(self, atoms, coords):
+    def prepare_coords(self, atoms, coords, angstrom=True):
         """Get 3d coords in Angstrom.
 
         Reshape internal 1d coords to 3d and convert to Angstrom.
@@ -379,7 +379,9 @@ class Calculator:
         coords: np.array, 3d
             3D-array holding coordinates in Angstrom.
         """
-        coords = coords.reshape(-1, 3) * BOHR2ANG
+        coords = coords.reshape(-1, 3)
+        if angstrom:
+            coords = coords * BOHR2ANG
         coords = "\n".join(
             [
                 "{} {:10.08f} {:10.08f} {:10.08f}".format(a, *c)
@@ -388,7 +390,7 @@ class Calculator:
         )
         return coords
 
-    def prepare_xyz_string(self, atoms, coords):
+    def prepare_xyz_string(self, atoms, coords, angstrom=True):
         """Returns a xyz string in Angstrom.
 
         Parameters
@@ -404,7 +406,7 @@ class Calculator:
             Coordinates in .xyz format.
         """
 
-        return f"{len(atoms)}\n\n{self.prepare_coords(atoms, coords)}"
+        return f"{len(atoms)}\n\n{self.prepare_coords(atoms, coords, angstrom)}"
 
     def run(
         self,
