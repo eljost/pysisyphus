@@ -14,6 +14,7 @@ class CFOUR(Calculator):
             self,
             cfour_input,
             keep_molden=True,
+            initden_file=None,
             **kwargs,
     ):
         super().__init__(**kwargs)
@@ -26,6 +27,8 @@ class CFOUR(Calculator):
         self.initden = None
         if keep_molden:
             self.to_keep = self.to_keep + ("MOLDEN*",)
+        if initden_file:
+            self.initden = initden_file
 
         self.base_cmd = self.get_cmd("cmd")
         self.parser_funcs = {
