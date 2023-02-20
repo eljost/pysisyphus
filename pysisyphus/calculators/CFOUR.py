@@ -115,6 +115,9 @@ class CFOUR(Calculator):
         return results
 
     def rotate_gradient(self, text, gradient):
+        ## Following http://nghiaho.com/?page_id=671
+        ## Permalink: https://web.archive.org/web/20230128004529/http://nghiaho.com/?page_id=671
+
         cfour_coords_3d = self.read_geom(text)
         pysis_coords_3d = np.reshape(self.input_coords, (-1,3))
 
@@ -168,3 +171,6 @@ class CFOUR(Calculator):
         inp = self.prepare_input(atoms, coords, calc_type)
         results = self.run(inp, calc=calc_type)
         return results
+
+    def __str__(self):
+        return f"CFOUR({self.name})"
