@@ -85,6 +85,8 @@ class Wavefunction:
     def check_sanity(self):
         assert self.shells is not None
         S = self.S  # Overlap matrix
+        diag_S = np.diag(S)
+        np.testing.assert_allclose(diag_S, np.ones_like(diag_S), atol=1e-12)
         Pa_mo, Pb_mo = [
             C.T @ S @ P @ S @ C for C, P in zip(self.C, self.P)
         ]  # Density matrices in MO basis
@@ -144,7 +146,7 @@ class Wavefunction:
             # ("[N_Atoms]", Wavefunction.from_molden),  # seems buggy right now
         )
         try:
-            from_func = from_funcs[path.suffix]
+            from_func = from_funcs[path.suffix.lower()]
         except KeyError:
             # Search for certain strings in the file
             with open(fn) as handle:
