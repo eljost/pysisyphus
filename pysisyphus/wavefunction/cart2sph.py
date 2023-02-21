@@ -8,7 +8,7 @@ import argparse
 from cmath import sqrt
 from math import floor
 import sys
-from typing import Dict
+from typing import Dict, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -134,6 +134,14 @@ def cart2sph_coeffs(
             mask = np.abs(c) <= zero_thresh
             c[mask] = 0.0
     return coeffs
+
+
+def cart2sph_nlms(l_max: int) -> Dict[int, Tuple[Tuple[int, int, int]]]:
+    nlms = dict()
+    for l in range(l_max + 1):
+        n = l
+        nlms[l] = tuple([(n, l, m) for m in range(-l, l+1)])
+    return nlms
 
 
 def print_coeffs(l: int, C: NDArray):
