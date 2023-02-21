@@ -29,7 +29,7 @@ from pysisyphus.wavefunction.helpers import (
 )
 
 from pysisyphus.wavefunction.ints import (
-    boys,
+    # boys,
     cart_gto3d,
     coulomb3d,
     diag_quadrupole3d,
@@ -37,6 +37,7 @@ from pysisyphus.wavefunction.ints import (
     kinetic3d,
     ovlp3d,
     quadrupole3d,
+    self_ovlp3d,
     _2center2el3d,
     _3center2el3d_sph,
 )
@@ -44,16 +45,18 @@ from pysisyphus.wavefunction.ints import (
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 
 
+'''
 def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
-    """Norm of primitive GTOs, as well as contracted GTOs.
-    Based on a function, originally published by Joshua Goings here:
+    """Coefficients for normalized primitive GTOS and their original norms.
+
+    See also:
         https://joshuagoings.com/2017/04/28/integrals/
     and the Valeev paper:
         https://arxiv.org/pdf/2007.12057.pdf .
     """
 
-    coeffs = np.atleast_2d(coeffs)
-    L = sum(lmn)  # Angular momentum of the shell.
+    # Angular momentum of the shell.
+    L = sum(lmn)
     fact2l, fact2m, fact2n = [factorial2(2 * _ - 1) for _ in lmn]
 
     """
@@ -74,22 +77,42 @@ def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
         (4*α)**L
         / ((2*l - 1)!! * (2*m - 1)!! * (2*n - 1)!!)
     )**(1/2) * (α/π)**(3/4) * 2**(3/4)
-
     equal to the product (1 / I_x * I_y * I_z)**(1/2) in
     Eq. (2.9) in the Valeev paper.
     """
-    pgto_norm = np.sqrt(
+    pgto_norms = np.sqrt(
         2 ** (2 * L + 1.5) * exps ** (L + 1.5) / fact2l / fact2m / fact2n / np.pi**1.5
     )
+    return pgto_norms
 
-    # Norms of contracted gaussians.
-    #
-    # 'prefactor' is the first term in Eq. (2.25) in the Valeev paper.
-    prefactor = np.pi**1.5 * fact2l * fact2m * fact2n / 2.0**L
-    cgto_norm = (coeffs.T * coeffs / (exps[:, None] + exps[None, :]) ** (L + 1.5)).sum()
-    cgto_norm *= prefactor
-    cgto_norm = 1 / np.sqrt(cgto_norm)
-    return cgto_norm, pgto_norm
+
+def norm_pysis(L, exps, coeffs):
+    pgto_norms = [normalize(lmn, coeffs, exps) for lmn in canonical_order(L)]
+    coeffs *= pgto_norms[0]
+
+
+def norm_libint(L, exps, coeffs):
+    assert len(exps) == len(coeffs)
+    df = factorial2(2 * L - 1)
+    pi3_2 = np.pi**1.5
+    for i, exp_ in enumerate(exps):
+        two_exp = 2 * exp_
+        two_exp_to_am32 = two_exp**(L+1) * np.sqrt(exp_)
+        N = np.sqrt(
+            2**L * two_exp_to_am32 / (pi3_2 * df)
+        )
+        coeffs[i] *= N
+
+    N = 0.0
+    for i, exp_i in enumerate(exps):
+        for j, exp_j in enumerate(exps):
+            gamma = exp_i + exp_j
+            N += df * pi3_2 * coeffs[i] * coeffs[j] / (
+                    2**L * gamma*(L+1) * np.sqrt(gamma)
+                    )
+    N = 1 / np.sqrt(N)
+    coeffs *= N
+'''
 
 
 class Shell:
@@ -106,12 +129,14 @@ class Shell:
     ):
         self.L = get_l(L)
         self.center = np.array(center, dtype=float)  # (x, y, z), 1d array
-        # Store original copy of contraction coefficients
-        self.coeffs_org = np.array(coeffs, dtype=float)
-        # Contraction coefficients, 2d array, shape (bfs in shell, number of primitives)
-        self.coeffs = np.atleast_2d(self.coeffs_org.copy())
-        self.exps = np.array(exps, dtype=float)  # Orbital exponents, 1d array
-        assert self.coeffs.shape[1] == self.exps.size
+        coeffs = np.array(coeffs)
+        # Store original contraction coefficients
+        self.coeffs_org = coeffs.copy()
+        # Orbital exponents, 1d array
+        self.exps = np.array(exps, dtype=float)
+        assert self.coeffs_org.size == self.exps.size
+        coeffs = np.array(coeffs)
+        assert coeffs.size == self.exps.size
         self.center_ind = int(center_ind)
         if atomic_num is None:
             atomic_num = -1
@@ -121,25 +146,25 @@ class Shell:
         if index is not None:
             self.index = index
 
-        # Compute norms and multiply them onto the contraction coefficients
-        cgto_norms, pgto_norm = self.get_norms()
-        self.coeffs = self.coeffs * pgto_norm
-
-    def get_norms(self, coeffs=None):
-        """Shape (nbfs, nprimitives).
-
-        For s- and p-orbitals all rows will be the same, but they will start
-        to differ from d-orbitals on."""
-        if coeffs is None:
-            coeffs = self.coeffs
-        lmns = canonical_order(self.L)
-        cgto_norm, pgto_norm = zip(*[normalize(lmn, coeffs, self.exps) for lmn in lmns])
-        pgto_norm = np.array(pgto_norm)
-        cgto_norm = np.array(cgto_norm)
-        return cgto_norm, pgto_norm
+        # TODO: fix sympleints to NOT return 2d array
+        self_overlaps = self_ovlp3d.self_ovlp3d[(self.L, self.L)](
+            self.exps[:, None],
+            coeffs[:, None],
+            self.center,
+            self.exps[None, :],
+            coeffs[None, :],
+            self.center,
+        )[0]
+        np.testing.assert_allclose(
+            self_overlaps - self_overlaps[0], np.zeros_like(self_overlaps), atol=1e-14
+        )
+        # Only use first self-overlap for normalization. In the line before we checked
+        # that all self overlaps are the same.
+        N = 1 / np.sqrt(self_overlaps[0])
+        self.coeffs = N * coeffs
 
     def as_tuple(self):
-        return self.L, self.center, self.coeffs_org, self.exps, self.index, self.size
+        return self.L, self.center, self.coeffs, self.exps, self.index, self.size
 
     def exps_coeffs_iter(self):
         return zip(self.exps, self.coeffs)
@@ -162,6 +187,11 @@ class Shell:
         """Number of cartesian basis functions in the shell."""
         L = self.L
         return (L + 1) * (L + 2) // 2
+
+    @property
+    def sph_size(self):
+        """Number of cartesian basis functions in the shell."""
+        return 2 * self.L + 1
 
     @property
     def index(self) -> int:
@@ -199,8 +229,8 @@ class Shells:
     def __init__(
         self,
         shells: List[Shell],
-        screen: bool = True,
-        cache: bool = True,
+        screen: bool = False,
+        cache: bool = False,
         cache_path: str = "./cache",
         ordering: Ordering = "native",
     ):
@@ -258,14 +288,19 @@ class Shells:
 
     @property
     def cart_size(self):
-        """Number of cartesian basis functions in the shell."""
+        """Number of cartesian basis functions."""
         return sum([shell.cart_size for shell in self.shells])
+
+    @property
+    def sph_size(self):
+        """Number of spherical basis."""
+        return sum([shell.sph_size for shell in self.shells])
 
     def as_arrays(self, fortran=False):
         """Similar to the approach in libcint."""
         # bas_centers
         # One entry per shell, integer array.
-        #   center_ind, pointer to center coordinates in bas_data (3 floats)
+        #   center_ind, atomic number, pointer to center coordinates in bas_data (3 integers)
         bas_centers = list()
         # bas_spec
         # One entry per shell, integer array.
@@ -310,6 +345,29 @@ class Shells:
         bas_spec = np.array(bas_spec, dtype=int)
         bas_data = np.array(bas_data, dtype=float)
         return bas_centers, bas_spec, bas_data
+
+    def as_sympleints_arrays(self):
+        shells = self.shells
+        # center_ind, atomic_num, L, nprims
+        centers = np.zeros((len(shells), 3))
+        shell_data = list()
+        coefficients = list()
+        exponents = list()
+        for i, shell in enumerate(shells):
+            coeffs = shell.coeffs_org
+            coefficients.extend(coeffs.tolist())
+            exponents.extend(shell.exps.tolist())
+            nprims = len(coeffs)
+
+            centers[i] = shell.center
+            atomic_num = shell.atomic_num
+            if atomic_num is None:
+                atomic_num = -1
+            shell_data.append((shell.center_ind, atomic_num, shell.L, nprims))
+        shell_data = np.array(shell_data, dtype=np.int32)
+        coefficients = np.array(coefficients)
+        exponents = np.array(exponents)
+        return shell_data, centers, coefficients, exponents
 
     @property
     def l_max(self):
@@ -464,7 +522,13 @@ class Shells:
     @property
     def P_cart(self):
         """Permutation matrix for Cartesian basis functions."""
-        return sp.linalg.block_diag(*[self.cart_Ps[shell.L] for shell in self.shells])
+        try:
+            P_cart = sp.linalg.block_diag(
+                *[self.cart_Ps[shell.L] for shell in self.shells]
+            )
+        except AttributeError:
+            P_cart = np.eye(self.cart_size)
+        return P_cart
 
     def eval(self, xyz, spherical=True):
         """Evaluate all basis functions at points xyz using generated code.
@@ -748,13 +812,13 @@ class Shells:
             charges = nuc_charges_for_atoms(atoms)
 
         # def boys_1c1el(n_max, ax, A, bx, B, C):
-            # ax = ax[:, None]
-            # bx = bx[None, :]
-            # p = ax + bx
-            # P = -(ax * A + bx * B) / p
-            # R_PC2 = ((P - C)**2).sum()
-            # pR_PC2 = p * R_PC2
-            # return np.array([boys.boys(n, pR_PC2) for n in range(n_max+1)])
+        # ax = ax[:, None]
+        # bx = bx[None, :]
+        # p = ax + bx
+        # P = -(ax * A + bx * B) / p
+        # R_PC2 = ((P - C)**2).sum()
+        # pR_PC2 = p * R_PC2
+        # return np.array([boys.boys(n, pR_PC2) for n in range(n_max+1)])
 
         cart_bf_num = self.cart_bf_num
         V_nuc = np.zeros((cart_bf_num, cart_bf_num))
