@@ -123,6 +123,8 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         geom = (geom,)
     if iterable and (ext in (".trj", ".fchk", "")) and index is None:
         geom = tuple(geom)
+    elif not iterable and ext == "" and len(geom) == 1:
+        geom = geom[0]
     elif iterable:
         geom = (geom,)
 
