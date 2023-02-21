@@ -60,8 +60,6 @@ def mulliken_charges(
     atom_populations_a = mulliken_atom_pops(P[0], S)
     atom_populations_b = mulliken_atom_pops(P[1], S)
 
-    # import pdb; pdb.set_trace()  # fmt: skip
-    charges = nuc_charges - atom_populations_a - atom_populations_b
     pop_ana = PopAnalysis(
         pop_a=atom_populations_a,
         pop_b=atom_populations_b,
