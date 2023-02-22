@@ -1,0 +1,187 @@
+{
+    "molssi_bse_schema": {
+        "schema_type": "complete",
+        "schema_version": "0.1"
+    },
+    "revision_description": "Data from ccRepo/Grant Hill",
+    "revision_date": "2018-10-03",
+    "elements": {
+        "1": {
+            "electron_shells": [
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        0
+                    ],
+                    "exponents": [
+                        "1.301000E+01",
+                        "1.962000E+00",
+                        "4.446000E-01",
+                        "1.220000E-01"
+                    ],
+                    "coefficients": [
+                        [
+                            "1.968500E-02",
+                            "1.379770E-01",
+                            "4.781480E-01",
+                            "5.012400E-01"
+                        ],
+                        [
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "1.000000E+00"
+                        ]
+                    ]
+                },
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        1
+                    ],
+                    "exponents": [
+                        "7.270000E-01"
+                    ],
+                    "coefficients": [
+                        [
+                            "1.0000000"
+                        ]
+                    ]
+                }
+            ],
+            "references": [
+                {
+                    "reference_description": "The cc-pVDZ basis set",
+                    "reference_keys": [
+                        "dunning1989a"
+                    ]
+                }
+            ]
+        },
+        "6": {
+            "electron_shells": [
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        0
+                    ],
+                    "exponents": [
+                        "6.665000E+03",
+                        "1.000000E+03",
+                        "2.280000E+02",
+                        "6.471000E+01",
+                        "2.106000E+01",
+                        "7.495000E+00",
+                        "2.797000E+00",
+                        "5.215000E-01",
+                        "1.596000E-01"
+                    ],
+                    "coefficients": [
+                        [
+                            "6.920000E-04",
+                            "5.329000E-03",
+                            "2.707700E-02",
+                            "1.017180E-01",
+                            "2.747400E-01",
+                            "4.485640E-01",
+                            "2.850740E-01",
+                            "1.520400E-02",
+                            "-3.191000E-03"
+                        ],
+                        [
+                            "-1.460000E-04",
+                            "-1.154000E-03",
+                            "-5.725000E-03",
+                            "-2.331200E-02",
+                            "-6.395500E-02",
+                            "-1.499810E-01",
+                            "-1.272620E-01",
+                            "5.445290E-01",
+                            "5.804960E-01"
+                        ],
+                        [
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "1.000000E+00"
+                        ]
+                    ]
+                },
+                {
+                    "function_type": "gto",
+                    "region": "",
+                    "angular_momentum": [
+                        1
+                    ],
+                    "exponents": [
+                        "9.439000E+00",
+                        "2.002000E+00",
+                        "5.456000E-01",
+                        "1.517000E-01"
+                    ],
+                    "coefficients": [
+                        [
+                            "3.810900E-02",
+                            "2.094800E-01",
+                            "5.085570E-01",
+                            "4.688420E-01"
+                        ],
+                        [
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "0.000000E+00",
+                            "1.000000E+00"
+                        ]
+                    ]
+                },
+                {
+                    "function_type": "gto_spherical",
+                    "region": "",
+                    "angular_momentum": [
+                        2
+                    ],
+                    "exponents": [
+                        "5.500000E-01"
+                    ],
+                    "coefficients": [
+                        [
+                            "1.0000000"
+                        ]
+                    ]
+                }
+            ],
+            "references": [
+                {
+                    "reference_description": "The cc-pVDZ basis set",
+                    "reference_keys": [
+                        "dunning1989a"
+                    ]
+                }
+            ]
+        }
+    },
+    "version": "1",
+    "function_types": [
+        "gto",
+        "gto_spherical"
+    ],
+    "names": [
+        "cc-pVDZ"
+    ],
+    "tags": [],
+    "family": "dunning",
+    "description": "cc-pVDZ",
+    "role": "orbital",
+    "auxiliaries": {
+        "rifit": "cc-pvdz-rifit"
+    },
+    "name": "cc-pVDZ"
+}

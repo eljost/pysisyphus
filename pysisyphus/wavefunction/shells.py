@@ -58,7 +58,7 @@ class Shell:
     ):
         self.L = get_l(L)
         self.center = np.array(center, dtype=float)  # (x, y, z), 1d array
-        coeffs = np.array(coeffs)
+        coeffs = np.array(coeffs, dtype=float)
         # Store original contraction coefficients
         self.coeffs_org = coeffs.copy()
         # Orbital exponents, 1d array

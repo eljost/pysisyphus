@@ -194,4 +194,5 @@ version.py
 !tests/test_wavefunction/pyrrole/*
 !tests/test_psf/step1_pdbreader.psf
 !tests/test_overlap_calculator/benzene/*
+!tests/test_wavefunction/bases/*
 !pysisyphus/wf_library/*
