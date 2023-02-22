@@ -2,7 +2,7 @@ import itertools as it
 from math import sqrt, log, pi
 from pathlib import Path
 import textwrap
-from typing import List, Literal, Tuple
+from typing import List, Literal
 
 
 from jinja2 import Template
@@ -10,7 +10,6 @@ from joblib import Memory
 import numpy as np
 from numpy.typing import NDArray
 import scipy as sp
-from scipy.special import factorial2
 
 
 from pysisyphus.config import L_MAX, L_AUX_MAX
@@ -43,76 +42,6 @@ from pysisyphus.wavefunction.ints import (
 )
 
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
-
-
-'''
-def normalize(lmn: Tuple[int, int, int], coeffs: NDArray, exps: NDArray):
-    """Coefficients for normalized primitive GTOS and their original norms.
-
-    See also:
-        https://joshuagoings.com/2017/04/28/integrals/
-    and the Valeev paper:
-        https://arxiv.org/pdf/2007.12057.pdf .
-    """
-
-    # Angular momentum of the shell.
-    L = sum(lmn)
-    fact2l, fact2m, fact2n = [factorial2(2 * _ - 1) for _ in lmn]
-
-    """
-    Norms of primitve Gaussians with L = l + m + n and exponent α.
-    (
-        2**(2*L + 1.5) * α**(L + 1.5) π**(-3/2)
-        / ((2*l - 1)!! * (2*m - 1)!! * (2*n - 1)!!)
-    )**(1/2)
-    = (
-        2**(2*L) α**L
-        / ((2*l - 1)!! * (2*m - 1)!! * (2*n - 1)!!)
-    )**(1/2) * (α/π)**(3/4) * 2**(3/4)
-    = (
-        (2**2)*L * α**L
-        / ((2*l - 1)!! * (2*m - 1)!! * (2*n - 1)!!)
-    )**(1/2) * (α/π)**(3/4) * 2**(3/4)
-    = (
-        (4*α)**L
-        / ((2*l - 1)!! * (2*m - 1)!! * (2*n - 1)!!)
-    )**(1/2) * (α/π)**(3/4) * 2**(3/4)
-    equal to the product (1 / I_x * I_y * I_z)**(1/2) in
-    Eq. (2.9) in the Valeev paper.
-    """
-    pgto_norms = np.sqrt(
-        2 ** (2 * L + 1.5) * exps ** (L + 1.5) / fact2l / fact2m / fact2n / np.pi**1.5
-    )
-    return pgto_norms
-
-
-def norm_pysis(L, exps, coeffs):
-    pgto_norms = [normalize(lmn, coeffs, exps) for lmn in canonical_order(L)]
-    coeffs *= pgto_norms[0]
-
-
-def norm_libint(L, exps, coeffs):
-    assert len(exps) == len(coeffs)
-    df = factorial2(2 * L - 1)
-    pi3_2 = np.pi**1.5
-    for i, exp_ in enumerate(exps):
-        two_exp = 2 * exp_
-        two_exp_to_am32 = two_exp**(L+1) * np.sqrt(exp_)
-        N = np.sqrt(
-            2**L * two_exp_to_am32 / (pi3_2 * df)
-        )
-        coeffs[i] *= N
-
-    N = 0.0
-    for i, exp_i in enumerate(exps):
-        for j, exp_j in enumerate(exps):
-            gamma = exp_i + exp_j
-            N += df * pi3_2 * coeffs[i] * coeffs[j] / (
-                    2**L * gamma*(L+1) * np.sqrt(gamma)
-                    )
-    N = 1 / np.sqrt(N)
-    coeffs *= N
-'''
 
 
 class Shell:
@@ -155,11 +84,11 @@ class Shell:
             coeffs[None, :],
             self.center,
         )[0]
+        # Check, that all self overlaps in a shell are of the same value.
         np.testing.assert_allclose(
-            self_overlaps - self_overlaps[0], np.zeros_like(self_overlaps), atol=1e-14
+            self_overlaps - self_overlaps[0], np.zeros_like(self_overlaps), atol=1e-12
         )
-        # Only use first self-overlap for normalization. In the line before we checked
-        # that all self overlaps are the same.
+        # Only use first self-overlap for normalization, as all values are equal.
         N = 1 / np.sqrt(self_overlaps[0])
         self.coeffs = N * coeffs
 
@@ -224,7 +153,7 @@ Ordering = Literal["native", "pysis"]
 
 
 class Shells:
-    sph_Ps = {l: np.eye(2 * l + 1) for l in range(L_MAX + 1)}
+    sph_Ps = {l: np.eye(2 * l + 1) for l in range(max(L_MAX, L_AUX_MAX) + 1)}
 
     def __init__(
         self,
@@ -256,6 +185,7 @@ class Shells:
             index += shell.size
             shell_index += 1
 
+        # Try to construct Cartesian permutation matrix from cart_order, if defnied.
         try:
             self.cart_Ps = permut_for_order(self.cart_order)
         except AttributeError:
