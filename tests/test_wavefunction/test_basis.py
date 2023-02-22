@@ -1,4 +1,11 @@
-from pysisyphus.wavefunction.Basis import basis_from_orca_str, basis_from_pyscf_str
+import pytest
+
+from pysisyphus.helpers import geom_loader
+from pysisyphus.wavefunction.Basis import (
+    basis_from_orca_str,
+    basis_from_pyscf_str,
+    shells_with_basis,
+)
 
 
 def test_orca_bas():
@@ -41,3 +48,17 @@ def test_pyscf_bas():
     bas = basis_from_pyscf_str(basis_str)
     shells = bas[2]["electron_shells"]
     assert len(shells) == 2
+
+
+@pytest.mark.parametrize(
+    "fn, ref_len",
+    (
+        ("631G_CH.json", 13),  # SP-shells
+        ("ccpvdz_CH.json", 18),  # General contraction
+    ),
+)
+def test_json_basis(fn, ref_len, this_dir):
+    geom = geom_loader("lib:methane.xyz")
+    name = this_dir / "bases" / fn
+    shells = shells_with_basis(geom, name=name)
+    assert len(shells) == ref_len

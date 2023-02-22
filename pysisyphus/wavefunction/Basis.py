@@ -1,4 +1,5 @@
 import functools
+import itertools as it
 import json
 from pathlib import Path
 from typing import Tuple
@@ -134,10 +135,24 @@ def shells_with_basis(
         basis_shells = basis[Zs]["electron_shells"]
         for bshell in basis_shells:
             L = bshell["angular_momentum"]
-            assert len(L) == 1  # Disallow SP shells for now.
-            L = L[0]
+            # Two special cases can appear:
+            # SP shells where L has two instead of only one entry
+            # General contractions where L has length one, but multiple sets of coefficients
+            # are given.
+            #
+            # With SP shells, there will be as many L values (2), as there are sets
+            # of contraction coefficients (2). With general contractions, there will be
+            # only one L value, but multiple sets of contraction coefficients.
+            #
+            # Segemented contractions will always have one L value and one set of contraction
+            # coefficients. Long story short: We can treat everything on an equal footing if
+            # we just repeat the L value as many times as required, when only one L value is
+            # present.
+            if len(L) == 1:
+                L = it.cycle(L)
             exponents = bshell["exponents"]
-            for coeffs in bshell["coefficients"]:
+            # Unpack possible general contractions or SP shells
+            for L, coeffs in zip(L, bshell["coefficients"]):
                 shell = Shell(
                     L=L,
                     center=c3d,
@@ -163,4 +178,5 @@ class Basis:
 
     NOT YET USED
     """
+
     pass
