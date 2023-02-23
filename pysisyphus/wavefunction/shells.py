@@ -24,6 +24,7 @@ from pysisyphus.wavefunction.helpers import (
     canonical_order,
     get_l,
     get_shell_shape,
+    L_MAP_INV,
     permut_for_order,
 )
 
@@ -92,6 +93,12 @@ class Shell:
         N = 1 / np.sqrt(self_overlaps[0])
         self.coeffs = N * coeffs
 
+        try:
+            self.atom = INV_ATOMIC_NUMBERS[self.atomic_num]
+        except KeyError:
+            self.atom = "X"
+        self.atom = self.atom.lower()
+
     def as_tuple(self):
         return self.L, self.center, self.coeffs, self.exps, self.index, self.size
 
@@ -137,6 +144,17 @@ class Shell:
     @shell_index.setter
     def shell_index(self, shell_index: int):
         self._shell_index = shell_index
+
+    def to_pyscf_shell(self):
+        key = L_MAP_INV[self.L]
+        lines = [
+            f"{self.atom.title()}    {key.upper()}",
+        ]
+        lines += [
+            f"{exp_:> 18.10f}    {coeff:>18.10f}"
+            for exp_, coeff in zip(self.exps, self.coeffs)
+        ]
+        return "\n".join(lines)
 
     def __str__(self):
         try:
@@ -385,6 +403,39 @@ class Shells:
             shells.append(shell)
         return PySCFShells(shells)
 
+    def to_pyscf_mol(self):
+        # TODO: this would be better suited as a method of Wavefunction,
+        # as pyscf Moles must have sensible spin & charge etc.
+        # TODO: currently, this does not support different basis sets
+        # for the same element.
+        try:
+            from pyscf import gto
+        except ModuleNotFoundError:
+            return None
+
+        unique_atoms = set()
+        basis = dict()
+        atoms_coords = list()
+        for _, center_shells in self.center_shell_iter():
+            center_shells = list(center_shells)
+            shell0 = center_shells[0]
+            atom = shell0.atom
+            x, y, z = shell0.center
+            atoms_coords.append(f"{atom} {x} {y} {z}")
+            if atom not in unique_atoms:
+                unique_atoms.add(atom)
+            else:
+                continue
+            atom_shells = "\n".join([shell.to_pyscf_shell() for shell in center_shells])
+            basis[atom] = gto.basis.parse(atom_shells)
+
+        mol = gto.Mole()
+        mol.atom = "; ".join(atoms_coords)
+        mol.unit = "Bohr"
+        mol.basis = basis
+        mol.build()
+        return mol
+
     def center_shell_iter(self):
         sorted_shells = sorted(self.shells, key=lambda shell: shell.center_ind)
         return it.groupby(sorted_shells, key=lambda shell: shell.center_ind)
@@ -618,7 +669,6 @@ class Shells:
             for shell_b in shells_a[i:]:
                 Lb, B, db, bx, b_ind, b_size = shell_b.as_tuple()
                 b_slice = slice(b_ind, b_ind + b_size)
-                c_ind = 0
                 for shell_c in shells_aux:
                     Lc, C, dc, cx, c_ind, c_size = shell_c.as_tuple()
                     c_slice = slice(c_ind, c_ind + c_size)
@@ -633,9 +683,9 @@ class Shells:
                         dc[None, None, :],
                         C,
                     )
-            integrals[b_slice, a_slice, c_slice] = np.transpose(
-                integrals[a_slice, b_slice, c_slice], axes=(1, 0, 2)
-            )
+                    integrals[b_slice, a_slice, c_slice] = np.transpose(
+                        integrals[a_slice, b_slice, c_slice], axes=(1, 0, 2)
+                    )
         return integrals
 
     def get_3c2el_ints_sph(self, shells_aux):
