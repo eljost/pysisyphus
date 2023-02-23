@@ -73,7 +73,7 @@ def test_quadrupole_ints():
 def mol_auxmol():
 
     mol = gto.Mole()
-    mol.atom = "He 0 0 0"
+    mol.atom = "He 0 0 0; He 0 0 1.0;"
     basis = {
         "He": gto.basis.parse(
             """
