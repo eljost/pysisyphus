@@ -1,3 +1,8 @@
+# [1] https://aip.scitation.org/doi/pdf/10.1063/5.0004046
+#     Efficient implementation of the superposition of atomic potentials initial
+#     guess for electronic structure calculations in Gaussian basis sets
+#     Lehtola, Visscher, Engel,  2020
+
 import itertools as it
 from math import sqrt, log, pi
 from pathlib import Path
@@ -155,6 +160,27 @@ class Shell:
             for exp_, coeff in zip(self.exps, self.coeffs)
         ]
         return "\n".join(lines)
+
+    def to_sap_shell(self):
+        """Fix contraction coefficients, for use in SAP-initial guess calculation.
+
+        See [1]."""
+        # SAP shells must always be s-shells
+        assert self.L == 0
+        self.coeffs = self.coeffs_org
+        coeffs_sum = self.coeffs.sum()
+        # Check sum rule; sum should equal -Z.
+        assert (coeffs_sum + ATOMIC_NUMBERS[self.atom.lower()]) <= 1e-5
+        # Fix normalization. The primitive Gaussians are normalized inside
+        # the integral functions, so we pre-divide the contraction coefficients
+        # by the normalization factor.
+        N = (2 * self.exps / np.pi)**0.75
+        self.coeffs /= N
+        # The potential fits were carried out for functions of the form:
+        #   g_p(r) = (α_p / π)**1.5 * exp(-α_p / r) .
+        # So we multiply the prefactor onto the contraction coefficients.
+        # See [1], p. 152, just above Eq. (2).
+        self.coeffs *= (self.exps / np.pi)**1.5
 
     def __str__(self):
         try:
@@ -880,6 +906,10 @@ class Shells:
             screen_func=Shells.screen_S,
         )
         return multi_component_sym_mat(ints_flat, 3)
+
+    def to_sap_shells(self):
+        for shell in self.shells:
+            shell.to_sap_shell()
 
     def __str__(self):
         return f"{self.__class__.__name__}({len(self.shells)} shells, ordering={self.ordering})"
