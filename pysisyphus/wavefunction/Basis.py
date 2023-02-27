@@ -9,6 +9,7 @@ import numpy as np
 from pysisyphus.config import BASIS_LIB_DIR
 from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction import Shell, Shells
 from pysisyphus.wavefunction.helpers import L_MAP
 
@@ -114,6 +115,50 @@ def basis_from_pyscf_str(basis_str):
             if coefficient <= 1e-8:
                 continue
             shell["coefficients"].append(coefficient)
+            shell["exponents"].append(exponent)
+    return basis
+
+
+@file_or_str(".gbs", ".GBS")
+def basis_from_gbs(text):
+    """
+    ****
+    Be 0
+    S 6 1.00
+    1.101996057600000e-02 -3.733117104118833e-01
+    3.570467226624002e-02 -9.552914830540544e-01
+    1.156831381426176e-01  9.464046666860781e-02
+    3.748133675820811e-01 -1.194926861090494e+00
+    1.214395310965943e+00  2.762798723086632e-01
+    3.934640807529656e+00 -1.847390284420840e+00
+    """
+    basis = dict()
+    for line in text.strip().split("\n"):
+        line = line.strip().lower()
+        # Skip empty lines
+        if (line == "") or ("*" in line):
+            continue
+        tokens = line.split()
+        # New center identifier line
+        if (tokens[0].isalpha()) and (len(tokens) == 2):
+            atom, zero = tokens
+            atomic_num = str(ATOMIC_NUMBERS[atom.lower()])
+            assert int(zero) == 0, "Only one basis per atom type is supported!"
+            basis.setdefault(atomic_num, dict())
+        # New shell
+        elif tokens[0].isalpha() and (len(tokens) == 3):
+            ang_mom, nprims, scale_fact = tokens
+            ang_mom = L_MAP[ang_mom.lower()]
+            nprims = int(nprims)
+            shell = {
+                "angular_momentum": [ang_mom, ],
+                "coefficients": [[]],
+                "exponents": list(),
+            }
+            basis[atomic_num].setdefault("electron_shells", list()).append(shell)
+        else:
+            exponent, coefficient = [float(t) for t in tokens]
+            shell["coefficients"][0].append(coefficient)
             shell["exponents"].append(exponent)
     return basis
 
