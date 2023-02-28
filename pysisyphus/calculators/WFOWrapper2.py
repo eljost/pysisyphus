@@ -223,7 +223,7 @@ class WFOWrapper2:
 
         result = parser.parseString(text)
 
-        return np.array(list(result["overlap"]), dtype=np.float)
+        return np.array(list(result["overlap"]), dtype=np.float64)
 
     def wf_overlap(self, ind1=-2, ind2=-1, ao_ovlp=None):
         iter1 = self.get_iteration(ind1)

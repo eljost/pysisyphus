@@ -210,7 +210,7 @@ class WFOWrapper:
 
         result = parser.parseString(text)
 
-        return np.array(list(result["overlap"]), dtype=np.float)
+        return np.array(list(result["overlap"]), dtype=np.float64)
 
     def get_from_to_sets(self, ci_coeffs):
         all_mo_inds = [self.ci_coeffs_above_thresh(per_state)

@@ -389,7 +389,7 @@ class Gaussian16(OverlapCalculator):
         matches = re.findall(td_re, text)
         assert len(matches) == self.nstates
         # Excitation energies in eV
-        exc_energies = np.array(matches, dtype=np.float)
+        exc_energies = np.array(matches, dtype=np.float64)
         # Convert to Hartree
         exc_energies /= AU2EV
         return exc_energies
