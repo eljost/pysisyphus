@@ -192,13 +192,17 @@ def cubic_displ(H, v0, w0, Gv, dE):
 
 def cubic_displ_for_h5(h5_fn="third_deriv.h5", dE=-5e-4):
     with h5py.File(h5_fn, "r") as handle:
-        H_mw = handle["H_mw"][:]
+        coords3d = handle["coords3d"][:]
+        if coords3d.size > 3:
+            H = handle["H_proj"][:]
+        else:
+            H = handle["H_mw"][:]
         Gv = handle["G_vec"][:]
 
-    w, v = np.linalg.eigh(H_mw)
+    w, v = np.linalg.eigh(H)
     w0 = w[0]
     v0 = v[:, 0]
-    return cubic_displ(H_mw, v0, w0, Gv, dE)
+    return cubic_displ(H, v0, w0, Gv, dE)
 
 
 def cubic_displ_for_geom(geom, dE=-5e-4):
