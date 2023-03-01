@@ -385,7 +385,13 @@ class IRC:
             else:
                 Gv, third_deriv_res = third_deriv_fd(self.geometry, mw_trans_vec)
                 h5_fn = self.get_path_for_fn("third_deriv.h5")
-                save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
+                save_third_deriv(
+                    h5_fn,
+                    self.geometry,
+                    third_deriv_res,
+                    H_mw=mw_hessian,
+                    H_proj=proj_hessian,
+                )
                 mw_step_plus, mw_step_minus = cubic_displ(
                     proj_hessian,
                     eigvecs[:, self.root],
@@ -393,8 +399,8 @@ class IRC:
                     Gv,
                     -self.displ_energy,
                 )
-                mw_step_plus = P.T.dot(mw_step_plus)
-                mw_step_minus = P.T.dot(mw_step_minus)
+            mw_step_plus = P.T.dot(mw_step_plus)
+            mw_step_minus = P.T.dot(mw_step_minus)
             msg = (
                 f"Energy-based (ΔE={self.displ_energy} au) initial displacement from "
                 "the TS using 3rd derivatives."
