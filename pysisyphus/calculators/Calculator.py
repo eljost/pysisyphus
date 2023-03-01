@@ -11,14 +11,16 @@ from typing import Callable, Optional
 
 from natsort import natsorted
 
-from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
-from pysisyphus.constants import BOHR2ANG
 from pysisyphus import logger
 from pysisyphus import helpers_pure
+from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import geom_loader
+from pysisyphus.linalg import finite_difference_hessian
 
 
 KeepKind = Enum("KeepKind", ["ALL", "LATEST", "NONE"])
+HessKind = Enum("HessKind", ["ORG", "NUMERICAL"])
 
 
 @dataclass
@@ -53,6 +55,8 @@ class Calculator:
         last_calc_cycle=None,
         clean_after=True,
         out_dir=OUT_DIR_DEFAULT,
+        force_num_hess=False,
+        num_hess_kwargs=None,
     ):
         """Base-class of all calculators.
 
@@ -87,6 +91,10 @@ class Calculator:
             after a calculation.
         out_dir : str
             Path that is prepended to generated filenames.
+        force_hess_kwargs : bool, default False
+            Force numerical Hessians.
+        num_hess_kwargs : dict
+            Keyword arguments for finite difference Hessian calculation.
         """
 
         self.logger = logging.getLogger("calculator")
@@ -109,6 +117,9 @@ class Calculator:
         except TypeError:
             self.out_dir = Path(OUT_DIR_DEFAULT).resolve()
         self.out_dir.mkdir(parents=True, exist_ok=True)
+        if num_hess_kwargs is None:
+            num_hess_kwargs = dict()
+        self.num_hess_kwargs = num_hess_kwargs
 
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.
@@ -132,6 +143,12 @@ class Calculator:
         self.backup_dir = None
         self.kept_history = dict()
         self.build_set_plans()
+
+        # Backup original get_hessian method
+        self._org_get_hessian = self.get_hessian
+        self.hessian_kind = HessKind["ORG"]
+        if force_num_hess:
+            self.force_num_hessian()
 
     def get_cmd(self, key="cmd"):
         assert self.conf_key, "'conf_key'-attribute is missing for this calculator!"
@@ -165,17 +182,61 @@ class Calculator:
 
         self.logger.debug(f"{self.name}, cycle {self.calc_counter:03d}: {message}")
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         """Meant to be extended."""
         raise Exception("Not implemented!")
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         """Meant to be extended."""
         raise Exception("Not implemented!")
 
-    def get_hessian(self, atoms, coords):
-        """Meant to be extended."""
-        raise Exception("Not implemented!")
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
+        """Get Hessian matrix. Fall back to numerical Hessian, if not overriden.
+
+        Preferrably, this method should provide an analytical Hessian."""
+        self.log(f"Calculator {self} has no native Hessian method.")
+        return self.get_num_hessian(atoms, coords, **prepare_kwargs)
+
+    def get_num_hessian(self, atoms, coords, **prepare_kwargs):
+        self.log("Calculating numerical Hessian.")
+        results = self.get_energy(atoms, coords, **prepare_kwargs)
+
+        def grad_func(coords):
+            results = self.get_forces(atoms, coords, **prepare_kwargs)
+            gradient = -results["forces"]
+            return gradient
+
+        def callback(i, j):
+            self.log(f"Displacement {j} of coordinate  {i}")
+
+        _num_hess_kwargs = {
+            "step_size": 0.005,
+            # Central difference by default
+            "acc": 2,
+        }
+        _num_hess_kwargs.update(self.num_hess_kwargs)
+
+        fd_hessian = finite_difference_hessian(
+            coords,
+            grad_func,
+            callback=callback,
+            **_num_hess_kwargs,
+        )
+        results["hessian"] = fd_hessian
+        return results
+
+    def force_num_hessian(self):
+        """Always calculate numerical Hessians."""
+        self.log("Doing numerical Hessians from now on.")
+        self.get_hessian = self.get_num_hessian
+        self.hessian_kind = HessKind["NUMERICAL"]
+
+    def restore_org_hessian(self):
+        """Restore original 'get_hessian' method, which may also fallback to numerical
+        Hessians, if not implemented."""
+        self.log("Restored original 'get_hessian' method.")
+        self.get_hessian = self._org_get_hessian
+        self.hessian_kind = HessKind["ORG"]
 
     def make_fn(self, name, counter=None, return_str=False):
         """Make a full filename.
