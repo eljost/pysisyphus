@@ -383,7 +383,9 @@ class IRC:
                     self.displ_third_h5, -self.displ_energy
                 )
             else:
+                self.log("Calculating 3rd derivatives via finite differences.")
                 Gv, third_deriv_res = third_deriv_fd(self.geometry, mw_trans_vec)
+                self.log("Finished calculation of 3rd derivatives.")
                 h5_fn = self.get_path_for_fn("third_deriv.h5")
                 save_third_deriv(
                     h5_fn,
@@ -655,7 +657,7 @@ class IRC:
             self.geometry,
             self.hessian_init,
             cart_gradient=self.ts_gradient,
-            h5_fn=self.get_path_for_fn(f"hess_init_irc.h5"),
+            h5_fn=self.get_path_for_fn("hess_init_irc.h5"),
         )
         self.log(f"Initial hessian: {hess_str}")
 
