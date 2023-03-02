@@ -22,6 +22,7 @@ _reason = "Calculator {} is not available."
 _using_cache = dict()
 # Python modules to be imported using importlib.import_module
 IMPORT_DICT = {
+    "dftd4": "dftd4",
     "pyscf": "pyscf",
     "dalton": "daltonproject",
     "qcengine": "qcengine",
