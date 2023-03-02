@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import warnings
 
+from jinja2 import Template
 import numpy as np
 import pyparsing as pp
 
@@ -17,11 +18,52 @@ from pysisyphus.calculators.parser import (
     # parse_turbo_exstates,
     parse_turbo_exstates_re as parse_turbo_exstates,
 )
-from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.helpers_pure import file_or_str, get_random_path
+
+
+SIMPLE_INPUT_TPL = Template(
+    """
+$atoms
+  basis={{ basis }}
+$coord file=coord
+$grad    file=gradient
+$symmetry c1
+$eht charge={{ charge }} unpaired={{ unpaired }}
+{% for dg in data_groups %}
+${{ dg }}
+    {% for key, value in data_groups[dg].items() %}
+    {{ key }}{% if value %} {{ value }}{% endif %}
+
+    {% endfor %}
+
+{% endfor %}
+$end
+""",
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+
+
+def control_from_simple_input(simple_inp, charge, mult):
+    """Create control file from 'simple input'.
+
+    See examples/opt/26_turbomole_simple_input/ for an example."""
+    unpaired = mult - 1
+    data_groups = simple_inp.copy()
+    basis = data_groups.pop("basis")
+    for dg, kws in data_groups.items():
+        if kws is None:
+            data_groups[dg] = dict()
+    rendered = SIMPLE_INPUT_TPL.render(
+        basis=basis,
+        charge=charge,
+        unpaired=unpaired,
+        data_groups=data_groups,
+    )
+    return rendered
 
 
 class Turbomole(OverlapCalculator):
-
     conf_key = "turbomole"
     _set_plans = (
         "out",
@@ -36,10 +78,38 @@ class Turbomole(OverlapCalculator):
         "mwfn_wf",
     )
 
-    def __init__(self, control_path, root=None, double_mol_path=None, **kwargs):
+    def __init__(
+        self,
+        control_path=None,
+        simple_input=None,
+        root=None,
+        double_mol_path=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
-        self.control_path = Path(control_path)
+        assert (control_path is not None) or (
+            simple_input is not None
+        ), "Please either provide a prepared 'control_path' or 'simple_input'!"
+
+        if simple_input:
+            control_path = Path(
+                "/home/johannes/Code/pysisyphus/tests/test_turbomole/sic"
+            )
+            self.control_path = (self.out_dir / get_random_path("control_path")).absolute()
+            self.log("Set 'control_path' to '{self.control_path}'. Creating 'control' from simple input in it.")
+            try:
+                self.control_path.mkdir()
+            except FileExistsError:
+                # Clean directory if already exists
+                for fn in self.control_path.iterdir():
+                    fn.unlink()
+            control_str = control_from_simple_input(
+                simple_input, charge=self.charge, mult=self.mult
+            )
+            with open(self.control_path / "control", "w") as handle:
+                handle.write(control_str)
+
         self.root = root
         self.double_mol_path = double_mol_path
         if self.double_mol_path:
@@ -100,9 +170,17 @@ class Turbomole(OverlapCalculator):
             second_cmd = "rdgrad"
             self.log("Found RI calculation.")
 
-        self.uhf = "$uhf" in text
+        self.uhf = ("$uhf" in text) or (self.mult > 1)
 
-        self.set_occ_and_mo_nums(text)
+        # It seems as they changed whats written in the control file in version 7.7
+        try:
+            self.set_occ_and_mo_nums(text)
+        except TypeError:
+            print(
+                "Parsing of occupied and virtual MO numbers failed! Disabling "
+                "excited state tracking!"
+            )
+            self.track = False
 
         assert not (("$exopt" in text) and ("$ricc2" in text)), (
             "Found $exopt and $ricc2 in the control file! $exopt is used "
@@ -514,7 +592,7 @@ class Turbomole(OverlapCalculator):
             _, exc_energies = exc_energies[0]
 
         else:
-            exc_energies = np.array()
+            exc_energies = np.array(list())
 
         if exc_energies.size == 0:
             all_energies = np.array((gs_energy,))

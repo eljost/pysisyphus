@@ -7,7 +7,7 @@ from pysisyphus.benchmarks import Benchmark
 from pysisyphus.calculators import Turbomole
 from pysisyphus.cos.GrowingString import GrowingString
 from pysisyphus.helpers import geom_loader
-from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.helpers_pure import eigval_to_wavenumber, kill_dir
 from pysisyphus.optimizers.StringOptimizer import StringOptimizer
 from pysisyphus.testing import using
 
@@ -48,7 +48,7 @@ def test_turbomole_big_hessian_parsing(this_dir):
     results = calc.parse_hessian(path=control_path)
 
     hessian = results["hessian"]
-    assert hessian.size == 180 ** 2
+    assert hessian.size == 180**2
 
 
 @using("turbomole")
@@ -143,3 +143,25 @@ def test_turbomole_cos(this_dir):
     ens = [image.energy for image in cos.images]
     assert max(ens) == pytest.approx(-178.8393291373)
     assert opt.cur_cycle == 9
+
+
+@using("turbomole")
+def test_simple_input():
+    geom = geom_loader("lib:h2o.xyz")
+
+    simple_input = {
+        "basis": "def2-mTZVPP",
+        "dft": {
+            "functional": "r2scan-3c",
+            "radsize": 8,
+            "weight derivatives": None,
+            "grid": "m4",
+            },
+        "disp4": None,
+        "rij": None,
+    }
+    calc = Turbomole(simple_input=simple_input)
+    geom.set_calculator(calc)
+    assert geom.energy == pytest.approx(-76.418221)
+    # Remove control_path
+    kill_dir(calc.control_path)
