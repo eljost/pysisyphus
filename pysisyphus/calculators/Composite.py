@@ -5,11 +5,13 @@ import sympy as sym
 
 from pysisyphus.calculators.Calculator import Calculator
 
-from pysisyphus.calculators import ORCA
+from pysisyphus.calculators import ORCA, Turbomole, DFTD4
 
 
 CALC_CLASSES = {
+    "dftd4": DFTD4.DFTD4,
     "orca": ORCA.ORCA,
+    "turbomole": Turbomole.Turbomole,
 }
 try:
     from pysisyphus.calculators import PySCF
@@ -17,6 +19,8 @@ try:
     CALC_CLASSES["pyscf"] = PySCF.PySCF
 except (ModuleNotFoundError, OSError):
     pass
+
+# from pysisyphus.calculators import DFTD4
 
 
 class Composite(Calculator):
