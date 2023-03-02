@@ -8,6 +8,7 @@ import math
 from pathlib import Path
 from typing import List, Tuple
 import re
+import uuid
 import time
 from typing import Optional
 
@@ -613,3 +614,22 @@ def estimate(gen, elems):
         est_dur_min = est_dur / 60
         print(f"{ran_ratio: >8.2%} finished ... {est_dur_min: >8.2f} min left")
         yield elem
+
+
+def get_random_path(stem=""):
+    if stem != "":
+        stem += "_"
+    while (path := Path(f"{stem}{uuid.uuid1()}")).exists():
+        pass
+    return path
+
+
+def kill_dir(path):
+    """Innocent function remove a directory.
+
+    It must contain only files and no other directories.
+    So this won't do too much damage hopefully.
+    """
+    for fn in Path(path).iterdir():
+        fn.unlink()
+    path.rmdir()
