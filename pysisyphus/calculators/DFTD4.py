@@ -64,22 +64,21 @@ class DFTD4(Calculator):
         )
         return model
 
-    def get_energy(self, atoms, coords, **prepare_kwargs):
+    def get_dispersion(self, atoms, coords, grad):
         model = self.get_model(atoms, coords)
-        res = model.get_dispersion(self.damp_param, grad=False)
+        res = model.get_dispersion(self.damp_param, grad=grad)
         results = {
-            "energy": res.get("energy"),
+            "energy": float(res.get("energy")),
         }
+        if grad:
+            results["forces"] = -res.get("gradient").flatten()
         return results
 
+    def get_energy(self, atoms, coords, **prepare_kwargs):
+        return self.get_dispersion(atoms, coords, grad=False)
+
     def get_forces(self, atoms, coords, **prepare_kwargs):
-        model = self.get_model(atoms, coords)
-        res = model.get_dispersion(self.damp_param, grad=True)
-        results = {
-            "energy": res.get("energy"),
-            "forces": -res.get("gradient"),
-        }
-        return results
+        return self.get_dispersion(atoms, coords, grad=True)
 
     # This calculator relies on a finite differences numerical Hessian, as provided
     # by the Calculator parent class.
