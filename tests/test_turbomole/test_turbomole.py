@@ -156,7 +156,7 @@ def test_simple_input():
             "radsize": 8,
             "weight derivatives": None,
             "grid": "m4",
-            },
+        },
         "disp4": None,
         "rij": None,
     }
@@ -165,3 +165,20 @@ def test_simple_input():
     assert geom.energy == pytest.approx(-76.418221)
     # Remove control_path
     kill_dir(calc.control_path)
+
+
+@using("turbomole")
+@pytest.mark.parametrize("mem", (100, 300, 1000))
+def test_mem(mem):
+    geom = geom_loader("lib:h2o.xyz")
+
+    simple_input = {
+        "basis": "def2-SV(P)",
+    }
+    calc = Turbomole(simple_input=simple_input, mem=mem)
+    calc.prepare_input(geom.atoms, geom.coords, "energy")
+    with open(calc.path_already_prepared / "control") as handle:
+        text = handle.read()
+    assert f"$maxcor {mem} MiB per_core" in text
+    kill_dir(calc.control_path)
+    kill_dir(calc.path_already_prepared)

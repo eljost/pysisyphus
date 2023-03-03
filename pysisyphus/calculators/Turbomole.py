@@ -49,11 +49,25 @@ def control_from_simple_input(simple_inp, charge, mult):
 
     See examples/opt/26_turbomole_simple_input/ for an example."""
     unpaired = mult - 1
-    data_groups = simple_inp.copy()
-    basis = data_groups.pop("basis")
-    for dg, kws in data_groups.items():
+    simple_inp = simple_inp.copy()
+    basis = simple_inp.pop("basis")
+    data_groups = dict()
+    # Add memory statement, if not already present
+    if "maxcor" not in simple_inp.keys():
+        simple_inp["maxcor"] = "500 MiB per_core"
+    for dg, kws in simple_inp.items():
+        # datagroup w/o keywords
         if kws is None:
             data_groups[dg] = dict()
+        # datagroup w/ one keyword on same line. Here we just merge the name and the keyword,
+        # so they appear on the same line.
+        elif type(kws) == str:
+            data_groups[f"{dg} {kws}"] = dict()
+        # Otherwise a dict is expected
+        elif type(kws) == dict:
+            data_groups[dg] = kws
+        else:
+            raise Exception("Can't handle this type of simple input!")
     rendered = SIMPLE_INPUT_TPL.render(
         basis=basis,
         charge=charge,
@@ -92,23 +106,32 @@ class Turbomole(OverlapCalculator):
             simple_input is not None
         ), "Please either provide a prepared 'control_path' or 'simple_input'!"
 
+        # Handle simple input
         if simple_input:
             control_path = Path(
                 "/home/johannes/Code/pysisyphus/tests/test_turbomole/sic"
             )
-            self.control_path = (self.out_dir / get_random_path("control_path")).absolute()
-            self.log("Set 'control_path' to '{self.control_path}'. Creating 'control' from simple input in it.")
+            control_path = (
+                self.out_dir / get_random_path("control_path")
+            ).absolute()
+            self.log(
+                "Set 'control_path' to '{control_path}'. Creating 'control' from simple input in it."
+            )
             try:
-                self.control_path.mkdir()
+                control_path.mkdir()
             except FileExistsError:
                 # Clean directory if already exists
-                for fn in self.control_path.iterdir():
+                for fn in control_path.iterdir():
                     fn.unlink()
             control_str = control_from_simple_input(
                 simple_input, charge=self.charge, mult=self.mult
             )
-            with open(self.control_path / "control", "w") as handle:
+            with open(control_path / "control", "w") as handle:
                 handle.write(control_str)
+        # End of simple input handling
+
+        # Set provided control_path or use the one generated for simple_input
+        self.control_path = control_path
 
         self.root = root
         self.double_mol_path = double_mol_path
@@ -364,6 +387,9 @@ class Turbomole(OverlapCalculator):
             td_vec_fn = self.td_vec_fn.suffix[1:]
             shutil.copy(self.td_vec_fn, path / td_vec_fn)
             self.log(f"Using '{self.td_vec_fn}' as escf guess.")
+
+        # Set memory
+        self.sub_control(r"\$maxcor.+", f"$maxcor {self.mem} MiB per_core")
 
         root_log_msg = f"with current root information: {self.root}"
         if self.root and self.td:
