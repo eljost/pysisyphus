@@ -131,7 +131,7 @@ class Turbomole(OverlapCalculator):
         # End of simple input handling
 
         # Set provided control_path or use the one generated for simple_input
-        self.control_path = control_path
+        self.control_path = Path(control_path).absolute()
 
         self.root = root
         self.double_mol_path = double_mol_path
@@ -512,20 +512,8 @@ class Turbomole(OverlapCalculator):
         )
         return results
 
-    def run_calculation(self, atoms, coords):
-        """Basically some kind of dummy method that can be called
-        to execute Turbomole with the stored cmd of this calculator."""
-        self.prepare_input(atoms, coords, "noparse")
-        kwargs = {
-            "calc": "noparse",
-            "shell": True,
-            # "hold": self.track, # Keep the files for WFOverlap
-            "env": self.get_pal_env(),
-        }
-        results = self.run(None, **kwargs)
-        if self.track:
-            self.store_overlap_data(atoms, coords)
-        return results
+    def run_calculation(self, atoms, coords, **prepare_kwargs):
+        return self.get_energy(atoms, coords, **prepare_kwargs)
 
     def run_double_mol_calculation(self, atoms, coords1, coords2):
         if not self.double_mol_path:

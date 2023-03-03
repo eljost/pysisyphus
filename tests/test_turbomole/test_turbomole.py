@@ -155,7 +155,7 @@ def test_simple_input():
             "functional": "r2scan-3c",
             "radsize": 8,
             "weight derivatives": None,
-            "grid": "m4",
+            "gridsize": "m4",
         },
         "disp4": None,
         "rij": None,
