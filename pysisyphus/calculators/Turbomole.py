@@ -10,6 +10,7 @@ from jinja2 import Template
 import numpy as np
 import pyparsing as pp
 
+from pysisyphus.calculators.cosmo_data import COSMO_RADII
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.calculators.parser import (
     parse_turbo_gradient,
@@ -21,6 +22,82 @@ from pysisyphus.calculators.parser import (
 from pysisyphus.helpers_pure import file_or_str, get_random_path
 
 
+def index_strs_for_atoms(atoms):
+    indices = dict()
+    for i, atom in enumerate(atoms, 1):
+        indices.setdefault(atom.lower(), list()).append(i)
+
+    pairs = dict()
+    for key, values in indices.items():
+        pairs[key] = list()
+        i_end = len(values) - 1
+        start = None
+        for i, v in enumerate(values):
+            if start is None:
+                start = v
+            if (i == i_end) or (v + 1 != values[i + 1]):
+                end = None if (start == v) else v
+                pairs[key].append((start, end))
+                start = None
+
+    atom_strs = dict()
+    for key, prs in pairs.items():
+        tmp = list()
+        for start, end in prs:
+            if end is None:
+                itm = str(start)
+            else:
+                itm = f"{start}-{end}"
+            tmp.append(itm)
+        atom_str = f"{key}  " + ",".join(tmp)
+        atom_strs[key] = atom_str
+
+    return atom_strs
+
+
+def get_cosmo_data_groups(atoms, epsilon, rsolv=None, dcosmo_rs=None):
+    cosmo_dgs = {
+        "cosmo": {
+            "epsilon": epsilon,
+        },
+        "cosmo_out": "file=out.ccf",
+        "cosmo_data": "file=cosmo_transfer.tmp",
+    }
+    if rsolv is not None:
+        cosmo_dgs["cosmo"]["rsolv"] = rsolv
+    # Transform atom list into TURBOMOLE-style compressed indices
+    #   H, H, H, O, O, H, O
+    # is transformed to
+    #   h 1-3, 6
+    #   o 4-5, 7
+    # etc.
+    index_strs = index_strs_for_atoms(atoms)
+    cosmo_atom_strs = list()
+    cosmo_atoms = dict()
+    # This does not yet work; so we stick with the default radii.
+    # for key, index_str in index_strs.items():
+        # radius = COSMO_RADII[key].radius
+        # cosmo_atoms[index_str] = f"\nradius={radius:.6f}"
+    # cosmo_dgs["cosmo_atoms"] = cosmo_atoms
+
+    if dcosmo_rs:
+        cosmo_dgs["dcosmo_rs"] = f"file={dcosmo_rs}"
+    return cosmo_dgs
+
+
+DATA_GROUP_TPL = Template(
+    """
+{% for dg in data_groups %}
+${{ dg }}
+    {% for key, value in data_groups[dg].items() %}
+    {{ key }}{% if value %} ={{ value }}{% endif %}
+
+    {% endfor %}
+{% endfor %}
+        """,
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
 SIMPLE_INPUT_TPL = Template(
     """
 $atoms
@@ -29,33 +106,15 @@ $coord file=coord
 $grad    file=gradient
 $symmetry c1
 $eht charge={{ charge }} unpaired={{ unpaired }}
-{% for dg in data_groups %}
-${{ dg }}
-    {% for key, value in data_groups[dg].items() %}
-    {{ key }}{% if value %} {{ value }}{% endif %}
-
-    {% endfor %}
-
-{% endfor %}
+{{ data_groups }}
 $end
-""",
-    trim_blocks=True,
-    lstrip_blocks=True,
+"""
 )
 
 
-def control_from_simple_input(simple_inp, charge, mult):
-    """Create control file from 'simple input'.
-
-    See examples/opt/26_turbomole_simple_input/ for an example."""
-    unpaired = mult - 1
-    simple_inp = simple_inp.copy()
-    basis = simple_inp.pop("basis")
+def render_data_groups(raw_data_groups):
     data_groups = dict()
-    # Add memory statement, if not already present
-    if "maxcor" not in simple_inp.keys():
-        simple_inp["maxcor"] = "500 MiB per_core"
-    for dg, kws in simple_inp.items():
+    for dg, kws in raw_data_groups.items():
         # datagroup w/o keywords
         if kws is None:
             data_groups[dg] = dict()
@@ -67,7 +126,23 @@ def control_from_simple_input(simple_inp, charge, mult):
         elif type(kws) == dict:
             data_groups[dg] = kws
         else:
-            raise Exception("Can't handle this type of simple input!")
+            raise Exception("Can't handle input '{dg}': '{kws}'!")
+    return DATA_GROUP_TPL.render(data_groups=data_groups)
+
+
+def control_from_simple_input(simple_inp, charge, mult, cosmo_kwargs=None):
+    """Create control file from 'simple input'.
+
+    See examples/opt/26_turbomole_simple_input/ for an example."""
+    unpaired = mult - 1
+    simple_inp = simple_inp.copy()
+    basis = simple_inp.pop("basis")
+    # Add memory statement, if not already present
+    if "maxcor" not in simple_inp.keys():
+        simple_inp["maxcor"] = "500 MiB per_core"
+
+    data_groups = render_data_groups(simple_inp)
+
     rendered = SIMPLE_INPUT_TPL.render(
         basis=basis,
         charge=charge,
@@ -98,6 +173,7 @@ class Turbomole(OverlapCalculator):
         simple_input=None,
         root=None,
         double_mol_path=None,
+        cosmo_kwargs=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -111,9 +187,7 @@ class Turbomole(OverlapCalculator):
             control_path = Path(
                 "/home/johannes/Code/pysisyphus/tests/test_turbomole/sic"
             )
-            control_path = (
-                self.out_dir / get_random_path("control_path")
-            ).absolute()
+            control_path = (self.out_dir / get_random_path("control_path")).absolute()
             self.log(
                 "Set 'control_path' to '{control_path}'. Creating 'control' from simple input in it."
             )
@@ -137,7 +211,6 @@ class Turbomole(OverlapCalculator):
         self.double_mol_path = double_mol_path
         if self.double_mol_path:
             self.double_mol_path = Path(self.double_mol_path)
-
         # Check if the overlap matrix will be printed and assert
         # that no SCF iterations are done.
         if self.double_mol_path:
@@ -146,6 +219,11 @@ class Turbomole(OverlapCalculator):
             assert re.search(r"\$intsdebug\s*sao", text) and re.search(
                 r"\$scfiterlimit\s*0", text
             ), ("Please set " "$intsdebug sao and $scfiterlimit 0 !")
+        self.cosmo_kwargs = cosmo_kwargs
+        if self.cosmo_kwargs:
+            assert (
+                "epsilon" in self.cosmo_kwargs
+            ), "If 'cosmo_kwargs' is given 'epsilon' must be specified!"
 
         self.to_keep = (
             "control",
@@ -390,6 +468,13 @@ class Turbomole(OverlapCalculator):
 
         # Set memory
         self.sub_control(r"\$maxcor.+", f"$maxcor {self.mem} MiB per_core")
+
+        if self.cosmo_kwargs is not None:
+            cosmo_data_groups = get_cosmo_data_groups(**self.cosmo_kwargs, atoms=atoms)
+            cosmo_rendered = render_data_groups(cosmo_data_groups)
+            self.sub_control(
+                r"\$end", cosmo_rendered + "\n$end"
+            )
 
         root_log_msg = f"with current root information: {self.root}"
         if self.root and self.td:
