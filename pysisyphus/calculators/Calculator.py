@@ -679,7 +679,10 @@ class Calculator:
         for cycle in delete_calc_counter:
             self.log(f"Deleting kept files from cycle {cycle}.")
             for k, f in self.kept_history[cycle].items():
-                os.remove(f)
+                if type(f) is list:
+                    [os.remove(f_) for f_ in f]
+                else:
+                    os.remove(f)
             del self.kept_history[cycle]
 
     def keep(self, path):
@@ -708,6 +711,8 @@ class Calculator:
                     f"files instead ({', '.join([g.name for g in globbed])})!"
                 )
             else:
+                # I wonder if this has to be a list? Probably to support 'multi', when the pattern
+                # contains a '*' character.
                 kept_fns[key] = list()
             for tmp_fn in globbed:
                 base = tmp_fn.name
