@@ -339,7 +339,7 @@ class Geometry:
             raise DifferentCoordLengthsException
 
     def __eq__(self, other):
-        return (self.atoms == other.atoms) and all(self.coords == other.coords)
+        return (self.atoms == other.atoms) and np.allclose(self.coords, other.coords, atol=1e-8)
 
     def __sub__(self, other):
         self.assert_compatibility(other)
