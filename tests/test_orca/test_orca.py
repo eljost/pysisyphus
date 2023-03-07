@@ -225,3 +225,12 @@ def test_orca_es_densities(dens_fn, json_fn, ref_dpm):
     cisp = dens_dict["cisp"]
     dpm = wf.get_dipole_moment(cisp)
     np.testing.assert_allclose(dpm, ref_dpm, atol=2e-4)
+
+
+@using("orca")
+def test_orca_hf():
+    geom = geom_loader("lib:h2o.xyz")
+    calc = ORCA("hf sto-3g", json_dump=True)
+    geom.set_calculator(calc)
+    energy = geom.energy
+    assert energy == pytest.approx(-74.960702484)
