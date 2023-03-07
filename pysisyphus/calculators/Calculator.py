@@ -51,7 +51,7 @@ class Calculator:
         mem=1000,
         keep_kind="all",
         check_mem=True,
-        retry_calc=1,
+        retry_calc=0,
         last_calc_cycle=None,
         clean_after=True,
         out_dir=OUT_DIR_DEFAULT,
