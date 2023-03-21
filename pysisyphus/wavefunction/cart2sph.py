@@ -5,6 +5,7 @@
 #     Schlegel, Frisch, 1995
 
 import argparse
+import functools
 from cmath import sqrt
 from math import floor
 import sys
@@ -41,6 +42,7 @@ def norm(lx: int, ly: int, lz: int) -> float:
     return sph_norm(lx + ly + lz) / cart_norm(lx, ly, lz)
 
 
+@functools.cache
 def cart2sph_coeff(lx: int, ly: int, lz: int, m: int, normalized=True) -> complex:
     """Coefficient to convert Cartesian to spherical harmonics.
 
@@ -105,6 +107,7 @@ def cart2sph_coeff(lx: int, ly: int, lz: int, m: int, normalized=True) -> comple
     return coeff
 
 
+@functools.cache
 def cart2sph_coeffs_for(l: int, real: bool = True, **kwargs) -> NDArray:
     all_coeffs = list()
     for lx, ly, lz in canonical_order(l):
@@ -125,6 +128,18 @@ def cart2sph_coeffs_for(l: int, real: bool = True, **kwargs) -> NDArray:
     return C.T  # Return w/ shape (sph., cart.)
 
 
+@functools.cache
+def expand_sph_quantum_numbers(Lm, thresh=1e-14):
+    L, m = Lm
+    m += L  # Map m from [-L, L] onto [0, 2*L]
+    cart_lmn = canonical_order(L)
+    C = cart2sph_coeffs_for(L)  # shape (spherical, Cartesian)
+    indices, *_ = np.where(np.abs(C[m]) > thresh)
+    factors = C[m, indices]
+    cart_lmn = [lmn for i, lmn in enumerate(canonical_order(L)) if i in indices]
+    return factors, cart_lmn
+
+
 def cart2sph_coeffs(
     l_max: int, zero_small=False, zero_thresh=1e-14, **kwargs
 ) -> Dict[int, NDArray]:
@@ -140,7 +155,7 @@ def cart2sph_nlms(l_max: int) -> Dict[int, Tuple[Tuple[int, int, int]]]:
     nlms = dict()
     for l in range(l_max + 1):
         n = l
-        nlms[l] = tuple([(n, l, m) for m in range(-l, l+1)])
+        nlms[l] = tuple([(n, l, m) for m in range(-l, l + 1)])
     return nlms
 
 
