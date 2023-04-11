@@ -174,13 +174,13 @@ class Shell:
         # Fix normalization. The primitive Gaussians are normalized inside
         # the integral functions, so we pre-divide the contraction coefficients
         # by the normalization factor.
-        N = (2 * self.exps / np.pi)**0.75
+        N = (2 * self.exps / np.pi) ** 0.75
         self.coeffs /= N
         # The potential fits were carried out for functions of the form:
         #   g_p(r) = (α_p / π)**1.5 * exp(-α_p / r) .
         # So we multiply the prefactor onto the contraction coefficients.
         # See [1], p. 152, just above Eq. (2).
-        self.coeffs *= (self.exps / np.pi)**1.5
+        self.coeffs *= (self.exps / np.pi) ** 1.5
 
     def __str__(self):
         try:
@@ -830,7 +830,6 @@ class Shells:
         V_nuc = np.zeros((cart_bf_num, cart_bf_num))
         # Loop over all centers and add their contributions
         for C, Z in zip(coords3d, charges):
-
             # -Z = -1 * Z, because electrons have negative charge.
             V_nuc += -Z * self.get_1el_ints_cart(
                 coulomb3d.coulomb3d,
@@ -857,12 +856,12 @@ class Shells:
 
     def get_dipole_ints_cart(self, origin):
         return self.get_1el_ints_cart(
-            dipole3d.dipole3d, components=3, C=origin, screen_func=Shells.screen_S
+            dipole3d.dipole3d, components=3, R=origin, screen_func=Shells.screen_S
         )
 
     def get_dipole_ints_sph(self, origin) -> NDArray:
         return self.get_1el_ints_sph(
-            dipole3d.dipole3d, components=3, C=origin, screen_func=Shells.screen_S
+            dipole3d.dipole3d, components=3, R=origin, screen_func=Shells.screen_S
         )
 
     ##################################################
@@ -873,7 +872,7 @@ class Shells:
         return self.get_1el_ints_cart(
             diag_quadrupole3d.diag_quadrupole3d,
             components=3,
-            C=origin,
+            R=origin,
             screen_func=Shells.screen_S,
         )
 
@@ -881,7 +880,7 @@ class Shells:
         return self.get_1el_ints_sph(
             diag_quadrupole3d.diag_quadrupole3d,
             components=3,
-            C=origin,
+            R=origin,
             screen_func=Shells.screen_S,
         )
 
@@ -893,7 +892,7 @@ class Shells:
         ints_flat = self.get_1el_ints_cart(
             quadrupole3d.quadrupole3d,
             components=6,
-            C=origin,
+            R=origin,
             screen_func=Shells.screen_S,
         )
         return multi_component_sym_mat(ints_flat, 3)
@@ -902,7 +901,7 @@ class Shells:
         ints_flat = self.get_1el_ints_sph(
             quadrupole3d.quadrupole3d,
             components=6,
-            C=origin,
+            R=origin,
             screen_func=Shells.screen_S,
         )
         return multi_component_sym_mat(ints_flat, 3)
