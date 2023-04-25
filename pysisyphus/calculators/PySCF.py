@@ -10,7 +10,6 @@ from pysisyphus.helpers import geom_loader
 
 
 class PySCF(OverlapCalculator):
-
     conf_key = "pyscf"
     drivers = {
         # key: (method, unrestricted?)
@@ -97,6 +96,10 @@ class PySCF(OverlapCalculator):
         mf.grids.prune = self.pruning_method[self.pruning]
         mf.grids.build()
 
+    def prepare_mf(self, mf):
+        # Method can be overriden in a subclass to modify the mf object.
+        return mf
+
     def get_driver(self, step, mol=None, mf=None):
         def _get_driver():
             return self.drivers[(step, self.unrestricted)]
@@ -107,10 +110,12 @@ class PySCF(OverlapCalculator):
             mf.xc = self.xc
             self.set_scf_params(mf)
             self.build_grid(mf)
+            mf = self.prepare_mf(mf)
         elif mol and (step == "scf"):
             driver = _get_driver()
             mf = driver(mol)
             self.set_scf_params(mf)
+            mf = self.prepare_mf(mf)
         elif mf and (step == "mp2"):
             mp2_mf = _get_driver()
             mf = mp2_mf(mf)
@@ -124,7 +129,7 @@ class PySCF(OverlapCalculator):
             raise Exception("Unknown method '{step}'!")
         return mf
 
-    def prepare_input(self, atoms, coords):
+    def prepare_mol(self, atoms, coords, build=True):
         mol = gto.Mole()
         mol.atom = [(atom, c) for atom, c in zip(atoms, coords.reshape(-1, 3))]
         mol.basis = self.basis
@@ -143,8 +148,13 @@ class PySCF(OverlapCalculator):
         # Search for "Large deviations found" in scf/{uhf,dhf,ghf}.py
         mol.output = self.make_fn(self.out_fn)
         mol.max_memory = self.mem * self.pal
-        mol.build(parse_arg=False)
+        if build:
+            mol.build(parse_arg=False)
+        return mol
 
+    def prepare_input(self, atoms, coords, build=True):
+        mol = self.prepare_mol(atoms, coords, build=build)
+        assert mol._built, "Please call mol.build(parse_arg=False)!"
         return mol
 
     def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
