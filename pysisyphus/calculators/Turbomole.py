@@ -76,8 +76,8 @@ def get_cosmo_data_groups(atoms, epsilon, rsolv=None, dcosmo_rs=None):
     cosmo_atoms = dict()
     # This does not yet work; so we stick with the default radii.
     # for key, index_str in index_strs.items():
-        # radius = COSMO_RADII[key].radius
-        # cosmo_atoms[index_str] = f"\nradius={radius:.6f}"
+    # radius = COSMO_RADII[key].radius
+    # cosmo_atoms[index_str] = f"\nradius={radius:.6f}"
     # cosmo_dgs["cosmo_atoms"] = cosmo_atoms
 
     if dcosmo_rs:
@@ -126,7 +126,7 @@ def render_data_groups(raw_data_groups):
         elif type(kws) == dict:
             data_groups[dg] = kws
         else:
-            raise Exception("Can't handle input '{dg}': '{kws}'!")
+            raise Exception(f"Can't handle input '{dg}': '{kws}'!")
     return DATA_GROUP_TPL.render(data_groups=data_groups)
 
 
@@ -472,9 +472,7 @@ class Turbomole(OverlapCalculator):
         if self.cosmo_kwargs is not None:
             cosmo_data_groups = get_cosmo_data_groups(**self.cosmo_kwargs, atoms=atoms)
             cosmo_rendered = render_data_groups(cosmo_data_groups)
-            self.sub_control(
-                r"\$end", cosmo_rendered + "\n$end"
-            )
+            self.sub_control(r"\$end", cosmo_rendered + "\n$end")
 
         root_log_msg = f"with current root information: {self.root}"
         if self.root and self.td:
