@@ -4,7 +4,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 write_to = "pysisyphus/version.py"
-
-# pyright seems to choke on these big integral files
-[tool.pyright]
-exclude = ["pysisyphus/wavefunction/ints**"]

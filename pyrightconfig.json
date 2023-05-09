@@ -1,0 +1,11 @@
+{
+  "include": [
+    "pysisyphus"
+  ],
+  "exclude": [
+  "pysisyphus/wavefunction/ints",
+  "pysisyphus/intcoords/derivatives.py",
+  "pysisyphus/intcoords/mp_derivatives.py"
+  ],
+  "python.analysis.diagnosticMode": "onlyOpen"
+}
