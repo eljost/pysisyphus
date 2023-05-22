@@ -76,7 +76,7 @@ markupsafe==2.1.1
     # via jinja2
 matplotlib==3.5.1
     # via pysisyphus (setup.cfg)
-mpmath==1.2.1
+mpmath==1.3.0
     # via sympy
 msgpack==1.0.3
     # via distributed
