@@ -151,7 +151,9 @@ def basis_from_gbs(text):
             ang_mom = L_MAP[ang_mom.lower()]
             nprims = int(nprims)
             shell = {
-                "angular_momentum": [ang_mom, ],
+                "angular_momentum": [
+                    ang_mom,
+                ],
                 "coefficients": [[]],
                 "exponents": list(),
             }
@@ -165,7 +167,13 @@ def basis_from_gbs(text):
 
 @functools.singledispatch
 def shells_with_basis(
-    atoms: Tuple, coords, basis=None, name=None, shells_cls=None, **kwargs
+    atoms: Tuple,
+    coords,
+    basis=None,
+    name=None,
+    shells_cls=None,
+    min_coeff=1e-8,
+    **kwargs
 ):
     assert (basis is not None) or (name is not None)
     if shells_cls is None:
@@ -195,14 +203,18 @@ def shells_with_basis(
             # present.
             if len(L) == 1:
                 L = it.cycle(L)
-            exponents = bshell["exponents"]
+            exponents = np.array(bshell["exponents"], dtype=float)
             # Unpack possible general contractions or SP shells
             for L, coeffs in zip(L, bshell["coefficients"]):
+                # For now we filter out 0.0 contraction coefficients, as present in
+                # generally contracted basis sets.
+                coeffs = np.array(coeffs, dtype=float)
+                valid = np.abs(coeffs) >= min_coeff
                 shell = Shell(
                     L=L,
                     center=c3d,
-                    coeffs=coeffs,
-                    exps=exponents,
+                    coeffs=coeffs[valid],
+                    exps=exponents[valid],
                     atomic_num=Zs,
                     center_ind=i,
                 )
