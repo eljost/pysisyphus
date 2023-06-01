@@ -156,7 +156,6 @@ def get_trans_rot_projector(cart_coords, masses, full=False):
 
 
 class Geometry:
-
     coord_types = {
         "cart": None,
         "redund": RedundantCoords,
@@ -339,7 +338,9 @@ class Geometry:
             raise DifferentCoordLengthsException
 
     def __eq__(self, other):
-        return (self.atoms == other.atoms) and np.allclose(self.coords, other.coords, atol=1e-8)
+        return (self.atoms == other.atoms) and np.allclose(
+            self.coords, other.coords, atol=1e-8
+        )
 
     def __sub__(self, other):
         self.assert_compatibility(other)
