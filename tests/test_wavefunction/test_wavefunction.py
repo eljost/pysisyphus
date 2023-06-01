@@ -113,9 +113,9 @@ def test_orca_unrestricted(this_dir):
     assert occ_b == 9
     # ORCA uses center of mass by default, which differs a bit from the one
     # that pysisyphus calculates.
-    origin = (-0.864214, -1.994637,  1.223355)
+    origin = (-0.864214, -1.994637, 1.223355)
     dpm = wf.get_dipole_moment(origin=origin)
-    ref_dpm = (0.00047,       0.00016,      -0.00029)
+    ref_dpm = (0.00047, 0.00016, -0.00029)
     np.testing.assert_allclose(dpm, ref_dpm, atol=1e-5)
 
     ref_mulliken = (0.077267, 0.077267, -0.577267, -0.577267)
@@ -190,11 +190,13 @@ def test_one_el_terms():
 
 def test_eval_esp():
     wf = Wavefunction.from_file(WF_LIB_DIR / "orca_lih_ccpvdz.molden.input")
-    coords3d = np.array((
-        (0.0, 0.0, 1.0),
-        (0.0, 0.0, 2.0),
-        (1.0, 0.0, 3.0),
-    ))
+    coords3d = np.array(
+        (
+            (0.0, 0.0, 1.0),
+            (0.0, 0.0, 2.0),
+            (1.0, 0.0, 3.0),
+        )
+    )
     print()
     esp = wf.eval_esp(coords3d)
     # From orca_vpot
