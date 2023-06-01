@@ -425,7 +425,7 @@ def shake_coords(coords, scale=0.1, seed=None):
 
 
 def rms(arr):
-    return np.sqrt(np.mean(arr ** 2))
+    return np.sqrt(np.mean(arr**2))
 
 
 def norm_max_rms(arr):
@@ -578,7 +578,7 @@ def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
 
     imag_modes = list()
     for nu, eigvec in zip(nus[below_thresh], cart_displs[:, below_thresh].T):
-        comment = f"{nu:.2f} cm⁻¹"
+        comment = f"{nu:.2f} cm^-1"
         trj_str = get_tangent_trj_str(
             geom.atoms,
             geom.cart_coords,
