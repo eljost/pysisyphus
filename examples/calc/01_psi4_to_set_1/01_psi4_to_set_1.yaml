@@ -18,6 +18,10 @@ calc:
  to_set:
   reference: uhf
   roots_per_irrep: "[1, ]"
+ # All entries here will be printed in the Psi4 input as
+ # import [value]
+ # If the PYTHONPATH is set accordingly, the Psi4 plugin or python package will be imported
+ to_import: [numpy, sys]
  basis: DZ
  charge: 1
  mult: 2
