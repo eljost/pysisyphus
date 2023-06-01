@@ -15,6 +15,7 @@ from joblib import Memory
 import numpy as np
 from numpy.typing import NDArray
 import scipy as sp
+from scipy.special import factorial2
 
 
 from pysisyphus.config import L_MAX, L_AUX_MAX
@@ -34,7 +35,6 @@ from pysisyphus.wavefunction.helpers import (
 )
 
 from pysisyphus.wavefunction.ints import (
-    # boys,
     cart_gto3d,
     coulomb3d,
     diag_quadrupole3d,
@@ -42,12 +42,12 @@ from pysisyphus.wavefunction.ints import (
     kinetic3d,
     ovlp3d,
     quadrupole3d,
-    self_ovlp3d,
-    _2center2el3d,
-    _3center2el3d_sph,
+    int2c2e3d,
+    int3c2e3d_sph,
 )
 
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
+from pysisyphus.wavefunction.normalization import norm_cgto_lmn
 
 
 class Shell:
@@ -61,10 +61,15 @@ class Shell:
         atomic_num=None,
         shell_index=None,
         index=None,
+        # min_coeff: float = 1e-8,
     ):
         self.L = get_l(L)
         self.center = np.array(center, dtype=float)  # (x, y, z), 1d array
         coeffs = np.array(coeffs, dtype=float)
+        # cur_min_coeff = np.abs(coeffs).min()
+        # assert (
+        # cur_min_coeff >= min_coeff
+        # ), f"Got invalid contraction coeff of '{cur_min_coeff:.6f}'"
         # Store original contraction coefficients
         self.coeffs_org = coeffs.copy()
         # Orbital exponents, 1d array
@@ -81,22 +86,7 @@ class Shell:
         if index is not None:
             self.index = index
 
-        # TODO: fix sympleints to NOT return 2d array
-        self_overlaps = self_ovlp3d.self_ovlp3d[(self.L, self.L)](
-            self.exps[:, None],
-            coeffs[:, None],
-            self.center,
-            self.exps[None, :],
-            coeffs[None, :],
-            self.center,
-        )[0]
-        # Check, that all self overlaps in a shell are of the same value.
-        np.testing.assert_allclose(
-            self_overlaps - self_overlaps[0], np.zeros_like(self_overlaps), atol=1e-12
-        )
-        # Only use first self-overlap for normalization, as all values are equal.
-        N = 1 / np.sqrt(self_overlaps[0])
-        self.coeffs = N * coeffs
+        self.coeffs, _ = norm_cgto_lmn(coeffs, self.exps, self.L)
 
         try:
             self.atom = INV_ATOMIC_NUMBERS[self.atomic_num]
@@ -171,11 +161,6 @@ class Shell:
         coeffs_sum = self.coeffs.sum()
         # Check sum rule; sum should equal -Z.
         assert (coeffs_sum + ATOMIC_NUMBERS[self.atom.lower()]) <= 1e-5
-        # Fix normalization. The primitive Gaussians are normalized inside
-        # the integral functions, so we pre-divide the contraction coefficients
-        # by the normalization factor.
-        N = (2 * self.exps / np.pi) ** 0.75
-        self.coeffs /= N
         # The potential fits were carried out for functions of the form:
         #   g_p(r) = (α_p / π)**1.5 * exp(-α_p / r) .
         # So we multiply the prefactor onto the contraction coefficients.
@@ -553,15 +538,14 @@ class Shells:
         coords3d = self.coords3d
         grid_vals = np.zeros((npoints, ncbfs))
         for center_ind, shells in self.center_shell_iter():
-            center = coords3d[center_ind]
             # Create list from the shells iterator, otherwise it will be empty
             # after the first pass over all points.
             shells = list(shells)
-            for i, (X, Y, Z) in enumerate(xyz - center):
+            for i, R in enumerate(xyz):
                 for shell in shells:
                     La, A, da, ax, a_ind, a_size = shell.as_tuple()
                     grid_vals[i, a_ind : a_ind + a_size] = cart_gto3d.cart_gto3d[(La,)](
-                        ax, da, X, Y, Z
+                        ax, da, A, R
                     )
         return grid_vals @ precontr
 
@@ -662,10 +646,10 @@ class Shells:
         return int_matrix_sph
 
     def get_2c2el_ints_cart(self):
-        return self.get_1el_ints_cart(_2center2el3d._2center2el3d)
+        return self.get_1el_ints_cart(int2c2e3d.int2c2e3d)
 
     def get_2c2el_ints_sph(self):
-        return self.get_1el_ints_sph(_2center2el3d._2center2el3d)
+        return self.get_1el_ints_sph(int2c2e3d.int2c2e3d)
 
     def get_3c2el_ints_cart(self, shells_aux):
         """Cartesian 3-center-2-electron integrals.
@@ -686,7 +670,8 @@ class Shells:
         cart_bf_num_aux = shells_aux.cart_bf_num
 
         integrals = np.zeros((cart_bf_num_a, cart_bf_num_a, cart_bf_num_aux))
-        func_dict = _3center2el3d_sph._3center2el3d_sph
+        # func_dict = _3center2el3d_sph._3center2el3d_sph
+        func_dict = int3c2e3d_sph.int3c2e3d_sph
 
         for i, shell_a in enumerate(shells_a):
             La, A, da, ax, a_ind, a_size = shell_a.as_tuple()
@@ -829,11 +814,11 @@ class Shells:
         cart_bf_num = self.cart_bf_num
         V_nuc = np.zeros((cart_bf_num, cart_bf_num))
         # Loop over all centers and add their contributions
-        for C, Z in zip(coords3d, charges):
+        for R, Z in zip(coords3d, charges):
             # -Z = -1 * Z, because electrons have negative charge.
             V_nuc += -Z * self.get_1el_ints_cart(
                 coulomb3d.coulomb3d,
-                C=C,
+                R=R,
                 **kwargs,
             )
         return V_nuc
