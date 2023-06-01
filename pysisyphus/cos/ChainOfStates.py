@@ -32,7 +32,6 @@ class ChainOfStates:
         scheduler=None,
         progress=False,
     ):
-
         assert len(images) >= 2, "Need at least 2 images!"
         self.images = list(images)
         self.fix_first = fix_first
@@ -168,6 +167,7 @@ class ChainOfStates:
     def coords(self):
         """Return a flat 1d array containing the coordinates of all images."""
         all_coords = [image.coords for image in self.images]
+        # Note: why does this getter set self._coords? ... I wrote this line 6 years ago.
         self._coords = np.concatenate(all_coords)
         return self._coords
 
@@ -186,6 +186,10 @@ class ChainOfStates:
     def coords3d(self):
         assert self.images[0].coord_type == "cart"
         return self.coords.reshape(-1, 3)
+
+    @property
+    def image_coords(self):
+        return np.array([image.coords for image in self.images])
 
     def set_coords_at(self, i, coords):
         """Called from helpers.procrustes with cartesian coordinates.
