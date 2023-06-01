@@ -169,6 +169,7 @@ pysisyphus/wavefunction/devel_ints/*
 version.py
 
 !tests/test_barriers/*.h5
+!tests/test_duschinsky/coco4*.h5
 !tests/test_hessian_updates/*.h5
 !tests/test_pka/*.h5
 !tests/test_overlap_calculator/*.h5
