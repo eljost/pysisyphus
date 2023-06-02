@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
+from pysisyphus.calculators.NFK import NFK
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
@@ -26,9 +27,7 @@ def get_geoms():
     return geoms
 
 
-def run_cos_opt(geoms, between, calc_cls,
-                cos_cls, cos_kwargs,
-                opt_cls, opt_kwargs):
+def run_cos_opt(geoms, between, calc_cls, cos_cls, cos_kwargs, opt_cls, opt_kwargs):
     interpol = Interpolator(geoms, between=between)
     images = interpol.interpolate_all()
 
@@ -54,10 +53,35 @@ def assert_cos_opt(opt, ref_cycle):
         (SteepestDescent, {}, {}, 30, 5),
         (SteepestDescent, {}, {}, 32, 10),
         (ConjugateGradient, {}, {}, 44, 5),
-        (QuickMin, {"dt": 0.1,}, {}, 27, 5),
-        (FIRE, {"dt_max": 0.2,}, {}, 42, 5),
-        (LBFGS, {"gamma_mult": True, }, {}, 12, 5),
-])
+        (
+            QuickMin,
+            {
+                "dt": 0.1,
+            },
+            {},
+            27,
+            5,
+        ),
+        (
+            FIRE,
+            {
+                "dt_max": 0.2,
+            },
+            {},
+            42,
+            5,
+        ),
+        (
+            LBFGS,
+            {
+                "gamma_mult": True,
+            },
+            {},
+            12,
+            5,
+        ),
+    ],
+)
 def test_anapot_neb(opt_cls, opt_kwargs_, neb_kwargs_, ref_cycle, between):
     geoms = get_geoms()
 
@@ -66,13 +90,10 @@ def test_anapot_neb(opt_cls, opt_kwargs_, neb_kwargs_, ref_cycle, between):
     }
     neb_kwargs.update(neb_kwargs_)
 
-    opt_kwargs = {
-    }
+    opt_kwargs = {}
     opt_kwargs.update(opt_kwargs_)
 
-    opt = run_cos_opt(geoms, between, AnaPot,
-                      NEB, neb_kwargs,
-                      opt_cls, opt_kwargs)
+    opt = run_cos_opt(geoms, between, AnaPot, NEB, neb_kwargs, opt_cls, opt_kwargs)
     # ap = animate(opt)
     # plt.show()
     assert_cos_opt(opt, ref_cycle)
@@ -85,7 +106,8 @@ def test_anapot_neb(opt_cls, opt_kwargs_, neb_kwargs_, ref_cycle, between):
         (10, "equal", 49),
         (5, "energy", 41),
         (10, "energy", 46),
-])
+    ],
+)
 def test_anapot_szts(between, param, ref_cycle):
     geoms = get_geoms()
 
@@ -97,9 +119,9 @@ def test_anapot_szts(between, param, ref_cycle):
     opt_kwargs = {
         "max_cycles": 100,
     }
-    opt = run_cos_opt(geoms, between, AnaPot,
-                      SimpleZTS, szts_kwargs,
-                      SteepestDescent, opt_kwargs)
+    opt = run_cos_opt(
+        geoms, between, AnaPot, SimpleZTS, szts_kwargs, SteepestDescent, opt_kwargs
+    )
     # ap = animate(opt)
     # plt.show()
     assert_cos_opt(opt, ref_cycle)
@@ -118,9 +140,17 @@ def animate_bare(opt):
     xlim = (-2, 2.5)
     ylim = (0, 5)
     levels = (-3, 4, 80)
-    ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels,
-                  energy_profile=False, colorbar=False, figsize=(8, 6),
-                  save=False, title=False,
+    ap = AnimPlot(
+        AnaPot(),
+        opt,
+        xlim=xlim,
+        ylim=ylim,
+        levels=levels,
+        energy_profile=False,
+        colorbar=False,
+        figsize=(8, 6),
+        save=False,
+        title=False,
     )
     ap.animate()
     return ap
@@ -160,10 +190,11 @@ def test_hcn_neb():
 
 
 @pytest.mark.parametrize(
-    "neb_kwargs, ref_cycle", [
+    "neb_kwargs, ref_cycle",
+    [
         ({}, 34),
         ({"variable_springs": True, "k_min": 0.01, "k_max": 5}, 33),
-    ]
+    ],
 )
 def test_neb_springs(neb_kwargs, ref_cycle):
     calc = AnaPot()
@@ -174,17 +205,18 @@ def test_neb_springs(neb_kwargs, ref_cycle):
 
     # calc.anim_opt(opt, show=True)
 
-    assert(opt.is_converged)
-    assert(opt.cur_cycle == ref_cycle)
+    assert opt.is_converged
+    assert opt.cur_cycle == ref_cycle
 
 
 @pytest.mark.parametrize(
-    "k, ref_cycle", [
-        (  500, 70),
-        ( 1000, 56),
-        ( 2000, 62),
-        ( 4000, 78),
-    ]
+    "k, ref_cycle",
+    [
+        (500, 70),
+        (1000, 56),
+        (2000, 62),
+        (4000, 78),
+    ],
 )
 def test_mullerbrown_neb(k, ref_cycle):
     geoms = MullerBrownPot().get_path(num=17)
@@ -204,3 +236,25 @@ def test_mullerbrown_neb(k, ref_cycle):
 
     # calc = MullerBrownPot()
     # calc.anim_opt(opt, show=True)
+
+
+def test_stiff_neb_nfk():
+    nfk = NFK()
+    # Coordinates from the paper
+    # geoms = [nfk.get_geom(coords) for coords in ((-0.5, 0.25, 0.0), (2.7, -0.15, 0.0))]
+    geoms = [nfk.get_geom(coords) for coords in ((-2.7, 0.13, 0.0), (2.7, -0.15, 0.0))]
+
+    neb_kwargs = {
+        "k_min": 10,
+        "k_max": 10,
+        # "bandwidth": 0.2,
+    }
+
+    opt_kwargs = {}
+    between = 16
+    # opt = run_cos_opt(geoms, between, NFK, NEB, neb_kwargs, LBFGS, opt_kwargs)
+    opt = run_cos_opt(geoms, between, NFK, NEB, neb_kwargs, FIRE, opt_kwargs)
+
+    # ap = AnimPlot(nfk, opt, xlim=nfk.xlim, ylim=nfk.ylim)
+    # ap.animate()
+    # plt.show()
