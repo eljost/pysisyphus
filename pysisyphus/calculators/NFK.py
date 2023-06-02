@@ -21,7 +21,7 @@ class NFK(AnaPotBase):
         kwargs_ = {
             "V_str": V_str,
             "xlim": (-3, 3),
-            "ylim": (-3, 1),
+            "ylim": (-3, 3),
             "levels": np.linspace(-7, 3.5, 70),
             "minima": ((2.71268103, -0.15093971, 0.0), (-2.7126810, 0.1509397, 0.0)),
             "saddles": ((0.0, 0.0, 0.0),),
