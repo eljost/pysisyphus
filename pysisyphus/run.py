@@ -2007,7 +2007,7 @@ def load_run_dict(yaml_fn):
         try:
             run_dict = yaml.load(yaml_str, Loader=loader)
         except yaml.constructor.ConstructorError as err:
-            mobj = re.compile("for the tag '\!(\w+)'").search(err.problem)
+            mobj = re.compile(r"for the tag '\!(\w+)'").search(err.problem)
             if mobj:
                 err_unit = mobj.group(1)
                 best_match, _ = find_closest_sequence(err_unit, UNITS)
