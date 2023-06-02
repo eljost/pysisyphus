@@ -1166,6 +1166,8 @@ class Geometry:
 
         P = self.get_trans_rot_projector(full=full)
         proj_hessian = P.dot(mw_hessian).dot(P.T)
+        # Projection seems to slightly break symmetry (sometimes?). Resymmetrize.
+        proj_hessian = (proj_hessian + proj_hessian.T) / 2
         if return_P:
             return proj_hessian, P
         else:
