@@ -15,7 +15,6 @@ from pysisyphus.helpers_pure import file_or_str
 
 
 class Gaussian16(OverlapCalculator):
-
     conf_key = "gaussian16"
     _set_plans = (
         {"key": "chk", "condition": lambda self: self.keep_chk},
@@ -317,7 +316,9 @@ class Gaussian16(OverlapCalculator):
         # cis_re = re.compile(r"CIS Energy\s+R\s+" + float_)
         # cis_mobj = cis_re.search(text)
         # cis_energy = float(cis_mobj[1])
-        etrans_re = re.compile("ETran state values\s+R\s+N=\s+(\d+)([\d\-\.Ee\-+\s]+)", re.DOTALL)
+        etrans_re = re.compile(
+            r"ETran state values\s+R\s+N=\s+(\d+)([\d\-\.Ee\-+\s]+)", re.DOTALL
+        )
         etrans_mobj = etrans_re.search(text)
         try:
             etrans = etrans_mobj[2].strip().split()
@@ -327,7 +328,7 @@ class Gaussian16(OverlapCalculator):
             all_energies[0] = gs_energy
             all_energies[1:] = exc_energies
         except TypeError:
-            all_energies = np.array((gs_energy, ))
+            all_energies = np.array((gs_energy,))
         return all_energies
 
     def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):

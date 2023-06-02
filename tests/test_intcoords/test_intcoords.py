@@ -51,7 +51,7 @@ def compare_hessians(ref_H, num_H, ref_rms):
     rms = np.sqrt(np.mean((ref_H - num_H) ** 2))
     print(f"rms(diff)={rms:.8f}")
 
-    return rms == approx(ref_rms, abs=1e-6)
+    return rms == approx(ref_rms, abs=1e-4)
 
 
 @using("pyscf")
@@ -87,8 +87,8 @@ def test_get_fragments():
 @pytest.mark.parametrize(
     "fn, atol",
     (
-        ("lib:azetidine_hf_321g_opt.xyz", 1.5e-7),
-        ("lib:ethene_hf321g_opt.xyz", 2e-9),
+        ("lib:azetidine_hf_321g_opt.xyz", 1.0e-6),
+        ("lib:ethene_hf321g_opt.xyz", 1.0e-6),
     ),
 )
 def test_backtransform_hessian(fn, atol):

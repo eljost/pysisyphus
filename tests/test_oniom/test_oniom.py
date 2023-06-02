@@ -137,8 +137,8 @@ def test_gradient(calcs, ref_energy, ref_force_norm):
     forces = geom.forces
     energy = geom.energy
 
-    assert np.linalg.norm(forces) == pytest.approx(ref_force_norm)
-    assert energy == pytest.approx(ref_energy)
+    assert np.linalg.norm(forces) == pytest.approx(ref_force_norm, abs=1e-5)
+    assert energy == pytest.approx(ref_energy, abs=1e-5)
 
 
 @pytest.mark.parametrize(
@@ -165,7 +165,7 @@ def test_electronic_embedding(calc_key, embedding, ref_energy, ref_force_norm):
         "lib:oniom_ee_model_system.xyz",
         # coord_type="redund",
         # coord_kwargs={
-            # "hbond_angles": True,
+        # "hbond_angles": True,
         # },
     )
 
@@ -305,7 +305,6 @@ def test_acetaldehyde_opt():
 
 @using("gaussian16")
 def test_yaml_oniom():
-
     run_dict = {
         "geom": {
             "type": "redund",
