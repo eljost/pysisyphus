@@ -1,5 +1,7 @@
 import scipy.constants as spc
 
+PI = spc.pi
+
 # Speed of light in m/s
 C = spc.c
 # Speed of light in atomic units
@@ -26,6 +28,10 @@ AU2KJPERMOL = AU2J / 1000 * spc.Avogadro
 AU2KCALPERMOL = AU2KJPERMOL / spc.calorie
 # Hartree to eV
 AU2EV = spc.value("Hartree energy in eV")
+# Joule to eV
+JOULE2EV = AU2EV / AU2J
+# Wavenumber to Hartree
+NU2AU = spc.h * C * 1e2 / AU2J
 # eV/Å -> Hartree/Bohr
 EVANG2AUBOHR = 1 / AU2EV / ANG2BOHR
 # fs -> Bohr * sqrt(amu/Hartree)

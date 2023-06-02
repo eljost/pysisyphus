@@ -1,36 +1,26 @@
-import time
+# [1] https://doi.org/10.1063/1.4898665
+#     Vibronic-structure tracking: A shortcut for vibrationally
+#     resolved UV/Vis-spectra calculations
+#     Barton, König, Neugebauer
 
-import matplotlib.pyplot as plt
+
 import numpy as np
-from scipy.constants import c as speed_of_light, hbar, pi
 from scipy.integrate import quad
 
-from pysisyphus.constants import AU2EV, AU2J, AU2SEC
-
-
-JOULE2EV = AU2EV / AU2J
-
-
-def angfreq_au(wavenum):
-    """Angular frequency in atomic units from wavenumber in cm⁻¹."""
-    angfreq_si = speed_of_light * wavenum * 1e2 * 2 * pi
-    return angfreq_si * AU2SEC
-
-
-def nu2eV(wavenum):
-    joule = hbar * (2 * pi) * speed_of_light * wavenum * 1e2
-    return joule * JOULE2EV
+from pysisyphus.franckcondon.helpers import nu2angfreq_au
 
 
 def get_crossec_integrand(dE_exc: float, gamma: float, displs, nus):
     """
+    Integral in eq. (2) of [1].
+
     dE_exc - excitation energy, in wavenumbers
     gamma - in wavenumbers
     """
-    angfreq_exc = angfreq_au(dE_exc)
-    angfreq_gamma = angfreq_au(gamma)
+    angfreq_exc = nu2angfreq_au(dE_exc)
+    angfreq_gamma = nu2angfreq_au(gamma)
     minus_displs_half = (-(displs**2)) / 2
-    angfreqs = angfreq_au(nus)
+    angfreqs = nu2angfreq_au(nus)
     imag_angfreqs = -1j * angfreqs
 
     def ovlp_term(t):
@@ -41,7 +31,7 @@ def get_crossec_integrand(dE_exc: float, gamma: float, displs, nus):
         """
         dE_inc - energy of incident photon, in wavenumbers
         """
-        angfreq_incident = angfreq_au(dE_incident)
+        angfreq_incident = nu2angfreq_au(dE_incident)
         return np.exp(
             1j * (angfreq_incident - angfreq_exc) * t - angfreq_gamma * t
         ) * ovlp_term(t)
@@ -59,7 +49,7 @@ def imdho_abs_cross_section(
 ):
     integrand = get_crossec_integrand(dE_exc, gamma, displs, nus)
 
-    tmax = -np.log(ithresh) / angfreq_au(gamma)
+    tmax = -np.log(ithresh) / nu2angfreq_au(gamma)
     print(f"tmax={tmax:.4f} au for Γ={gamma:.2f} cm⁻¹")
 
     tenth = dEs_inc.size // 10

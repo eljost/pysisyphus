@@ -1,11 +1,6 @@
 import numpy as np
-from scipy.integrate import quad
 
-from pysisyphus.franckcondon.imdho import (
-    angfreq_au,
-    get_crossec_integrand,
-    imdho_abs_cross_section,
-)
+from pysisyphus.franckcondon.imdho import imdho_abs_cross_section
 
 
 def test_imdho():
@@ -95,6 +90,7 @@ def test_imdho():
 
     dEs_inc = np.linspace(dE_exc - 1000, dE_exc + 6000, num=50)
     cross_secs = imdho_abs_cross_section(dEs_inc, dE_exc, gamma, displs, nus)
+
     # import matplotlib.pyplot as plt
     # plt.plot(dEs_inc, cross_secs)
     # plt.show()

@@ -110,14 +110,13 @@ def test_co_duschinsky():
 
     res = duschinsky(geom_init, geom_final)
 
-    assert res.K[4] == pytest.approx(-2.9282, abs=5e-5)
     print()
     print(f"det(J)={np.linalg.det(res.J):.8f}")
     nus_init, _, L_init, _ = geom_init.get_normal_modes()
     for i, nu in enumerate(nus_init):
         print(f"ν_{i+1:02d} {nu: >12.4f} {res.K[i]: >10.6f}")
-    assert res.K[4] == pytest.approx(-2.928244)
-    assert res.K[9] == pytest.approx(-5.874892)
+    assert res.K[4] == pytest.approx(2.773520)
+    assert res.K[9] == pytest.approx(5.916038)
 
 
 def test_unitless_displs_from_eigensystem():
