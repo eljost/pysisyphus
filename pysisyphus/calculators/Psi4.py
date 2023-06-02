@@ -15,6 +15,7 @@ class Psi4(Calculator):
         method,
         basis,
         to_set=None,
+        to_import=None,
         pcm="iefpcm",
         solvent=None,
         write_fchk=False,
@@ -25,6 +26,7 @@ class Psi4(Calculator):
         self.method = method
         self.basis = basis
         self.to_set = {} if to_set is None else dict(to_set)
+        self.to_import = [] if to_import is None else list(to_import)
         self.pcm = pcm
         self.solvent = solvent
         self.write_fchk = write_fchk
@@ -43,6 +45,7 @@ class Psi4(Calculator):
 
         self.inp = textwrap.dedent(
             """
+        {to_import}
         molecule mol{{
           {xyz}
           {charge} {mult}
@@ -96,6 +99,8 @@ class Psi4(Calculator):
         method += "\nprint('PARSE ENERGY:', wfn.energy())"
         set_strs = [f"set {key} {value}" for key, value in self.to_set.items()]
         set_strs = "\n".join(set_strs)
+        import_strs = [f"import {mod}" for mod in self.to_import]
+        import_strs = "\n".join(import_strs)
 
         # Basis section
         basis = self.basis
@@ -150,6 +155,7 @@ class Psi4(Calculator):
             charge=self.charge,
             mult=self.mult,
             basis=basis,
+            to_import=import_strs,
             to_set=set_strs,
             pcm=pcm,
             method=method,
