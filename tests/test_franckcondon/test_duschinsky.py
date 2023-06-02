@@ -100,9 +100,9 @@ def test_axis_switching():
     np.testing.assert_allclose(T0.T, np.eye(3), atol=1e-14)
 
 
-def test_co_duschinsky():
-    geom_neutral = geom_from_hessian("coco4_neutral.h5")
-    geom_anion = geom_from_hessian("coco4_anion.h5")
+def test_co_duschinsky(this_dir):
+    geom_neutral = geom_from_hessian(this_dir / "coco4_neutral.h5")
+    geom_anion = geom_from_hessian(this_dir / "coco4_anion.h5")
 
     # From neutral to anion/ Neutral is initial state
     geom_init = geom_neutral

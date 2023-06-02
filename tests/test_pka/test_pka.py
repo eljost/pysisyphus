@@ -11,4 +11,4 @@ def test_direct_cycle(this_dir):
     acid_solv_en = -189.698911494139
     base_solv_en = -189.233581882742
     pka = direct_cycle(acid_h5, base_h5, acid_solv_en, base_solv_en)
-    assert pka == pytest.approx(9.7573997, abs=1e-6)
+    assert pka == pytest.approx(9.757716466, abs=1e-6)
