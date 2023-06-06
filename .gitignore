@@ -172,6 +172,7 @@ version.py
 !tests/test_franckcondon/*.h5
 !tests/test_franckcondon/naphthalene_gradient
 !tests/test_hessian_updates/*.h5
+!tests/test_localization/ch4_checkpoint.h5
 !tests/test_pka/*.h5
 !tests/test_overlap_calculator/*.h5
 !tests/test_save_hessian/*.h5
