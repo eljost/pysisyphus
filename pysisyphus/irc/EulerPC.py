@@ -20,7 +20,7 @@ import time
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from pysisyphus.helpers import rms
+from pysisyphus.helpers_pure import rms
 from pysisyphus.io.hessian import save_hessian
 from pysisyphus.irc.DWI import DWI
 from pysisyphus.irc.IRC import IRC
@@ -232,7 +232,7 @@ class EulerPC(IRC):
         errors = list()
         richardson = dict()
         for k in range(15):
-            points = 20 * (2 ** k)
+            points = 20 * (2**k)
             corr_step_length = step_length / (points - 1)
             cur_coords = init_mw_coords.copy()
             k_coords = list()
@@ -274,8 +274,8 @@ class EulerPC(IRC):
             # Set additional values using Richard extrapolation
             for j in range(1, k + 1):
                 richardson[(k, j)] = (
-                    (2 ** j) * richardson[(k, j - 1)] - richardson[(k - 1, j - 1)]
-                ) / (2 ** j - 1)
+                    (2**j) * richardson[(k, j - 1)] - richardson[(k - 1, j - 1)]
+                ) / (2**j - 1)
             # Can only be done after the second successful integration
             if k > 0:
                 # Error estimate according to Numerical Recipes Eq. (17.3.9).

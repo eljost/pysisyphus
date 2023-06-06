@@ -5,7 +5,8 @@ import h5py
 import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.helpers import rms, get_tangent_trj_str
+from pysisyphus.helpers import get_tangent_trj_str
+from pysisyphus.helpers_pure import rms
 from pysisyphus.intcoords.helpers import get_weighted_bond_mode
 from pysisyphus.linalg import perp_comp, make_unit_vec
 from pysisyphus.optimizers.closures import small_lbfgs_closure
@@ -29,7 +30,7 @@ class Gaussian:
         if height is None:
             height = self.height
 
-        return height * np.exp(-((R.dot(self.N) - self.s0) ** 2) / (2 * self.std ** 2))
+        return height * np.exp(-((R.dot(self.N) - self.s0) ** 2) / (2 * self.std**2))
 
     def forces(self, R, height=None):
         if height is None:
@@ -38,9 +39,9 @@ class Gaussian:
 
         return (
             height
-            * np.exp(-(s_diff ** 2) / (2 * self.std ** 2))
+            * np.exp(-(s_diff**2) / (2 * self.std**2))
             * s_diff
-            / self.std ** 2
+            / self.std**2
             * self.N
         )
 
@@ -477,6 +478,7 @@ class Dimer(Calculator):
         a0 = 2 * (C - a1)
 
         rad_min = 0.5 * np.arctan(b1 / a1)
+
         # self.log(f"rad_min={rad_min:.2f}")
         def get_C(theta_rad):
             return a0 / 2 + a1 * np.cos(2 * theta_rad) + b1 * np.sin(2 * theta_rad)
@@ -601,8 +603,9 @@ class Dimer(Calculator):
         if not self.rotation_disable:
             self.update_orientation(coords)
         if (N_backup is not None) and self.rotation_disable_pos_curv and self.C > 0:
-            self.log("Rotation did not yield a negative curvature. "
-                     "Restoring previous unrotated N."
+            self.log(
+                "Rotation did not yield a negative curvature. "
+                "Restoring previous unrotated N."
             )
             self.N = N_backup
         # Now we (have an updated self.N and) can do the force projections

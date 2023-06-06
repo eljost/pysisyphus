@@ -7,7 +7,7 @@
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import rms
+from pysisyphus.helpers_pure import rms
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 from pysisyphus.optimizers.poly_fit import poly_line_search
 from pysisyphus.optimizers.gdiis import gdiis, gediis
