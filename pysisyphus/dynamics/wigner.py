@@ -125,11 +125,11 @@ def get_wigner_sampler(
     w, v = np.linalg.eigh(PM @ hessian @ PM.T)
     nus = eigval_to_wavenumber(w)
 
-    small_nu_mask = np.abs(nus) < nu_thresh
+    # TODO: dectect if system is linear and don't hardcode dropping of first 6 modes.
+    # small_nu_mask = np.abs(nus) < nu_thresh
     small_nu_mask = np.zeros_like(nus, dtype=bool)
     small_nu_mask[:6] = True
-    # TODO: dectect if system is linear
-    w = w[~small_nu_mask]
+    # w = w[~small_nu_mask]
     v = v[:, ~small_nu_mask]
     nus = nus[~small_nu_mask]
     # Square root of angular frequencies in atomic units. Required to convert the

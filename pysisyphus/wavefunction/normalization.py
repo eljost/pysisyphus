@@ -1,4 +1,3 @@
-import functools
 from math import prod
 
 import numpy as np

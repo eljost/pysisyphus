@@ -663,7 +663,7 @@ class Turbomole(OverlapCalculator):
     @staticmethod
     @file_or_str(".sing_a", ".ciss_a")  # , exact=True)
     def parse_tddft_tden(text):
-        eigval_re = re.compile(r"(\d+)\s+eigenvalue\s+=\s+([\d\.\-D\+\-]+)")
+        eigval_re = re.compile(r"(\d+)\s+eigenvalue\s+=\s+([\d\.\-D\+]+)")
         eigvals = eigval_re.findall(text)
         state_inds, exc_ens = zip(*eigvals)
         exc_ens = [exc_en.replace("D", "E") for exc_en in exc_ens]

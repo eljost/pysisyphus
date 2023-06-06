@@ -127,7 +127,6 @@ def expand_sph_quantum_numbers(
     """Factors and Cart. angular momentum vectors for given sph. quantum numbers."""
     L, m = Lm
     m += L  # Map m from [-L, L] onto [0, 2*L]
-    cart_lmn = canonical_order(L)
     C = cart2sph_coeffs_for(L)  # shape (spherical, Cartesian)
     # Include lmn-factor that appears when contracted functions are normalized
     # according to 'normalization.norm_cgto_lmn(L).
