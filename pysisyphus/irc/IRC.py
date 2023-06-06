@@ -12,11 +12,12 @@ import numpy as np
 
 from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import check_for_end_sign, rms
+from pysisyphus.helpers import check_for_end_sign
 from pysisyphus.helpers_pure import (
     highlight_text,
     eigval_to_wavenumber,
     report_isotopes,
+    rms,
 )
 from pysisyphus.irc.initial_displ import cubic_displ, third_deriv_fd, cubic_displ_for_h5
 from pysisyphus.irc.Instanton import T_crossover_from_eigval

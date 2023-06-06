@@ -21,6 +21,7 @@ from pysisyphus.helpers_pure import (
     eigval_to_wavenumber,
     report_isotopes,
     highlight_text,
+    rms,
 )
 from pysisyphus.io import (
     geom_from_cjson,
@@ -422,10 +423,6 @@ def shake_coords(coords, scale=0.1, seed=None):
         np.random.seed(seed)
     offset = np.random.normal(scale=scale, size=coords.size)
     return coords + offset
-
-
-def rms(arr):
-    return np.sqrt(np.mean(arr**2))
 
 
 def norm_max_rms(arr):

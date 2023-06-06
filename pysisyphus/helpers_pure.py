@@ -633,3 +633,7 @@ def kill_dir(path):
     for fn in Path(path).iterdir():
         fn.unlink()
     path.rmdir()
+
+
+def rms(arr):
+    return np.sqrt(np.mean(arr**2))
