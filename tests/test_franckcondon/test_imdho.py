@@ -5,7 +5,6 @@ from pysisyphus.franckcondon.imdho import imdho_abs_cross_section
 
 def test_imdho():
     gamma = 160
-    dE_inc = 36030
     dE_exc = 36024
 
     displs = np.array(

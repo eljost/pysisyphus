@@ -181,11 +181,15 @@ def calcEholo_vert(
                     tangents_perp[k] = a * v2 + v1
                     tangents_perp[k] /= np.linalg.norm(tangents_perp[k])
                     findvertlist[k] = True
-                elif v1taudot < thresh and v2taudot < thresh:
+                # The elif is from the original code, but it should always evaluted to True.
+                # If one of the two conditions wouldn't evalute to True, one of the two
+                # conditionals above would run.
+                # elif v1taudot < thresh and v2taudot < thresh:
+                else:
                     tangents_perp[k] = v1
                     findvertlist[k] = True
-                else:
-                    raise Exception("Error in calcEholovertTh")
+                # else:
+                # raise Exception("Error in calcEholovertTh")
     for k in range(1, nimages):
         vbefore = tangents_perp[k - 1]
         v = tangents_perp[k]

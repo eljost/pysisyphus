@@ -29,10 +29,10 @@ def test_lq2(this_dir):
     deltas = unitless_displs_from_eigensystem(
         mw_grad, significant_eigvals, significant_eigvecs
     )
-    # HWHM in au
-    hwhm = np.sqrt(np.log(2) * np.sum(deltas**2 * angfreqs**2))
-    # HWHM in wavenumbers
-    hwhm = hwhm / NU2AU
+    # # HWHM in au
+    # hwhm = np.sqrt(np.log(2) * np.sum(deltas**2 * angfreqs**2))
+    # # HWHM in wavenumbers
+    # hwhm = hwhm / NU2AU
 
     Es = np.linspace(34_000, 50_000, 200)
     Es_au = Es * NU2AU

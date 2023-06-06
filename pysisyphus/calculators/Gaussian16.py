@@ -317,7 +317,7 @@ class Gaussian16(OverlapCalculator):
         # cis_mobj = cis_re.search(text)
         # cis_energy = float(cis_mobj[1])
         etrans_re = re.compile(
-            r"ETran state values\s+R\s+N=\s+(\d+)([\d\-\.Ee\-+\s]+)", re.DOTALL
+            r"ETran state values\s+R\s+N=\s+(\d+)([\d\-\.Ee\+\s]+)", re.DOTALL
         )
         etrans_mobj = etrans_re.search(text)
         try:
