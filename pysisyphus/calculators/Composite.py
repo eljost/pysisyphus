@@ -5,11 +5,13 @@ import sympy as sym
 
 from pysisyphus.calculators.Calculator import Calculator
 
-from pysisyphus.calculators import ORCA
+from pysisyphus.calculators import ORCA, Turbomole, DFTD4
 
 
 CALC_CLASSES = {
+    "dftd4": DFTD4.DFTD4,
     "orca": ORCA.ORCA,
+    "turbomole": Turbomole.Turbomole,
 }
 try:
     from pysisyphus.calculators import PySCF
@@ -20,8 +22,9 @@ except (ModuleNotFoundError, OSError):
 
 
 class Composite(Calculator):
-    def __init__(self, final, keys_calcs=None, calcs=None, remove_translation=False,
-            **kwargs):
+    def __init__(
+        self, final, keys_calcs=None, calcs=None, remove_translation=False, **kwargs
+    ):
         # Either directly supply a dictionary with Calculator objects (key_calcs)
         # or a dictionary containing information to set up calculators.
         assert keys_calcs or calcs
@@ -52,9 +55,11 @@ class Composite(Calculator):
         self.final = final
         self.remove_translation = remove_translation
 
+        # The energies are just numbers that we can easily substitute in
         self.energy_expr = sym.sympify(self.final)
-        self.forces_args = sym.symbols(" ".join(self.keys_calcs.keys()))
-        self.forces_expr = sym.lambdify(self.forces_args, self.energy_expr)
+        # The forces/Hessians are matrices that we can't just easily substitute in.
+        self.arr_args = sym.symbols(" ".join(self.keys_calcs.keys()))
+        self.arr_expr = sym.lambdify(self.arr_args, self.energy_expr)
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
         energies = {}
@@ -81,7 +86,7 @@ class Composite(Calculator):
         self.log("")
 
         final_energy = self.energy_expr.subs(energies).evalf()
-        final_forces = self.forces_expr(**forces)
+        final_forces = self.arr_expr(**forces)
 
         # Remove overall translation
         if self.remove_translation:
@@ -91,6 +96,23 @@ class Composite(Calculator):
         results = {
             "energy": final_energy,
             "forces": final_forces,
+        }
+        return results
+
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
+        energies = {}
+        hessians = {}
+        for key, calc in self.keys_calcs.items():
+            results = calc.get_hessian(atoms, coords, **prepare_kwargs)
+            energies[key] = results["energy"]
+            hessians[key] = results["hessian"]
+
+        final_energy = self.energy_expr.subs(energies).evalf()
+        final_hessian = self.arr_expr(**hessians)
+
+        results = {
+            "energy": final_energy,
+            "hessian": final_hessian,
         }
         return results
 

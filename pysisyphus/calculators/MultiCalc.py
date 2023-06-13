@@ -2,11 +2,12 @@ import sys
 import time
 
 from pysisyphus.calculators.Calculator import Calculator
-from pysisyphus.calculators import ORCA, XTB, ORCA5
+from pysisyphus.calculators import ORCA, ORCA5, Turbomole, XTB
 
 CALC_CLASSES = {
     "orca": ORCA.ORCA,
     "orca5": ORCA5.ORCA5,
+    "turbomole": Turbomole.Turbomole,
     "xtb": XTB.XTB,
 }
 

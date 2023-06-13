@@ -13,6 +13,7 @@ L_MAP = {
     "g": 4,
     "h": 5,
 }
+L_MAP_INV = {key: L for L, key in L_MAP.items()}
 L_SIZE = {l: (l + 1) * (l + 2) // 2 for l in L_MAP.values()}
 
 Ls = Literal["s", "p", "d", "f", "g", "h"]

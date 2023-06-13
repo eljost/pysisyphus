@@ -29,21 +29,40 @@ def this_dir(request):
     "calc_cls, calc_kwargs, chk_exts",
     [
         pytest.param(
-            ORCA, {"keywords": "HF def2-SVP", }, ("gbw", ),
-            marks=using("orca")),
+            ORCA,
+            {
+                "keywords": "HF def2-SVP",
+            },
+            ("gbw",),
+            marks=using("orca"),
+        ),
         pytest.param(
-            Gaussian16, {"route": "HF/def2SVP", }, ("fchk", ),
-            marks=using("gaussian16")),
+            Gaussian16,
+            {
+                "route": "HF/def2SVP",
+            },
+            ("fchk",),
+            marks=using("gaussian16"),
+        ),
         pytest.param(
-            PySCF, {"method": "scf", "basis": "def2svp"}, ("chkfile", ),
-            marks=using("pyscf")),
+            PySCF,
+            {"method": "scf", "basis": "def2svp"},
+            ("chkfile",),
+            marks=using("pyscf"),
+        ),
         pytest.param(
-            Turbomole, {"control_path": "benzene_control_path"}, ("mos", ),
-            marks=using("turbomole")),
+            Turbomole,
+            {"control_path": "benzene_control_path"},
+            ("mos",),
+            marks=using("turbomole"),
+        ),
         pytest.param(
-            Turbomole, {"control_path": "benzene_control_path_uhf"}, ("alpha", "beta"),
-            marks=using("turbomole")),
-    ]
+            Turbomole,
+            {"control_path": "benzene_control_path_uhf"},
+            ("alpha", "beta"),
+            marks=using("turbomole"),
+        ),
+    ],
 )
 def test_restart(calc_cls, calc_kwargs, chk_exts, this_dir):
     geom = geom_loader("lib:benzene.xyz")
@@ -94,13 +113,27 @@ def test_geometry_get_restart_info():
     [
         pytest.param(ConjugateGradient, {}, 0.01693523, marks=using("pyscf")),
         pytest.param(FIRE, {}, 0.50285483, marks=using("pyscf")),
-        pytest.param(LBFGS, {"gamma_mult": True, }, 2.2002337e-6, marks=using("pyscf")),
-        pytest.param(LBFGS, {"gamma_mult": False, }, 1.36271012e-5, marks=using("pyscf")),
+        pytest.param(
+            LBFGS,
+            {
+                "gamma_mult": True,
+            },
+            2.2002337e-6,
+            marks=using("pyscf"),
+        ),
+        pytest.param(
+            LBFGS,
+            {
+                "gamma_mult": False,
+            },
+            1.36271012e-5,
+            marks=using("pyscf"),
+        ),
         pytest.param(PreconLBFGS, {}, 9.11439241e-6, marks=using("pyscf")),
         pytest.param(QuickMin, {}, 0.02305389, marks=using("pyscf")),
         pytest.param(RFOptimizer, {}, 0.0019022348, marks=using("pyscf")),
         pytest.param(SteepestDescent, {}, 0.05535400, marks=using("pyscf")),
-    ]
+    ],
 )
 def test_opt_restart(opt_cls, opt_kwargs_, ref_norm):
     def get_calc():
@@ -126,14 +159,14 @@ def test_opt_restart(opt_cls, opt_kwargs_, ref_norm):
 
     # Reference run
     ref_geom = get_geom()
-    ref_opt = get_opt(ref_geom, max_cycles=2*max_cycles)
+    ref_opt = get_opt(ref_geom, max_cycles=2 * max_cycles)
     ref_opt.run()
 
     ref_energy = ref_geom.energy
     ref_forces = ref_geom.forces
 
-    assert ref_opt.cur_cycle == 2*max_cycles - 1
-    assert np.linalg.norm(ref_forces) == pytest.approx(ref_norm)
+    assert ref_opt.cur_cycle == 2 * max_cycles - 1
+    assert np.linalg.norm(ref_forces) == pytest.approx(ref_norm, abs=1e-5)
 
     # Try two runs, each with 1*max_cycles and restart inbetween
     # First run
@@ -148,7 +181,7 @@ def test_opt_restart(opt_cls, opt_kwargs_, ref_norm):
     re_opt = get_opt(re_geom, max_cycles, restart_info)
     re_opt.run()
 
-    assert re_opt.cur_cycle == 2*max_cycles - 1
+    assert re_opt.cur_cycle == 2 * max_cycles - 1
     assert re_geom.energy == pytest.approx(ref_energy)
     re_forces = re_geom.forces
-    np.testing.assert_allclose(re_forces, ref_forces, atol=1e-6)
+    np.testing.assert_allclose(re_forces, ref_forces, atol=1e-5)

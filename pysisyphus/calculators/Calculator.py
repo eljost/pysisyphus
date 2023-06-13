@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from enum import Enum
 import logging
 import os
 from pathlib import Path
@@ -5,19 +7,39 @@ import platform
 import shutil
 import subprocess
 import tempfile
+from typing import Callable, Optional
 
 from natsort import natsorted
 
-from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
-from pysisyphus.constants import BOHR2ANG
 from pysisyphus import logger
 from pysisyphus import helpers_pure
+from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import geom_loader
+from pysisyphus.linalg import finite_difference_hessian
+
+
+KeepKind = Enum("KeepKind", ["ALL", "LATEST", "NONE"])
+HessKind = Enum("HessKind", ["ORG", "NUMERICAL"])
+
+
+@dataclass
+class SetPlan:
+    key: str
+    name: Optional[str] = None
+    condition: Callable = lambda obj: True
+    # success: Optional[Callable] = None
+    fail: Optional[Callable] = None
+
+    def __post_init__(self):
+        if self.name is None:
+            self.name = self.key
 
 
 class Calculator:
 
     conf_key = None
+    _set_plans = []
 
     def __init__(
         self,
@@ -27,11 +49,14 @@ class Calculator:
         base_name="calculator",
         pal=1,
         mem=1000,
+        keep_kind="all",
         check_mem=True,
-        retry_calc=1,
+        retry_calc=0,
         last_calc_cycle=None,
         clean_after=True,
         out_dir=OUT_DIR_DEFAULT,
+        force_num_hess=False,
+        num_hess_kwargs=None,
     ):
         """Base-class of all calculators.
 
@@ -66,6 +91,10 @@ class Calculator:
             after a calculation.
         out_dir : str
             Path that is prepended to generated filenames.
+        force_hess_kwargs : bool, default False
+            Force numerical Hessians.
+        num_hess_kwargs : dict
+            Keyword arguments for finite difference Hessian calculation.
         """
 
         self.logger = logging.getLogger("calculator")
@@ -79,6 +108,7 @@ class Calculator:
         if check_mem:
             mem = helpers_pure.check_mem(int(mem), pal, logger=self.logger)
         self.mem = mem
+        self.keep_kind = KeepKind[keep_kind.upper()]
         # Disasble retries if check_termination method is not implemented
         self.retry_calc = int(retry_calc) if hasattr(self, "check_termination") else 0
         assert self.retry_calc >= 0
@@ -87,6 +117,9 @@ class Calculator:
         except TypeError:
             self.out_dir = Path(OUT_DIR_DEFAULT).resolve()
         self.out_dir.mkdir(parents=True, exist_ok=True)
+        if num_hess_kwargs is None:
+            num_hess_kwargs = dict()
+        self.num_hess_kwargs = num_hess_kwargs
 
         # Extensions of the files to keep after running a calculation.
         # Usually overridden in derived classes.
@@ -108,6 +141,14 @@ class Calculator:
         self.path_already_prepared = None
         self.last_run_path = None
         self.backup_dir = None
+        self.kept_history = dict()
+        self.build_set_plans()
+
+        # Backup original get_hessian method
+        self._org_get_hessian = self.get_hessian
+        self.hessian_kind = HessKind["ORG"]
+        if force_num_hess:
+            self.force_num_hessian()
 
     def get_cmd(self, key="cmd"):
         assert self.conf_key, "'conf_key'-attribute is missing for this calculator!"
@@ -141,17 +182,61 @@ class Calculator:
 
         self.logger.debug(f"{self.name}, cycle {self.calc_counter:03d}: {message}")
 
-    def get_energy(self, atoms, coords):
+    def get_energy(self, atoms, coords, **prepare_kwargs):
         """Meant to be extended."""
         raise Exception("Not implemented!")
 
-    def get_forces(self, atoms, coords):
+    def get_forces(self, atoms, coords, **prepare_kwargs):
         """Meant to be extended."""
         raise Exception("Not implemented!")
 
-    def get_hessian(self, atoms, coords):
-        """Meant to be extended."""
-        raise Exception("Not implemented!")
+    def get_hessian(self, atoms, coords, **prepare_kwargs):
+        """Get Hessian matrix. Fall back to numerical Hessian, if not overriden.
+
+        Preferrably, this method should provide an analytical Hessian."""
+        self.log(f"Calculator {self} has no native Hessian method.")
+        return self.get_num_hessian(atoms, coords, **prepare_kwargs)
+
+    def get_num_hessian(self, atoms, coords, **prepare_kwargs):
+        self.log("Calculating numerical Hessian.")
+        results = self.get_energy(atoms, coords, **prepare_kwargs)
+
+        def grad_func(coords):
+            results = self.get_forces(atoms, coords, **prepare_kwargs)
+            gradient = -results["forces"]
+            return gradient
+
+        def callback(i, j):
+            self.log(f"Displacement {j} of coordinate  {i}")
+
+        _num_hess_kwargs = {
+            "step_size": 0.005,
+            # Central difference by default
+            "acc": 2,
+        }
+        _num_hess_kwargs.update(self.num_hess_kwargs)
+
+        fd_hessian = finite_difference_hessian(
+            coords,
+            grad_func,
+            callback=callback,
+            **_num_hess_kwargs,
+        )
+        results["hessian"] = fd_hessian
+        return results
+
+    def force_num_hessian(self):
+        """Always calculate numerical Hessians."""
+        self.log("Doing numerical Hessians from now on.")
+        self.get_hessian = self.get_num_hessian
+        self.hessian_kind = HessKind["NUMERICAL"]
+
+    def restore_org_hessian(self):
+        """Restore original 'get_hessian' method, which may also fallback to numerical
+        Hessians, if not implemented."""
+        self.log("Restored original 'get_hessian' method.")
+        self.get_hessian = self._org_get_hessian
+        self.hessian_kind = HessKind["ORG"]
 
     def make_fn(self, name, counter=None, return_str=False):
         """Make a full filename.
@@ -384,7 +469,7 @@ class Calculator:
 
         act_cmd = cmd[0]
         cmd_availble = shutil.which(act_cmd)
-        if not cmd_availble:
+        if (not cmd_availble) and (not shell):
             print(
                 f"Command '{act_cmd}' could not be found on $PATH! "
                 "Maybe you forgot to make it available?"
@@ -452,7 +537,7 @@ class Calculator:
                     try:
                         self.clean_tmp(path)
                     except AttributeError:
-                        self.log(f"'self.clean_path()' not implemented!")
+                        self.log("'self.clean_path()' not implemented!")
                     # Clear tmp_out_fn
                     handle.seek(0)
                     handle.truncate()
@@ -463,7 +548,7 @@ class Calculator:
                             args += self.get_retry_args()
                             added_retry_args = True
                         except AttributeError:
-                            self.log(f"'self.get_retry_args()' not implemented!")
+                            self.log("'self.get_retry_args()' not implemented!")
 
         # Parse results for desired quantities
         try:
@@ -473,6 +558,7 @@ class Calculator:
             results = self.parser_funcs[calc](path, **parser_kwargs)
             if keep:
                 self.keep(path)
+
         except Exception as err:
             print("Crashed input:")
             print(inp)
@@ -557,6 +643,48 @@ class Calculator:
         pattern_key = pattern_key.lower()
         return pattern, multi, pattern_key
 
+    def build_set_plans(self, _set_plans=None):
+        if _set_plans is None:
+            _set_plans = self._set_plans
+
+        set_plans = list()
+        for sp in _set_plans:
+            if type(sp) == SetPlan:
+                set_plans.append(sp)
+                continue
+            if type(sp) == dict:
+                set_plans.append(SetPlan(**sp))
+                continue
+            if type(sp) == str:
+                sp = (sp,)
+            set_plans.append(SetPlan(*sp))
+        self.set_plans = set_plans
+
+    def apply_keep_kind(self):
+        assert self.keep_kind in KeepKind
+
+        # Nothing to do when set to ALL
+        delete_calc_counter = list()
+        if self.keep_kind == KeepKind["LATEST"]:
+            delete_calc_counter.extend(
+                [
+                    self.calc_counter - 1,
+                ]
+                if self.calc_counter > 0
+                else []
+            )
+        elif self.keep_kind == KeepKind["NONE"]:
+            delete_calc_counter.extend(list(self.kept_history.keys()))
+
+        for cycle in delete_calc_counter:
+            self.log(f"Deleting kept files from cycle {cycle}.")
+            for k, f in self.kept_history[cycle].items():
+                if type(f) is list:
+                    [os.remove(f_) for f_ in f]
+                else:
+                    os.remove(f)
+            del self.kept_history[cycle]
+
     def keep(self, path):
         """Backup calculation results.
 
@@ -583,6 +711,8 @@ class Calculator:
                     f"files instead ({', '.join([g.name for g in globbed])})!"
                 )
             else:
+                # I wonder if this has to be a list? Probably to support 'multi', when the pattern
+                # contains a '*' character.
                 kept_fns[key] = list()
             for tmp_fn in globbed:
                 base = tmp_fn.name
@@ -592,7 +722,27 @@ class Calculator:
                     kept_fns[key].append(new_fn)
                 else:
                     kept_fns[key] = new_fn
+        self.kept_history[self.calc_counter] = kept_fns
+        self.apply_keep_kind()
+        try:
+            kept_fns = self.kept_history[self.calc_counter]
+        except KeyError:
+            kept_fns = dict()
+        self.apply_set_plans(kept_fns)
         return kept_fns
+
+    def apply_set_plans(self, kept_fns, set_plans=None):
+        if set_plans is None:
+            set_plans = self.set_plans
+
+        for sp in set_plans:
+            if not sp.condition(self):
+                continue
+            try:
+                setattr(self, sp.name, kept_fns[sp.key])
+            except KeyError:
+                if sp.fail is not None:
+                    self.log(sp.fail(sp.key))
 
     def clean(self, path):
         """Delete the temporary directory.

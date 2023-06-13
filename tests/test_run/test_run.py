@@ -11,9 +11,17 @@ from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 
 
-@using("pyscf")
+@using("xtb")
 def test_diels_alder_growing_string():
     run_dict = {
+        "geom": {
+            "type": "dlc",
+            "fn": "lib:diels_alder_interpolated.trj",
+        },
+        "calc": {
+            "type": "xtb",
+            "pal": 2,
+        },
         "preopt": {
             "max_cycles": 5,
         },
@@ -41,17 +49,6 @@ def test_diels_alder_growing_string():
         "endopt": {
             "fragments": True,
         },
-        "calc": {
-            "type": "pyscf",
-            "pal": 2,
-            # "basis": "321g",
-            "basis": "sto3g",
-            "verbose": 0,
-        },
-        "geom": {
-            "type": "dlc",
-            "fn": "lib:diels_alder_interpolated.trj",
-        },
     }
     results = run_from_dict(run_dict)
 
@@ -60,8 +57,7 @@ def test_diels_alder_growing_string():
     assert isinstance(results.cos, ChainOfStates)
     assert results.cos_opt.is_converged
     assert results.ts_opt.is_converged
-    # assert results.ts_geom._energy == pytest.approx(-231.60321)  # 321g
-    assert results.ts_geom._energy == pytest.approx(-230.0365863, abs=2e-3)  # sto3g
+    assert results.ts_geom._energy == pytest.approx(-17.81191579)
     assert isinstance(results.ts_geom, Geometry)
     assert results.irc.forward_is_converged
     assert results.irc.backward_is_converged

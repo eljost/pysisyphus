@@ -8,6 +8,7 @@ __all__ = [
     "geom_from_pdb",
     "geom_from_zmat",
     "geom_from_pubchem_name",
+    "geom_from_qcschema",
     "geoms_from_xyz",
     "geoms_from_molden",
     "save_hessian",
@@ -24,5 +25,6 @@ from pysisyphus.io.molden import geoms_from_molden
 from pysisyphus.io.mol2 import geom_from_mol2
 from pysisyphus.io.pdb import geom_from_pdb
 from pysisyphus.io.pubchem import geom_from_pubchem_name
+from pysisyphus.io.qcschema import geom_from_qcschema
 from pysisyphus.io.xyz import geoms_from_xyz, geoms_from_inline_xyz, parse_xyz
 from pysisyphus.io.zmat import geom_from_zmat, geom_from_zmat_fn

@@ -16,18 +16,28 @@
 # [5] https://doi.org/10.1063/1.4894472
 #     Diabatization based on the dipole and quadrupole: The DQ method
 #     Hoyer, Xu, Ma, Gagliardi, Truhlar, 2014
+# [6] https://pubs.acs.org/doi/pdf/10.1021/acs.jctc.2c00261
+#     Implementation of Occupied and Virtual Edmiston−Ruedenberg
+#     Orbitals Using Cholesky Decomposed Integrals
+# [7] https://doi.org/10.1063/1.1790971
+#     An efficient method for calculating maxima of homogeneous
+#     functions of orthogonal matrices: Applications to localized
+#     occupied orbitals
 
 
 from dataclasses import dataclass
 from functools import singledispatch
 import itertools as it
 from typing import Callable, Optional
+import warnings
 
 import numpy as np
 from numpy.typing import NDArray
 
+from pysisyphus.helpers_pure import rms
+from pysisyphus.linalg import matrix_power, pivoted_cholesky
 from pysisyphus.wavefunction import logger, Wavefunction
-from pysisyphus.linalg import pivoted_cholesky
+from pysisyphus.wavefunction.DIIS import DIIS
 
 
 PI_QUART = np.pi / 4
@@ -136,10 +146,10 @@ def jacobi_sweeps(
         for j, k in it.combinations(range(nmos), 2):
             A, B = ab_func(j, k, C)
 
-            if (A ** 2 + B ** 2) <= 1e-12:
+            if (A**2 + B**2) <= 1e-12:
                 continue
 
-            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A ** 2 + B ** 2)) / 4
+            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A**2 + B**2)) / 4
             assert -PI_QUART <= gamma <= PI_QUART
             # 2x2 MO rotations
             rot_inplace(C, gamma, j, k)
@@ -204,7 +214,7 @@ def pipek_mezey(C, S, ao_center_map, **kwargs) -> JacobiSweepResult:
             ).sum() / 2
             Qjj = Q[ao_inds, j].sum()
             Qkk = Q[ao_inds, k].sum()
-            A += (Qjk ** 2) - ((Qjj - Qkk) ** 2) / 4
+            A += (Qjk**2) - ((Qjj - Qkk) ** 2) / 4
             B += Qjk * (Qjj - Qkk)
         return A, B
 
@@ -219,7 +229,7 @@ def pipek_mezey(C, S, ao_center_map, **kwargs) -> JacobiSweepResult:
             for center in centers:
                 ao_inds = ao_center_map[center]
                 Q = (C[ao_inds, l][:, None] * C[:, l] * S[ao_inds, :]).sum()
-                P += Q ** 2
+                P += Q**2
         return P
 
     logger.info("Pipek-Mezey localization")
@@ -257,7 +267,7 @@ def get_fb_ab_func(moments_ints):
         jrj = contract(mo_j, mo_j)
         jrk = contract(mo_j, mo_k)
         krk = contract(mo_k, mo_k)
-        A = (jrk ** 2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
+        A = (jrk**2).sum() - ((jrj - krk) ** 2).sum() / 4  # Eq. (9) in [4]
         B = ((jrj - krk) * jrk).sum()  # Eq. (10) in [4]
         return A, B
 
@@ -334,3 +344,115 @@ def _(wf: Wavefunction) -> JacobiSweepResult:
     dip_ints = wf.dipole_ints()
     C_chol_loc = cholesky(Cao)
     return foster_boys(C_chol_loc, dip_ints)
+
+
+def edmiston_ruedenberg_cost_func(L):
+    """Edmiston-Ruedenberg cost function.
+
+    Eq. (2) in [7]."""
+    return np.einsum("Jpp,Jpp->", L, L, optimize="greedy")
+
+
+def edmiston_ruedenberg_grad(L):
+    """Edmiston-Ruedenberg gradient.
+
+    Eq. (5) in [7]."""
+    g1 = np.einsum("Jpq,Jqq->pq", L, L, optimize="greedy")
+    g2 = np.einsum("Jqp,Jpp->pq", L, L, optimize="greedy")
+    return -4 * (g1 - g2)
+
+
+def edmiston_ruedenberg(C, Lao, Sao, diis_cycles=5, max_cycles=100):
+    """Edmiston-Ruedenberg localization using DF integrals and DIIS.
+
+    Parameters
+    ----------
+    C
+        MO-coefficients of shape (naos, nmos); this means MOs should
+        be in columns.
+
+    Lao
+        Density fitting tensor obtained from contracting the 2e3c-matrix
+        with 2c2e**-0.5 in the AO basis. Must have shape (naux, nao, nao).
+        Same as in
+    Sao
+        Overlap matrix of shape (nao, nao) in the AO basis.
+    diis_cycles
+        Integer >= 0. If > 0, DIIS is employed to accelerate convergence.
+    max_cycles
+        Positive integer; maximum number of localization cycles.
+
+    Returns
+    -------
+    Crot
+        Edmiston-Ruedenberg localized orbitals.
+    """
+    nmos = C.shape[1]
+    # We can't keep more error vectors than MOs
+    if nmos < diis_cycles:
+        warnings.warn(
+            f"Can keep at most {nmos} DIIS error vectors, but "
+            f"{diis_cycles} were requested!."
+        )
+    diis_cycles = min(diis_cycles, nmos)
+    if diis_cycles == 1:
+        diis_cycles = 0
+    started_to_store_diis = False
+    specs = {
+        "err_vecs": np.zeros((diis_cycles, nmos**2)),
+        "R_mats": np.zeros((diis_cycles, nmos, nmos)),
+        "D_mats": np.zeros((diis_cycles, nmos, nmos)),
+    }
+    diis = DIIS(specs)
+
+    D = np.eye(nmos)
+    C0 = C.copy()
+    Crot = C.copy()
+    for i in range(max_cycles):
+        # Transform cholesky integrals to MO basis, step (2) in [7].
+        Lpq = np.einsum("Luv,up,vq->Lpq", Lao, Crot, Crot, optimize="greedy")
+        f = edmiston_ruedenberg_cost_func(Lpq)
+        g = edmiston_ruedenberg_grad(Lpq)
+        gnorm = np.linalg.norm(g)
+        grms = rms(g)
+        # Construct transformation, step (3) in [7].
+        # Rji = (Xj Xi Xi Xi)
+        R = np.einsum("Jji,Jii->ji", Lpq, Lpq, optimize="greedy")
+        # DIIS error; lack of symmetry in R.
+        err = (R - R.T).flatten()
+        errrms = rms(err)
+        print(
+            f"Cycle {i:02d} f={f:.8f}, |g|={np.linalg.norm(g):.4f}, rms(g)={grms:>8.4e} "
+            f"rms(err)={errrms:>8.4e}"
+        )
+        if converged := grms <= 1e-4:
+            print("Edmiston-Ruedenberg localization converged!")
+            break
+
+        U = R @ matrix_power(R.T @ R, -0.5)
+        D = D @ U
+        if diis_cycles and (started_to_store_diis or (gnorm <= 2.0e-1)):
+            diis.store(
+                {
+                    "err_vecs": err,
+                    "R_mats": R,
+                    "D_mats": D,
+                }
+            )
+            started_to_store_diis = True
+        if (diis_coeffs := diis.get_coeffs()) is not None:
+            D_diis = np.einsum("i,ijk->jk", diis_coeffs, diis.get("D_mats"))
+            C_diis = C0 @ D_diis
+            # DIIS-2 algorithm in [7]
+            R_diis = np.einsum("i,ijk->jk", diis_coeffs, diis.get("R_mats"))
+            S_diis = C_diis.T @ Sao @ C_diis
+            S_diis_inv = matrix_power(S_diis, -1.0)
+            # Generalized eta step
+            V = S_diis_inv @ R_diis @ matrix_power(R_diis.T @ S_diis_inv @ R_diis, -0.5)
+            # Recalculate D from DIIS results
+            D = D_diis @ V
+        # Update Crot, step (4) in [7]. This either uses the D matrix obtained from DIIS
+        # or the one previously calculated.
+        Crot = C0 @ D
+    # TODO: return JacobiSweepResult?
+    return Crot, f

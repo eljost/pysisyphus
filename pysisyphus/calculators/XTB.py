@@ -23,6 +23,11 @@ OptResult = namedtuple("OptResult", "opt_geom opt_log")
 class XTB(Calculator):
 
     conf_key = "xtb"
+    _set_plans = (
+        "charges",
+        "json",
+        "xtbrestart",
+    )
 
     def __init__(
         self,
@@ -390,21 +395,6 @@ class XTB(Calculator):
             dump = json.load(handle)
         charges = dump["partial charges"]
         return charges
-
-    def keep(self, path):
-        kept_fns = super().keep(path)
-        try:
-            self.charges = kept_fns["charges"]
-        except KeyError:
-            self.log("Skip setting 'charges' file in quiet mode.")
-        try:
-            self.json = kept_fns["json"]
-        except KeyError:
-            self.log("Skip setting of 'json' file.")
-        try:
-            self.xtbrestart = kept_fns["xtbrestart"]
-        except KeyError:
-            pass
 
     @staticmethod
     @file_or_str(".out")

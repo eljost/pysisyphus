@@ -5,10 +5,11 @@
 #     Schlegel, Frisch, 1995
 
 import argparse
+import functools
 from cmath import sqrt
 from math import floor
 import sys
-from typing import Dict
+from typing import Dict, List, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,32 +17,14 @@ from scipy.special import factorial as fact
 from scipy.special import binom
 
 from pysisyphus.wavefunction.helpers import canonical_order
+from pysisyphus.wavefunction.normalization import get_lmn_factors
 
 
-def sph_norm(n: int) -> float:
-    """Eq. (8) in [1] (N), without orbital exponent."""
-    return 1 / sqrt(fact(2 * n + 2) * np.pi**0.5 / (2 ** (2 * n + 3) * fact(n + 1)))
+ZERO_THRESH = 1e-14
 
 
-def cart_norm(lx: int, ly: int, lz: int) -> float:
-    """Eq. (9) in [1] (Ñ), without orbital exponent."""
-    l = lx + ly + lz
-    return 1 / sqrt(
-        fact(2 * lx)
-        * fact(2 * ly)
-        * fact(2 * lz)
-        * np.pi**1.5
-        / (2 ** (2 * l) * fact(lx) * fact(ly) * fact(lz))
-    )
-
-
-def norm(lx: int, ly: int, lz: int) -> float:
-    # The orbital exponent cancles out in the division.
-    # n = lx + ly + lz
-    return sph_norm(lx + ly + lz) / cart_norm(lx, ly, lz)
-
-
-def cart2sph_coeff(lx: int, ly: int, lz: int, m: int, normalized=True) -> complex:
+@functools.cache
+def cart2sph_coeff(lx: int, ly: int, lz: int, m: int) -> complex:
     """Coefficient to convert Cartesian to spherical harmonics.
 
     Eq. (15) in [1].
@@ -100,20 +83,24 @@ def cart2sph_coeff(lx: int, ly: int, lz: int, m: int, normalized=True) -> comple
     )
     coeff *= 1 / (2**l * lfact)
 
-    if not normalized:
-        coeff /= norm(lx, ly, lz)
     return coeff
 
 
-def cart2sph_coeffs_for(l: int, real: bool = True, **kwargs) -> NDArray:
+@functools.cache
+def cart2sph_coeffs_for(
+    l: int,
+    real: bool = True,
+    zero_small: bool = True,
+    zero_thresh: float = ZERO_THRESH,
+) -> NDArray:
     all_coeffs = list()
     for lx, ly, lz in canonical_order(l):
         coeffs = list()
         for m in range(-l, l + 1):
-            coeff = cart2sph_coeff(lx, ly, lz, m, **kwargs)
+            coeff = cart2sph_coeff(lx, ly, lz, m)
             # Form linear combination for m != 0 to get real spherical orbitals.
             if real and m != 0:
-                coeff_minus = cart2sph_coeff(lx, ly, lz, -m, **kwargs)
+                coeff_minus = cart2sph_coeff(lx, ly, lz, -m)
                 sign = 1 if m < 0 else -1
                 coeff = (coeff + sign * coeff_minus) / sqrt(sign * 2)
             coeffs.append(coeff)
@@ -122,18 +109,51 @@ def cart2sph_coeffs_for(l: int, real: bool = True, **kwargs) -> NDArray:
     if real:
         assert real == ~np.iscomplex(C).all()  # C should be real
         C = np.real(C)
-    return C.T  # Return w/ shape (sph., cart.)
+    if zero_small:
+        mask = np.abs(C) <= zero_thresh
+        C[mask] = 0.0
+    # Final shape will be (spherical, Cartesian)
+    # Return read-only view; otherwise it would be too easy to mess up the
+    # cached result by inplace operations on C.
+    C = C.T.view()
+    C.flags.writeable = False
+    return C
+
+
+@functools.cache
+def expand_sph_quantum_numbers(
+    Lm, zero_thresh=ZERO_THRESH, with_lmn_factors=False
+) -> Tuple[NDArray[float], List[Tuple[int, int, int]]]:
+    """Factors and Cart. angular momentum vectors for given sph. quantum numbers."""
+    L, m = Lm
+    m += L  # Map m from [-L, L] onto [0, 2*L]
+    C = cart2sph_coeffs_for(L)  # shape (spherical, Cartesian)
+    # Include lmn-factor that appears when contracted functions are normalized
+    # according to 'normalization.norm_cgto_lmn(L).
+    if with_lmn_factors:
+        lmn_factors = get_lmn_factors(L)
+        C = C * lmn_factors[None, :]
+    indices, *_ = np.where(np.abs(C[m]) > zero_thresh)
+    factors = C[m, indices].copy()
+
+    cart_lmn = [lmn for i, lmn in enumerate(canonical_order(L)) if i in indices]
+    return factors, cart_lmn
 
 
 def cart2sph_coeffs(
-    l_max: int, zero_small=False, zero_thresh=1e-14, **kwargs
+    l_max: int,
+    **kwargs,
 ) -> Dict[int, NDArray]:
     coeffs = {l: cart2sph_coeffs_for(l, **kwargs) for l in range(l_max + 1)}
-    if zero_small:
-        for c in coeffs.values():
-            mask = np.abs(c) <= zero_thresh
-            c[mask] = 0.0
     return coeffs
+
+
+def cart2sph_nlms(l_max: int) -> Dict[int, Tuple[Tuple[int, int, int]]]:
+    nlms = dict()
+    for l in range(l_max + 1):
+        n = l
+        nlms[l] = tuple([(n, l, m) for m in range(-l, l + 1)])
+    return nlms
 
 
 def print_coeffs(l: int, C: NDArray):

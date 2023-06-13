@@ -10,6 +10,7 @@ def to_float(s, loc, toks):
     match = toks[0].replace("D", "E")
     return float(match)
 
+
 def make_float_class(**kwargs):
     return pp.Word(pp.nums + ".-DE+", **kwargs).setParseAction(to_float)
 
@@ -19,7 +20,7 @@ def parse_turbo_gradient(path):
     gradient_fn = glob.glob(os.path.join(path, "gradient"))
     if not gradient_fn:
         raise Exception("gradient file not found!")
-    assert(len(gradient_fn) == 1)
+    assert len(gradient_fn) == 1
     gradient_fn = gradient_fn[0]
     with open(gradient_fn) as handle:
         text = handle.read()
@@ -32,21 +33,29 @@ def parse_turbo_gradient(path):
     coord_line = pp.Group(float_line + pp.Word(pp.alphas))
     grad_line = pp.Group(float_line)
     cart_grads = pp.Literal("cartesian gradients")
-    energy_type = pp.Or((pp.Literal("SCF energy"),
-                        pp.Literal("ex. state energy"),
-                        pp.Literal("CC2 energy"),
-                        pp.Literal("ADC(2) energy"),
-                        pp.Literal("MP2 energy"),
-    ))
+    energy_type = pp.Or(
+        (
+            pp.Literal("SCF energy"),
+            pp.Literal("ex. state energy"),
+            pp.Literal("CC2 energy"),
+            pp.Literal("ADC(2) energy"),
+            pp.Literal("MP2 energy"),
+        )
+    )
 
     parser = (
-        pp.Or((pp.Literal("$grad"), pp.Literal("$gradient"))) + pp.Optional(cart_grads) +
-        pp.Literal("cycle =") + cycle +
-        energy_type + pp.Literal("=") + scf_energy +
-        pp.Literal("|dE/dxyz| =") + grad_norm +
-        pp.OneOrMore(coord_line).setResultsName("coords") +
-        pp.OneOrMore(grad_line).setResultsName("grad") +
-        pp.Literal("$end")
+        pp.Or((pp.Literal("$grad"), pp.Literal("$gradient")))
+        + pp.Optional(cart_grads)
+        + pp.Literal("cycle =")
+        + cycle
+        + energy_type
+        + pp.Literal("=")
+        + scf_energy
+        + pp.Literal("|dE/dxyz| =")
+        + grad_norm
+        + pp.OneOrMore(coord_line).setResultsName("coords")
+        + pp.OneOrMore(grad_line).setResultsName("grad")
+        + pp.Literal("$end")
     )
     parsed = parser.parseString(text)
     gradient = np.array(parsed["grad"].asList()).flatten()
@@ -66,12 +75,7 @@ def parse_turbo_ccre0_ascii(text):
     data = pp.Group(pp.OneOrMore(float_20))
     end = pp.Literal("$end")
 
-    parser = (title
-              + method
-              + data.setResultsName("data")
-              + end
-
-    )
+    parser = title + method + data.setResultsName("data") + end
     result = parser.parseString(text)
     data = np.array(result["data"].asList())
     return data
@@ -89,21 +93,20 @@ def parse_turbo_mos(text):
     mo_coeffs = pp.OneOrMore(float_20)
 
     mo = pp.Group(
-        mo_num + sym + eigenvalue + nsaos +
-        mo_coeffs.setResultsName("mo_coeffs")
+        mo_num + sym + eigenvalue + nsaos + mo_coeffs.setResultsName("mo_coeffs")
     )
 
     parser = (
-        pp.Literal("$scfmo") + pp.Literal("scfconv=") + pp.Word(pp.nums)
+        pp.Literal("$scfmo")
+        + pp.Literal("scfconv=")
+        + pp.Word(pp.nums)
         + pp.Literal("format(4d20.14) ")
         + pp.ZeroOrMore(comment)
         + pp.OneOrMore(mo).setResultsName("mos")
         + pp.Literal("$end")
     )
     parsed = parser.parseString(text)
-    mo_coeffs = np.array(
-        [mo.mo_coeffs.asList() for mo in parsed.mos]
-    ).T
+    mo_coeffs = np.array([mo.mo_coeffs.asList() for mo in parsed.mos]).T
 
     # MOs are in columns
     return mo_coeffs
@@ -112,14 +115,16 @@ def parse_turbo_mos(text):
 def parse_turbo_exstates(text):
     """Parse excitation energies (first blocks) from an exstates file."""
     float_ = make_float_class()
-    exc_energies_line = (pp.Literal("$excitation_energies_")
-                         + pp.Word(pp.alphanums + "()").setResultsName("model")
-                         + pp.Word("_")
-                         + pp.restOfLine
+    exc_energies_line = (
+        pp.Literal("$excitation_energies_")
+        + pp.Word(pp.alphanums + "()").setResultsName("model")
+        + pp.Word("_")
+        + pp.restOfLine
     )
     exc_energy = pp.Suppress(pp.Word(pp.nums)) + float_
-    exc_energies_block = pp.Group(exc_energies_line
-                                  + pp.Group(pp.OneOrMore(exc_energy)).setResultsName("exc_ens"))
+    exc_energies_block = pp.Group(
+        exc_energies_line + pp.Group(pp.OneOrMore(exc_energy)).setResultsName("exc_ens")
+    )
 
     parser = pp.OneOrMore(exc_energies_block).setResultsName("exc_blocks")
     result = parser.parseString(text)
@@ -130,7 +135,7 @@ def parse_turbo_exstates(text):
 def parse_turbo_exstates_re(text):
     results = dict()
     exc_ens_str = "excitation_energies_"
-    model_re = re.compile(exc_ens_str + "(\w+?)_")
+    model_re = re.compile(exc_ens_str + r"(\w+?)_")
     blocks = text.strip().split("$")
     for block in blocks:
         if not block.startswith(exc_ens_str):

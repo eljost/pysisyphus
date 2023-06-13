@@ -8,6 +8,7 @@ import math
 from pathlib import Path
 from typing import List, Tuple
 import re
+import uuid
 import time
 from typing import Optional
 
@@ -189,7 +190,7 @@ def full_expand(to_expand):
     return expanded
 
 
-def file_or_str(*args, method=False, mode="r"):
+def file_or_str(*args, method=False, mode="r", exact=False):
     exts = args
 
     def inner_func(func):
@@ -198,7 +199,9 @@ def file_or_str(*args, method=False, mode="r"):
                 obj = inp
                 inp, *args = args
             p = Path(inp)
-            looks_like_file = exts and (p.suffix in exts)
+            looks_like_file = exts and (
+                (p.suffix in exts) or (exact and p.name in exts)
+            )
             if looks_like_file and p.is_file():
                 with open(p, mode=mode) as handle:
                     inp = handle.read()
@@ -406,6 +409,10 @@ _CONV_FUNCS = {
     # First item in value converts to JSON dumpable type,
     # second items converts from JSON to original type.
     "energy": (lambda en: float(en), lambda en: float(en)),
+    "all_energies": (
+        lambda all_energies: all_energies.tolist(),
+        lambda all_energies: np.array(all_energies, dtype=float),
+    ),
     "forces": (
         lambda forces: forces.tolist(),
         lambda forces: np.array(forces, dtype=float).flatten(),
@@ -544,7 +551,7 @@ def molecular_volume(
     below_radius = below_radius.sum()
     ratio = below_radius / n_trial
     mol_vol = ratio * box_volume  # a0³ / Molecule
-    mol_vol_ang3 = mol_vol * BOHR2ANG ** 3  # Å³ / Molecule
+    mol_vol_ang3 = mol_vol * BOHR2ANG**3  # Å³ / Molecule
     molar_vol = mol_vol_ang3 * NA * 1e-24  # l/mol
     return mol_vol, mol_vol_ang3, molar_vol
 
@@ -595,7 +602,7 @@ def cache_arrays(sources, dest):
 
 def estimate(gen, elems):
     tot_dur = 0.0
-    for i in range(1, elems+1):
+    for i in range(1, elems + 1):
         start = time.time()
         elem = next(gen)
         dur = time.time() - start
@@ -607,3 +614,26 @@ def estimate(gen, elems):
         est_dur_min = est_dur / 60
         print(f"{ran_ratio: >8.2%} finished ... {est_dur_min: >8.2f} min left")
         yield elem
+
+
+def get_random_path(stem=""):
+    if stem != "":
+        stem += "_"
+    while (path := Path(f"{stem}{uuid.uuid1()}")).exists():
+        pass
+    return path
+
+
+def kill_dir(path):
+    """Innocent function remove a directory.
+
+    It must contain only files and no other directories.
+    So this won't do too much damage hopefully.
+    """
+    for fn in Path(path).iterdir():
+        fn.unlink()
+    path.rmdir()
+
+
+def rms(arr):
+    return np.sqrt(np.mean(arr**2))

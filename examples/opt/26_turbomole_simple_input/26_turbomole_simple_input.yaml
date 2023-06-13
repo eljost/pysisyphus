@@ -1,0 +1,32 @@
+geom:
+ type: redund
+ fn: lib:h2o.xyz
+calc:
+ type: turbomole
+ charge: 1
+ mult: 2
+ # Turbomole's simple input is given as nested dictionaries.
+ # The 'basis' key is mandatory and must be given on the top level
+ # Other keys on the top level are translated into separate data groups.
+ # The input below will result in the data groups
+ # $dft
+ #  ...
+ # $rij
+ # $disp4
+ #
+ # Every data group can have (several) child options/keywords. See below
+ # for various examples. If an option is just a keyword without further arguments, e.g.,
+ # 'weight derivatives' then any further input can be omitted.
+ simple_input:
+  basis: def2-mTZVPP
+  rij:
+  dft:
+   func: r2scan-3c
+   grid: m4
+   radsize: 8
+   "weight derivatives":
+  disp4:
+opt:
+ thresh: gau
+assert:
+ opt_geom.energy: -76.00410489

@@ -15,8 +15,13 @@ from pysisyphus.helpers_pure import file_or_str
 
 
 class Gaussian16(OverlapCalculator):
-
     conf_key = "gaussian16"
+    _set_plans = (
+        {"key": "chk", "condition": lambda self: self.keep_chk},
+        "fchk",
+        ("fchk", "mwfn_wf"),
+        "dump_635r",
+    )
 
     def __init__(
         self,
@@ -298,9 +303,48 @@ class Gaussian16(OverlapCalculator):
                 results_dict[key] = np.array(res[2:])
         return results_dict
 
+    def parse_all_energies(self, fchk=None):
+        if fchk is None:
+            fchk = self.fchk
+        with open(fchk) as handle:
+            text = handle.read()
+
+        float_ = r"([\d\-\+Ee\.]+)"
+        gs_re = re.compile(r"SCF Energy\s+R\s+" + float_)
+        gs_mobj = gs_re.search(text)
+        gs_energy = float(gs_mobj[1])
+        # cis_re = re.compile(r"CIS Energy\s+R\s+" + float_)
+        # cis_mobj = cis_re.search(text)
+        # cis_energy = float(cis_mobj[1])
+        etrans_re = re.compile(
+            r"ETran state values\s+R\s+N=\s+(\d+)([\d\-\.Ee\+\s]+)", re.DOTALL
+        )
+        etrans_mobj = etrans_re.search(text)
+        try:
+            etrans = etrans_mobj[2].strip().split()
+            etrans = np.array(etrans, dtype=float).reshape(-1, 16)
+            exc_energies = etrans[:, 0]
+            all_energies = np.zeros(exc_energies.size + 1)
+            all_energies[0] = gs_energy
+            all_energies[1:] = exc_energies
+        except TypeError:
+            all_energies = np.array((gs_energy,))
+        return all_energies
+
+    def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
+        if self.track:
+            self.store_overlap_data(atoms, coords)
+            if self.track_root():
+                # Redo the calculation with the updated root
+                results = func(atoms, coords, **prepare_kwargs)
+        results["all_energies"] = self.parse_all_energies()
+        return results
+
     def get_energy(self, atoms, coords, **prepare_kwargs):
         results = self.get_forces(atoms, coords, **prepare_kwargs)
-        del results["forces"]
+        results = self.store_and_track(
+            results, self.get_energy, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -316,11 +360,9 @@ class Gaussian16(OverlapCalculator):
             "calc": "force",
         }
         results = self.run(inp, **kwargs)
-        if self.track:
-            self.store_overlap_data(atoms, coords)
-            if self.track_root():
-                # Redo the calculation with the updated root
-                results = self.get_forces(atoms, coords)
+        results = self.store_and_track(
+            results, self.get_forces, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
@@ -329,6 +371,9 @@ class Gaussian16(OverlapCalculator):
             "calc": "hessian",
         }
         results = self.run(inp, **kwargs)
+        results = self.store_and_track(
+            results, self.get_hessian, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def run_stable(self, atoms, coords, **prepare_kwargs):
@@ -663,19 +708,6 @@ class Gaussian16(OverlapCalculator):
         charges = np.array(fchk_dict["Mulliken Charges"])
 
         return charges
-
-    def keep(self, path):
-        kept_fns = super().keep(path)
-        if self.keep_chk:
-            self.chk = kept_fns[".chk"]
-        try:
-            self.fchk = kept_fns["fchk"]
-            self.mwfn_wf = self.fchk
-        except KeyError:
-            self.log("No .fchk file found!")
-            return
-        if self.track:
-            self.dump_635r = kept_fns["dump_635r"]
 
     def get_chkfiles(self):
         return {

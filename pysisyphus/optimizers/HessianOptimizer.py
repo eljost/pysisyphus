@@ -7,7 +7,7 @@ from scipy.optimize import root_scalar
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import rms
+from pysisyphus.helpers_pure import rms
 from pysisyphus.io.hessian import save_hessian
 from pysisyphus.optimizers.guess_hessians import (
     get_guess_hessian,
@@ -58,7 +58,6 @@ HessUpdate = Literal[
 
 
 class HessianOptimizer(Optimizer):
-
     rfo_dict = {
         "min": (0, "min"),
         "max": (-1, "max"),
@@ -504,15 +503,15 @@ class HessianOptimizer(Optimizer):
 
     def get_alpha_step(self, cur_alpha, rfo_eigval, step_norm, eigvals, gradient):
         # Derivative of the squared step w.r.t. alpha
-        numer = gradient ** 2
+        numer = gradient**2
         denom = (eigvals - rfo_eigval * cur_alpha) ** 3
         quot = np.sum(numer / denom)
         self.log(f"quot={quot:.6f}")
-        dstep2_dalpha = 2 * rfo_eigval / (1 + step_norm ** 2 * cur_alpha) * quot
+        dstep2_dalpha = 2 * rfo_eigval / (1 + step_norm**2 * cur_alpha) * quot
         self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
         # Update alpha
         alpha_step = (
-            2 * (self.trust_radius * step_norm - step_norm ** 2) / dstep2_dalpha
+            2 * (self.trust_radius * step_norm - step_norm**2) / dstep2_dalpha
         )
         self.log(f"alpha_step={alpha_step:.4f}")
         assert (cur_alpha + alpha_step) > 0, "alpha must not be negative!"
@@ -663,7 +662,7 @@ class HessianOptimizer(Optimizer):
         mask = mask.astype(bool)
         without_min = gradient_trans[mask] / (eigvals[mask] - min_eigval)
         try:
-            tau = sqrt(self.trust_radius ** 2 - (without_min ** 2).sum())
+            tau = sqrt(self.trust_radius**2 - (without_min**2).sum())
             step_trans = [tau] + (-without_min).tolist()
         # Hard case. Search in open interval (endpoints not included)
         # (-min_eigval, inf).

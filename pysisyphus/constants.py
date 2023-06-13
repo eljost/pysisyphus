@@ -1,7 +1,11 @@
 import scipy.constants as spc
 
+PI = spc.pi
+
 # Speed of light in m/s
 C = spc.c
+# Speed of light in atomic units
+CAU = spc.value("inverse fine-structure constant")
 # ħ = h / 2π in J/s
 HBAR = spc.hbar
 # h
@@ -24,6 +28,10 @@ AU2KJPERMOL = AU2J / 1000 * spc.Avogadro
 AU2KCALPERMOL = AU2KJPERMOL / spc.calorie
 # Hartree to eV
 AU2EV = spc.value("Hartree energy in eV")
+# Joule to eV
+JOULE2EV = AU2EV / AU2J
+# Wavenumber to Hartree
+NU2AU = spc.h * C * 1e2 / AU2J
 # eV/Å -> Hartree/Bohr
 EVANG2AUBOHR = 1 / AU2EV / ANG2BOHR
 # fs -> Bohr * sqrt(amu/Hartree)
@@ -33,10 +41,10 @@ KB = spc.Boltzmann
 KBAU = KB / AU2J
 # Ideal gas constant
 R = spc.gas_constant
-# Atomic mass unit to kg
-AMU2KG = spc.value("atomic mass constant")
 # Atomic unit of time to second
 AU2SEC = spc.value("atomic unit of time")
+# Atomic mass unit to kg
+AMU2KG = spc.value("atomic mass constant")
 M_E = spc.electron_mass
 AMU2AU = AMU2KG / M_E
 # Avogadro constant
@@ -48,7 +56,7 @@ NA = spc.Avogadro
 
 # Force/amu to acceleration
 #   Hartree/(Bohr*amu) -> Bohr / fs²
-FORCE2ACC = AU2J / (AMU2KG * BOHR2M ** 2 * 1e30)
+FORCE2ACC = AU2J / (AMU2KG * BOHR2M**2 * 1e30)
 # Velocity*amu -> Energy
 #   Bohr²/fs²*amu -> Hartree
 # VELO2E = AMU2KG * BOHR2M**2 / (1e-30 * AU2J)

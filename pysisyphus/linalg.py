@@ -154,6 +154,7 @@ def finite_difference_hessian(
     grad_func: Callable[[NDArray[float]], NDArray[float]],
     step_size: float = 1e-2,
     acc: Literal[2, 4] = 2,
+    callback: Optional[Callable] = None,
 ) -> NDArray[float]:
     """Numerical Hessian from central finite gradient differences.
 
@@ -161,6 +162,11 @@ def finite_difference_hessian(
       https://en.wikipedia.org/wiki/Finite_difference_coefficient
     for the different accuracies.
     """
+    if callback is None:
+
+        def callback(*args):
+            pass
+
     accuracies = {
         2: ((-0.5, -1), (0.5, 1)),  # 2 calculations
         4: ((1 / 12, -2), (-2 / 3, -1), (2 / 3, 1), (-1 / 12, 2)),  # 4 calculations
@@ -177,12 +183,13 @@ def finite_difference_hessian(
         step = zero_step.copy()
         step[i] = step_size
 
-        def get_grad(factor, displ):
+        def get_grad(factor, displ, j):
             displ_coords = coords + step * displ
+            callback(i, j)
             grad = grad_func(displ_coords)
             return factor * grad
 
-        grads = [get_grad(factor, displ) for factor, displ in coeffs]
+        grads = [get_grad(factor, displ, j) for j, (factor, displ) in enumerate(coeffs)]
         fd = np.sum(grads, axis=0) / step_size
         fd_hessian[i] = fd
 
@@ -227,17 +234,17 @@ def rot_quaternion(coords3d, ref_coords3d):
 
 def quaternion_to_rot_mat(q):
     q0, q1, q2, q3 = q
-    q_ = q0 ** 2 - (q1 ** 2 + q2 ** 2 + q3 ** 2)
+    q_ = q0**2 - (q1**2 + q2**2 + q3**2)
     R = np.zeros((3, 3))
-    R[0, 0] = q_ + 2 * q1 ** 2
+    R[0, 0] = q_ + 2 * q1**2
     R[0, 1] = 2 * (q1 * q2 - q0 * q3)
     R[0, 2] = 2 * (q1 * q3 - q0 * q2)
     R[1, 0] = 2 * (q1 * q2 + q0 * q3)
-    R[1, 1] = q_ + 2 * q2 ** 2
+    R[1, 1] = q_ + 2 * q2**2
     R[1, 2] = 2 * (q2 * q3 - q0 * q1)
     R[2, 0] = 2 * (q1 * q3 - q0 * q2)
     R[2, 1] = 2 * (q2 * q3 + q0 * q1)
-    R[2, 2] = q_ + 2 * q3 ** 2
+    R[2, 2] = q_ + 2 * q3**2
     return R
 
 
@@ -328,7 +335,7 @@ def pivoted_cholesky(A: NDArray, tol: float = -1.0):
     return L, piv, rank
 
 
-def pivoted_cholesky2(A: NDArray[float], tol: Optional[float]=None, m_max: int = 0):
+def pivoted_cholesky2(A: NDArray[float], tol: Optional[float] = None, m_max: int = 0):
     """https://doi.org/10.1016/j.apnum.2011.10.001"""
 
     R = np.zeros_like(A)
@@ -336,8 +343,8 @@ def pivoted_cholesky2(A: NDArray[float], tol: Optional[float]=None, m_max: int =
     n = len(A)
     # Decompose to max rank.
     if tol is None:
-        tol = 0.
-    assert tol >= 0., f"{tol=} must be >= 0.0!"
+        tol = 0.0
+    assert tol >= 0.0, f"{tol=} must be >= 0.0!"
     if m_max == 0:
         m_max = n
     assert 0 <= m_max <= n, f"{m_max=} must fullfil (0 <= m_max <= {n=})!"
@@ -348,7 +355,7 @@ def pivoted_cholesky2(A: NDArray[float], tol: Optional[float]=None, m_max: int =
         # Stop when error is sufficiently small or we are at max rank.
         # while (error > tol) or (m_max and m < m_max):
         if (error <= tol) or (m_max and (m == m_max)):
-              break
+            break
         i = m + d[piv[m:]].argmax()
         piv[m], piv[i] = piv[i], piv[m]
         R[m, piv[m]] = np.sqrt(d[piv[m]])
@@ -356,20 +363,20 @@ def pivoted_cholesky2(A: NDArray[float], tol: Optional[float]=None, m_max: int =
             j = np.arange(m)
             sum_ = (R[j, piv[m]] * R[j, piv[i]]).sum()
             R[m, piv[i]] = (A[piv[m], piv[i]] - sum_) / R[m, piv[m]]
-            d[piv[i]] -= R[m, piv[i]]**2
-        error = d[m+1:].sum()
+            d[piv[i]] -= R[m, piv[i]] ** 2
+        error = d[m + 1 :].sum()
         m += 1
     # R.T @ R == A
     return R, piv, m
 
 
-def matrix_power(mat, p, thresh=1e-12):
+def matrix_power(mat, p, thresh=1e-12, strict=True):
     w, v = np.linalg.eigh(mat)
-    assert (w > 0.0).all(), (
-        "matrix_power must be called with a (semi)-positive-definite matrix!"
-    )
+    assert (not strict) or (
+        w > 0.0
+    ).all(), "matrix_power must be called with a (semi)-positive-definite matrix!"
     mask = np.abs(w) > thresh
-    w_pow = w[mask]**p
+    w_pow = w[mask] ** p
     v_mask = v[:, mask]
     return v_mask @ np.diag(w_pow) @ v_mask.T
 
@@ -390,3 +397,15 @@ def sym_mat_from_tril(arr, data):
     arr[tril] = data
     triu1 = np.triu_indices(nrows, k=1)
     arr[triu1] = arr.T[triu1]
+
+
+def multi_component_sym_mat(arr, dim):
+    target_shape = (dim, dim)
+    shape = arr.shape
+    sym = np.zeros((*target_shape, *shape[1:]))
+    triu = np.triu_indices(dim)
+    triu1 = np.triu_indices(dim, k=1)
+    tril1 = np.tril_indices(dim, k=-1)
+    sym[triu] = arr
+    sym[tril1] = sym[triu1]
+    return sym.reshape(*target_shape, *shape[1:])

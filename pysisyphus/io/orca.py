@@ -167,7 +167,7 @@ def shells_from_molden(text):
     _shells = list()
     for shell in molden_shells.shells:
         L, center, _, exps, *_ = shell.as_tuple()
-        fixed_coeffs = fix_contr_coeffs(L, shell.org_coeffs, exps)
+        fixed_coeffs = fix_contr_coeffs(L, shell.coeffs_org, exps)
         fixed_shell = Shell(
             L=L,
             center=center,

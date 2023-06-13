@@ -369,6 +369,13 @@ def get_exc_ens_fosc(wf_fn, cis_fn, log_fn):
 class ORCA(OverlapCalculator):
 
     conf_key = "orca"
+    _set_plans = (
+        "gbw",
+        "out",
+        "cis",
+        "densities",
+        ("molden", "mwfn_wf"),
+    )
 
     def __init__(
         self,
@@ -377,6 +384,7 @@ class ORCA(OverlapCalculator):
         gbw=None,
         do_stable=False,
         numfreq=False,
+        json_dump=True,
         **kwargs,
     ):
         """ORCA calculator.
@@ -402,10 +410,11 @@ class ORCA(OverlapCalculator):
         do_stable: bool, optional
             Run stability analysis until a stable wavefunction is obtained,
             before every calculation.
-        numfreq : boo, optional
+        numfreq : bool, optional
             Use numerical frequencies instead of analytical ones.
-        mem : int
-            Mememory per core in MB.
+        json_dump : bool, optional
+            Whether to dump the wavefunction to JSON via orca_2json. The JSON can become
+            very large in calculations comprising many basis functions.
         """
         super().__init__(**kwargs)
 
@@ -414,6 +423,7 @@ class ORCA(OverlapCalculator):
         self.gbw = gbw
         self.do_stable = bool(do_stable)
         self.freq_keyword = "numfreq" if numfreq else "freq"
+        self.json_dump = bool(json_dump)
 
         assert ("pal" not in keywords) and ("nprocs" not in blocks), (
             "PALn/nprocs not " "allowed! Use 'pal: n' in the 'calc' section instead."
@@ -561,6 +571,7 @@ class ORCA(OverlapCalculator):
             if self.track_root():
                 # Redo the calculation with the updated root
                 results = func(atoms, coords, **prepare_kwargs)
+        results["all_energies"] = self.parse_all_energies()
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
@@ -623,11 +634,12 @@ class ORCA(OverlapCalculator):
             self.popen(cmd, cwd=path)
             shutil.copy(path / "orca.molden.input", path / "orca.molden")
 
-        # Will silently fail with ECPs
-        cmd = "orca_2json orca"
-        proc = self.popen(cmd, cwd=path)
-        if (ret := proc.returncode) != 0:
-            self.log(f"orca_2json call failed with return-code {ret}!")
+        if self.json_dump: 
+            # Will silently fail with ECPs
+            cmd = "orca_2json orca"
+            proc = self.popen(cmd, cwd=path)
+            if (ret := proc.returncode) != 0:
+                self.log(f"orca_2json call failed with return-code {ret}!")
 
     @staticmethod
     @file_or_str(".hess", method=False)
@@ -847,18 +859,6 @@ class ORCA(OverlapCalculator):
         C, _ = self.parse_gbw(self.gbw)
         all_energies = self.parse_all_energies()
         return C, X, Y, all_energies
-
-    def keep(self, path):
-        kept_fns = super().keep(path)
-        self.gbw = kept_fns["gbw"]
-        self.out = kept_fns["out"]
-        if self.do_tddft:
-            self.cis = kept_fns["cis"]
-            self.densities = kept_fns["densities"]
-        try:
-            self.mwfn_wf = kept_fns["molden"]
-        except KeyError:
-            self.log("Didn't set 'mwfn_wf'. No .molden file in kept_fns.")
 
     def get_chkfiles(self):
         return {

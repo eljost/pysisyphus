@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from pysisyphus.helpers import rms
+from pysisyphus.helpers_pure import rms
 from pysisyphus.intcoords.helpers import get_weighted_bond_mode
 
 
@@ -253,7 +253,9 @@ class GrowingNT:
                             sp_hessian
                         except NameError:
                             sp_hessian = self.calc_hessian_for(sp_image)
-                        self.ts_imag_freqs.append(sp_image.get_imag_frequencies(sp_hessian))
+                        self.ts_imag_freqs.append(
+                            sp_image.get_imag_frequencies(sp_hessian)
+                        )
                 elif self.passed_min:
                     self.min_images.append(sp_image)
 
@@ -285,7 +287,9 @@ class GrowingNT:
 
         converged = self.stop_after_ts
         if self.require_imag_freq:
-            converged = converged and self.ts_imag_freqs[-1][0] <= self.require_imag_freq
+            converged = (
+                converged and self.ts_imag_freqs[-1][0] <= self.require_imag_freq
+            )
         return converged
 
     def get_additional_print(self):

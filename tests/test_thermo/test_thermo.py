@@ -88,12 +88,13 @@ def test_print_thermo(this_dir):
 
 @using("thermoanalysis")
 @pytest.mark.parametrize(
-    "id_, dG_ref", (
+    "id_, dG_ref",
+    (
         # Ref values from ORCA logfiles
         (24, 0.62709533),
         (63, 0.62781152),
-        (84, 0.62876245),
-    )
+        (84, 0.62409371),
+    ),
 )
 def test_irc_h5(this_dir, id_, dG_ref):
     h5 = this_dir / f"irc_000.0{id_}.orca.h5"

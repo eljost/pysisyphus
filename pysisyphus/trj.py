@@ -14,6 +14,7 @@ from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.setup import get_fragments
 from pysisyphus.intcoords.PrimTypes import prim_for_human
+from pysisyphus.drivers.merge import hardsphere_merge as hardsphere_merge_driver
 from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.interpolate import *
@@ -94,6 +95,12 @@ def parse_args(args):
         "--append",
         action="store_true",
         help="Combine the given .xyz files into one .xyz file.",
+    )
+    action_group.add_argument(
+        "--hsmerge",
+        action="store_true",
+        help="Merge two input geometries into one, while avoiding overlapping atoms "
+        "via hardsphere-optimization."
     )
     action_group.add_argument(
         "--join",
@@ -482,6 +489,12 @@ def append(geoms):
     ]
 
 
+def hardsphere_merge(geoms):
+    assert len(geoms) == 2
+    union = hardsphere_merge_driver(*geoms)
+    return [union, ]
+
+
 def match(ref_geom, geom_to_match):
     rmsd_before = rmsd.kabsch_rmsd(ref_geom.coords3d, geom_to_match.coords3d)
     print(f"Kabsch RMSD before: {rmsd_before:.4f}")
@@ -743,6 +756,9 @@ def run():
     elif args.append:
         to_dump = append(geoms)
         fn_base = "appended"
+    elif args.hsmerge:
+        to_dump = hardsphere_merge(geoms)
+        fn_base = "hs_merged"
     elif args.join:
         to_dump = geoms
         fn_base = "joined"

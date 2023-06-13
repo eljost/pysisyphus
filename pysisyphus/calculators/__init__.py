@@ -6,6 +6,7 @@ __all__ = [
     "Composite",
     "ConicalIntersection",
     "DFTBp",
+    "DFTD4",
     "Dimer",
     "Dummy",
     "EnergyMin",
@@ -40,6 +41,7 @@ from pysisyphus.calculators.AtomAtomTransTorque import AtomAtomTransTorque
 from pysisyphus.calculators.Composite import Composite
 from pysisyphus.calculators.ConicalIntersection import ConicalIntersection
 from pysisyphus.calculators.DFTBp import DFTBp
+from pysisyphus.calculators.DFTD4 import DFTD4
 from pysisyphus.calculators.Dimer import Dimer
 from pysisyphus.calculators.Dummy import Dummy
 from pysisyphus.calculators.EnergyMin import EnergyMin

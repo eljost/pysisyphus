@@ -21,6 +21,7 @@ from pysisyphus.helpers_pure import (
     eigval_to_wavenumber,
     report_isotopes,
     highlight_text,
+    rms,
 )
 from pysisyphus.io import (
     geom_from_cjson,
@@ -30,6 +31,7 @@ from pysisyphus.io import (
     geom_from_hessian,
     geom_from_mol2,
     geom_from_pdb,
+    geom_from_qcschema,
     save_hessian as save_h5_hessian,
     geom_from_zmat_fn,
     geoms_from_inline_xyz,
@@ -96,6 +98,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         ".h5": geom_from_hessian,
         ".mol2": geom_from_mol2,
         ".pdb": geom_from_pdb,
+        ".json": geom_from_qcschema,
         ".trj": geoms_from_trj,
         ".xyz": geom_from_xyz_file,
         ".zmat": geom_from_zmat_fn,
@@ -123,6 +126,8 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         geom = (geom,)
     if iterable and (ext in (".trj", ".fchk", "")) and index is None:
         geom = tuple(geom)
+    elif not iterable and ext == "" and len(geom) == 1:
+        geom = geom[0]
     elif iterable:
         geom = (geom,)
 
@@ -420,10 +425,6 @@ def shake_coords(coords, scale=0.1, seed=None):
     return coords + offset
 
 
-def rms(arr):
-    return np.sqrt(np.mean(arr ** 2))
-
-
 def norm_max_rms(arr):
     norm = np.linalg.norm(arr)
     max_ = np.max(np.abs(arr))
@@ -574,7 +575,7 @@ def imag_modes_from_geom(geom, freq_thresh=-10, points=10, displ=None):
 
     imag_modes = list()
     for nu, eigvec in zip(nus[below_thresh], cart_displs[:, below_thresh].T):
-        comment = f"{nu:.2f} cm⁻¹"
+        comment = f"{nu:.2f} cm^-1"
         trj_str = get_tangent_trj_str(
             geom.atoms,
             geom.cart_coords,

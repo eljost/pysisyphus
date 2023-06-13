@@ -12,11 +12,12 @@ import numpy as np
 
 from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import check_for_end_sign, rms
+from pysisyphus.helpers import check_for_end_sign
 from pysisyphus.helpers_pure import (
     highlight_text,
     eigval_to_wavenumber,
     report_isotopes,
+    rms,
 )
 from pysisyphus.irc.initial_displ import cubic_displ, third_deriv_fd, cubic_displ_for_h5
 from pysisyphus.irc.Instanton import T_crossover_from_eigval
@@ -383,9 +384,17 @@ class IRC:
                     self.displ_third_h5, -self.displ_energy
                 )
             else:
+                self.log("Calculating 3rd derivatives via finite differences.")
                 Gv, third_deriv_res = third_deriv_fd(self.geometry, mw_trans_vec)
+                self.log("Finished calculation of 3rd derivatives.")
                 h5_fn = self.get_path_for_fn("third_deriv.h5")
-                save_third_deriv(h5_fn, self.geometry, third_deriv_res, H_mw=mw_hessian)
+                save_third_deriv(
+                    h5_fn,
+                    self.geometry,
+                    third_deriv_res,
+                    H_mw=mw_hessian,
+                    H_proj=proj_hessian,
+                )
                 mw_step_plus, mw_step_minus = cubic_displ(
                     proj_hessian,
                     eigvecs[:, self.root],
@@ -393,8 +402,8 @@ class IRC:
                     Gv,
                     -self.displ_energy,
                 )
-                mw_step_plus = P.T.dot(mw_step_plus)
-                mw_step_minus = P.T.dot(mw_step_minus)
+            mw_step_plus = P.T.dot(mw_step_plus)
+            mw_step_minus = P.T.dot(mw_step_minus)
             msg = (
                 f"Energy-based (ΔE={self.displ_energy} au) initial displacement from "
                 "the TS using 3rd derivatives."
@@ -649,7 +658,7 @@ class IRC:
             self.geometry,
             self.hessian_init,
             cart_gradient=self.ts_gradient,
-            h5_fn=self.get_path_for_fn(f"hess_init_irc.h5"),
+            h5_fn=self.get_path_for_fn("hess_init_irc.h5"),
         )
         self.log(f"Initial hessian: {hess_str}")
 

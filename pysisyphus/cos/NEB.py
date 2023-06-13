@@ -1,6 +1,9 @@
+from typing import Optional
+
 import numpy as np
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
+from pysisyphus.cos.stiffness import get_stiff_stress
 
 # [1] http://aip.scitation.org/doi/pdf/10.1063/1.1323224
 #     10.1063/1.1323224
@@ -23,6 +26,7 @@ class NEB(ChainOfStates):
         k_max=0.3,
         k_min=0.1,
         perp_spring_forces=None,
+        bandwidth: Optional[float] = None,
         **kwargs,
     ):
         super(NEB, self).__init__(images, **kwargs)
@@ -32,6 +36,7 @@ class NEB(ChainOfStates):
         self.k_max = k_max
         self.k_min = k_min
         self.perp_spring_forces = perp_spring_forces
+        self.bandwidth = bandwidth
 
         self.delta_k = self.k_max - self.k_min
         self.k = list()
@@ -110,7 +115,7 @@ class NEB(ChainOfStates):
         #
         # If the perpendicular spring force is much bigger than the
         # perpendicular force the DNEB forces is nearly fully quenched.
-        dneb_factor = 2 / np.pi * np.arctan2(perp_norm ** 2, perp_spring_norm ** 2)
+        dneb_factor = 2 / np.pi * np.arctan2(perp_norm**2, perp_spring_norm**2)
         dneb_forces_quenched = dneb_factor * dneb_forces
 
         # An alternative switchting function is given in [5], Eq. (10)
@@ -162,6 +167,16 @@ class NEB(ChainOfStates):
             ]
         )
         total_forces = self.set_climbing_forces(total_forces)
+        if self.bandwidth is not None:
+            # kappa = self.k
+            # breakpoint()
+            stiff_stress = get_stiff_stress(
+                bandwidth=self.bandwidth,
+                kappa=self.k,
+                image_coords=self.image_coords,
+                tangents=self.get_tangents(),
+            )
+            total_forces = total_forces + stiff_stress
         total_forces[self.org_forces_indices] = org_results["forces"][
             self.org_forces_indices
         ]

@@ -34,9 +34,9 @@ def test_orca_json(fn, unrestricted):
 )
 def test_orca_mulliken(fn):
     wf = Wavefunction.from_orca_json(WF_LIB_DIR / fn)
-    charges = mulliken_charges_from_wf(wf)
+    ana = mulliken_charges_from_wf(wf)
     np.testing.assert_allclose(
-        charges,
+        ana.charges,
         (-0.27748112, 0.06937027, 0.06937027, 0.06937027, 0.06937027),
         atol=2e-5,
     )
@@ -51,9 +51,9 @@ def test_orca_mulliken(fn):
 )
 def test_orca_iao(fn):
     wf = Wavefunction.from_orca_json(WF_LIB_DIR / fn)
-    charges = iao_charges_from_wf(wf)
+    ana = iao_charges_from_wf(wf)
     np.testing.assert_allclose(
-        charges,
+        ana.charges,
         (-0.523749, 0.130937, 0.130937, 0.130937, 0.130937),
         atol=2e-5,
     )
@@ -84,16 +84,16 @@ def test_mulliken_exc(this_dir):
     for i, (tden, ref_charge) in enumerate(zip(CI, ref_charges), 1):
         P_exc = wf.P_exc(tden)
         _ = wf.get_dipole_moment(P=P_exc + P_exc)
-        charges = mulliken_charges(
+        ana = mulliken_charges(
             P=(P_exc / 2, P_exc / 2),
             S=wf.S,
             nuc_charges=wf.nuc_charges,
             ao_centers=wf.ao_centers,
         )
-        print(f"\tq: {charges}")
+        print(f"\tq: {ana.charges}")
         ref_charges = np.full(4, ref_charge)
         ref_charges[[1, 2]] *= -1  # Oxygens have negative charge
-        np.testing.assert_allclose(charges, ref_charges, atol=1e-5)
+        np.testing.assert_allclose(ana.charges, ref_charges, atol=1e-5)
 
 
 def test_orca_unrestricted(this_dir):
@@ -113,14 +113,14 @@ def test_orca_unrestricted(this_dir):
     assert occ_b == 9
     # ORCA uses center of mass by default, which differs a bit from the one
     # that pysisyphus calculates.
-    origin = (-0.864214, -1.994637,  1.223355)
+    origin = (-0.864214, -1.994637, 1.223355)
     dpm = wf.get_dipole_moment(origin=origin)
-    ref_dpm = (0.00047,       0.00016,      -0.00029)
+    ref_dpm = (0.00047, 0.00016, -0.00029)
     np.testing.assert_allclose(dpm, ref_dpm, atol=1e-5)
 
     ref_mulliken = (0.077267, 0.077267, -0.577267, -0.577267)
-    mulliken = mulliken_charges_from_wf(wf)
-    np.testing.assert_allclose(mulliken, ref_mulliken, atol=1e-5)
+    ana = mulliken_charges_from_wf(wf)
+    np.testing.assert_allclose(ana.charges, ref_mulliken, atol=1e-5)
 
     Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn)
     # Xa, Ya = norm_ci_coeffs(Xa, Ya)
@@ -190,11 +190,13 @@ def test_one_el_terms():
 
 def test_eval_esp():
     wf = Wavefunction.from_file(WF_LIB_DIR / "orca_lih_ccpvdz.molden.input")
-    coords3d = np.array((
-        (0.0, 0.0, 1.0),
-        (0.0, 0.0, 2.0),
-        (1.0, 0.0, 3.0),
-    ))
+    coords3d = np.array(
+        (
+            (0.0, 0.0, 1.0),
+            (0.0, 0.0, 2.0),
+            (1.0, 0.0, 3.0),
+        )
+    )
     print()
     esp = wf.eval_esp(coords3d)
     # From orca_vpot

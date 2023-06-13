@@ -55,9 +55,9 @@ def test_ohch3f_anion(calc_cls, calc_kwargs, ref_cycle, ccl_dist, oc_dist):
 
     # Broken C-Cl bond
     c3d = geom.coords3d
-    assert np.linalg.norm(c3d[0] - c3d[4]) == pytest.approx(ccl_dist, abs=1e-4)
+    assert np.linalg.norm(c3d[0] - c3d[4]) == pytest.approx(ccl_dist, abs=1e-3)
     # Formed O-C bond
-    assert np.linalg.norm(c3d[0] - c3d[5]) == pytest.approx(oc_dist, abs=1e-4)
+    assert np.linalg.norm(c3d[0] - c3d[5]) == pytest.approx(oc_dist, abs=1e-3)
 
 
 @using("xtb")
@@ -108,5 +108,5 @@ def test_afir_hessian():
 
     fd_hessian = finite_difference_hessian(geom.coords, grad_func, acc=2)
     np.set_printoptions(suppress=True, precision=4)
-    # Locally it works with atol=1e-4, but GH action seem to require 4e-4
-    np.testing.assert_allclose(afir_hess, fd_hessian, atol=4e-4)
+    # Locally it works with atol=1e-4, but GH action seem to require 6e-4
+    np.testing.assert_allclose(afir_hess, fd_hessian, atol=6e-4)

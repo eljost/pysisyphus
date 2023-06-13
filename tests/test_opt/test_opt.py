@@ -9,6 +9,7 @@ from pysisyphus.calculators.CerjanMiller import CerjanMiller
 from pysisyphus.calculators.FourWellAnaPot import FourWellAnaPot
 from pysisyphus.calculators.LEPSBase import LEPSBase
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
+from pysisyphus.calculators.NFK import NFK
 from pysisyphus.calculators.Rosenbrock import Rosenbrock
 from pysisyphus.calculators.VRIPot import VRIPot
 
@@ -35,6 +36,7 @@ from pysisyphus.optimizers.StabilizedQNMethod import StabilizedQNMethod
         # (LEPSBase, (1.31, 0.82, 0.0), 28, (0.74200064, 7.17588688, 0.0)),
         (LEPSBase, (1.31, 0.82, 0.0), 28, (0.74200064, 7.49522238, 0.0)),
         (MullerBrownPot, (-0.69, 0.55, 0.0), 12, (-0.05, 0.4667, 0.0)),
+        (NFK, (2.0, -1.0, 0.0), 10, (2.71268972, -0.15093973, 0.0)),
         (Rosenbrock, (-1.00, 1.00, 0.0), 43, (1.0, 1.0, 0.0)),
         (VRIPot, (-0.125, 0, 0.0), 8, (-1.0, 0.0, 0.0)),
     ],
