@@ -422,7 +422,7 @@ def edmiston_ruedenberg(C, Lao, Sao, diis_cycles=5, max_cycles=100):
         err = (R - R.T).flatten()
         errrms = rms(err)
         print(
-            f"Cycle {i:02d} f={f:.6f}, |g|={np.linalg.norm(g):.4f}, rms(g)={grms:>8.4e} "
+            f"Cycle {i:02d} f={f:.8f}, |g|={np.linalg.norm(g):.4f}, rms(g)={grms:>8.4e} "
             f"rms(err)={errrms:>8.4e}"
         )
         if converged := grms <= 1e-4:

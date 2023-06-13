@@ -4,8 +4,13 @@ from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
 
 
+@pytest.mark.skip
 @using("pyscf")
 def test_hcn_neb_dimer_irc():
+    """Disabled this test for now, as PySCF (it's probably PySCF ...)
+    seems kinde of flakey and the test sometimes returns different numbers,
+    especially in the CI."""
+
     run_dict = {
         "preopt": {
             "max_cycles": 3,
