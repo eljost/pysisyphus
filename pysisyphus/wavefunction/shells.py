@@ -10,12 +10,12 @@ import textwrap
 from typing import List, Literal
 
 
+import h5py
 from jinja2 import Template
 from joblib import Memory
 import numpy as np
 from numpy.typing import NDArray
 import scipy as sp
-from scipy.special import factorial2
 
 
 from pysisyphus.config import L_MAX, L_AUX_MAX
@@ -305,7 +305,7 @@ class Shells:
         bas_data = np.array(bas_data, dtype=float)
         return bas_centers, bas_spec, bas_data
 
-    def as_sympleints_arrays(self):
+    def to_sympleints_arrays(self):
         shells = self.shells
         # center_ind, atomic_num, L, nprims
         centers = np.zeros((len(shells), 3))
@@ -327,6 +327,14 @@ class Shells:
         coefficients = np.array(coefficients)
         exponents = np.array(exponents)
         return shell_data, centers, coefficients, exponents
+
+    def dump_to_h5_group(self, h5_handle, group_name):
+        group = h5_handle.create_group(group_name)
+        shell_data, centers, coefficients, exponents = self.to_sympleints_arrays()
+        group.create_dataset("shell_data", data=shell_data)
+        group.create_dataset("centers", data=centers)
+        group.create_dataset("coefficients", data=coefficients)
+        group.create_dataset("exponents", data=exponents)
 
     @property
     def l_max(self):
@@ -395,6 +403,30 @@ class Shells:
 
         shells = shells_from_fchk(text)
         return shells
+
+    @staticmethod
+    def from_sympleints_arrays(shell_data, centers, coefficients, exponents, **kwargs):
+        shells = list()
+        pointer = 0
+        for i, (center_ind, atomic_num, L, nprims) in enumerate(shell_data):
+            coeffs = coefficients[pointer : pointer + nprims]
+            exps = exponents[pointer : pointer + nprims]
+            shell = Shell(L, centers[i], coeffs, exps, center_ind, atomic_num)
+            pointer += nprims
+            shells.append(shell)
+        return Shells(shells, **kwargs)
+
+    @staticmethod
+    def from_sympleints_h5(h5_fn, group_name="shells"):
+        with h5py.File(h5_fn, "r") as handle:
+            group = handle[group_name]
+            shell_data = group["shell_data"][:]
+            centers = group["centers"][:]
+            coefficients = group["coefficients"][:]
+            exponents = group["exponents"][:]
+        return Shells.from_sympleints_arrays(
+            shell_data, centers, coefficients, exponents
+        )
 
     @staticmethod
     def from_pyscf_mol(mol):
