@@ -28,6 +28,20 @@ def geoms_from_molden(fn, **kwargs):
     return geoms
 
 
+def parse_mo(mo_lines):
+    sym, ene_key, energy, spin_key, spin, occup_key, occup, *rest = mo_lines
+    assert len(rest) % 2 == 0
+    assert (ene_key == "ene=") and (spin_key == "spin=") and (occup_key == "occup=")
+    coeffs = [float(rest[i]) for i in range(1, len(rest), 2)]
+    return {
+        "sym": sym,
+        "ene": float(energy),
+        "spin": spin,
+        "occup": float(occup),
+        "coeffs": coeffs,
+    }
+
+
 @file_or_str(".molden", ".input")
 def parse_molden(text, with_mos=True):
     int_ = pp.common.integer
@@ -110,22 +124,26 @@ def parse_molden(text, with_mos=True):
     # [5D] [7F] [9G] etc.
     ang_mom_flags = pp.ZeroOrMore(pp.one_of("[5D] [7F] [9G]", caseless=True))
 
+    # Pyparsing code to parse MOs ... slow. Regex-based code is much faster.
     # [MO]
-    sym_label = pp.Word(pp.printables)
-    spin = pp.one_of("Alpha Beta", caseless=True)
-    mo_coeff = pp.Suppress(int_) + real
-    mo = pp.Group(
-        pp.CaselessLiteral("Sym=").suppress()
-        + sym_label.set_results_name("sym")
-        + pp.CaselessLiteral("Ene=").suppress()
-        + sci_real.set_results_name("ene")
-        + pp.CaselessLiteral("Spin=").suppress()
-        + spin.set_results_name("spin")
-        + pp.CaselessLiteral("Occup=").suppress()
-        + real.set_results_name("occup")
-        + pp.Group(pp.OneOrMore(mo_coeff)).set_results_name("coeffs")
-    )
-    mos = pp.CaselessLiteral("[MO]") + pp.OneOrMore(mo).set_results_name("mos")
+    # sym_label = pp.Word(pp.printables)
+    # spin = pp.one_of("Alpha Beta", caseless=True)
+    # mo_coeff = pp.Suppress(int_) + real
+    # mo = pp.Group(
+    # pp.CaselessLiteral("Sym=").suppress()
+    # + sym_label.set_results_name("sym")
+    # + pp.CaselessLiteral("Ene=").suppress()
+    # + sci_real.set_results_name("ene")
+    # + pp.CaselessLiteral("Spin=").suppress()
+    # + spin.set_results_name("spin")
+    # + pp.CaselessLiteral("Occup=").suppress()
+    # + real.set_results_name("occup")
+    # + pp.Group(pp.OneOrMore(mo_coeff)).set_results_name("coeffs")
+    # )
+    # mos = pp.CaselessLiteral("[MO]") + pp.OneOrMore(mo).set_results_name("mos")
+    mos = pp.CaselessLiteral("[MO]") + pp.OneOrMore(
+        pp.Regex(r"[^\[]+")  # Match everything until the next [ is encountered
+    ).set_results_name("mos")
 
     # Actual parser
     parser = molden_format + pp.Each(
@@ -138,7 +156,16 @@ def parse_molden(text, with_mos=True):
         parser += mos
 
     res = parser.parse_string(text)
-    return res.asDict()
+    as_dict = res.asDict()
+    if with_mos:
+        mos_raw = as_dict["mos"][0]
+
+        by_mo = [bm.strip().split() for bm in mos_raw.lower().strip().split("sym=")]
+        assert by_mo[0] == [], by_mo[0]
+        by_mo = by_mo[1:]
+
+        as_dict["mos"] = [parse_mo(mo_lines) for mo_lines in by_mo]
+    return as_dict
 
 
 def parse_molden_atoms(data):
@@ -165,7 +192,7 @@ def shells_from_molden(text):
     coords3d = coords.reshape(-1, 3)
 
     _shells = list()
-    for (atom_gtos, center, atomic_num) in zip(data["gto"], coords3d, atomic_numbers):
+    for atom_gtos, center, atomic_num in zip(data["gto"], coords3d, atomic_numbers):
         center_ind = atom_gtos["number"] - 1
         for shell in atom_gtos["shells"]:
             L = shell["ang_mom"]
@@ -201,18 +228,18 @@ def wavefunction_from_molden(text, charge=None, shells_func=None, **wf_kwargs):
     Ca = list()
     Cb = list()
     for mo in data["mos"]:
-        spin = mo["spin"]
+        spin = mo["spin"].lower()
         occ = mo["occup"]
         spins.append(spin)
         coeffs = mo["coeffs"]
-        if spin == "Alpha":
+        if spin == "alpha":
             occ_a += occ
             Ca.append(coeffs)
-        elif spin == "Beta":
+        elif spin == "beta":
             occ_b += occ
             Cb.append(coeffs)
         else:
-            raise Exception(f"Spin can only be 'Alpha' or 'Beta', but got '{spin}'!")
+            raise Exception(f"Spin can only be 'alpha' or 'beta', but got '{spin}'!")
     assert occ_a.is_integer
     assert occ_b.is_integer
     occ_a = int(occ_a)
