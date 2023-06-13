@@ -29,16 +29,30 @@ def geoms_from_molden(fn, **kwargs):
 
 
 def parse_mo(mo_lines):
-    sym, ene_key, energy, spin_key, spin, occup_key, occup, *rest = mo_lines
-    assert len(rest) % 2 == 0
-    assert (ene_key == "ene=") and (spin_key == "spin=") and (occup_key == "occup=")
-    coeffs = [float(rest[i]) for i in range(1, len(rest), 2)]
+    # sym, ene_key, energy, spin_key, spin, occup_key, occup, *rest = mo_lines
+    sym, ene_line, spin_line, occup_line, *rest = mo_lines
+    ene_key, energy = ene_line.split("=")
+    spin_key, spin = spin_line.split("=")
+    occup_key, occup = occup_line.split("=")
+    assert (
+        (ene_key.strip() == "ene")
+        and (spin_key.strip() == "spin")
+        and (occup_key.strip() == "occup")
+    )
+    prev_ind = 0
+    coeffs = list()
+    for line in rest:
+        ind, coeff = line.split()
+        ind = int(ind)
+        assert ind == prev_ind + 1
+        prev_ind = ind
+        coeffs.append(coeff)
     return {
-        "sym": sym,
+        "sym": sym.strip(),
         "ene": float(energy),
-        "spin": spin,
+        "spin": spin.strip(),
         "occup": float(occup),
-        "coeffs": coeffs,
+        "coeffs": np.array(coeffs),
     }
 
 
@@ -160,8 +174,8 @@ def parse_molden(text, with_mos=True):
     if with_mos:
         mos_raw = as_dict["mos"][0]
 
-        by_mo = [bm.strip().split() for bm in mos_raw.lower().strip().split("sym=")]
-        assert by_mo[0] == [], by_mo[0]
+        by_mo = [bm.strip().split("\n") for bm in mos_raw.lower().strip().split("sym=")]
+        assert by_mo[0] == [""], by_mo[0]
         by_mo = by_mo[1:]
 
         as_dict["mos"] = [parse_mo(mo_lines) for mo_lines in by_mo]
@@ -246,8 +260,8 @@ def wavefunction_from_molden(text, charge=None, shells_func=None, **wf_kwargs):
     occ_b = int(occ_b)
 
     # MOs must be in columns
-    Ca = np.array(Ca).T
-    Cb = np.array(Cb).T
+    Ca = np.array(Ca, dtype=float).T
+    Cb = np.array(Cb, dtype=float).T
     # Restricted calculation
     if Cb.size == 0:
         Cb = Ca.copy()
