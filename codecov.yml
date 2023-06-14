@@ -26,12 +26,7 @@ comment:
 
 ignore:
   # Code generated molecular integrals
-  - "pysisyphus/wavefunction/eri.py"
-  - "pysisyphus/wavefunction/coulomb3d.py"
-  - "pysisyphus/wavefunction/dipole3d.py"
-  - "pysisyphus/wavefunction/kinetic3d.py"
-  - "pysisyphus/wavefunction/ovlp3d.py"
-  - "pysisyphus/wavefunction/so1el.py"
+  - "pysisyphus/wavefunction/ints/*.py"
   # Code generated internal coordinate derivatives
   - "pysisyphus/intcoords/derivatives.py"
   - "pysisyphus/intcoords/mp_derivatives.py"
