@@ -103,8 +103,11 @@
           };
 
           formatter = pkgs.nixpkgs-fmt;
-
         }) // {
       overlays.default = import ./nix/overlay.nix;
+
+      hydraJobs."x86_64-linux" = {
+        inherit (self.packages."x86_64-linux") pysisyphus pysisyphusFull;
+      };
     };
 }
