@@ -91,7 +91,7 @@ or build singularity or docker containers:
 
 .. code-block:: bash
 
-    nix build .#pysisyphusSingularity
+    nix bundle --bundler .#toSingularityImage
 
 
 .. _`Nix package manager`: https://nixos.org/download.html
