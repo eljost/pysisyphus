@@ -49,6 +49,13 @@ M_E = spc.electron_mass
 AMU2AU = AMU2KG / M_E
 # Avogadro constant
 NA = spc.Avogadro
+# Force constants from au to mdyne/Å (force / Ångstrom)
+# mdyne/Å = 10⁻³ * 10⁻⁵ N/Å
+#         = 10² kg/s²
+#
+# 1 au = 1556.89 kg/s²
+# 1 au = 15.5689 * 10² kg/s²
+AU2MDYNEPERANG = M_E / AU2SEC**2 / 100
 
 ##############
 # MD related #
