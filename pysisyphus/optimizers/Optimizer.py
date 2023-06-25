@@ -13,7 +13,7 @@ import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import check_for_end_sign, get_coords_diffs
+from pysisyphus.helpers import check_for_end_sign, get_coords_diffs, procrustes
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.intcoords.helpers import interfragment_distance
@@ -122,6 +122,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         max_force_only: bool = False,
         converge_to_geom_rms_thresh: float = 0.05,
         align: bool = False,
+        align_factor: float = 1,
         dump: bool = False,
         dump_restart: bool = False,
         prefix: str = "",
@@ -174,6 +175,10 @@ class Optimizer(metaclass=abc.ABCMeta):
             Flag that controls whether the geometry is aligned in every step
             onto the coordinates of the previous step. Must not be used with
             internal coordinates.
+        align_factor
+            Factor that controls the strength of the alignment. 1.0 means
+            full alignment, 0.0 means no alignment. The factor mixes the
+            rotation matrix of the alignment with the identity matrix.
         dump
             Flag to control dumping/writing of optimization progress to the
             filesystem
@@ -234,6 +239,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.max_force_only = max_force_only
         self.converge_to_geom_rms_thresh = converge_to_geom_rms_thresh
         self.align = align
+        procrustes.align_factor = align_factor
         self.dump = dump
         self.dump_restart = dump_restart
         self.prefix = f"{prefix}_" if prefix else prefix

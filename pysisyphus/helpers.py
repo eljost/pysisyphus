@@ -191,6 +191,18 @@ def procrustes(geometry):
         if np.linalg.det(rot_mat) < 0:
             U[:, -1] *= -1
             rot_mat = U.dot(Vt)
+        # do a partial alignment if requested
+        align_factor = procrustes.align_factor
+        if align_factor != 1:
+            if not ( 1 >= align_factor >= 0):
+                raise ValueError("align_factor must be between 0 and 1")
+            identity = np.eye(3) # identity
+
+            # part_rot_mat = align_factor * rot_mat + (1 - align_factor) * identity
+            rot_mat  *= align_factor
+            identity *= (1 - align_factor)
+            rot_mat  += identity # mix the two matrices together (no rotation if align_factor = 0)
+
         # Rotate the coords
         rotated3d = centered.dot(rot_mat)
         geometry.set_coords_at(i, rotated3d.flatten())
@@ -198,6 +210,7 @@ def procrustes(geometry):
         # Append one rotation matrix per atom
         rot_mats.extend([rot_mat] * atoms_per_image)
     return rot_mats
+procrustes.align_factor = 1 # default to full alignment
 
 
 def align_coords(coords_list):
