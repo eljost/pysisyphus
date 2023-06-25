@@ -49,6 +49,8 @@ class Psi4(Calculator):
         molecule mol{{
           {xyz}
           {charge} {mult}
+        no_reorient
+        no_com  
         symmetry c1
         }}
 
