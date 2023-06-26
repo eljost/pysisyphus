@@ -29,7 +29,6 @@ from pysisyphus.linalg import multi_component_sym_mat
 from pysisyphus.wavefunction.helpers import (
     canonical_order,
     get_l,
-    get_shell_shape,
     L_MAP_INV,
     permut_for_order,
 )
@@ -180,6 +179,7 @@ class Shell:
 
     def __repr__(self):
         return self.__str__()
+
 
 Ordering = Literal["native", "pysis"]
 
@@ -629,7 +629,6 @@ class Shells:
                 # Screen shell pair
                 b_min_exp = bx.min()  # Minimum exponent used for screening
                 R_ab = np.linalg.norm(A - B)  # Shell center distance
-                b_size = get_shell_shape(Lb)[0]
                 if not screen_func(a_min_exp, b_min_exp, R_ab):
                     continue
                 integrals[:, a_slice, b_slice] = func_dict[(La, Lb)](
