@@ -8,6 +8,7 @@ import json
 import numpy as np
 from scipy.special import gamma
 
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.io import molden
 from pysisyphus.wavefunction import (
@@ -20,14 +21,29 @@ from pysisyphus.wavefunction import (
 from pysisyphus.wavefunction.helpers import BFType
 
 
+def get_coord_factor(data):
+    """Somewhere between ORCA 5.0 and 5.0.4 ORCA switched from Bohr to Angstrom."""
+    mol = data["Molecule"]
+    unit = mol["CoordinateUnits"]
+    if unit == "Angs":
+        factor = 1 / BOHR2ANG
+    elif unit == "Bohrs":
+        factor = 1.0
+    else:
+        raise Exception(f"Unknown unit '{unit}'!")
+    return factor
+
+
 @file_or_str(".json")
 def shells_from_json(text):
     data = json.loads(text)
     atoms = data["Molecule"]["Atoms"]
+    # unit = data["Molecule"]["CoordinateUnits"]
+    coord_factor = get_coord_factor(data)
 
     _shells = list()
     for atom in atoms:
-        center = np.array(atom["Coords"])
+        center = np.array(atom["Coords"]) * coord_factor
         center_ind = atom["Idx"]
         bfs = atom["BasisFunctions"]
         atomic_num = atom["ElementNumber"]
@@ -52,6 +68,7 @@ def shells_from_json(text):
 def wavefunction_from_json(text):
     data = json.loads(text)
     mol = data["Molecule"]
+    coord_factor = get_coord_factor(data)
 
     charge = mol["Charge"]
     mult = mol["Multiplicity"]
@@ -62,6 +79,8 @@ def wavefunction_from_json(text):
         atom_coords = atom["Coords"]
         atoms.append(atom_label)
         coords.append(atom_coords)
+
+    coords = np.array(coords) * coord_factor
 
     unrestricted = (mol["HFTyp"] == "UHF") or (mult != 1)
     mos = mol["MolecularOrbitals"]["MOs"]
