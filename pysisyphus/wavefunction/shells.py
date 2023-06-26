@@ -59,8 +59,10 @@ class Shell:
         exps: NDArray[float],
         center_ind: int,
         atomic_num=None,
+        # TODO: sph_index and cart_index?!
         shell_index=None,
         index=None,
+        sph_index=None,
         # min_coeff: float = 1e-8,
     ):
         self.L = get_l(L)
@@ -85,6 +87,8 @@ class Shell:
             self.shell_index = shell_index
         if index is not None:
             self.index = index
+        if sph_index is not None:
+            self.sph_index = sph_index
 
         self.coeffs, _ = norm_cgto_lmn(coeffs, self.exps, self.L)
 
@@ -177,7 +181,6 @@ class Shell:
     def __repr__(self):
         return self.__str__()
 
-
 Ordering = Literal["native", "pysis"]
 
 
@@ -206,13 +209,18 @@ class Shells:
         assert ordering in ("pysis", "native")
 
         # Now that we have all Shell objects, we can set their starting indices
-        index = 0
         shell_index = 0
+        index = 0
+        sph_index = 0
         for shell in self.shells:
             shell.shell_index = shell_index
             shell.index = index
-            index += shell.size
+            shell.sph_index = sph_index
+
             shell_index += 1
+            # TODO: rename to cart_index
+            index += shell.size
+            sph_index += shell.sph_size
 
         # Try to construct Cartesian permutation matrix from cart_order, if defnied.
         try:
