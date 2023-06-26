@@ -92,7 +92,7 @@ class Wavefunction:
         ]  # Density matrices in MO basis
         calc_occ_a = np.trace(Pa_mo)
         calc_occ_b = np.trace(Pb_mo)
-        assert np.isclose((calc_occ_a, calc_occ_b), self.occ).all()
+        np.testing.assert_allclose((calc_occ_a, calc_occ_b), self.occ)
 
         assert (
             self.ecp_electrons >= 0
@@ -146,7 +146,7 @@ class Wavefunction:
             # ("[N_Atoms]", Wavefunction.from_molden),  # seems buggy right now
         )
         try:
-            from_func = from_funcs[path.suffix.lower()]
+            from_func = from_funcs[path.suffix.lower().strip()]
         except KeyError:
             # Search for certain strings in the file
             with open(fn) as handle:
