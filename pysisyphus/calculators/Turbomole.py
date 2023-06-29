@@ -242,6 +242,7 @@ class Turbomole(OverlapCalculator):
             "input.xyz",
             "pc_gradients",
             "nprhessian",
+            "exspectrum",
         )
 
         self.parser_funcs = {
