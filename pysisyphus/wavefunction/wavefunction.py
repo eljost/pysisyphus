@@ -48,6 +48,7 @@ class Wavefunction:
         if self.mult != 1:
             unrestricted = True
         self.unrestricted = unrestricted
+        self.restricted = not self.unrestricted
         self.occ = occ
         if not self.unrestricted:
             assert self.occ[0] == self.occ[1]
