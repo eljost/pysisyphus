@@ -127,6 +127,19 @@ class Shell:
         """Number of cartesian basis functions in the shell."""
         return 2 * self.L + 1
 
+    """
+    @property
+    def cart_slice(self):
+        ind = self.cart_index
+        return slice(ind, ind + self.cart_size)
+
+    """
+
+    @property
+    def sph_slice(self):
+        ind = self.sph_index
+        return slice(ind, ind + self.sph_size)
+
     @property
     def index(self) -> int:
         return self._index
@@ -251,6 +264,7 @@ class Shells:
 
     def as_tuple(self):
         # Ls, centers, contr_coeffs, exponents, indices, sizes
+        # indices and sizes are for Cartesian basis functions!
         return zip(*[shell.as_tuple() for shell in self.shells])
 
     @property
