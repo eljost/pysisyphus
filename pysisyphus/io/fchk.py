@@ -146,7 +146,7 @@ def wavefunction_from_fchk(text):
     C_a = mos_for_spin("Alpha").T
     occ_a = data["Number of alpha electrons"]
     if unrestricted:
-        C_b = mos_for_spin("Beta")
+        C_b = mos_for_spin("Beta").T
         occ_b = data["Number of beta electrons"]
     else:
         C_b = C_a.copy()
