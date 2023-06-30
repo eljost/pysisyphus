@@ -236,32 +236,34 @@ class ChainOfStates:
             self.log(client)
 
             # save original pals to restore them later
-            orig_pals = [self.images[i].calculator.pal for i in range(len(self.images))]
+            orig_pal = images_to_calculate[0].calculator.pal
 
             # divide pal of each image by the number of workers available or available images
             n_workers = len(client.scheduler_info()["workers"]) # number of workers available
             n_images = len(images_to_calculate) # number of images to calculate
+            new_pal = min(1, images_to_calculate[0].calculator.pal // n_workers) # divide pal by the number of workers
+            new_pal = new_pal if new_pal > 0 else 1 # set pal to 1 if it is smaller than 1
 
-            #split images to calculate into batches of n_workers and set pal of each image
+            # split images to calculate into batches of n_workers and set pal of each image
             n_batches = n_images // n_workers
             for i in range(0, n_batches):
                 for j in range(i*n_workers, (i+1)*n_workers):
-                    new_pal = images_to_calculate[j].calculator.pal // n_workers # divide pal by the number of workers
-                    images_to_calculate[j].calculator.pal = new_pal if new_pal > 0 else 1 # set pal to 1 if it is smaller than 1
+                    images_to_calculate[j].calculator.pal = new_pal
 
-            # distribute the remaining image pals to the last batch size
+            # distribute the pals among the remaining images
             n_last_batch = n_images % n_workers
             if n_last_batch > 0:
+                new_pal = images_to_calculate[0].calculator.pal // n_last_batch  # divide pal by the last batch size
+                new_pal = new_pal if new_pal > 0 else 1 # set pal to 1 if it is smaller than 1
                 for i in range(n_batches*n_workers, n_images):
-                    new_pal = images_to_calculate[i].calculator.pal // n_last_batch # divide pal by the last batch size
-                    images_to_calculate[i].calculator.pal = new_pal if new_pal > 0 else 1 # set pal to 1 if it is smaller than 1
+                    images_to_calculate[i].calculator.pal = new_pal
 
             image_futures = client.map(self.par_image_calc, images_to_calculate) # map images to workers
             self.set_images(image_indices, client.gather(image_futures)) # set images to the results of the calculations
 
             # Restore original pals
-            for i, pal in enumerate(orig_pals):
-                self.images[i].calculator.pal = pal
+            for i in range(0, n_images):
+                self.images[i].calculator.pal = orig_pal
 
     def calculate_forces(self):
         # Determine the number of images for which we have to do calculations.
