@@ -60,8 +60,8 @@ def au2nm(au):
 
 
 def get_grid(resolution, exc_ens, padding, min_, max_):
-    from_ = min(min_, int(exc_ens.min() - padding))
-    to_ = max(max_, int(exc_ens.max() + padding))
+    from_ = max(min_, int(exc_ens.min() - padding))
+    to_ = min(max_, int(exc_ens.max() + padding))
     return np.arange(from_, to_ + resolution, step=resolution)
 
 
@@ -80,7 +80,7 @@ def homogeneous_broadening(
     exc_ens_nm = au2nm(exc_ens)
     if from_to is None:
         from_to = np.array((exc_ens_nm[0], exc_ens_nm[-1]))
-    nm = get_grid(resolution, from_to, padding=100, min_=300, max_=900)
+    nm = get_grid(resolution, from_to, padding=100, min_=100, max_=900)
     stddev_nm = au2nm(stddev)
 
     quot = stddev_nm * (1 / nm[None, :] - (1 / exc_ens_nm[:, None]))
