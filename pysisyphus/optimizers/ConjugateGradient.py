@@ -16,7 +16,7 @@ class ConjugateGradient(BacktrackingOptimizer):
 
     def prepare_opt(self):
         if self.is_cos and self.align:
-            procrustes(self.geometry)
+            procrustes(self.geometry, align_factor=self.align_factor)
         # Calculate initial forces before the first iteration
         self.coords.append(self.geometry.coords)
         self.forces.append(self.geometry.forces)
@@ -84,7 +84,8 @@ class ConjugateGradient(BacktrackingOptimizer):
             (new_forces, cur_forces, step), _, _ = fit_rigid(self.geometry,
                                                               (new_forces,
                                                                cur_forces,
-                                                               step))
+                                                               step),
+                                                             align_factor=self.align_factor)
             # Minus step???
             new_coords = self.geometry.coords - step
             self.geometry.coords = new_coords

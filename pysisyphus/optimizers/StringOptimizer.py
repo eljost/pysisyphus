@@ -52,7 +52,7 @@ class StringOptimizer(Optimizer):
 
     def prepare_opt(self):
         if self.align and self.is_cart_opt:
-            procrustes(self.geometry)
+            procrustes(self.geometry, align_factor=self.align_factor)
 
     def reset(self):
         pass
@@ -85,7 +85,7 @@ class StringOptimizer(Optimizer):
         string_size_changed = len(new_image_inds) > 0
 
         if self.align and string_size_changed and self.is_cart_opt:
-            procrustes(self.geometry)
+            procrustes(self.geometry, align_factor=self.align_factor)
             self.log("Aligned string.")
 
         forces = self.geometry.forces

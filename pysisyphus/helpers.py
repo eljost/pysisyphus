@@ -167,7 +167,7 @@ def align_geoms(geoms):
     return rot_mats
 
 
-def procrustes(geometry):
+def procrustes(geometry, align_factor=1.0):
     # http://nghiaho.com/?page_id=671#comment-559906
     image0 = geometry.images[0]
     coords3d = image0.coords3d
@@ -176,7 +176,7 @@ def procrustes(geometry):
     geometry.set_coords_at(0, last_centered.flatten())
     atoms_per_image = len(image0.atoms)
 
-    # Don't rotate the first image, so just add identitiy matrices
+    # Don't rotate the first image, so just add identity matrices
     # for every atom.
     rot_mats = [np.eye(3)] * atoms_per_image
     for i, image in enumerate(geometry.images[1:], 1):
@@ -192,17 +192,11 @@ def procrustes(geometry):
             U[:, -1] *= -1
             rot_mat = U.dot(Vt)
         # do a partial alignment if requested
-        align_factor = procrustes.align_factor
-        if align_factor != 1:
-            if not ( 1 >= align_factor >= 0):
-                raise ValueError("align_factor must be between 0 and 1")
-            identity = np.eye(3) # identity
-
-            # part_rot_mat = align_factor * rot_mat + (1 - align_factor) * identity
-            rot_mat  *= align_factor
-            identity *= (1 - align_factor)
-            rot_mat  += identity # mix the two matrices together (no rotation if align_factor = 0)
-
+        if not (0.0 <= align_factor <= 1.0):
+            raise ValueError("align_factor must be between 0 and 1")
+        # mix the rotation matrix with the identity matrix
+        # align_factor=1 for full alignment (default); align_factor=0 for no alignment
+        rot_mat  = align_factor * rot_mat + (1 - align_factor) * np.eye(3)
         # Rotate the coords
         rotated3d = centered.dot(rot_mat)
         geometry.set_coords_at(i, rotated3d.flatten())
@@ -210,7 +204,6 @@ def procrustes(geometry):
         # Append one rotation matrix per atom
         rot_mats.extend([rot_mat] * atoms_per_image)
     return rot_mats
-procrustes.align_factor = 1 # default to full alignment
 
 
 def align_coords(coords_list):
@@ -244,11 +237,11 @@ def align_coords(coords_list):
     return aligned_coords
 
 
-def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None):
+def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None, align_factor=1.0):
     rotated_vector_lists = list()
     rotated_hessian = None
 
-    rot_mats = procrustes(geometry)
+    rot_mats = procrustes(geometry, align_factor=align_factor)
     G = sp.linalg.block_diag(*rot_mats)
     rotated_vectors = [vec.dot(G) for vec in vectors]
     for vl in vector_lists:

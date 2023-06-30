@@ -131,7 +131,7 @@ class LBFGS(Optimizer):
                     self.forces,
                     self.coord_diffs,
                     self.grad_diffs,
-                ),
+                ), align_factor=self.align_factor
             )
             rot_steps, rot_forces, rot_coord_diffs, rot_grad_diffs = rot_vec_lists
             self.steps = rot_steps

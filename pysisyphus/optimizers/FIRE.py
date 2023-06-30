@@ -50,7 +50,7 @@ class FIRE(Optimizer):
 
     def optimize(self):
         if self.is_cos and self.align:
-            (self.v, ), _, _  = fit_rigid(self.geometry, (self.v, ))
+            (self.v, ), _, _  = fit_rigid(self.geometry, (self.v, ), align_factor=self.align_factor)
 
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)

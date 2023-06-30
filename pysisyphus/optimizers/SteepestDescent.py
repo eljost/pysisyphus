@@ -11,7 +11,7 @@ class SteepestDescent(BacktrackingOptimizer):
 
     def optimize(self):
         if self.is_cos and self.align:
-            procrustes(self.geometry)
+            procrustes(self.geometry, align_factor=self.align_factor)
 
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)

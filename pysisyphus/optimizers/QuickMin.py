@@ -34,7 +34,8 @@ class QuickMin(Optimizer):
     def optimize(self):
         if self.align and self.is_cos:
             (self.velocities[-1], ), _, _ = fit_rigid(self.geometry,
-                                                      (self.velocities[-1], ))
+                                                      (self.velocities[-1], ),
+                                                      align_factor=self.align_factor)
 
         prev_velocities = self.velocities[-1]
         cur_forces = self.geometry.forces
