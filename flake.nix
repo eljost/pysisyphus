@@ -15,6 +15,8 @@
     };
 
     flake-utils.url = "github:numtide/flake-utils";
+
+    nixBundlers.url = "github:NixOS/bundlers/master";
   };
 
   nixConfig = {
@@ -23,7 +25,7 @@
     extra-subtituters = [ "https://pysisyphus.cachix.org" ];
   };
 
-  outputs = { self, nixpkgs, qchem, flake-utils, ... }:
+  outputs = { self, nixpkgs, qchem, flake-utils, nixBundlers, ... }:
     flake-utils.lib.eachSystem [ "x86_64-linux" ]
       (system:
         let
@@ -38,6 +40,21 @@
               };
             };
           };
+
+          toSingularityImage = drv: pkgs.singularity-tools.buildImage {
+            name = drv.name;
+            contents = with pkgs; [
+              drv
+              bashInteractive
+              coreutils
+              findutils
+              gnused
+              which
+            ];
+            diskSize = 40000;
+            memSize = 2000;
+          };
+
         in
         {
           packages = {
@@ -55,40 +72,6 @@
               enableCfour = true;
               enableMolpro = true;
               enableGamess = true;
-            };
-
-            pysisyphusDocker = pkgs.dockerTools.buildImage {
-              name = self.packages."${system}".pysisyphus.pname;
-              tag = self.packages."${system}".pysisyphus.version;
-
-              fromImageName = null;
-              fromImageTag = null;
-
-              copyToRoot = pkgs.buildEnv {
-                name = "image-root";
-                paths = [
-                  # Necessary for interactive usage
-                  pkgs.bashInteractive
-                  pkgs.coreutils
-
-                  # Computational chemistry software
-                  self.packages."${system}".pysisyphus
-                ];
-                pathsToLink = [ "/bin" ];
-              };
-            };
-
-            pysisyphusSingularity = pkgs.singularity-tools.buildImage {
-              name = self.packages."${system}".pysisyphus.name;
-              contents = with pkgs; [ bashInteractive coreutils self.packages."${system}".pysisyphus ];
-
-              # Size of the virtual disk used for building the container.
-              # This is NOT the final disk size.
-              diskSize = 10000;
-
-              # Memory for the virtualisation environment that BUILDS the image.
-              # This is not a runtime parameter of the image.
-              memSize = 6000;
             };
           };
 
@@ -113,7 +96,18 @@
               '';
             };
 
+          bundlers = {
+            inherit toSingularityImage;
+            inherit (nixBundlers.bundlers."${system}") toArx toDEB toRPM toDockerImage;
+            default = self.bundlers."${system}".toArx;
+          };
+
+          formatter = pkgs.nixpkgs-fmt;
         }) // {
       overlays.default = import ./nix/overlay.nix;
+
+      hydraJobs."x86_64-linux" = {
+        inherit (self.packages."x86_64-linux") pysisyphus pysisyphusFull;
+      };
     };
 }
