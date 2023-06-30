@@ -241,8 +241,7 @@ class ChainOfStates:
             # divide pal of each image by the number of workers available or available images
             n_workers = len(client.scheduler_info()["workers"]) # number of workers available
             n_images = len(images_to_calculate) # number of images to calculate
-            new_pal = min(1, images_to_calculate[0].calculator.pal // n_workers) # divide pal by the number of workers
-            new_pal = new_pal if new_pal > 0 else 1 # set pal to 1 if it is smaller than 1
+            new_pal = max(1, orig_pal // n_workers) # divide pal by the number of workers (or 1 if more workers)
 
             # split images to calculate into batches of n_workers and set pal of each image
             n_batches = n_images // n_workers
@@ -253,8 +252,7 @@ class ChainOfStates:
             # distribute the pals among the remaining images
             n_last_batch = n_images % n_workers
             if n_last_batch > 0:
-                new_pal = images_to_calculate[0].calculator.pal // n_last_batch  # divide pal by the last batch size
-                new_pal = new_pal if new_pal > 0 else 1 # set pal to 1 if it is smaller than 1
+                new_pal = max(1, orig_pal // n_last_batch) # divide pal by the remainder
                 for i in range(n_batches*n_workers, n_images):
                     images_to_calculate[i].calculator.pal = new_pal
 
