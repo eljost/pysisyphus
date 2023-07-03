@@ -55,7 +55,7 @@ def index_strs_for_atoms(atoms):
     return atom_strs
 
 
-def get_cosmo_data_groups(atoms, epsilon, rsolv=None, dcosmo_rs=None):
+def get_cosmo_data_groups(atoms, epsilon, rsolv=None, refind=None, dcosmo_rs=None):
     cosmo_dgs = {
         "cosmo": {
             "epsilon": epsilon,
@@ -65,6 +65,8 @@ def get_cosmo_data_groups(atoms, epsilon, rsolv=None, dcosmo_rs=None):
     }
     if rsolv is not None:
         cosmo_dgs["cosmo"]["rsolv"] = rsolv
+    if refind is not None:
+        cosmo_dgs["cosmo"]["refind"] = refind
     # Transform atom list into TURBOMOLE-style compressed indices
     #   H, H, H, O, O, H, O
     # is transformed to
