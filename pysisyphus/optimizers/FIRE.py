@@ -1,13 +1,24 @@
 import numpy as np
 
-from pysisyphus.helpers import fit_rigid
 from pysisyphus.optimizers.Optimizer import Optimizer
+
 
 class FIRE(Optimizer):
     # https://doi.org/10.1103/PhysRevLett.97.170201
 
-    def __init__(self, geometry, dt=0.1, dt_max=1, N_acc=2, f_inc=1.1,
-                 f_acc=0.99, f_dec=0.5, n_reset=0, a_start=0.1, **kwargs):
+    def __init__(
+        self,
+        geometry,
+        dt=0.1,
+        dt_max=1,
+        N_acc=2,
+        f_inc=1.1,
+        f_acc=0.99,
+        f_dec=0.5,
+        n_reset=0,
+        a_start=0.1,
+        **kwargs,
+    ):
         self.dt = dt
         self.dt_max = dt_max
         # Accelerate after N_acc cycles
@@ -22,8 +33,12 @@ class FIRE(Optimizer):
         # The current velocity
         self.v = np.zeros_like(geometry.coords)
         # Store the velocities for every step
-        self.velocities = [self.v, ]
-        self.time_deltas = [self.dt, ]
+        self.velocities = [
+            self.v,
+        ]
+        self.time_deltas = [
+            self.dt,
+        ]
 
         super().__init__(geometry, **kwargs)
 
@@ -41,28 +56,31 @@ class FIRE(Optimizer):
         self.a = opt_restart_info["a"]
         self.dt = opt_restart_info["dt"]
         self.n_reset = opt_restart_info["n_reset"]
-        self.time_deltas = [opt_restart_info["time_delta"], ]
+        self.time_deltas = [
+            opt_restart_info["time_delta"],
+        ]
         velocity = np.array(opt_restart_info["velocity"], dtype=float)
-        self.velocities = [velocity, ]
+        self.velocities = [
+            velocity,
+        ]
 
     def reset(self):
         pass
 
     def optimize(self):
         if self.is_cos and self.align:
-            (self.v, ), _, _  = fit_rigid(self.geometry, (self.v, ), align_factor=self.align_factor)
+            (self.v,), _, _ = self.fit_rigid(vectors=(self.v,))
 
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)
         forces = self.forces[-1]
         mixed_v = (
             # As 'a' gets bigger we keep less old v.
-            (1.0 - self.a) * self.v +
+            (1.0 - self.a) * self.v
+            +
             # As 'a' gets bigger we use more new v
             # from the current forces.
-             self.a * np.sqrt(
-                        np.dot(self.v, self.v) / np.dot(forces, forces)
-                      ) * forces
+            self.a * np.sqrt(np.dot(self.v, self.v) / np.dot(forces, forces)) * forces
         )
         last_v = self.velocities[-1]
         # Check if forces are still aligned with the last velocity

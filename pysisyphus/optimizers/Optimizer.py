@@ -1,5 +1,6 @@
 import abc
 from dataclasses import dataclass
+import functools
 import logging
 import os
 from pathlib import Path
@@ -13,13 +14,18 @@ import yaml
 
 from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import check_for_end_sign, get_coords_diffs
+from pysisyphus.helpers import (
+    check_for_end_sign,
+    fit_rigid,
+    get_coords_diffs,
+    procrustes,
+)
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.intcoords.exceptions import RebuiltInternalsException
 from pysisyphus.intcoords.helpers import interfragment_distance
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
-from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.optimizers.exceptions import ZeroStepLength
+from pysisyphus.TablePrinter import TablePrinter
 
 
 def get_data_model(geometry, is_cos, max_cycles):
@@ -618,6 +624,19 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.table.print(add_info)
         except AttributeError:
             pass
+
+    def fit_rigid(self, *, vectors=None, vector_lists=None, hessian=None):
+        return fit_rigid(
+            self.geometry,
+            vectors=vectors,
+            vector_lists=vector_lists,
+            hessian=hessian,
+            align_factor=self.align_factor,
+        )
+
+    def procrustes(self):
+        """Wrapper for procrustes that passes additional arguments along."""
+        procrustes(self.geometry, self.align_factor)
 
     def scale_by_max_step(self, steps):
         steps_max = np.abs(steps).max()
