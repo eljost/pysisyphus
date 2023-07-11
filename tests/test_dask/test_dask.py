@@ -1,22 +1,22 @@
 from distributed import LocalCluster
-import pytest
 
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.helpers import geom_loader
-from pysisyphus.calculators import XTB
+
+from pysisyphus.calculators import ORCA
 from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.testing import using
 
 
-@using("xtb")
+@using("orca")
 def test_dask():
-    with LocalCluster(n_workers=2) as cluster:
+    with LocalCluster(n_workers=2, threads_per_worker=1) as cluster:
         address = cluster.scheduler_address
 
         geoms = geom_loader("lib:ala_dipeptide_iso_b3lyp_631gd_10_images.trj")
 
         for i, geom in enumerate(geoms):
-            calc = XTB(pal=1, calc_number=i)
+            calc = ORCA("hf-3c", pal=1, calc_number=i)
             geom.set_calculator(calc)
 
         neb = NEB(geoms, scheduler=address)
