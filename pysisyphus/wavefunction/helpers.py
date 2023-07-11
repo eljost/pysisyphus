@@ -62,6 +62,12 @@ def cca_order(l):
     return inds
 
 
+def lm_iter(L_max):
+    for l in range(L_max + 1):
+        for m in range(-l, l + 1):
+            yield l, m
+
+
 def cart2ang_moms(cart):
     """Translate 'xxx' to (3, 0, 0) etc."""
 
