@@ -17,6 +17,9 @@ fact = sp.special.factorial
 binom = sp.special.binom
 HALF = 0.5
 
+SQRT3 = np.sqrt(3.0)
+HALF_SQRT3 = SQRT3 / 2.0
+
 
 def Am(m, x, y):
     return HALF * ((x + Im * y) ** m + (x - Im * y) ** m)
@@ -60,6 +63,23 @@ def S(l, m, x, y, z):
 
 
 def Rlm(l, m, x, y, z):
+    """Real regular solid harmonics w/ Cartesian arguments."""
+    # Some hardcoded shortcuts below
+    if l == 0:
+        return 1.0
+    elif l == 1:
+        # -1, 0, 1
+        return (z, x, y)[m]
+    elif l == 2:
+        # -2, -1, 0, 1, 2
+        return (
+            lambda x, y, z: 0.5 * (3 * z**2 - x**2 - y**2 - z**2),  # 0
+            lambda x, y, z: SQRT3 * x * z,  # 1
+            lambda x, y, z: HALF_SQRT3 * (x**2 - y**2),  # 2
+            lambda x, y, z: SQRT3 * x * y,
+            lambda x, y, z: SQRT3 * y * z,
+        )[m](x, y, z)
+
     if m < 0:
         func = S
         m = abs(m)
