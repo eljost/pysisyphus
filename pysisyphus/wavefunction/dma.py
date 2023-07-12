@@ -140,40 +140,6 @@ def get_W(xyz: np.ndarray, lmkq: np.ndarray, L_max: int = _LE_MAX) -> np.ndarray
     return np.real(W)
 
 
-def move_multipoles_faulty(
-    L_max: int,
-    lmkq: np.ndarray,
-    multipoles: np.ndarray,
-    P: np.ndarray,
-    S: np.ndarray,
-) -> np.ndarray:
-    """Move multipoles from P to S. THIS FUNCTION IS FAULTY (read below)!
-
-    This function seems to work for charges and dipole moments, but quadrupole
-    moments will come out slightly off. I have no idea what is going on ...
-
-    In my opinion, there is a mistake in Eq. (2.7) in [1]. The argument to the
-    spherical harmonics should be (P - S) instead of (S - P). Eq. (11) in [2]
-    seems to be correct with (S' = S + a) and R_{L-K, M-Q}(a). When S' = P we have
-    a = P - S and must pass P - S to R_{L-K, M-Q} instead of S - P.
-    """
-    moved_multipoles = np.zeros_like(multipoles)
-    PS = P - S
-    for l in range(L_max + 1):
-        for m in range(-l, l + 1):
-            moved_key = _INDEX_MAP[l, m]
-            for k in range(l + 1):
-                for q in range(-k, k + 1):
-                    prefact = lmkq[l, m, k, q]
-                    if prefact == 0.0:
-                        continue
-                    key = _INDEX_MAP[k, q]
-                    moved_multipoles[moved_key] += (
-                        prefact * multipoles[key] * Rlm(l - k, m - q, *PS)
-                    )
-    return moved_multipoles
-
-
 def move_multipoles(
     L_max: int,
     lmkq: np.ndarray,
@@ -188,6 +154,52 @@ def move_multipoles(
     W = get_W(P - S, lmkq, L_max)
     # Eq. (7) in [3]
     return multipoles @ W
+
+
+def move_multipoles_gen(
+    L_max: int,
+    lmkq: np.ndarray,
+    Q: np.ndarray,
+    P: np.ndarray,
+    S: np.ndarray,
+) -> np.ndarray:
+    """Move multipoles from P to S using matrix multiplication.
+
+    Follows the approach outlined in [3]. The code below is generated
+    with 'gen_m2m.py' in the 'scripts' subdirectory. It is basically
+    the unrolled matrix multiplication.
+
+    The code below works up to quadrupoles.
+    """
+    x, y, z = P - S
+    # Eq. (7) in [3], unrolled and piped through CSE
+    x0 = y * Q[0]
+    x1 = z * Q[0]
+    x2 = 1.73205080756888 * x
+    x3 = 1.73205080756888 * y
+    x4 = 1.73205080756888 * x0
+    x5 = 1.73205080756888 * Q[2]
+    x6 = 1.73205080756888 * z
+    x7 = x**2
+    x8 = y**2
+
+    return np.array(
+        (
+            Q[0],
+            x0 + Q[1],
+            x1 + Q[2],
+            x * Q[0] + Q[3],
+            x * x4 + x2 * Q[1] + x3 * Q[3] + Q[4],
+            x4 * z + x5 * y + x6 * Q[1] + Q[5],
+            -x * Q[3]
+            - y * Q[1]
+            + 2.0 * z * Q[2]
+            - (0.5 * x7 + 0.5 * x8 - z**2) * Q[0]
+            + Q[6],
+            1.73205080756888 * x * x1 + x * x5 + x6 * Q[3] + Q[7],
+            x2 * Q[3] - x3 * Q[1] + 0.866025403784438 * (x7 - x8) * Q[0] + Q[8],
+        )
+    )
 
 
 def closest_sites_and_weights(
@@ -255,7 +267,7 @@ def dma(
             if np.linalg.norm(S - nuc_coords) <= _DIST_THRESH:
                 moved_multipoles = nuc_multipoles
             else:
-                moved_multipoles = move_multipoles(
+                moved_multipoles = move_multipoles_gen(
                     _LE_MAX,
                     lmkq,  # Binomial coefficient prefactors
                     weight * nuc_multipoles,
@@ -340,7 +352,7 @@ def dma(
                         if np.linalg.norm(S - P_prim) <= _DIST_THRESH:
                             moved_multipoles = contr_multipoles
                         else:
-                            moved_multipoles = move_multipoles(
+                            moved_multipoles = move_multipoles_gen(
                                 _LE_MAX,
                                 lmkq,  # Binomial coefficient prefactors
                                 weight * contr_multipoles,

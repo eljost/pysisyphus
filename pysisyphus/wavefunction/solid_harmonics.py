@@ -64,20 +64,21 @@ def S(l, m, x, y, z):
 
 def Rlm(l, m, x, y, z):
     """Real regular solid harmonics w/ Cartesian arguments."""
+    assert abs(m) <= l, f"{m=} must be in the range {-l=} <= m <= {l=}!"
     # Some hardcoded shortcuts below
     if l == 0:
         return 1.0
     elif l == 1:
-        # -1, 0, 1
+        # 0, 1, -1
         return (z, x, y)[m]
     elif l == 2:
-        # -2, -1, 0, 1, 2
+        # 0, 1, 2, -2, -1
         return (
             lambda x, y, z: 0.5 * (3 * z**2 - x**2 - y**2 - z**2),  # 0
             lambda x, y, z: SQRT3 * x * z,  # 1
             lambda x, y, z: HALF_SQRT3 * (x**2 - y**2),  # 2
-            lambda x, y, z: SQRT3 * x * y,
-            lambda x, y, z: SQRT3 * y * z,
+            lambda x, y, z: SQRT3 * x * y,  # -2
+            lambda x, y, z: SQRT3 * y * z,  # -1
         )[m](x, y, z)
 
     if m < 0:
