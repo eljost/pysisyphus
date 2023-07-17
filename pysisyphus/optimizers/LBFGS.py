@@ -3,7 +3,6 @@ from typing import Optional
 import numpy as np
 
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import fit_rigid
 from pysisyphus.intcoords.exceptions import NeedNewInternalsException
 from pysisyphus.optimizers.closures import bfgs_multiply, get_update_mu_reg
 from pysisyphus.optimizers.hessian_updates import double_damp
@@ -124,14 +123,13 @@ class LBFGS(Optimizer):
 
     def optimize(self):
         if self.is_cos and self.align:
-            rot_vecs, rot_vec_lists, _ = fit_rigid(
-                self.geometry,
+            rot_vecs, rot_vec_lists, _ = self.fit_rigid(
                 vector_lists=(
                     self.steps,
                     self.forces,
                     self.coord_diffs,
                     self.grad_diffs,
-                ), align_factor=self.align_factor
+                ),
             )
             rot_steps, rot_forces, rot_coord_diffs, rot_grad_diffs = rot_vec_lists
             self.steps = rot_steps

@@ -196,7 +196,7 @@ def procrustes(geometry, align_factor=1.0):
             raise ValueError("align_factor must be between 0 and 1")
         # mix the rotation matrix with the identity matrix
         # align_factor=1 for full alignment (default); align_factor=0 for no alignment
-        rot_mat  = align_factor * rot_mat + (1 - align_factor) * np.eye(3)
+        rot_mat = align_factor * rot_mat + (1 - align_factor) * np.eye(3)
         # Rotate the coords
         rotated3d = centered.dot(rot_mat)
         geometry.set_coords_at(i, rotated3d.flatten())
@@ -237,7 +237,13 @@ def align_coords(coords_list):
     return aligned_coords
 
 
-def fit_rigid(geometry, vectors=(), vector_lists=(), hessian=None, align_factor=1.0):
+def fit_rigid(
+    geometry, vectors=None, vector_lists=None, hessian=None, align_factor=1.0
+):
+    if vectors is None:
+        vectors = ()
+    if vector_lists is None:
+        vector_lists = ()
     rotated_vector_lists = list()
     rotated_hessian = None
 
