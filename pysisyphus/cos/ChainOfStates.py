@@ -23,6 +23,7 @@ class ChainOfStates:
         images,
         fix_first=True,
         fix_last=True,
+        align_fixed=True,
         climb=False,
         climb_rms=5e-3,
         climb_lanczos=False,
@@ -36,6 +37,7 @@ class ChainOfStates:
         self.images = list(images)
         self.fix_first = fix_first
         self.fix_last = fix_last
+        self.align_fixed = align_fixed
         self.climb = climb
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
@@ -204,9 +206,10 @@ class ChainOfStates:
         if i in self.moving_indices:
             self.images[i].coords = coords
         # When dealing with a fixed image don't set coords through the
-        # property, which would result in resetting the image's caluclated
-        # data. Instead assign coords directly.
-        else:
+        # property, which would result in resetting the image's calculated
+        # data. Instead, assign coords directly. This only occurs when
+        # aligning the fixed images.
+        elif self.align_fixed:
             self.images[i]._coords = coords
 
     @property
