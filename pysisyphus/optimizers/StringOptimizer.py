@@ -6,7 +6,6 @@
 
 import numpy as np
 
-from pysisyphus.helpers import procrustes
 from pysisyphus.optimizers.hessian_updates import double_damp
 from pysisyphus.optimizers.closures import bfgs_multiply
 from pysisyphus.optimizers.Optimizer import Optimizer
@@ -52,7 +51,7 @@ class StringOptimizer(Optimizer):
 
     def prepare_opt(self):
         if self.align and self.is_cart_opt:
-            procrustes(self.geometry)
+            self.procrustes()
 
     def reset(self):
         pass
@@ -85,7 +84,7 @@ class StringOptimizer(Optimizer):
         string_size_changed = len(new_image_inds) > 0
 
         if self.align and string_size_changed and self.is_cart_opt:
-            procrustes(self.geometry)
+            self.procrustes()
             self.log("Aligned string.")
 
         forces = self.geometry.forces

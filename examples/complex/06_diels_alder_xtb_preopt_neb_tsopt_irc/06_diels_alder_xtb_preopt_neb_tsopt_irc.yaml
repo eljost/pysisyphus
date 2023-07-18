@@ -8,6 +8,7 @@ cos:
 opt:
  type: lbfgs
  align: True
+ align_factor: 0.9
  rms_force: 0.01
  max_step: 0.04
 tsopt:

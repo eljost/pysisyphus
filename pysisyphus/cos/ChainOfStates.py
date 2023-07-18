@@ -23,6 +23,7 @@ class ChainOfStates:
         images,
         fix_first=True,
         fix_last=True,
+        align_fixed=True,
         climb=False,
         climb_rms=5e-3,
         climb_lanczos=False,
@@ -36,6 +37,7 @@ class ChainOfStates:
         self.images = list(images)
         self.fix_first = fix_first
         self.fix_last = fix_last
+        self.align_fixed = align_fixed
         self.climb = climb
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
@@ -204,9 +206,10 @@ class ChainOfStates:
         if i in self.moving_indices:
             self.images[i].coords = coords
         # When dealing with a fixed image don't set coords through the
-        # property, which would result in resetting the image's caluclated
-        # data. Instead assign coords directly.
-        else:
+        # property, which would result in resetting the image's calculated
+        # data. Instead, assign coords directly. This only occurs when
+        # aligning the fixed images.
+        elif self.align_fixed:
             self.images[i]._coords = coords
 
     @property
@@ -231,6 +234,44 @@ class ChainOfStates:
         for ind, image in zip(indices, images):
             self.images[ind] = image
 
+    def concurrent_force_calcs(self, images_to_calculate, image_indices):
+        client = self.get_dask_client()
+        self.log(client)
+
+        # save original pals to restore them later
+        orig_pal = images_to_calculate[0].calculator.pal
+
+        # divide pal of each image by the number of workers available or available images
+        # number of workers available
+        n_workers = len(client.scheduler_info()["workers"])
+        # number of images to calculate
+        n_images = len(images_to_calculate)
+        # divide pal by the number of workers (or 1 if more workers)
+        new_pal = max(1, orig_pal // n_workers)
+
+        # split images to calculate into batches of n_workers and set pal of each image
+        n_batches = n_images // n_workers
+        for i in range(0, n_batches):
+            for j in range(i * n_workers, (i + 1) * n_workers):
+                images_to_calculate[j].calculator.pal = new_pal
+
+        # distribute the pals among the remaining images
+        n_last_batch = n_images % n_workers
+        if n_last_batch > 0:
+            # divide pal by the remainder
+            new_pal = max(1, orig_pal // n_last_batch)
+            for i in range(n_batches * n_workers, n_images):
+                images_to_calculate[i].calculator.pal = new_pal
+
+        # map images to workers
+        image_futures = client.map(self.par_image_calc, images_to_calculate)
+        # set images to the results of the calculations
+        self.set_images(image_indices, client.gather(image_futures))
+
+        # Restore original pals
+        for i in range(0, n_images):
+            self.images[i].calculator.pal = orig_pal
+
     def calculate_forces(self):
         # Determine the number of images for which we have to do calculations.
         # There may also be calculations for fixed images, as they need an
@@ -247,10 +288,7 @@ class ChainOfStates:
 
         # Parallel calculation with dask
         if self.scheduler:
-            client = self.get_dask_client()
-            self.log(client)
-            image_futures = client.map(self.par_image_calc, images_to_calculate)
-            self.set_images(image_indices, client.gather(image_futures))
+            self.concurrent_force_calcs(images_to_calculate, image_indices)
         # Serial calculation
         else:
             for image in images_to_calculate:

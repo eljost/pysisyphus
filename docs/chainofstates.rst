@@ -129,9 +129,12 @@ desired it must be done manually.
     cos:
      type: neb
      climb: False
+     align_fixed: True              # Align the fixed atoms of the initial and final images along the path.
     opt:
      type: lbfgs
-     align: True
+     align: True                   # Align the image of the current step with the image of the previous step
+     align_factor: 0.9             # If full alignment is not desired, a factor between 0 and 1
+                                   # can be specified.
      rms_force: 0.01
      max_step: 0.04
     tsopt:

@@ -1,14 +1,12 @@
 import numpy as np
 
-from pysisyphus.helpers import fit_rigid, procrustes
 from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 # http://ikuz.eu/2015/04/15/the-concept-of-conjugate-gradient-descent-in-python/
 
-class ConjugateGradient(BacktrackingOptimizer):
 
-    def __init__(self, geometry, alpha=0.1, formula="FR", dont_skip=True,
-                 **kwargs):
+class ConjugateGradient(BacktrackingOptimizer):
+    def __init__(self, geometry, alpha=0.1, formula="FR", dont_skip=True, **kwargs):
         super().__init__(geometry, alpha=alpha, **kwargs)
 
         self.formula = formula
@@ -16,7 +14,7 @@ class ConjugateGradient(BacktrackingOptimizer):
 
     def prepare_opt(self):
         if self.is_cos and self.align:
-            procrustes(self.geometry)
+            self.procrustes()
         # Calculate initial forces before the first iteration
         self.coords.append(self.geometry.coords)
         self.forces.append(self.geometry.forces)
@@ -36,10 +34,12 @@ class ConjugateGradient(BacktrackingOptimizer):
             beta = cur_forces.dot(cur_forces) / prev_forces.dot(prev_forces)
         # Polak-Ribiere
         elif self.formula == "PR":
-            beta = (-cur_forces.dot(prev_forces-cur_forces)
-                    / prev_forces.dot(prev_forces))
-            beta_old = (cur_forces.dot(cur_forces-prev_forces)
-                    / prev_forces.dot(prev_forces))
+            beta = -cur_forces.dot(prev_forces - cur_forces) / prev_forces.dot(
+                prev_forces
+            )
+            beta_old = cur_forces.dot(cur_forces - prev_forces) / prev_forces.dot(
+                prev_forces
+            )
             self.log(f"beta_old={beta_old:.4f}, beta={beta:.4f}")
             if beta < 0:
                 self.log(f"beta = {beta:.04f} < 0, resetting to 0")
@@ -57,7 +57,7 @@ class ConjugateGradient(BacktrackingOptimizer):
             self.log(f"beta = {beta:.06f}")
             if np.isinf(beta):
                 beta = 1.0
-            step = cur_forces + beta*self.steps[-1]
+            step = cur_forces + beta * self.steps[-1]
         else:
             # Start with steepest descent in the first iteration
             step = cur_forces
@@ -81,10 +81,9 @@ class ConjugateGradient(BacktrackingOptimizer):
             return None
 
         if self.align and self.is_cos:
-            (new_forces, cur_forces, step), _, _ = fit_rigid(self.geometry,
-                                                              (new_forces,
-                                                               cur_forces,
-                                                               step))
+            (new_forces, cur_forces, step), _, _ = self.fit_rigid(
+                vectors=(new_forces, cur_forces, step),
+            )
             # Minus step???
             new_coords = self.geometry.coords - step
             self.geometry.coords = new_coords
