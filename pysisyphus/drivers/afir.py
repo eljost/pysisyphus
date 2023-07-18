@@ -646,6 +646,7 @@ def run_afir_path(
         guess_ind = best_afir_path.energies.argmax()
         guess_coords = best_afir_path.cart_coords[guess_ind]
         ts_guess = Geometry(geom.atoms, guess_coords)
+        ts_guess.energy = best_afir_path.energies[guess_ind]
         ts_guess.dump_xyz(out_dir / "ts_guess.xyz")
         afir_path_merged = reduce(lambda ap1, ap2: ap1 + ap2, afir_paths)
     else:
