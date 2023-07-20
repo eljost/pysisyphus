@@ -3,7 +3,7 @@ import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.linalg import finite_difference_hessian
+from pysisyphus.linalg import finite_difference_hessian, are_collinear
 from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
 
@@ -29,3 +29,18 @@ def test_water_fd_hessian():
     calc = PySCF(basis="321g", pal=2)
     geom.set_calculator(calc)
     assert_hessians(geom)
+
+
+@pytest.mark.parametrize(
+    "points, result",
+    (
+        (((0.0, 0.0, 0.0),), False),
+        (((0.0, 0.0, 0.0), (0.0, 0.0, 1.0)), True),
+        (((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.0, 0.0, 2.0)), True),
+        (((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.0, 4.0, 0.0)), False),
+        (((0.0,), (0.1,)), True),
+    ),
+)
+def test_are_collinear(points, result):
+    points = np.array(points)
+    assert are_collinear(points) == result
