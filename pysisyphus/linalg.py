@@ -409,3 +409,31 @@ def multi_component_sym_mat(arr, dim):
     sym[triu] = arr
     sym[tril1] = sym[triu1]
     return sym.reshape(*target_shape, *shape[1:])
+
+
+def are_collinear(points: np.ndarray, rad_thresh: float = 1e-12) -> bool:
+    """Determine linearity of points in R^N.
+
+    Linearity is checked by comparing dot products between
+    successive point pairs. Coinciding points are NOT checked.
+    """
+
+    assert points.ndim == 2
+    npoints = points.shape[0]
+    if npoints == 1:
+        return False
+    elif npoints == 2:
+        return True
+
+    first, second = points[:2]
+    ref_vec = second - first
+    ref_vec /= np.linalg.norm(ref_vec)
+    is_linear = True
+    for other in points[1:]:
+        diff = other - first
+        diff /= np.linalg.norm(diff)
+        dot = abs(ref_vec.dot(diff))
+        if abs(dot - 1.0) >= rad_thresh:
+            is_linear = False
+            break
+    return is_linear
