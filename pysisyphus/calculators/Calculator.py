@@ -17,6 +17,7 @@ from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import geom_loader
 from pysisyphus.linalg import finite_difference_hessian
+from pysisyphus.wavefunction import Wavefunction
 
 
 KeepKind = Enum("KeepKind", ["ALL", "LATEST", "NONE"])
@@ -37,7 +38,6 @@ class SetPlan:
 
 
 class Calculator:
-
     conf_key = None
     _set_plans = []
 
@@ -237,6 +237,12 @@ class Calculator:
         self.log("Restored original 'get_hessian' method.")
         self.get_hessian = self._org_get_hessian
         self.hessian_kind = HessKind["ORG"]
+
+    def load_wavefunction_from_file(self, fn, **kwargs):
+        return Wavefunction.from_file(fn, **kwargs)
+
+    def get_stored_wavefunction(self, **kwargs):
+        raise Exception("Not implemented!")
 
     def make_fn(self, name, counter=None, return_str=False):
         """Make a full filename.
