@@ -135,6 +135,9 @@ class Wavefunction:
     def from_file(fn, **kwargs):
         path = Path(fn)
 
+        if not path.exists():
+            raise FileNotFoundError(path)
+
         from_funcs = {
             ".json": Wavefunction.from_orca_json,
             ".fchk": Wavefunction.from_fchk,
@@ -142,10 +145,16 @@ class Wavefunction:
         from_funcs_for_str = (
             # ORCA
             ("Molden file created by orca_2mkl", Wavefunction.from_orca_molden),
+            # XTB detection, as done in Multiwfn. Doesn't appear too stable/specific ...
+            ("[Atoms] AU", Wavefunction.from_orca_molden),
+            # AOMix, e.g. from Turbomole
             ("[AOMix Format", Wavefunction.from_aomix),
-            # OpenMolcas
-            # ("[N_Atoms]", Wavefunction.from_molden),  # seems buggy right now
+            # OpenMolcas; seems buggy. Maybe also related to messed up contr. coeffs?
+            # ("[N_Atoms]", Wavefunction.from_molden),
+            # # General Molden fallback
+            # ("[Molden Format]", Wavefunction.from_molden),
         )
+        # If possible I would advise to stay away from .molden files :)
         try:
             from_func = from_funcs[path.suffix.lower().strip()]
         except KeyError:
@@ -194,9 +203,9 @@ class Wavefunction:
         wavefunction_from_molden will come up with an absurdly high charge.
         """
 
-        from pysisyphus.io.orca import wavefunction_from_molden
+        from pysisyphus.io.orca import wavefunction_from_orca_molden
 
-        wf = wavefunction_from_molden(text, **kwargs)
+        wf = wavefunction_from_orca_molden(text, **kwargs)
         return wf
 
     @staticmethod

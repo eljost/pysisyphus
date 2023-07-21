@@ -11,8 +11,11 @@ from pysisyphus.wavefunction import Wavefunction
 
 @dataclass
 class PopAnalysis:
+    # Also store atoms and coordinates?!
     # atoms: List[str]
     # coords3d: NDArray[float]
+
+    # Population of alpha and beta electrons
     pop_a: NDArray[float]
     pop_b: NDArray[float]
     nuc_charges: NDArray[float]
