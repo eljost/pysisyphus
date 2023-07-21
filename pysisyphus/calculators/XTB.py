@@ -21,13 +21,8 @@ OptResult = namedtuple("OptResult", "opt_geom opt_log")
 
 
 class XTB(Calculator):
-
     conf_key = "xtb"
-    _set_plans = (
-        "charges",
-        "json",
-        "xtbrestart",
-    )
+    _set_plans = ("charges", "json", "xtbrestart", "molden")
 
     def __init__(
         self,
@@ -41,6 +36,7 @@ class XTB(Calculator):
         topo=None,
         topo_update=None,
         quiet=False,
+        wavefunction_dump=False,
         **kwargs,
     ):
         """XTB calculator.
@@ -71,6 +67,8 @@ class XTB(Calculator):
             Mememory per core in MB.
         quiet : bool, optional
             Suppress creation of log files.
+        wavefunction_dump : bool
+            Whether to dump a molden file.
         """
         super().__init__(**kwargs)
 
@@ -88,6 +86,7 @@ class XTB(Calculator):
         self.topo = topo
         self.topo_update = topo_update
         self.quiet = quiet
+        self.wavefunction_dump = wavefunction_dump
 
         self.topo_used = 0
         self.xtbrestart = None
@@ -105,12 +104,12 @@ class XTB(Calculator):
             "xtbopt.xyz",
             "g98.out",
             "xtb.trj",
-            # "json:xtbout.json",
             "charges:charges",
             "xcontrol",
+            "molden:molden.input",
         )
         if self.restart:
-            self.to_keep += ("xtbrestart", )
+            self.to_keep += ("xtbrestart",)
         if self.quiet:
             self.to_keep = ()
 
@@ -189,6 +188,8 @@ class XTB(Calculator):
         elif self.alpb:
             alpb = f"--alpb {self.alpb}".split()
             add_args = add_args + alpb
+        if self.wavefunction_dump:
+            add_args = add_args + ["--molden"]
         # Select parametrization
         gfn = ["--gfnff"] if self.gfn == "ff" else f"--gfn {self.gfn}".split()
         add_args = add_args + gfn
@@ -233,6 +234,9 @@ class XTB(Calculator):
         }
         results = self.run(inp, **kwargs)
         return results
+
+    def get_stored_wavefunction(self, **kwargs):
+        return self.load_wavefunction_from_file(self.molden, xtb_nuc_charges=True)
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         self.prepare_input(atoms, coords, "calculation", **prepare_kwargs)
@@ -373,7 +377,7 @@ class XTB(Calculator):
         with open(path / "hessian") as handle:
             text = handle.read()
         hessian = np.array(text.split()[1:], dtype=float)
-        coord_num = int(hessian.size ** 0.5)
+        coord_num = int(hessian.size**0.5)
         hessian = hessian.reshape(coord_num, coord_num)
         energy = self.parse_energy(path)
         results = {
