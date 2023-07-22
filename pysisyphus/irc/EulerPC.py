@@ -178,7 +178,7 @@ class EulerPC(IRC):
             self.mw_coords = euler_mw_coords
 
             # Use rms of gradient from taylor expansion for convergence check.
-            euler_grad = self.unweight_vec(euler_mw_grad)
+            euler_grad = self.unweight_mw_grad(euler_mw_grad)
             rms_grad = rms(euler_grad)
 
             # Or check true gradient? But this would need an additional calculation,
