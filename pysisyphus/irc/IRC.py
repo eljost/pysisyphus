@@ -221,7 +221,7 @@ class IRC:
     def m_sqrt(self):
         return self._m_sqrt
 
-    def unweight_vec(self, vec):
+    def unweight_mw_grad(self, vec):
         return self.m_sqrt * vec
 
     def mass_weigh_hessian(self, hessian):
@@ -444,7 +444,7 @@ class IRC:
         # the mass-weighted and un-mass-weighted gradients. This takes into account
         # which atoms are actually moving, so it should be a good guess.
         norm_mw_grad = np.linalg.norm(mw_grad)
-        norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
+        norm_grad = np.linalg.norm(self.unweight_mw_grad(mw_grad))
         conv_fact = norm_grad / norm_mw_grad
         conv_fact = max(min_fact, conv_fact)
         self.log(f"Un-weighted / mass-weighted conversion factor {conv_fact:.4f}")
