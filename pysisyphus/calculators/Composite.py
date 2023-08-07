@@ -61,13 +61,16 @@ class Composite(Calculator):
         self.arr_args = sym.symbols(" ".join(self.keys_calcs.keys()))
         self.arr_expr = sym.lambdify(self.arr_args, self.energy_expr)
 
+    def get_final_energy(self, energies):
+        return float(self.energy_expr.subs(energies).evalf())
+
     def get_energy(self, atoms, coords, **prepare_kwargs):
         energies = {}
         for key, calc in self.keys_calcs.items():
             energy = calc.get_energy(atoms, coords, **prepare_kwargs)["energy"]
             energies[key] = energy
 
-        final_energy = self.energy_expr.subs(energies).evalf()
+        final_energy = self.get_final_energy(energies)
         results = {
             "energy": final_energy,
         }
@@ -85,7 +88,7 @@ class Composite(Calculator):
             self.log(f"|forces_{key}|={np.linalg.norm(forces[key]):.6f}")
         self.log("")
 
-        final_energy = self.energy_expr.subs(energies).evalf()
+        final_energy = self.get_final_energy(energies)
         final_forces = self.arr_expr(**forces)
 
         # Remove overall translation
@@ -107,7 +110,7 @@ class Composite(Calculator):
             energies[key] = results["energy"]
             hessians[key] = results["hessian"]
 
-        final_energy = self.energy_expr.subs(energies).evalf()
+        final_energy = self.get_final_energy(energies)
         final_hessian = self.arr_expr(**hessians)
 
         results = {
