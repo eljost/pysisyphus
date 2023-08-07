@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import sys
 import time
+from typing import List
 
 import numpy as np
 import scipy as sp
@@ -460,6 +461,54 @@ def complete_fragments(atoms, fragments):
     fragments = tuple([tuple(frag) for frag in fragments])
 
     return fragments
+
+
+def get_fragment_xyzs(
+    geom: Geometry,
+    fragments: List[List[int]],
+    with_geom: bool = False,
+    with_dummies: bool = True,
+) -> List[str]:
+    """Create list of fragment xyz-strings.
+
+    Parameters
+    ----------
+    geom
+        Geometry object.
+    fragment
+        List of fragments. Each fragment is described by a list of atom index
+        integers.
+    with_geom
+        Whether the xyz string of the full geometry is included at the first position.
+    with_dummies
+        Whether atoms not belonging to the fragment are replaced by dummy atoms or just
+        excluded. Using dummy atoms facilitates fragment recognition when viewing them.
+
+    Returns
+    -------
+    xyzs
+        List of xyz-strings.
+    """
+    atoms = geom.atoms
+    dummy_atoms = ["X"] * len(atoms)
+    coords3d = geom.coords3d
+    xyzs = list()
+    if with_geom:
+        xyzs.append(geom.as_xyz(comment="Full geometry"))
+
+    for i, frag in enumerate(fragments):
+        if with_dummies:
+            frag_atoms = dummy_atoms.copy()
+            # Replace dummy atoms with the actual fragment atoms
+            for j in frag:
+                frag_atoms[j] = atoms[j]
+            frag_coords3d = coords3d
+        else:
+            frag_atoms = [atoms[j] for j in frag]
+            frag_coords3d = coords3d[frag]
+        frag_geom = Geometry(frag_atoms, frag_coords3d)
+        xyzs.append(frag_geom.as_xyz(comment=f"Fragment {i}"))
+    return xyzs
 
 
 FinalHessianResult = namedtuple(
