@@ -53,14 +53,39 @@ def save_third_deriv(h5_fn, geom, third_deriv_result, H_mw, H_proj):
         handle.attrs["atoms"] = [atom.lower() for atom in geom.atoms]
 
 
-def geom_from_hessian(h5_fn, **geom_kwargs):
+def geom_from_hessian(h5_fn: str, with_attrs: bool = False, **geom_kwargs):
+    """Construct geometry from pysisyphus Hessian in HDF5 format.
+
+    Parameters
+    ----------
+    h5_fn
+        Filename of HDF5 Hessian.
+    with_attrs
+        Whether to also return an attributes dictionary. Attributes
+        contain charge and multiplicity, as well as atoms and the electronic
+        energy.
+
+    Returns
+    -------
+    geom
+        Geometry object with Hessian and electronic energy set.
+    attrs
+        Dictinoary containing the attributes set in the HDF5 file. Only returned
+        when with_attrs is True.
+    """
     with h5py.File(h5_fn, "r") as handle:
-        atoms = [atom.capitalize() for atom in handle.attrs["atoms"]]
         coords3d = handle["coords3d"][:]
-        energy = handle.attrs["energy"]
         cart_hessian = handle["hessian"][:]
+
+        attrs = dict(handle.attrs.items())
+        atoms = [atom.capitalize() for atom in attrs["atoms"]]
+        energy = attrs["energy"]
 
     geom = Geometry(atoms=atoms, coords=coords3d, **geom_kwargs)
     geom.cart_hessian = cart_hessian
     geom.energy = energy
-    return geom
+
+    if with_attrs:
+        return geom, attrs
+    else:
+        return geom
