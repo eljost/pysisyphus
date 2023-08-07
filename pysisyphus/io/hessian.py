@@ -1,11 +1,11 @@
-import numpy as np 
+import numpy as np
 import h5py
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 
 
-def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None):
+def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None, charge=None):
     if cart_hessian is None:
         cart_hessian = geom.cart_hessian
 
@@ -14,6 +14,9 @@ def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None):
 
     if mult is None:
         mult = geom.calculator.mult
+
+    if charge is None:
+        charge = geom.calculator.charge
 
     if len(geom.atoms) > 1:
         proj_hessian = geom.eckart_projection(geom.mass_weigh_hessian(cart_hessian))
@@ -35,6 +38,7 @@ def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None):
         handle.attrs["atoms"] = [atom.lower() for atom in atoms]
         handle.attrs["energy"] = energy
         handle.attrs["mult"] = mult
+        handle.attrs["charge"] = charge
 
 
 def save_third_deriv(h5_fn, geom, third_deriv_result, H_mw, H_proj):
