@@ -105,6 +105,8 @@ def run_opt(
         for image in geom.images:
             image.set_calculator(calc_getter())
             title = str(geom)
+        # Initialize dask cluster, if required
+        cluster = geom.init_dask()
     else:
         geom.set_calculator(calc_getter())
         geom.cart_hessian = cart_hessian
@@ -229,6 +231,10 @@ def run_opt(
             out_dir=out_dir,
         )
     print()
+
+    if is_cos:
+        # Shutdown dask cluster, if required
+        geom.exit_dask(cluster)
 
     opt_result = OptResult(opt, opt.geometry, opt.final_fn)
     return opt_result
