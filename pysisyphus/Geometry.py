@@ -177,6 +177,8 @@ class Geometry:
         coord_kwargs=None,
         isotopes=None,
         freeze_atoms=None,
+        remove_com=False,
+        remove_centroid=False,
         comment="",
         name="",
     ):
@@ -208,6 +210,10 @@ class Geometry:
             Given a float, this float will be directly used as mass.
         freeze_atoms : iterable of integers
             Specifies which atoms should remain fixed at their initial positions.
+        remove_com : bool, optional
+            Move center of mass to the origin.
+        remove_centroid : bool, optional
+            Move centroid to the origin.
         comment : str, optional
             Comment string.
         name : str, optional
@@ -236,10 +242,17 @@ class Geometry:
         elif type(freeze_atoms) is str:
             freeze_atoms = full_expand(freeze_atoms)
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
+        self.remove_com = bool(remove_com)
+        self.remove_centroid = bool(remove_centroid)
         self.comment = comment
         self.name = name
 
         self._masses = None
+        if self.remove_com:
+            self.coords3d = self.coords3d - self.center_of_mass[None, :]
+        if self.remove_centroid:
+            self.coords3d = self.coords3d - self.centroid[None, :]
+
         self._energy = None
         self._forces = None
         self._hessian = None
@@ -551,7 +564,7 @@ class Geometry:
         coords = np.array(coords).flatten()
 
         # Do Internal->Cartesian backtransformation if internal coordinates are used.
-        if self.internal:
+        if hasattr(self, "internal") and self.internal:
             # When internal coordinates are employed it may happen, that the underlying
             # Cartesian coordinates are updated, e.g. from the IPIServer calculator, which
             # may yield different internal coordinates.
