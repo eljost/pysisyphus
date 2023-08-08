@@ -2,10 +2,17 @@
 #     The efficient optimization of molecular geometries using redundant internal
 #     coordinates
 #     Bakken, Helgaker, 2002
+# [2] https://doi.org/10.1063/1.479510
+#     Geometry optimization in generalized natural internal coordinates
+#     von Arnim, Ahlrichs, 1999
+# [3] https://doi.org/10.1002/jcc.21494
+#     The choice of internal coordinates in complex chemical systems
+#     Nemeth, Challacombe, Van Veenendaal, 2010
 
 from collections import namedtuple
 import itertools as it
-from typing import Optional
+from typing import FrozenSet, Optional, Set
+import math
 
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
@@ -277,8 +284,13 @@ def connect_fragments_ahlrichs(
     min_dist_scale=1.1,
     scale=1.2,
     avoid_h=False,
+    avoid_hh=True,
     logger=None,
+    max_dist=3.0 / BOHR2ANG,
 ):
+    """Ahlrich/von Arnim connection scheme.
+
+    See II. A in [2] and p. 2082 in [3]."""
     atoms = [atom.lower() for atom in atoms]
     if len(fragments) > 1:
         log(
@@ -287,41 +299,54 @@ def connect_fragments_ahlrichs(
         )
     dist_mat = squareform(cdm)
 
-    frag_pairs = list()
+    # Tracks already connected fragments
+    connected_fragments: Set[FrozenSet] = set()
+    # Will contain interfragment atom pairs.
     interfrag_inds = list()
-    max_dist = 3.0 / BOHR2ANG
+    h_sums = list()
     all_fragment_inds = [i for i, _ in enumerate(fragments)]
-    # Leave out the first fragment, so we can also handle only 1 fragment here.
-    unconnected_fragment_inds = all_fragment_inds.copy()[1:]
-    h_inds = set([i for i, atom in enumerate(atoms) if atom.lower() == "h"])
-    while True:
-        for i, j in it.product(all_fragment_inds, unconnected_fragment_inds):
-            # Don't try to connect a fragment to itself and don't try to connect
-            # fragments two times, e.g., (0 and 2) as well as (2 and 0).
-            if i >= j:
-                continue
+    # In the beginning, all fragments are unconnected
+    unconnected_fragment_inds = all_fragment_inds.copy()
+    h_inds = set([i for i, atom in enumerate(atoms) if atom == "h"])
+    h_mask = np.array([1 if atom == "h" else 0 for atom in atoms])
 
+    def get_pairs(unconnected, all_fragments):
+        candidates = set(
+            [
+                frozenset((i, j))
+                for i, j in it.product(unconnected, all_fragments)
+                if i != j
+            ]
+        )
+        return candidates - connected_fragments
+
+    cycle = 0
+    more_than_one_frag = len(fragments) > 1
+    # Skip loop when only one fragment is present.
+    # Loop until all fragments are somehow connected.
+    while more_than_one_frag and len(unconnected_fragment_inds) > 0:
+        candidate_pairs = get_pairs(unconnected_fragment_inds, all_fragment_inds)
+        for i, j in candidate_pairs:
             frag1 = fragments[i]
             frag2 = fragments[j]
-            log(
-                logger,
-                f"\tConnecting {len(frag1)}-atom and {len(frag2)}-atom fragments.",
-            )
             # Pairs of possible interfragment bonds
             inds = np.array(
                 [(i1, i2) for i1, i2 in it.product(frag1, frag2)], dtype=int
             )
             distances = np.array([dist_mat[k, l] for k, l in inds])
 
-            frag_pairs.append((i, j))
             # Determine minimum distance bond
             min_ind = distances.argmin()
             min_dist = distances[min_ind]
 
+            # If we want to avoid interfragment bonds involving hydrogen we check
+            # if 'min_ind' and the associated 'min_dist' must be updated to involve
+            # a bond without hydrogen.
+            # Alternatively, 'no_hh' can also be set to True; this only avoids
+            # interfragment bonds between two hydrogens.
             if avoid_h:
                 sort_inds = np.argsort(distances, kind="stable")
-                # Try to avoid interfragment bonds involving hydrogen.
-                for (k, dist) in zip(sort_inds, distances[sort_inds]):
+                for k, dist in zip(sort_inds, distances[sort_inds]):
                     if set(inds[k]) & h_inds:
                         continue
                     if dist >= 1.5 * min_dist:
@@ -330,25 +355,43 @@ def connect_fragments_ahlrichs(
                     min_dist = distances[k]
                     break
 
+            # If the minimum distances is below the current allowed maximum distance
+            # we connect the fragments and try to define additional interfragment bonds
+            # below or equal to 'min_dist + offset'.
             if min_dist <= max_dist:
                 # Scaling of bigger 'min_dist' values by a fixed factor can lead
                 # to definition of many additional bonds. We restrict the offset
                 # to at most 1 Å.
                 offset = min((min_dist_scale - 1.0) * min_dist, 1.0 / BOHR2ANG)
                 mask = distances <= (min_dist + offset)
-                interfrag_inds.extend(inds[mask])
+                cur_interfrag_inds = inds[mask]
+                cur_h_sums = h_mask[inds[mask]].sum(axis=1)
+                no_hh = cur_h_sums < 2
+                # If fragment pairs is connected by any no-HH bond we drop all
+                # HH-interfragment bonds.
+                if avoid_hh and any(no_hh):
+                    cur_interfrag_inds = cur_interfrag_inds[no_hh]
+                    cur_h_sums = cur_h_sums[no_hh]
+                interfrag_inds.extend(cur_interfrag_inds)
+                h_sums.extend(cur_h_sums)
                 # Indicate that the just connected fragments don't have to be
                 # connected anymore. In the current cycle of the while loop additional
                 # bonds to the just connected fragments can still be defined.
                 unconnected_fragment_inds = [
                     k for k in unconnected_fragment_inds if k not in (i, j)
                 ]
-        # Leave the outer while loop when all fragments are connected
-        if len(unconnected_fragment_inds) == 0:
-            break
+                connected_fragments.add(frozenset((i, j)))
+                log(
+                    logger,
+                    f"\tMacro cycle {cycle}, connected fragments {i} ({len(frag1)} atom) "
+                    f"and fragment {j} ({len(frag2)} atoms). Min. dist is "
+                    f"{min_dist:.4f} au; current allowed max. dist. is {max_dist:.4f} au.",
+                )
         # If there are still unconnected fragments present we allow longer
         # interfragment bonds.
         max_dist *= scale
+        cycle += 1
+        assert max_dist != math.inf, "Max. dist grew to infinity. Something went wrong!"
 
     interfrag_inds = np.array(interfrag_inds, dtype=int)
     return interfrag_inds, list()
@@ -712,12 +755,14 @@ def setup_redundant(
     ]
     # Check for unbonded single atoms and create fragments for them.
     bonded_set = set(tuple(np.ravel(bonds)))
+    # Set of unbonded, single atoms
     unbonded_set = set(range(len(atoms))) - bonded_set - freeze_atom_set
     log(
         logger,
         f"Merging bonded atoms yielded {len(fragments)} fragment(s) and "
         f"{len(unbonded_set)} atoms.",
     )
+    # Create an additional single atom set for all unbonded single atoms
     fragments.extend([frozenset((atom,)) for atom in unbonded_set])
 
     interfrag_bonds = list()
