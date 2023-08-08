@@ -42,6 +42,9 @@ S = {
     "o": 1.25,
     "s": 1.25,
 }
+GEOM_KWARGS = {
+    "remove_com": True,
+}
 
 
 def get_bond_data(coords3d, bonds):
@@ -134,7 +137,7 @@ def palindrome_cycler(iterable):
 
 
 def from_h5_hessian(fn):
-    geom = geom_from_hessian(fn, coord_type="redund")
+    geom = geom_from_hessian(fn, coord_type="redund", **GEOM_KWARGS)
     geoms = (geom,)
 
     # Cartesian displacements
@@ -158,7 +161,7 @@ def from_h5_hessian(fn):
 
 
 def from_geom(fn):
-    geoms = geom_loader(fn, coord_type="redund", iterable=True)
+    geoms = geom_loader(fn, coord_type="redund", iterable=True, **GEOM_KWARGS)
     trj_coords = [geom.coords3d for geom in geoms]
     cycler = palindrome_cycler(trj_coords)
     return geoms, cycler, trj_coords
