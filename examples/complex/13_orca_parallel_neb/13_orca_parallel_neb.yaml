@@ -1,0 +1,41 @@
+geom:
+ type: cartesian
+ fn: lib:ala_dipeptide_iso_b3lyp_631gd_10_images.trj
+calc:
+ type: orca
+ keywords: hf-3c tightscf
+ charge: 0
+ mult: 1
+ # Setting pal to a number > 1 is still a good idea, even though
+ # the value is modified internally in parallel COS runs. As some
+ # follow-up calculations, e.g., TS-optimizations are serial it is
+ # important to pick a sensible value for 'pal'.
+ #
+ # As my notebook has 6 physical cores I set 'pal' to 6.
+ pal: 6
+cos:
+ type: neb
+ # Setting only 'cluster: True' without any 'cluster_kwargs' uses all
+ # avaiable physical cores by default (logical cores, e.g., from
+ # Hyperthreading are disabled by default).
+ cluster: True
+ # The number of avaiable workers can be controlled by setting 'n_workers'
+ # to an appropriate value. When 'cluster_kwargs' with some arguments is given
+ # 'cluster' is automatically set to True.
+ #
+ # It is probably a good idea to set 'n_workers' to the number of actual
+ # physical cores that should be utilized.
+ #
+ # As there are 1+8+1 images in total and only 8 are moving I pick 4
+ # workers, so all images can be treated in two batches.
+ cluster_kwargs:
+  n_workers: 4
+ # Alternatively, the address to an external scheduler not managed by
+ # pysisyphus can be provided. If an address is provided, this takes
+ # precedence and pysisyphus won't create an internal cluster.
+ # scheduler: 127.0.0.1:39271
+opt:
+ type: lbfgs
+ align: True
+ # Production calculations require many more cycles.
+ max_cycles: 5

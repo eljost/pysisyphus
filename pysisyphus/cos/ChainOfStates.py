@@ -1,9 +1,15 @@
+# [1]   http://dx.doi.org/10.1063/1.1323224
+#       Improved tangent estimate in the nudged elastic band method
+#       for finding minimum energy paths and saddle points
+#       Henkelman, Jonsson, 2000
+
 from copy import copy
 import logging
 import sys
 
-from distributed import Client
+from distributed import Client, LocalCluster
 import numpy as np
+import psutil
 from scipy.interpolate import interp1d, splprep, splev
 
 from pysisyphus.helpers import align_coords, get_coords_diffs
@@ -11,7 +17,9 @@ from pysisyphus.helpers_pure import hash_arr
 from pysisyphus.modefollow import geom_lanczos
 
 
-# [1] http://dx.doi.org/10.1063/1.1323224
+class ClusterDummy:
+    def close(self):
+        pass
 
 
 class ChainOfStates:
@@ -31,6 +39,8 @@ class ChainOfStates:
         climb_fixed=True,
         energy_min_mix=False,
         scheduler=None,
+        cluster=False,
+        cluster_kwargs=None,
         progress=False,
     ):
         assert len(images) >= 2, "Need at least 2 images!"
@@ -46,12 +56,25 @@ class ChainOfStates:
         # Must not be lower than climb_rms
         self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
         self.scheduler = scheduler
+        # Providing only cluster_kwargs also enables dask
+        self._cluster = bool(cluster) or (cluster_kwargs is not None)
+        if cluster_kwargs is None:
+            cluster_kwargs = dict()
+        _cluster_kwargs = {
+            # Only one calculation / worker
+            "threads_per_worker": 1,
+            "n_workers": psutil.cpu_count(logical=False),
+        }
+        _cluster_kwargs.update(cluster_kwargs)
+        self.cluster_kwargs = _cluster_kwargs
         self.progress = progress
 
+        # Can't call self.log before counter is initialized ...
+        self._external_scheduler = scheduler is not None
+        self.counter = 0
         self._coords = None
         self._forces = None
         self._energy = None
-        self.counter = 0
         self.coords_length = self.images[0].coords.size
         self.cart_coords_length = self.images[0].cart_coords.size
         self.zero_vec = np.zeros(self.coords_length)
@@ -104,6 +127,38 @@ class ChainOfStates:
         if self.fix_last:
             fixed.append(len(self.images) - 1)
         return fixed
+
+    def get_dask_local_cluster(self):
+        cluster = LocalCluster(**self.cluster_kwargs)
+        self.log(f"Created {cluster}")
+        return cluster
+
+    @property
+    def use_dask(self):
+        return self.scheduler is not None
+
+    def init_dask(self):
+        # Return dummy when scheduler address is already present or dask is disabled.
+        if self._external_scheduler or not self._cluster:
+            # cluster = ClusterDummy(self.scheduler)
+            cluster = ClusterDummy()  # self.scheduler)
+        # Create LocalCluster and return it if dask is enabled but no scheduler address
+        # is set.
+        # It seems like we can't save the LocalCluster object in the ChainOfStates object,
+        # because this leads to strange errors while object pickling.
+        elif self.scheduler is None:
+            cluster = self.get_dask_local_cluster()
+            self.scheduler = cluster.scheduler_address
+        else:
+            raise Exception("How did I end up here?")
+        return cluster
+
+    def exit_dask(self, cluster):
+        # Don't do anything is cluster/scheduler is externally managed
+        if not self._external_scheduler:
+            cluster.close()
+            self.scheduler = None
+            self._external_scheduler = False
 
     @property
     def moving_indices(self):
@@ -236,7 +291,7 @@ class ChainOfStates:
 
     def concurrent_force_calcs(self, images_to_calculate, image_indices):
         client = self.get_dask_client()
-        self.log(client)
+        self.log(f"Doing concurrent force calculations using {client}")
 
         # save original pals to restore them later
         orig_pal = images_to_calculate[0].calculator.pal
@@ -271,6 +326,7 @@ class ChainOfStates:
         # Restore original pals
         for i in range(0, n_images):
             self.images[i].calculator.pal = orig_pal
+        client.close()
 
     def calculate_forces(self):
         # Determine the number of images for which we have to do calculations.
@@ -287,7 +343,7 @@ class ChainOfStates:
         assert len(images_to_calculate) <= len(self.images)
 
         # Parallel calculation with dask
-        if self.scheduler:
+        if self.use_dask:
             self.concurrent_force_calcs(images_to_calculate, image_indices)
         # Serial calculation
         else:
