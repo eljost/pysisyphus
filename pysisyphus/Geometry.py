@@ -52,6 +52,7 @@ from pysisyphus.intcoords.exceptions import (
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.intcoords.setup import BOND_FACTOR
 from pysisyphus.intcoords.setup_fast import find_bonds
+from pysisyphus.plot_ascii import plot_wrapper
 from pysisyphus.xyzloader import make_xyz_str
 
 
@@ -1396,7 +1397,7 @@ class Geometry:
         subprocess.run(f"modes3d.py {tmp_xyz.name}{bonds_str}", shell=True)
         tmp_xyz.close()
 
-    def as_ase_atoms(self):
+    def as_ase_atoms(self, vacuum=None):
         try:
             import ase
         except ImportError:
@@ -1405,6 +1406,8 @@ class Geometry:
 
         # ASE coordinates are in Angstrom
         atoms = ase.Atoms(symbols=self.atoms, positions=self.coords3d * BOHR2ANG)
+        if vacuum is not None:
+            atoms.center(vacuum=vacuum)
 
         if self.calculator is not None:
             from pysisyphus.calculators import FakeASE
@@ -1412,6 +1415,12 @@ class Geometry:
             ase_calc = FakeASE(self.calculator)
             atoms.set_calculator(ase_calc)
         return atoms
+
+    def as_ascii_art(self) -> str:
+        """ASCII-art representation of the Geometry.
+
+        Using code from gpaw. Requires an ase installation."""
+        return plot_wrapper(self)
 
     def get_restart_info(self):
         # Geometry restart information
