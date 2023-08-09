@@ -58,6 +58,11 @@ Parallelization via Dask should work for most calculators that are executed via
 the `subprocess` module as external processes, but probably not calculators
 like `PySCF`.
 
+In order to use/watch the nice dashboard provided by dask, please install a
+recent version of bokeh (`python -m pip install bokeh`). By default, the
+dashboard is available under `127.0.0.1:8787  <127.0.0.1:8787>`_ when the cluster
+is started by pysisyphus.
+
 General remarks
 ===============
 
