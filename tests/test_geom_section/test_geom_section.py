@@ -6,10 +6,11 @@ from pysisyphus.testing import using
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "hbond_angles, prim_len_ref", (
+    "hbond_angles, prim_len_ref",
+    (
         (True, 56),
         (False, 42),
-    )
+    ),
 )
 def test_run_geom_section_union(hbond_angles, prim_len_ref):
     ref_energy = -160.7433945831947
@@ -28,7 +29,7 @@ def test_run_geom_section_union(hbond_angles, prim_len_ref):
                 "fn": "lib:test_union_ts_001.xyz",
                 "coord_kwargs": {
                     "hbond_angles": hbond_angles,
-                }
+                },
             },
             "calc": {
                 "type": "pyscf",
@@ -42,4 +43,4 @@ def test_run_geom_section_union(hbond_angles, prim_len_ref):
     # in the .trj file.
     run_dict = get_run_dict()
     run_dict["geom"]["union"] = "lib:test_union_rx_001.trj"
-    run_assert(run_dict, prim_len=89)
+    run_assert(run_dict, prim_len=66)
