@@ -3,6 +3,9 @@
 """
 Generate python code to shift multipoles.
 See pysisyphus.wavefunction.dma for more information.
+
+Requires the sympleints-package:
+    https://github.com/eljost/sympleints
 """
 
 import black
@@ -106,16 +109,6 @@ for key, expr in Wsym.items():
     expr = sym.simplify(expr)
     expr = expr.evalf(PREC)
     Wsym[key] = expr
-
-# All non-zero keys
-present_keys = set(Wsym.keys())
-# Search for keys in all_keys for values that aren't 0.0.
-nonzero_keys = [key for key in all_keys if key in present_keys]
-# We can select nonzero_keys to get the expressions in the correct order
-W_exprs = [Wsym[key] for key in nonzero_keys]
-
-# Common subexpression elimination
-repls, reduced = sym.cse(W_exprs, order="none", optimizations="basic")
 
 Wmat = sym.ImmutableSparseMatrix(num, num, Wsym)
 # Dummy multipole matrix
