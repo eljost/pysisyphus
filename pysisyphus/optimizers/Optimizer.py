@@ -133,6 +133,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         dump: bool = False,
         dump_restart: bool = False,
         print_every: int = 1,
+        dump_ascii: bool = False,
         prefix: str = "",
         reparam_thresh: float = 1e-3,
         reparam_check_rms: bool = True,
@@ -197,6 +198,9 @@ class Optimizer(metaclass=abc.ABCMeta):
             filesystem.
         print_every
             Report optimization progress every nth cycle.
+        dump_ascii
+            Dump an ASCII representation of the optimized geometry to the
+            filesystem. Has no effect for COS optimizations.
         prefix
             Short string that is prepended to several files created by
             the optimizer. Allows distinguishing several optimizations carried
@@ -258,6 +262,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         print_every = int(print_every)
         assert print_every >= 1
         self.print_every = print_every
+        self.dump_ascii = dump_ascii
         self.prefix = f"{prefix}_" if prefix else prefix
         self.reparam_thresh = reparam_thresh
         self.reparam_check_rms = reparam_check_rms
@@ -899,6 +904,16 @@ class Optimizer(metaclass=abc.ABCMeta):
 
             if (self.cur_cycle % self.print_every) == 0 or self.is_converged:
                 self.print_opt_progress(conv_info)
+
+            if self.dump_ascii and not self.is_cos:
+                asciiart = self.geometry.as_ascii_art()
+                if asciiart != "":
+                    ascii_fn = self.get_path_for_fn("geom_ascii")
+                    with open(ascii_fn, "w") as handle:
+                        handle.write(asciiart)
+
+            self.print_opt_progress(conv_info)
+
             if self.is_converged:
                 self.table.print("Converged!")
                 break
