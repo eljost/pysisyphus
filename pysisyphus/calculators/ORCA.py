@@ -11,6 +11,7 @@ import warnings
 import numpy as np
 import pyparsing as pp
 
+from pysisyphus.calculators.MOCoeffs import MOCoeffs
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.helpers_pure import file_or_str
@@ -68,6 +69,11 @@ def parse_orca_gbw(gbw_fn):
     Pointer @+32: ECP data
     """
 
+    warnings.warn(
+        "'parse_orca_gbw()' is deprecated. Please use 'parse_orca_gbw_new()'.",
+        warnings.DeprecationWarning,
+    )
+
     with open(gbw_fn, "rb") as handle:
         handle.seek(24)
         offset = struct.unpack("<q", handle.read(8))[0]
@@ -91,6 +97,104 @@ def parse_orca_gbw(gbw_fn):
 
         # MOs are returned in columns
         return coeffs, energies
+
+
+def parse_orca_gbw_new(gbw_fn: str) -> MOCoeffs:
+    """Adapted from
+    https://orcaforum.kofo.mpg.de/viewtopic.php?f=8&t=3299
+
+    The first 5 long int values represent pointers into the file:
+
+    Pointer @+0:  Internal ORCA data structures
+    Pointer @+8:  Geometry
+    Pointer @+16: BasisSet
+    Pointer @+24: Orbitals
+    Pointer @+32: ECP data
+    """
+
+    with open(gbw_fn, "rb") as handle:
+        handle.seek(24)
+        offset = struct.unpack("<q", handle.read(8))[0]
+        handle.seek(offset)
+        operators = struct.unpack("<i", handle.read(4))[0]
+        dimension = struct.unpack("<i", handle.read(4))[0]
+
+        coeffs_fmt = "<" + dimension**2 * "d"
+        assert operators in (1, 2)
+
+        keys = {
+            0: "a",
+            1: "b",
+        }
+        kwargs = {}
+        for i in range(operators):
+            key = keys[i]
+            coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension**2))
+            occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
+            energies = struct.iter_unpack("<d", handle.read(8 * dimension))
+            irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
+            cores = struct.iter_unpack("<i", handle.read(4 * dimension))
+
+            coeffs = np.array(coeffs).reshape(-1, dimension)
+            occupations = np.array([occ[0] for occ in occupations])
+            energies = np.array([en[0] for en in energies])
+            kwargs[f"C{key}"] = coeffs
+            kwargs[f"ens{key}"] = energies
+            kwargs[f"occs{key}"] = occupations
+
+        mo_coeffs = MOCoeffs(**kwargs)
+        return mo_coeffs
+
+
+def set_mo_coeffs_in_gbw(gbw_in, gbw_out, alpha_mo_coeffs=None, beta_mo_coeffs=None):
+    """MOs are expected to be in columns."""
+
+    with open(gbw_in, "rb") as handle:
+        handle.seek(24)
+        offset = struct.unpack("<q", handle.read(8))[0]
+        handle.seek(offset)
+        operators = struct.unpack("<i", handle.read(4))[0]
+        if beta_mo_coeffs is not None:
+            assert operators == 2
+        # Number of MOs
+        dimension = struct.unpack("<i", handle.read(4))[0]
+
+        handle.seek(0)
+        gbw_bytes = handle.read()
+
+    # offset + operators + dimension
+    tot_offset = offset + 4 + 4
+    start = gbw_bytes[:tot_offset]
+
+    # Update alpha MO coefficients
+    _4dim = 4 * dimension
+    _8dim = 2 * _4dim
+    _8dim2 = _8dim * dimension
+    coeffs_size = _8dim2
+    occs_size = energies_size = _8dim
+    irreps_size = cores_size = _4dim
+    block_size = coeffs_size + occs_size + energies_size + irreps_size + cores_size
+
+    # The alpha block will always be present in the .gbw ...
+    alpha_block = gbw_bytes[tot_offset : tot_offset + block_size]
+    # ... but we only update it when new alpha MO coefficients are provided
+    if alpha_mo_coeffs is not None:
+        alpha_block = alpha_mo_coeffs.tobytes() + alpha_block[coeffs_size:]
+
+    # The beta block is only present for operators == 2 ...
+    if operators == 2:
+        beta_block = gbw_bytes[tot_offset + block_size : tot_offset + 2 * block_size]
+    else:
+        beta_block = bytes()
+
+    # ... and we only update it when new alpha MO coefficients are provided
+    if beta_mo_coeffs is not None:
+        beta_block = beta_mo_coeffs.tobytes() + beta_block[coeffs_size:]
+
+    mod_gbw_bytes = start + alpha_block + beta_block
+
+    with open(gbw_out, "wb") as handle:
+        handle.write(mod_gbw_bytes)
 
 
 def parse_orca_cis(cis_fn):
@@ -778,26 +882,11 @@ class ORCA(OverlapCalculator):
     @staticmethod
     def set_mo_coeffs_in_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs):
         """See self.parse_gbw."""
-
-        with open(in_gbw_fn, "rb") as handle:
-            handle.seek(24)
-            offset = struct.unpack("<q", handle.read(8))[0]
-            handle.seek(offset)
-            operators = struct.unpack("<i", handle.read(4))[0]
-            dimension = struct.unpack("<i", handle.read(4))[0]
-            assert operators == 1, "Unrestricted case is not implemented!"
-
-            handle.seek(0)
-            gbw_bytes = handle.read()
-
-        tot_offset = offset + 4 + 4
-        start = gbw_bytes[:tot_offset]
-        end = gbw_bytes[tot_offset + 8 * dimension**2 :]
-        # Construct new gbw content by replacing the MO coefficients in the middle
-        mod_gbw_bytes = start + mo_coeffs.T.tobytes() + end
-
-        with open(out_gbw_fn, "wb") as handle:
-            handle.write(mod_gbw_bytes)
+        warnings.warn(
+            "Previously, this method expected MO coefficients in rows! "
+            "Did you update your code?!"
+        )
+        return set_mo_coeffs_in_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs)
 
     def parse_all_energies(self, text=None, triplets=None):
         if text is None:
