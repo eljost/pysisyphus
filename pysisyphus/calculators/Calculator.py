@@ -524,7 +524,9 @@ class Calculator:
                     normal_termination = False
                     # Calling check_termination may result in an exception and
                     # normal_termination will stay at False
-                    normal_termination = self.check_termination(tmp_out_fn)
+                    normal_termination = (
+                        self.retry_calc == 0
+                    ) or self.check_termination(tmp_out_fn)
                 # Method check_termination may not be implemented, so we will always
                 # do only one try.
                 except AttributeError:
