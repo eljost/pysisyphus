@@ -10,7 +10,12 @@ import pytest
 from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators import ORCA
-from pysisyphus.calculators.ORCA import parse_orca_densities, parse_orca_cis
+from pysisyphus.calculators.ORCA import (
+    parse_orca_cis,
+    parse_orca_densities,
+    parse_orca_gbw_new,
+    set_mo_coeffs_in_gbw,
+)
 from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.testing import using
 from pysisyphus.wavefunction import Wavefunction
@@ -243,3 +248,35 @@ def test_orca_stored_wavefunction():
     geom.energy
     # Wavefunction already does some internal sanity checking
     calc.get_stored_wavefunction()
+
+
+def test_set_gbw_restricted(this_dir, tmp_path):
+    """Do a roundtrip."""
+    gbw_in = this_dir / "restricted.gbw"
+    gbw_out = tmp_path / "restricted.gbw"
+    moc = parse_orca_gbw_new(gbw_in)
+    set_mo_coeffs_in_gbw(gbw_in, gbw_out, moc.Ca)
+    moc2 = parse_orca_gbw_new(gbw_out)
+    np.testing.assert_allclose(moc2.Ca, moc.Ca)
+
+
+def test_set_gbw_unrestricted(this_dir, tmp_path):
+    """Do a roundtrip."""
+    gbw_in = this_dir / "unrestricted.gbw"
+    gbw_out = tmp_path / "unrestricted.gbw"
+    moc = parse_orca_gbw_new(gbw_in)
+    set_mo_coeffs_in_gbw(gbw_in, gbw_out, moc.Ca, moc.Cb)
+    moc2 = parse_orca_gbw_new(gbw_out)
+    np.testing.assert_allclose(moc2.Ca, moc.Ca)
+    np.testing.assert_allclose(moc2.Cb, moc.Cb)
+
+
+def test_set_gbw_empty(this_dir, tmp_path):
+    """Do a roundtrip."""
+    gbw_in = this_dir / "unrestricted.gbw"
+    gbw_out = tmp_path / "unrestricted.gbw"
+    moc = parse_orca_gbw_new(gbw_in)
+    set_mo_coeffs_in_gbw(gbw_in, gbw_out)
+    moc2 = parse_orca_gbw_new(gbw_out)
+    np.testing.assert_allclose(moc2.Ca, moc.Ca)
+    np.testing.assert_allclose(moc2.Cb, moc.Cb)
