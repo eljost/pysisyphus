@@ -280,3 +280,18 @@ def test_set_gbw_empty(this_dir, tmp_path):
     moc2 = parse_orca_gbw_new(gbw_out)
     np.testing.assert_allclose(moc2.Ca, moc.Ca)
     np.testing.assert_allclose(moc2.Cb, moc.Cb)
+
+
+def test_set_gbw_occs_ens_restricted(this_dir, tmp_path):
+    """Do a roundtrip.
+
+    Modify occupation numbers and energies."""
+    gbw_in = this_dir / "restricted.gbw"
+    gbw_out = tmp_path / "restricted_occs_ens.gbw"
+    moc = parse_orca_gbw_new(gbw_in)
+    occsa = np.arange(moc.occsa.size)
+    ensa = -np.arange(moc.ensa.size)
+    set_mo_coeffs_in_gbw(gbw_in, gbw_out, alpha_energies=ensa, alpha_occs=occsa)
+    moc2 = parse_orca_gbw_new(gbw_out)
+    np.testing.assert_allclose(moc2.ensa, ensa)
+    np.testing.assert_allclose(moc2.occsa, occsa / 2.0)
