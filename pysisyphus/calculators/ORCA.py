@@ -146,7 +146,16 @@ def parse_orca_gbw_new(gbw_fn: str) -> MOCoeffs:
         return mo_coeffs
 
 
-def set_mo_coeffs_in_gbw(gbw_in, gbw_out, alpha_mo_coeffs=None, beta_mo_coeffs=None):
+def set_mo_coeffs_in_gbw(
+    gbw_in,
+    gbw_out,
+    alpha_mo_coeffs=None,
+    beta_mo_coeffs=None,
+    alpha_energies=None,
+    alpha_occs=None,
+    beta_energies=None,
+    beta_occs=None,
+):
     """MOs are expected to be in columns."""
 
     with open(gbw_in, "rb") as handle:
@@ -175,24 +184,50 @@ def set_mo_coeffs_in_gbw(gbw_in, gbw_out, alpha_mo_coeffs=None, beta_mo_coeffs=N
     irreps_size = cores_size = _4dim
     block_size = coeffs_size + occs_size + energies_size + irreps_size + cores_size
 
-    # The alpha block will always be present in the .gbw ...
-    alpha_block = gbw_bytes[tot_offset : tot_offset + block_size]
-    # ... but we only update it when new alpha MO coefficients are provided
-    if alpha_mo_coeffs is not None:
-        alpha_block = alpha_mo_coeffs.tobytes() + alpha_block[coeffs_size:]
+    occ_start = coeffs_size
+    ens_start = occ_start + occs_size
+    ens_end = ens_start + energies_size
 
-    # The beta block is only present for operators == 2 ...
+    def update_block(start, mo_coeffs, occs, energies):
+        block = gbw_bytes[start : start + block_size]
+
+        # Read existing data from block or convert provided arguments to bytes.
+
+        # Occupation numbers
+        if occs is None:
+            occs = block[occ_start:ens_start]
+        else:
+            occs = np.array(occs, dtype=float).tobytes()
+        # MO energies
+        if energies is None:
+            energies = block[ens_start:ens_end]
+        else:
+            energies = np.array(energies, dtype=float).tobytes()
+        # MO coefficients
+        if mo_coeffs is None:
+            mo_coeffs = block[:coeffs_size]
+        else:
+            mo_coeffs = np.array(mo_coeffs, dtype=float).tobytes()
+
+        # Reassemble block
+        block = mo_coeffs + occs + energies + block[coeffs_size + _8dim + _8dim :]
+        return block
+
+    # The alpha block is always present in the .gbw ...
+    alpha_block = gbw_bytes[tot_offset : tot_offset + block_size]
+    alpha_block = update_block(tot_offset, alpha_mo_coeffs, alpha_occs, alpha_energies)
+
+    # The beta block is only present for operators == 2.
     if operators == 2:
-        beta_block = gbw_bytes[tot_offset + block_size : tot_offset + 2 * block_size]
+        beta_block = update_block(
+            tot_offset + block_size, beta_mo_coeffs, beta_occs, beta_energies
+        )
     else:
         beta_block = bytes()
 
-    # ... and we only update it when new alpha MO coefficients are provided
-    if beta_mo_coeffs is not None:
-        beta_block = beta_mo_coeffs.tobytes() + beta_block[coeffs_size:]
-
+    # Reassemble modified .gbw file
     mod_gbw_bytes = start + alpha_block + beta_block
-
+    # and write the bytes.
     with open(gbw_out, "wb") as handle:
         handle.write(mod_gbw_bytes)
 
