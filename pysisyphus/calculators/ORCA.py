@@ -146,7 +146,7 @@ def parse_orca_gbw_new(gbw_fn: str) -> MOCoeffs:
         return mo_coeffs
 
 
-def set_mo_coeffs_in_gbw(
+def update_gbw(
     gbw_in,
     gbw_out,
     alpha_mo_coeffs=None,
@@ -921,7 +921,7 @@ class ORCA(OverlapCalculator):
             "Previously, this method expected MO coefficients in rows! "
             "Did you update your code?!"
         )
-        return set_mo_coeffs_in_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs)
+        return update_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs)
 
     def parse_all_energies(self, text=None, triplets=None):
         if text is None:
