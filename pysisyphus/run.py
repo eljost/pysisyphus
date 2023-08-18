@@ -353,9 +353,9 @@ def run_tsopt_from_cos(
 
     # Convert tangent from whatever coordinates to redundant internals.
     # When the HEI was splined the tangent will be in Cartesians.
-    if ts_coord_type == "cart":
+    if ts_coord_type in ("cart", "cartesian"):
         ref_tangent = cart_hei_tangent
-    elif ts_coord_type in ("redund", "dlc"):
+    elif ts_coord_type in ("redund", "dlc", "tric"):
         ref_tangent = ts_geom.internal.B @ cart_hei_tangent
     else:
         raise Exception(f"Invalid coord_type='{ts_coord_type}'!")
@@ -1320,7 +1320,6 @@ RunResult = namedtuple(
 
 
 def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
-
     # Dump run_dict
     run_dict_copy = run_dict.copy()
     run_dict_copy["version"] = __version__
@@ -1483,7 +1482,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         print_perf_results(perf_results)
     elif run_dict["afir"]:
         ts_guesses, afir_paths = run_afir_paths(
-            afir_key, geoms, calc_getter, **afir_kwargs,
+            afir_key,
+            geoms,
+            calc_getter,
+            **afir_kwargs,
         )
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
@@ -1502,7 +1504,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     elif any(
         [run_dict[key] is not None for key in ("opt", "tsopt", "irc", "mdp", "endopt")]
     ):
-
         #######
         # OPT #
         #######
@@ -1583,7 +1584,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         # if ran_irc and run_dict["endopt"]:
         if run_dict["endopt"]:
             if not ran_irc:
-
                 _, irc_geom, _ = geoms  # IRC geom should correspond to the TS
 
                 class DummyIRC:
