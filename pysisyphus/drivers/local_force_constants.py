@@ -15,7 +15,7 @@
 # [4] https://doi.org/10.1021/acs.jctc.1c01269
 #     LModeA-nano: A PyMOL Plugin for Calculating Bond Strength
 #     in Solids, Surfaces, and Molecules via Local Vibrational Mode Analysis
-#     Tao, Zou, Nanayakkara, Kraka, 2022 
+#     Tao, Zou, Nanayakkara, Kraka, 2022
 #
 # I actually never read [3] and [4], but they seem to give a good overview.
 
@@ -40,7 +40,7 @@ def compliance_mat(hessian, B):
     K L^T = L^T f^x
     L K L^T = f^x
     L K⁻¹ L^T = f^x⁻¹
-    
+
     So: Γ_q = B f^x⁻¹
 
     """
@@ -70,29 +70,86 @@ def get_force_constants_from_complice_mat(hessian, B):
 
 
 def get_local_force_constants(hessian, B, L):
-    """
+    """Local force constants and local normal modes.
+
     Parameters
     ----------
     hessian
-        Cartesian Hessian matrix.
+        Cartesian Hessian matrix, shape (ncart, ncart).
     B
-        Wilson-B-matrix.
+        Wilson-B-matrix, shape (ninternsl, ncart).
     L
-        Renormalized Cartesian displacment vectors. Obtained from unweighting
-        normal modes and renormalizing.
+        Renormalized Cartesian displacment vectors in columns.
+        Obtained from unweighting normal modes and renormalizing.
+        Shape (ncart, nnmodes).
 
     Returns
     -------
     force_constants
         Local force constants in atomic units (mass/time**2).
+    local_modes
+        Local vibrational modes in the basis of the normal modes.
+        Local modes are given in columns, so the shape of local_modes is
+        (nmodes, ninternal).
     """
 
-    # Eq. (10) in [1]
+    ninternal = B.shape[0]
+    nnmodes = L.shape[1]
+    # Eq. (10) in [1]; D has shape (ninternal, nmodes)
     D = B @ L
     # Eq. (6) in [1]
     K = L.T @ hessian @ L
-    K_inv = np.diag(1/np.diag(K))
-    force_constants = np.zeros(B.shape[0])
+    # Diagonal of inverted K matrix.
+    diag_K_inv = 1 / np.diag(K)
+    force_constants = np.zeros(ninternal)
+    local_modes = np.zeros((nnmodes, ninternal))
     for i, d_row in enumerate(D):
-        force_constants[i] = 1 / (d_row @ K_inv @ d_row.T)
-    return force_constants
+        # As K_inv is a diagonal matrix we can avoid the matrix multiplications.
+        K_inv_dT = diag_K_inv * d_row
+        dK_inv_dT = d_row.dot(K_inv_dT)
+
+        # Eq. (15) in [2]
+        force_constants[i] = 1 / dK_inv_dT
+        # Eq. (12) in [2]
+        local_modes[:, i] = K_inv_dT * force_constants[i]
+    return force_constants, local_modes
+
+
+def local_mode_overlaps(hessian, L, local_modes):
+    """
+    Parameters
+    ----------
+    hessian
+        Cartesian Hessian matrix.
+    L
+        Renormalized Cartesian displacment vectors. Obtained from unweighting
+        normal modes and renormalizing.
+    local_modes
+        Local vibrational modes.
+
+    Returns
+    -------
+    S
+        Overlap matrix of shape (n_local_modes, n_normal_modes).
+    C
+        Decomposition matrix of shape (n_local_modes, n_normal_modes). Every
+        column belongs to one normal mode and contains the contributions of
+        each local normal mode to this normal mode. Each column sums to 1.0.
+    """
+    # Eq. (28) in [2]
+    cart_local_modes = L @ local_modes
+    # Matrix in numerator in eq (27) in [2]
+    anlm = np.einsum("in,ij,jm->nm", cart_local_modes, hessian, L, optimize="greedy")
+    # Vectors in denominator of eq (27) in [2]
+    anan = np.einsum(
+        "in,ij,jn->n", cart_local_modes, hessian, cart_local_modes, optimize="greedy"
+    )
+    lmlm = np.einsum("im,ij,jm->m", L, hessian, L, optimize="greedy")
+
+    # Eq. (27) in [2]
+    # S has shape (nlocalmodes, nnormalmodes)
+    S = anlm**2 / anan[:, None] / lmlm[None, :]
+
+    # Eq. (30) in [2]
+    C = S / S.sum(axis=0)[None, :]
+    return S, C
