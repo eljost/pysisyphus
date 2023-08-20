@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -5,9 +6,12 @@ from pysisyphus.constants import AU2MDYNEPERANG
 from pysisyphus.drivers.local_force_constants import (
     get_force_constants_from_complice_mat,
     get_local_force_constants,
+    local_mode_overlaps,
 )
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.PrimTypes import Bonds, Bends, PrimTypes as PT
+from pysisyphus.io.hessian import geom_from_hessian
+from pysisyphus.helpers import geom_loader
 
 
 @pytest.fixture
@@ -133,10 +137,17 @@ def test_local_force_constants(water_geom):
     geom = water_geom
     geom_redund = geom.copy_all(coord_type="redund")
     B = geom_redund.internal.B
-    *_, L = geom.get_normal_modes()
+    nus, *_, L = geom.get_normal_modes()
     force_constants_compl, _ = get_force_constants_from_complice_mat(geom.hessian, B)
-    force_constants_local = get_local_force_constants(geom.hessian, B, L)
+    force_constants_local, local_modes = get_local_force_constants(geom.hessian, B, L)
     np.testing.assert_allclose(force_constants_compl, force_constants_local, atol=1e-4)
+    S, C = local_mode_overlaps(geom.hessian, L, local_modes)
+    # fig, ax = plt.subplots()
+    # nuss = [f"{nu:4.2f}" for nu in nus]
+    # for i, local_mode in enumerate(C):
+        # ax.bar(nuss, local_mode, bottom=C[:i].sum(axis=0))
+    # plt.show()
+    np.testing.assert_allclose(C.sum(axis=0), np.ones(len(nus)))
 
     typed_prims = geom_redund.internal.typed_prims
     print()
@@ -163,3 +174,34 @@ def test_local_force_constants(water_geom):
             f"{i:03d}: ({prim_type}, {prim_inds}), ki={ki*AU2MDYNEPERANG}, "
             f"compliance k={kcomp*AU2MDYNEPERANG}"
         )
+
+
+def test_bf3(this_dir):
+    geom = geom_from_hessian(this_dir / "bf3_ccsd_t_ccpvdz.h5")
+
+    tps = (
+        (PT.BOND, 0, 1),
+        (PT.BOND, 0, 2),
+        (PT.BOND, 0, 3),
+        (PT.BEND, 1, 0, 2),
+        (PT.BEND, 2, 0, 3),
+        (PT.IMPROPER_DIHEDRAL, 1, 0, 2, 3),
+    )
+    geom_redund = geom.copy_all(
+        coord_type="redund",
+        coord_kwargs={
+            "typed_prims": tps,
+        },
+    )
+    B = geom_redund.internal.B
+    nus, *_, L = geom.get_normal_modes()
+    force_constants_compl, _ = get_force_constants_from_complice_mat(geom.hessian, B)
+    force_constants_local, local_modes = get_local_force_constants(geom.hessian, B, L)
+    # np.testing.assert_allclose(force_constants_compl, force_constants_local, atol=1e-4)
+    S, C = local_mode_overlaps(geom.hessian, L, local_modes)
+    # fig, ax = plt.subplots()
+    # nuss = [f"{nu:4.2f}" for nu in nus]
+    # for i, local_mode in enumerate(C):
+        # ax.bar(nuss, local_mode, bottom=C[:i].sum(axis=0), label=tps[i])
+    # ax.legend()
+    # plt.show()
