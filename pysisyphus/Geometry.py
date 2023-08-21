@@ -1376,14 +1376,22 @@ class Geometry:
         tmp_xyz.flush()
         return tmp_xyz
 
-    def jmol(self, atoms=None, cart_coords=None):
-        """Show geometry in jmol."""
+    def jmol(self, atoms=None, cart_coords=None, stdin=None, jmol_cmd="jmol"):
+        """Show geometry in jmol.
+
+        TODO: read jmol command from .pysisyphusrc ?!"""
         tmp_xyz = self.tmp_xyz_handle(atoms, cart_coords)
-        jmol_cmd = "jmol"
+        cmd = [jmol_cmd, tmp_xyz.name]
+        if stdin is not None:
+            cmd = cmd + ["-s", "-"]
         try:
-            subprocess.run([jmol_cmd, tmp_xyz.name])
+            subprocess.run(
+                cmd,
+                input=stdin,
+                text=True,
+            )
         except FileNotFoundError:
-            print(f"'{jmol_cmd}' seems not to be on your path!")
+            print(f"'{jmol_cmd}' does not seem to be on your $PATH!")
         tmp_xyz.close()
 
     def modes3d(self):
