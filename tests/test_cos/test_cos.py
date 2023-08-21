@@ -32,7 +32,7 @@ def run_cos_opt(geoms, between, calc_cls, cos_cls, cos_kwargs, opt_cls, opt_kwar
     images = interpol.interpolate_all()
 
     for image in images:
-        image.set_calculator(AnaPot())
+        image.set_calculator(calc_cls())
 
     cos = cos_cls(images, **cos_kwargs)
 
@@ -53,33 +53,9 @@ def assert_cos_opt(opt, ref_cycle):
         (SteepestDescent, {}, {}, 30, 5),
         (SteepestDescent, {}, {}, 32, 10),
         (ConjugateGradient, {}, {}, 44, 5),
-        (
-            QuickMin,
-            {
-                "dt": 0.1,
-            },
-            {},
-            27,
-            5,
-        ),
-        (
-            FIRE,
-            {
-                "dt_max": 0.2,
-            },
-            {},
-            42,
-            5,
-        ),
-        (
-            LBFGS,
-            {
-                "gamma_mult": True,
-            },
-            {},
-            12,
-            5,
-        ),
+        (QuickMin, {"dt": 0.1}, {}, 27, 5),
+        (FIRE, {"dt_max": 0.2}, {}, 42, 5),
+        (LBFGS, {"gamma_mult": True}, {}, 12, 5),
     ],
 )
 def test_anapot_neb(opt_cls, opt_kwargs_, neb_kwargs_, ref_cycle, between):
@@ -258,3 +234,26 @@ def test_stiff_neb_nfk():
     # ap = AnimPlot(nfk, opt, xlim=nfk.xlim, ylim=nfk.ylim)
     # ap.animate()
     # plt.show()
+
+
+@pytest.mark.parametrize("climb, ref_cycles", ((True, 209), ("one", 109), (False, 120)))
+def test_neb_climb(climb, ref_cycles):
+    geoms = get_geoms()
+
+    neb_kwargs = {
+        "variable_springs": True,
+        "climb": climb,
+    }
+
+    between = 3
+    opt_kwargs = {
+        "max_cycles": 500,
+        "thresh": "gau",
+        "max_step": 0.05,
+    }
+    opt_cls = ConjugateGradient
+    opt = run_cos_opt(geoms, between, AnaPot, NEB, neb_kwargs, opt_cls, opt_kwargs)
+    # ap = animate(opt)
+    # plt.show()
+    assert opt.is_converged
+    assert opt.cur_cycle == ref_cycles
