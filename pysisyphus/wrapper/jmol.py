@@ -118,3 +118,15 @@ def render_geom_and_charges(geom, point_charges):
             )
         print(f"SPT:\n\n{spt}")
         call_jmol(spt, show=True)
+
+
+def to_point(point) -> str:
+    """Convert 3d point to Jmol point '{x, y, z}'"""
+    return "{" + ", ".join([f"{coord:.4f}" for coord in point]) + "}"
+
+
+def arrow(from_, to_) -> str:
+    """Jmol cmd to create arrow between two points."""
+    from_p = to_point(BOHR2ANG * from_)
+    to_p = to_point(BOHR2ANG * to_)
+    return f"draw arrow {from_p} {to_p} width 0.1"
