@@ -1,8 +1,11 @@
 # [1] https://doi.org/10.26434/chemrxiv-2022-253hc-v2
 #     Identifying the Marcus dimension of electron transfer from
 #     ab initio calculations
-#     Šrut, Lear, Krewald, 2022
-
+#     Šrut, Lear, Krewald, 2022 on chemrxiv
+# [2] https://doi.org/10.1039/D3SC01402A
+#     Identifying the Marcus dimension of electron transfer from
+#     ab initio calculations
+#     Šrut, Lear, Krewald, 2023, actual published version
 
 import datetime
 from enum import Enum
