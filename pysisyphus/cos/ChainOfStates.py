@@ -36,7 +36,7 @@ class ChainOfStates:
         climb_rms=5e-3,
         climb_lanczos=False,
         climb_lanczos_rms=5e-3,
-        climb_fixed=True,
+        climb_fixed=False,
         energy_min_mix=False,
         scheduler=None,
         cluster=False,
@@ -51,6 +51,7 @@ class ChainOfStates:
         self.climb = climb
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
+        # I really wonder what made me pick 'climb_fixed = True' in e9f039a0 ...
         self.climb_fixed = climb_fixed
         self.energy_min_mix = energy_min_mix
         # Must not be lower than climb_rms

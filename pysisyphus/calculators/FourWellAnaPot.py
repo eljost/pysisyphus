@@ -23,6 +23,4 @@ class FourWellAnaPot(AnaPotBase):
 
 if __name__ == "__main__":
     fw = FourWellAnaPot()
-    fw.plot()
-    import matplotlib.pyplot as plt
-    plt.show()
+    fw.plot(show=True)
