@@ -222,12 +222,29 @@ def epos_from_wf(wf, fragments):
         per_frags = [spin_pop[frag] for frag in fragments]
         frag_sums = [pf.sum() for pf in per_frags]
         weights = np.arange(1, len(frag_sums) + 1)
+        # Centroid of spin density; basically eq. (3) from [2].
         epos = (weights * frag_sums).sum()
         return frag_sums, epos
 
     _, tot_epos = sum_spin_pop(pop_ana.spin_pop)  # alpha + beta
     _, alpha_epos = sum_spin_pop(pop_ana.alpha_spin_pop)  # alpha only
     return tot_epos, alpha_epos
+
+
+def epos_property(geom, fragments, eq_property):
+    wf = geom.calculator.get_stored_wavefunction()
+    # Only use alpha part
+    # TODO: make this toggable?
+    _, alpha_epos = epos_from_wf(wf, fragments)
+    property = alpha_epos - eq_property
+    return property
+
+
+def en_exc_property(geom, fragments, eq_property):
+    gs_energy, *es_energies = geom.all_energies
+    assert len(es_energies) > 0
+    property = es_energies[0] - gs_energy
+    return property
 
 
 def batched_marcus_dim(
@@ -239,7 +256,7 @@ def batched_marcus_dim(
     batch_size: int = 25,
     max_batches: int = 20,
     rms_thresh: float = 0.005,
-    correlations: bool = True,
+    correlations: bool = False,
     corr_thresh: float = _CORR_THRESH,
     scheduler=None,
     out_dir=".",
@@ -249,7 +266,12 @@ def batched_marcus_dim(
     assert max_batches > 0
     assert rms_thresh > 0.0
     max_ncalcs = batch_size * max_batches
-    assert property == Property.EPOS, "Only Property.EPOS is currently supported!"
+
+    property_funcs = {
+        property.EPOS: epos_property,
+        property.EEXC: en_exc_property,
+    }
+    property_func = property_funcs[property]
 
     out_dir = Path(out_dir)
 
@@ -298,10 +320,9 @@ def batched_marcus_dim(
 
     # Calculate wavefunction at equilibrium geometry
     print("Starting calculation of equilibrium geometry")
-    geom.energy
+    geom.all_energies
     print("Finished calculation of equilibrium geometry")
-    wf_eq = geom.calculator.get_stored_wavefunction()
-    _, alpha_epos_eq = epos_from_wf(wf_eq, fragments)
+    property_eq = property_func(geom, fragments, 0.0)
 
     # Function that create displaced geometries by drawing from a Wigner distribution
     wigner_sampler = get_wigner_sampler(h5_fn, temperature=T)
@@ -311,9 +332,11 @@ def batched_marcus_dim(
     all_properties = np.zeros(max_ncalcs)
 
     to_save = {
+        # Property key
+        "property": str(property),
         # Equilibrium geometry
         "cart_coords_eq": geom.cart_coords,
-        "alpha_epos_eq": alpha_epos_eq,
+        "property_eq": property_eq,
         # Samples
         "normal_coordinates": all_norm_coords,
         "properties": all_properties,
@@ -331,11 +354,8 @@ def batched_marcus_dim(
         displ_geom = geom.copy()
         displ_geom.coords = batch_displ_coords[i - start_ind]
         displ_geom.set_calculator(calc_getter(i))
-        displ_geom.energy
-        wf = displ_geom.calculator.get_stored_wavefunction()
-        # Only use alpha part; TODO: make this toggable?
-        _, alpha_epos = epos_from_wf(wf, fragments)
-        property = alpha_epos - alpha_epos_eq
+        displ_geom.all_energies
+        property = property_func(displ_geom, fragments, property_eq)
         return property
 
     if scheduler is not None:

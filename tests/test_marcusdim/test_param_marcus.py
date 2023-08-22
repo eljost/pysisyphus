@@ -1,3 +1,9 @@
+# [1] https://doi.org/10.1039/D3SC01402A
+#     Identifying the Marcus dimension of electron transfer from
+#     ab initio calculations
+#     Šrut, Lear, Krewald, 2023, actual published version
+
+
 import math
 
 import numpy as np
@@ -14,7 +20,10 @@ def assert_parametrization(model, lambda_ref, dG_ref, _2Vab_ref, d_ref):
 
 
 def test_mdnb():
-    # Ab initio scan data from Table 1 in the manuscript for m-DNB·⁻, second to last row.
+    """Test parametrization of Marcus Model with data from [1].
+
+    Ab initio scan data from Table 1 in [1] for m-DNB·⁻, second to last row.
+    """
     dG_ref = 1233
     en_exc_min_ref = 7434
     Vab_ref = 2752 / 2.0

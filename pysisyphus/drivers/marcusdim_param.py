@@ -5,6 +5,8 @@
 
 
 from dataclasses import dataclass
+import math
+import warnings
 
 import matplotlib.pyplot as plt
 import sympy as sym
@@ -75,15 +77,26 @@ def solve_marcus(R, Vab, dG=None, en_exc_min=None):
         - R
     )
 
+    nan = math.nan
+
     def inner(eq2):
         # Solve equation system using sympy
         results = sym.solve([eq1, eq2], d, f, dict=True)
-        assert len(results) == 1
-        res = results[0]
-        fval = res[f]
-        dval = res[d]
-        reorg_en = fval * dval**2
-        dG = (dval**2 * fval - 2 * Vab) ** 2 / (4 * dval**2 * fval)
+        # Class III systems with only one minimum can't be solved, but we
+        # return a model nonetheless.
+        if len(results) == 0:
+            fval = nan
+            dval = nan
+            reorg_en = nan
+            dG = nan
+        elif len(results) == 1:
+            res = results[0]
+            fval = res[f]
+            dval = res[d]
+            reorg_en = fval * dval**2
+            dG = (dval**2 * fval - 2 * Vab) ** 2 / (4 * dval**2 * fval)
+        else:
+            raise Exception("Solving equations yielded more than one result!")
         return MarcusModel(
             reorg_en=float(reorg_en),
             dG=float(dG),
@@ -94,6 +107,7 @@ def solve_marcus(R, Vab, dG=None, en_exc_min=None):
         )
 
     results = dict()
+    # Depending on whether dG and/or en_exc_min we can try to run both parametrizations.
     # Use parametrization A
     if dG is not None:
         # Eq. (5c) in SI of [1]
@@ -104,7 +118,6 @@ def solve_marcus(R, Vab, dG=None, en_exc_min=None):
         # Eq. (6c) in SI of [1]
         eq2_b = d**2 * f - en_exc_min
         results["b"] = inner(eq2_b)
-    # If dG and en_exc_min are given we can use both parametrizations.
     return results
 
 
@@ -124,7 +137,9 @@ def find_minima(arr):
     return [i for i in range(1, arr.size) if arr[i - 1] > arr[i] < arr[i + 1]]
 
 
-def param_marcus(coordinate, energies, scheme="B"):
+def param_marcus(coordinate, energies):
+    """Parametrize Marcus model with results from scan along Marcus dimension."""
+    assert coordinate.ndim == 1
     assert energies.ndim == 2
 
     # Excitation energy at adiabatic minimum
@@ -134,6 +149,9 @@ def param_marcus(coordinate, energies, scheme="B"):
         adia_min_ind = ind0 if energies[ind0, 0] < energies[ind1, 0] else ind1
         barr_ind = energies[ind0 : ind1 + 1].argmax() + ind0
     elif len(min_inds) == 1:
+        warnings.warn(
+            "Found class III system. Parametrizing Marcus model is not possible!"
+        )
         adia_min_ind = barr_ind = min_inds[0]
     else:
         raise Exception("How did I get here?!")
@@ -144,8 +162,10 @@ def param_marcus(coordinate, energies, scheme="B"):
     en_exc_barr = barr_ens[1] - barr_ens[0]
 
     # Electronic coupling
-    V_ab = en_exc_barr / 2
+    Vab = en_exc_barr / 2
     # Distance R between adiabatic minimum and top of barrier
     R = coordinate[barr_ind] - coordinate[adia_min_ind]
     # Barrier height ΔG
     dG = energies[barr_ind, 0]
+
+    return solve_marcus(R, Vab, dG=dG, en_exc_min=en_exc_min)
