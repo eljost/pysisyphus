@@ -71,7 +71,7 @@ def parse_orca_gbw(gbw_fn):
 
     warnings.warn(
         "'parse_orca_gbw()' is deprecated. Please use 'parse_orca_gbw_new()'.",
-        warnings.DeprecationWarning,
+        DeprecationWarning,
     )
 
     with open(gbw_fn, "rb") as handle:
