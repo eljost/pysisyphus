@@ -912,7 +912,8 @@ class ORCA(OverlapCalculator):
 
     @staticmethod
     def parse_gbw(gbw_fn):
-        return parse_orca_gbw(gbw_fn)
+        moc = parse_orca_gbw_new(gbw_fn)
+        return moc.Ca, moc.ensa
 
     @staticmethod
     def set_mo_coeffs_in_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs):
