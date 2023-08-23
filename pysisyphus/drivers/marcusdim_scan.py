@@ -4,8 +4,6 @@ import warnings
 
 import numpy as np
 
-from pysisyphus.helpers import rms
-
 
 def scan_dir(
     x0,
@@ -15,19 +13,23 @@ def scan_dir(
     add_steps=10,
     max_steps=500,
     min_steps=5,
-    rms_grad_thresh=1e-2,
+    grad_thresh=1e-2,
 ):
-    assert add_steps >= 0, f"{add_steps=:} must be >= 0!"
-    assert max_steps > 0, f"{max_steps=:} must be positive!"
+    assert step_size > 0.0, f"{step_size=} must be positive!"
+    assert add_steps >= 0, f"{add_steps=} must must be positive!"
+    assert max_steps > 0, f"{max_steps=} must be positive!"
+    assert min_steps >= 0, f"{min_steps=} must be positive!"
+    assert grad_thresh > 0.0, f"{grad_thresh} must be positive!"
 
-    grad = np.nan
     step = step_size * direction
     stop_in = add_steps
-    converged = False
-
     xcur = x0 + step
+
+    converged = False
+    grad = np.nan
     prop_prev = None
-    grad_rms_prev = None
+    abs_grad_prev = None
+    grad_decreased_already = False
 
     all_factors = np.arange(max_steps) + 1
     all_coords = np.empty((max_steps, *x0.shape))
@@ -43,30 +45,39 @@ def scan_dir(
         # Determine gradient from finite differences
         if prop_prev is not None:
             grad = (prop - prop_prev) / step_size
+            abs_grad = abs(grad)
+        else:
+            abs_grad = None
+
+        if abs_grad_prev is not None:
+            grad_decreased = abs_grad < abs_grad_prev
+            grad_decreased_already = grad_decreased_already or grad_decreased
+        else:
+            grad_decreased = None
+            grad_decreased_already = False
         print(f"{i=:03d}, property={prop: >12.4f}, {grad=: >12.4f}")
         sys.stdout.flush()
 
-        rms_grad = rms(grad)
-        # Break when the gradient increases. This is probably enough and the
-        # following rms(grad) check is not needed.
+        # Break when the gradient already decreased once and increased
+        # unexpectedly aftwards. But do at least 'min_steps' steps.
         if (
             (i >= min_steps)
-            and (grad_rms_prev is not None)
-            and rms_grad > grad_rms_prev
+            and grad_decreased_already
+            and (grad_decreased is not None)
+            and not grad_decreased
         ):
-            print("Property gradient increased. Breaking")
+            print("Unexpected increase of abs(grad(property))! Breaking")
             break
 
-        # Also check convergence via rms; this check is skipped once convergence
-        # is indicated.
-        if not converged and (converged := np.abs(rms_grad) <= rms_grad_thresh):
+        # Check gradient convergence; this check is skipped once convergence is indicated.
+        if not converged and (converged := np.abs(grad) <= grad_thresh):
             print("Converged!")
 
-        # After convergence we can carry out some additional steps, if requested.
+        # If requested, we carry out additional steps, if requested.
         if add_steps and converged:
             stop_in -= 1
 
-        # Break directly when we don't want to do any additional steps
+        # Break directly if converged and we don't want to do any additional steps.
         if converged and add_steps == 0:
             break
         elif add_steps and stop_in < 0:
@@ -76,9 +87,9 @@ def scan_dir(
         # Update variables
         xcur = xcur + step
         prop_prev = prop
-        grad_rms_prev = rms_grad
-    else:
-        raise Exception("Scan did not converge!")
+        if abs_grad is not None:
+            abs_grad_prev = abs_grad
+
     all_energies = np.array(all_energies)
     # Truncate arrays and drop empty part. This will also drop the last calculation
     # that lead to the break from the loop.
@@ -125,4 +136,5 @@ def scan(x0, direction, get_properties, **kwargs):
     # When we consider the difference w.r.t. initial geometry then
     # the property is always 0.0.
     all_properties = concat(neg_props, prop0, pos_props)
+
     return all_facts, all_coords, all_energies, all_properties
