@@ -340,6 +340,9 @@ def batched_marcus_dim(
         # Samples
         "normal_coordinates": all_norm_coords,
         "properties": all_properties,
+        # Additional keys will be added/updated throughout the run.
+        # "marcusdim": np.zeros_like(geom.cart_coords),
+        # "coeffs": np.zeros_like(all_norm_coords),
     }
 
     masses = geom.masses
@@ -397,9 +400,6 @@ def batched_marcus_dim(
                 all_properties[i] = calculate_property(i)
         # End loop over calculations in one batch
 
-        # Dump results
-        np.savez("marcus_dim_results.npz", **to_save)
-
         batch_dur = time.time() - batch_start
         calc_dur = batch_dur / batch_size
         print(f"Did {batch_size} calculations.")
@@ -410,6 +410,12 @@ def batched_marcus_dim(
         corrs, coeffs, marcus_dim = get_marcus_dim(
             eigvecs, masses, all_norm_coords[:end_ind], all_properties[:end_ind]
         )
+
+        # Dump results
+        to_save["marcusdim"] = marcus_dim
+        to_save["coeffs"] = coeffs
+        to_save["end_ind"] = end_ind
+        np.savez("marcusdim_results.npz", **to_save)
 
         # XYZ representation of Marcus dimension and animation
         marcus_dim_xyz_str = make_xyz_str(geom.atoms, marcus_dim.reshape(-1, 3))
