@@ -137,6 +137,14 @@ def find_minima(arr):
     return [i for i in range(1, arr.size) if arr[i - 1] > arr[i] < arr[i + 1]]
 
 
+def find_minima(arr):
+    assert (arr.ndim == 1) and (len(arr) >= 3)
+    first_min = [0] if arr[0] < arr[1] else []
+    last_min = [len(arr) - 1] if arr[-1] < arr[-2] else []
+    inner_mins = [i for i in range(1, arr.size) if arr[i - 1] > arr[i] < arr[i + 1]]
+    return first_min + inner_mins + last_min
+
+
 def param_marcus(coordinate, energies):
     """Parametrize Marcus model with results from scan along Marcus dimension."""
     assert coordinate.ndim == 1
@@ -147,7 +155,10 @@ def param_marcus(coordinate, energies):
     if len(min_inds) == 2:
         ind0, ind1 = min_inds
         adia_min_ind = ind0 if energies[ind0, 0] < energies[ind1, 0] else ind1
-        barr_ind = energies[ind0 : ind1 + 1].argmax() + ind0
+        energies_between_mins = energies[ind0 : ind1 + 1]
+        # Determine index of barrier in lower state
+        barr_ind = energies_between_mins[:, 0].argmax()
+        barr_ind += ind0
     elif len(min_inds) == 1:
         warnings.warn(
             "Found class III system. Parametrizing Marcus model is not possible!"
