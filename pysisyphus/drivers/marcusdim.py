@@ -247,6 +247,69 @@ def en_exc_property(geom, fragments, eq_property):
     return property
 
 
+def get_mass(marcus_dim: np.ndarray, masses: np.ndarray) -> float:
+    """Mass of fictious particle moving along Marcus dimension.
+
+    Eq. (2) in SI of [2].
+
+    Parameters
+    ----------
+    marcus_dim
+        Array of shape (3N, ) or (N, 3) with N being the number of atoms.
+    masses
+        Array of shape (N, ) containing the atom masses in atomic mass units.
+
+    Returns
+    -------
+    mass
+        Mass of fictious particle moving along Marcus dimension.
+    """
+    marcus_dim3d = marcus_dim.reshape(-1, 3)
+    natoms, _ = marcus_dim3d.shape
+    assert natoms == len(masses)
+    return (marcus_dim3d**2 * masses[:, None]).sum()
+
+
+def get_wavenumber(
+    marcus_dim: np.ndarray, nus: np.ndarray, eigvecs: np.ndarray, masses: np.ndarray
+) -> float:
+    """Frequency along Marcus dimension.
+
+    Eq. (3) in SI of [2].
+
+    Parameters
+    ----------
+    marcus_dim
+        Array of shape (3N, ) or (N, 3) with N being the number of atoms.
+    nus
+        Array of wavenumbers of shape (N, ).
+    eigvecs
+        Array of eigenvectors of the projected mass-weighted Hessian with shape (3N, 3N).
+    masses
+        Array of shape (N, ) containing the atom masses in atomic mass units.
+
+    Returns
+    -------
+    nu_marcus
+        Wavenumber along Marcus dimension in cm⁻¹.
+    """
+    masses_rep = np.repeat(masses, 3)
+    a = eigvecs.T @ (masses_rep * marcus_dim)
+    a = a / np.linalg.norm(a)
+    # Matrix multiplications with diagonal matrices are replaced by
+    # element-wise multiplications.
+    force_constant = (
+        a[None, :]
+        @ ((nus**2)[:, None] * eigvecs.T)
+        @ (masses_rep[:, None] * eigvecs)
+        @ a
+    )
+    mass = get_mass(marcus_dim, masses)
+    nu_marcus = np.sqrt(force_constant / mass)
+    nu_marcus = float(nu_marcus)
+    return nu_marcus
+
+
 def batched_marcus_dim(
     h5_fn: str,
     calc_getter: Callable,
@@ -468,4 +531,12 @@ def batched_marcus_dim(
         prev_marcus_dim = marcus_dim
 
         print()
+
+    print()
+    print(f"Final Marcus dimension:\n{marcus_dim_xyz_str}\n")
+    mass = get_mass(marcus_dim, masses)
+    nu_marcus = get_wavenumber(marcus_dim, nus, eigvecs, masses)
+    print(f"Mass along Marcus dimension: {mass:.6f} amu")
+    print(f"Wavenumber of Marcus dimension: {nu_marcus:.6f} cm⁻¹")
+
     return marcus_dim

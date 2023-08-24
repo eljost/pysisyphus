@@ -134,11 +134,6 @@ def solve_marcus_wavenums_and_ang(R, Vab, dG=None, en_exc_min=None):
 
 def find_minima(arr):
     assert (arr.ndim == 1) and (len(arr) >= 3)
-    return [i for i in range(1, arr.size) if arr[i - 1] > arr[i] < arr[i + 1]]
-
-
-def find_minima(arr):
-    assert (arr.ndim == 1) and (len(arr) >= 3)
     first_min = [0] if arr[0] < arr[1] else []
     last_min = [len(arr) - 1] if arr[-1] < arr[-2] else []
     inner_mins = [i for i in range(1, arr.size) if arr[i - 1] > arr[i] < arr[i + 1]]
