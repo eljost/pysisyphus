@@ -2,7 +2,11 @@ import math
 import sys
 import warnings
 
+import matplotlib.pyplot as plt
 import numpy as np
+
+
+from pysisyphus.constants import AU2EV
 
 
 def scan_dir(
@@ -36,9 +40,10 @@ def scan_dir(
     all_energies = list()
     all_properties = np.empty(max_steps)
     for i in range(max_steps):
+        factor = all_factors[i]
         all_coords[i] = xcur
         # Calculate & store property
-        energies, prop = get_property(xcur)
+        energies, prop = get_property(factor, xcur)
         all_properties[i] = prop
         all_energies.append(energies)
 
@@ -89,6 +94,8 @@ def scan_dir(
         prop_prev = prop
         if abs_grad is not None:
             abs_grad_prev = abs_grad
+    else:
+        print("Reached maximum number of cycles in scan.")
 
     all_energies = np.array(all_energies)
     # Truncate arrays and drop empty part. This will also drop the last calculation
@@ -101,40 +108,55 @@ def scan_dir(
     )
 
 
-def scan(x0, direction, get_properties, **kwargs):
+def scan(coords_init, direction, get_properties, **kwargs):
     dir_norm = np.linalg.norm(direction)
     if not math.isclose(dir_norm, 1.0):
         warnings.warn(f"norm(direction)={dir_norm:.6f} is not 1.0! Renormalizing.")
         direction = direction / dir_norm
     # Carry out calculation on initial geometry.
-    ens0, prop0 = get_properties(x0)
+    ens0, prop0 = get_properties(0.0, coords_init)
 
-    def get_property_changes(xi):
+    def get_property_changes(factor, xi):
         """Get property changes w.r.t. initial geometry."""
-        ens, prop = get_properties(xi)
+        ens, prop = get_properties(factor, xi)
         return ens, prop  # - prop0
 
     print("Positive direction")
     pos_dir = direction
     pos_facts, pos_coords, pos_ens, pos_props = scan_dir(
-        x0, pos_dir, get_property_changes, **kwargs
+        coords_init, pos_dir, get_property_changes, **kwargs
     )
     print()
 
     print("Negative direction")
     neg_dir = -1.0 * direction
     neg_facts, neg_coords, neg_ens, neg_props = scan_dir(
-        x0, neg_dir, get_property_changes, **kwargs
+        coords_init, neg_dir, get_property_changes, **kwargs
     )
 
     def concat(neg, init, pos):
         return np.concatenate((neg[::-1], [init], pos))
 
     all_facts = concat(-neg_facts, 0.0, pos_facts)
-    all_coords = concat(neg_coords, x0, pos_coords)
+    all_coords = concat(neg_coords, coords_init, pos_coords)
     all_energies = concat(neg_ens, ens0, pos_ens)
     # When we consider the difference w.r.t. initial geometry then
     # the property is always 0.0.
     all_properties = concat(neg_props, prop0, pos_props)
 
     return all_facts, all_coords, all_energies, all_properties
+
+
+def plot_scan(factors, energies, properties):
+    fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
+    energies = energies - energies.min()
+    energies *= AU2EV
+    ax0.plot(factors, energies, "o-")
+    ax0.set_ylabel("dE / eV")
+    ax1.plot(factors, properties, "o-", label="props")
+    ax1.set_ylabel("Property")
+    ax1.legend()
+    ax1.set_xlabel("Marcus dimension / $a_0$")
+    fig.suptitle("Scan along Marcus dimension")
+    fig.tight_layout()
+    return fig, (ax0, ax1)

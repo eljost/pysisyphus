@@ -53,7 +53,9 @@ def save_third_deriv(h5_fn, geom, third_deriv_result, H_mw, H_proj):
         handle.attrs["atoms"] = [atom.lower() for atom in geom.atoms]
 
 
-def geom_from_hessian(h5_fn: str, with_attrs: bool = False, **geom_kwargs):
+def geom_from_hessian(
+    h5_fn: str, with_attrs: bool = False, calculator=None, **geom_kwargs
+):
     """Construct geometry from pysisyphus Hessian in HDF5 format.
 
     Parameters
@@ -64,6 +66,10 @@ def geom_from_hessian(h5_fn: str, with_attrs: bool = False, **geom_kwargs):
         Whether to also return an attributes dictionary. Attributes
         contain charge and multiplicity, as well as atoms and the electronic
         energy.
+    calculator
+        Calculator that is set on the Geometry object, before energy & hessian
+        are assigned. This argument is not typed, as using 'Calculator' and
+        the associated import leads to a circular import.
 
     Returns
     -------
@@ -82,6 +88,8 @@ def geom_from_hessian(h5_fn: str, with_attrs: bool = False, **geom_kwargs):
         energy = attrs["energy"]
 
     geom = Geometry(atoms=atoms, coords=coords3d, **geom_kwargs)
+    if calculator is not None:
+        geom.set_calculator(calculator)
     geom.cart_hessian = cart_hessian
     geom.energy = energy
 

@@ -13,6 +13,8 @@ import sympy as sym
 
 from pysisyphus.constants import BOHR2ANG, NU2AU
 
+# import pysisyphus.drivers.marcusdim_types as mdtypes
+
 
 @dataclass
 class MarcusModel:
@@ -22,6 +24,7 @@ class MarcusModel:
     R: float  # Distance of adiabatic minimum to top of barrier in Bohr
     f: float  # Force constant in Hartree / Bohr**2
     d: float  # Separation of diabatic states in Bohr
+    # rdclass: mdtypes.RobinDay
 
     def as_wavenums_and_ang_tuple(self):
         return (
@@ -142,8 +145,13 @@ def find_minima(arr):
 
 def param_marcus(coordinate, energies):
     """Parametrize Marcus model with results from scan along Marcus dimension."""
-    assert coordinate.ndim == 1
-    assert energies.ndim == 2
+    assert coordinate.ndim == 1, (
+        "Parametrization requires a 1d coordinate, e.g. an "
+        "array collecting displacement along the Marcus dimension!"
+    )
+    assert (
+        energies.ndim == 2
+    ), "Parametrization requires potential energy curves of 2 states!"
 
     # Excitation energy at adiabatic minimum
     min_inds = find_minima(energies[:, 0])  # Search minima in lower state
