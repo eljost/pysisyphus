@@ -8,20 +8,28 @@
 #     Šrut, Lear, Krewald, 2023, actual published version
 
 import datetime
-from enum import Enum
 from pathlib import Path
 import sys
 import time
 from typing import Callable, List, Tuple
 
-from distributed import Client
+from distributed import Client, LocalCluster
 import matplotlib.pyplot as plt
 import numpy as np
+import psutil
 
+import pysisyphus.marcus_dim.types as mdtypes
+from pysisyphus.marcus_dim.param import param_marcus
+from pysisyphus.marcus_dim.scan import plot_scan, scan
 from pysisyphus.dynamics import get_wigner_sampler
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import get_tangent_trj_str, get_fragment_xyzs, highlight_text
-from pysisyphus.helpers_pure import approx_float, eigval_to_wavenumber, rms
-from pysisyphus.io import geom_from_hessian
+from pysisyphus.helpers_pure import (
+    approx_float,
+    eigval_to_wavenumber,
+    highlight_text,
+    rms,
+)
 from pysisyphus.linalg import are_collinear
 from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.wavefunction.pop_analysis import iao_charges_from_wf
@@ -52,7 +60,6 @@ def create_marcus_coefficient_plot(nqs, coeffs, batch=None, ncalcs=None):
 
 
 def report_marcus_coefficients(coeffs, nus, drop_first, nhighest=10):
-    breakpoint()
     highest_bs = np.abs(coeffs).argsort()[-nhighest:][::-1]
     coeff_table = TablePrinter(
         header=("internal", "0-based", "1-based", "coeff. b", "ṽ / cm⁻¹"),
@@ -122,6 +129,7 @@ def create_correlation_plots(
         ax.cla()
         nplots += 1
     print(f"Created {nplots} correlation plots.\n")
+    plt.close(fig)
 
 
 def report_correlations(nus, corrs, drop_first, corr_thresh=_CORR_THRESH):
@@ -193,9 +201,6 @@ def get_marcus_dim(eigvecs, masses, qs, depos):
     # and renormalize vector.
     marcus_dim /= np.linalg.norm(marcus_dim)
     return corrs, coeffs, marcus_dim
-
-
-Property = Enum("Property", ["EPOS", "EEXC"])
 
 
 def get_displaced_coordinates(wigner_sampler, eigvecs, coords_eq, M):
@@ -310,12 +315,12 @@ def get_wavenumber(
     return nu_marcus
 
 
-def batched_marcus_dim(
-    h5_fn: str,
+def fit_marcus_dim(
+    geom: Geometry,
     calc_getter: Callable,
     fragments: List[Tuple[int]],
     T: float = 300,
-    property=Property.EPOS,
+    property=mdtypes.Property.EPOS,
     batch_size: int = 25,
     max_batches: int = 20,
     rms_thresh: float = 0.005,
@@ -339,13 +344,15 @@ def batched_marcus_dim(
     out_dir = Path(out_dir)
 
     # Load geometry from pysisyphus HDF5 Hessian
-    geom, h5_attrs = geom_from_hessian(h5_fn, with_attrs=True)
-    try:
-        charge = h5_attrs["charge"]
-        mult = h5_attrs["mult"]
-    except KeyError:
-        charge = None
-        mult = None
+    # geom, h5_attrs = geom_from_hessian(h5_fn, with_attrs=True)
+    # try:
+    # charge = h5_attrs["charge"]
+    # mult = h5_attrs["mult"]
+    # except KeyError:
+    # charge = None
+    # mult = None
+    charge = geom.calculator.charge
+    mult = geom.calculator.mult
 
     if (charge is not None) and (mult is not None):
         print(f"       Charge: {charge}")
@@ -379,7 +386,7 @@ def batched_marcus_dim(
     eigvecs = eigvecs[:, drop_first:]
     nus = nus[drop_first:]
     nmodes = len(nus)
-    geom.set_calculator(calc_getter(0, base_name="eq"))
+    # geom.set_calculator(calc_getter(base_name="eq"))
 
     # Calculate wavefunction at equilibrium geometry
     print("Starting calculation of equilibrium geometry")
@@ -388,7 +395,7 @@ def batched_marcus_dim(
     property_eq = property_func(geom, fragments, 0.0)
 
     # Function that create displaced geometries by drawing from a Wigner distribution
-    wigner_sampler = get_wigner_sampler(h5_fn, temperature=T)
+    wigner_sampler = get_wigner_sampler(geom, temperature=T)
 
     # Arrays holding normal coordinates and properties
     all_norm_coords = np.zeros((max_ncalcs, nmodes))
@@ -404,7 +411,7 @@ def batched_marcus_dim(
         "normal_coordinates": all_norm_coords,
         "properties": all_properties,
         # Additional keys will be added/updated throughout the run.
-        # "marcusdim": np.zeros_like(geom.cart_coords),
+        # "marcus_dim": np.zeros_like(geom.cart_coords),
         # "coeffs": np.zeros_like(all_norm_coords),
     }
 
@@ -416,18 +423,28 @@ def batched_marcus_dim(
     rms_coeffs = None
     rms_marcus_dim = None
 
+    if scheduler is not None:
+        client = Client(scheduler)
+        pal = 1
+        sched_info = client.scheduler_info()
+        n_workers = len(sched_info["workers"])
+        calc_msg = f"Running {n_workers} calculations in parallel with {pal=} each."
+    else:
+        client = None
+        pal = geom.calculator.pal
+        calc_msg = f"Running calculations in serial with {pal=}."
+    print(calc_msg)
+
     def calculate_property(i):
         displ_geom = geom.copy()
         displ_geom.coords = batch_displ_coords[i - start_ind]
-        displ_geom.set_calculator(calc_getter(i))
+        displ_geom.set_calculator(
+            calc_getter(pal=pal, calc_number=i, base_name="displ")
+        )
+        # TODO: move actual calculation into property functions?!
         displ_geom.all_energies
         property = property_func(displ_geom, fragments, property_eq)
         return property
-
-    if scheduler is not None:
-        client = Client(scheduler)
-    else:
-        client = None
 
     print()
     for batch in range(max_batches):
@@ -475,7 +492,7 @@ def batched_marcus_dim(
         )
 
         # Dump results
-        to_save["marcusdim"] = marcus_dim
+        to_save["marcus_dim"] = marcus_dim
         to_save["coeffs"] = coeffs
         to_save["end_ind"] = end_ind
         np.savez("marcusdim_results.npz", **to_save)
@@ -507,6 +524,7 @@ def batched_marcus_dim(
         plot_fn = out_dir / f"marcus_coeffs_{batch_str}.png"
         fig.savefig(plot_fn)
         print(f"Saved expansion coefficent plot to '{plot_fn}'.\n")
+        plt.close(fig)
 
         # Correlations between normal modes and properties
         if correlations:
