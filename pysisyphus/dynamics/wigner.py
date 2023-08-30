@@ -35,7 +35,7 @@ from numpy.polynomial.laguerre import Laguerre
 from pysisyphus.constants import AMU2AU, AU2EV, AU2SEC, C, KB, PLANCK
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.io import geom_from_hessian
-from pysisyphus.Geometry import Geometry, get_trans_rot_projector
+from pysisyphus.Geometry import Geometry, get_hessian_projector
 
 
 # From cm⁻¹ to angular frequency in atomic units
@@ -117,7 +117,7 @@ def get_wigner_sampler(
     assert hessian.shape == (coords3d.size, coords3d.size)
 
     # Projector to remove translation & rotation
-    Proj = get_trans_rot_projector(coords3d, masses, full=True)
+    Proj = get_hessian_projector(coords3d, masses, full=True)
     masses_rep = np.repeat(masses, 3)
     PM = Proj @ np.diag(1 / np.sqrt(masses_rep))
 
@@ -205,7 +205,7 @@ def get_wigner_sampler(
         displ_coords3d = coords3d.copy() + displ.reshape(-1, 3)
 
         # Remove rotation & translation from velocities at new coordinates.
-        P = get_trans_rot_projector(displ_coords3d, masses, full=True)
+        P = get_hessian_projector(displ_coords3d, masses, full=True)
         velocities = P.dot(velocities)
         return displ_coords3d, velocities.reshape(-1, 3)
 
