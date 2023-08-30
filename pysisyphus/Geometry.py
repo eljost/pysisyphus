@@ -5,6 +5,7 @@ import re
 import subprocess
 import tempfile
 import sys
+import warnings
 
 import h5py
 import numpy as np
@@ -144,16 +145,33 @@ def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-6):
     return tr_vecs
 
 
-def get_trans_rot_projector(cart_coords, masses, full=False):
+def get_hessian_projector(cart_coords, masses, mw_gradient=None, full=False):
     tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
-    U, s, _ = np.linalg.svd(tr_vecs.T)
+    if mw_gradient is not None:
+        rx_vec = mw_gradient / np.linalg.norm(mw_gradient)
+        vecs = np.concatenate((tr_vecs, rx_vec[None,]), axis=0)
+    else:
+        vecs = tr_vecs
+
+    # P = I - sum_i vec_i @ vec_i.T
     if full:
         P = np.eye(cart_coords.size)
-        for tr_vec in tr_vecs:
-            P -= np.outer(tr_vec, tr_vec)
+        for vec in vecs:
+            P -= np.outer(vec, vec)
     else:
+        U, s, _ = np.linalg.svd(vecs.T)
         P = U[:, s.size :].T
     return P
+
+def get_trans_rot_projector(cart_coords, masses, mw_gradient=None, full=False):
+    warnings.warn(
+        "'get_trans_rot_projector()' is deprecated. Please use 'get_hessian_projector() "
+        "instead."
+        DeprecationWarning,
+    )
+    return get_hessian_projector(cart_coords, masses, mw_gradient=mw_gradient, full=full)
+
+
 
 
 class Geometry:
@@ -1171,14 +1189,22 @@ class Geometry:
         return thermo
 
     def get_trans_rot_projector(self, full=False):
-        return get_trans_rot_projector(self.cart_coords, masses=self.masses, full=full)
+        warnings.warn(
+            "'Geometry.get_trans_rot_projector()' is deprecated. Please use "
+            "'Geometry.get_hessian_projector() instead."
+            DeprecationWarning,
+        )
+        return get_hessian_projector(self.cart_coords, masses=self.masses, full=full)
+
+    def get_hessian_projector(self, full=False):
+        return get_hessian_projector(self.cart_coords, masses=self.masses, full=full)
 
     def eckart_projection(self, mw_hessian, return_P=False, full=False):
         # Must not project analytical 2d potentials.
         if self.is_analytical_2d:
             return mw_hessian
 
-        P = self.get_trans_rot_projector(full=full)
+        P = self.get_hessian_projector(full=full)
         proj_hessian = P.dot(mw_hessian).dot(P.T)
         # Projection seems to slightly break symmetry (sometimes?). Resymmetrize.
         proj_hessian = (proj_hessian + proj_hessian.T) / 2
