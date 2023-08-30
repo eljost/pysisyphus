@@ -131,7 +131,12 @@ class ChainOfStates:
 
     def get_dask_local_cluster(self):
         cluster = LocalCluster(**self.cluster_kwargs)
-        self.log(f"Created {cluster}")
+        dashboard = cluster.scheduler.services["dashboard"]
+        # address = dashboard.address
+        # port = dashboard.port
+        # link = f"http://{address}:{port}/status"
+        link = cluster.dashboard_link
+        self.log(f"Created {cluster}. Dashboard is available at {link}")
         return cluster
 
     @property
