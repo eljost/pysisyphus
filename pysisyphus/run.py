@@ -53,6 +53,7 @@ from pysisyphus.helpers import (
 from pysisyphus.helpers_pure import (
     find_closest_sequence,
     merge_sets,
+    recursive_extract,
     recursive_update,
     highlight_text,
     approx_float,
@@ -549,7 +550,7 @@ def run_calculations(
             start = time.time()
             print(geom)
             results = getattr(geom.calculator, func_name)(geom.atoms, geom.cart_coords)
-            # results dict of MultiCalc will contain keys that can be dumped yet. So
+            # results dict of MultiCalc will contain keys that can't be dumped yet. So
             # we skip the JSON dumping when KeyError is raised.
             try:
                 as_json = results_to_json(results)
@@ -559,24 +560,25 @@ def run_calculations(
                 json_fn = calc.make_fn("results", counter=calc.calc_counter - 1)
                 with open(json_fn, "w") as handle:
                     handle.write(as_json)
+                msg = f"Dumped JSON results to '{json_fn}'."
             except KeyError:
-                print("Skipped JSON dump of calculation results!")
+                msg = "Skipped JSON dump of calculation results!"
+            print(msg)
 
-            hess_keys = [
-                key
-                for key, val in results.items()
-                if isinstance(val, dict) and "hessian" in val
-            ]
-            for hkey in hess_keys:
-                hres = results[hkey]
-                hfn = f"{hkey}_hessian.h5"
+            hessian_results = recursive_extract(results, "hessian")
+            energy_results = recursive_extract(results, "energy")
+            for (*rest, _), hessian in hessian_results.items():
+                energy_key = (*rest, "energy")
+                energy = energy_results[energy_key]
+                prefix = ("_".join(rest) if rest else calc.name) + "_"
+                h5_fn = f"{prefix}hessian.h5"
                 save_hessian(
-                    hfn,
+                    h5_fn,
                     geom,
-                    cart_hessian=hres["hessian"],
-                    energy=hres["energy"],
+                    cart_hessian=hessian,
+                    energy=energy,
                 )
-                print(f"Dumped hessian to '{hfn}'.")
+                print(f"Dumped hessian to '{h5_fn}'.")
 
             all_results.append(results)
             if i < (len(geoms) - 1):
