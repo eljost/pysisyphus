@@ -10,7 +10,7 @@ from typing import List, Tuple
 import re
 import uuid
 import time
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -259,6 +259,29 @@ def recursive_update(d, u):
         else:
             d[k] = v
     return d
+
+
+def recursive_extract(
+    inp_dict: dict, target_key: str, prev_keys: Optional[tuple[str]] = None
+) -> dict[tuple[str], Any]:
+    """Recursively extract given key from a dict.
+
+    Can also handle dict of dicts, e.g., different calculation results
+    from a MultiCalc in run.run_calculations."""
+    if prev_keys is None:
+        prev_keys = tuple()
+
+    joined_key = prev_keys + (target_key,)
+
+    target_dict = dict()
+    try:
+        target_dict[joined_key] = inp_dict[target_key]
+    except KeyError:
+        pass
+    for key, value in inp_dict.items():
+        if isinstance(value, dict):
+            target_dict.update(recursive_extract(value, target_key, prev_keys + (key,)))
+    return target_dict
 
 
 def report_isotopes(geom, affect_str):
