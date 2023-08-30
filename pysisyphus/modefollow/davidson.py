@@ -9,7 +9,7 @@ import sys
 import numpy as np
 
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.Geometry import get_trans_rot_projector
+from pysisyphus.Geometry import get_hessian_projector
 from pysisyphus.modefollow.NormalMode import NormalMode
 from pysisyphus.TablePrinter import TablePrinter
 
@@ -49,7 +49,7 @@ def block_davidson(
     msqrt = np.sqrt(masses_rep)
 
     # Projector to remove translation and rotation
-    P = get_trans_rot_projector(cart_coords, masses, full=True)
+    P = get_hessian_projector(cart_coords, masses, full=True)
     guess_modes = [
         NormalMode(P.dot(mode.l_mw) / msqrt, masses_rep) for mode in guess_modes
     ]
@@ -145,7 +145,7 @@ def block_davidson(
 
         # Check convergence criteria
         max_res = np.abs(residues).max(axis=0)
-        res_rms = np.sqrt(np.mean(residues ** 2, axis=0))
+        res_rms = np.sqrt(np.mean(residues**2, axis=0))
 
         converged = res_rms < res_rms_thresh
         # Print progress if requested
@@ -174,7 +174,11 @@ def block_davidson(
                     nus_str = np.array2string(nus[mode_inds], precision=2)
                     print(f"\tLowest {lowest} wavenumbers: {nus_str} cm⁻¹")
                     neg_nus = sum(nus[mode_inds] < 0)
-                    type_ = "minimum" if (neg_nus == 0) else f"saddle point of index {neg_nus}"
+                    type_ = (
+                        "minimum"
+                        if (neg_nus == 0)
+                        else f"saddle point of index {neg_nus}"
+                    )
                     print(f"\tThis geometry seems to be a {type_} on the PES.")
             break
         sys.stdout.flush()

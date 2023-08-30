@@ -1,7 +1,7 @@
 import numpy as np
 
 from pysisyphus.xyzloader import make_trj_str
-from pysisyphus.Geometry import get_trans_rot_projector
+from pysisyphus.Geometry import get_hessian_projector
 from pysisyphus.constants import BOHR2ANG, KBAU, VELO2E
 
 
@@ -29,7 +29,7 @@ def kinetic_energy_from_velocities(masses, velocities):
     E_kin : float
         Kinetic energy in Hartree.
     """
-    return np.sum(masses[:,None] / 2 * velocities**2) * VELO2E
+    return np.sum(masses[:, None] / 2 * velocities**2) * VELO2E
 
 
 def kinetic_energy_for_temperature(atom_number, T, fixed_dof=0):
@@ -52,7 +52,7 @@ def kinetic_energy_for_temperature(atom_number, T, fixed_dof=0):
     E_kin : float
         Kinetic energy in Hartree.
     """
-    return (3*atom_number - fixed_dof) / 2 * T * KBAU
+    return (3 * atom_number - fixed_dof) / 2 * T * KBAU
 
 
 def temperature_for_kinetic_energy(atom_number, E_kin, fixed_dof=0):
@@ -75,7 +75,7 @@ def temperature_for_kinetic_energy(atom_number, E_kin, fixed_dof=0):
     Temperature : float
         Temperature in Kelvin.
     """
-    return 2 * E_kin / ((3*atom_number - fixed_dof) * KBAU)
+    return 2 * E_kin / ((3 * atom_number - fixed_dof) * KBAU)
 
 
 def remove_com_velocity(v, masses, keep_norm=True):
@@ -98,7 +98,7 @@ def remove_com_velocity(v, masses, keep_norm=True):
         Velocities without center-of-mass velocity.
     """
     org_norm = np.linalg.norm(v)
-    v_com = (v * masses[:,None] / np.sum(masses)).sum(axis=0)
+    v_com = (v * masses[:, None] / np.sum(masses)).sum(axis=0)
     v -= v_com
     if keep_norm:
         v /= np.linalg.norm(v) / org_norm
@@ -126,10 +126,11 @@ def scale_velocities_to_temperatue(masses, v, T_desired, fixed_dof=0):
         Scaled velocities in Bohr/fs.
     """
 
-    E_ref = kinetic_energy_for_temperature(len(masses), T_desired,
-                                           fixed_dof=fixed_dof)  # in Hartree
+    E_ref = kinetic_energy_for_temperature(
+        len(masses), T_desired, fixed_dof=fixed_dof
+    )  # in Hartree
     E_cur = kinetic_energy_from_velocities(masses, v)  # in Hartree
-    scale = (E_ref / E_cur)**0.5
+    scale = (E_ref / E_cur) ** 0.5
     v *= scale
     # E_now = kinetic_energy_from_velocities(masses, v)
     # np.testing.assert_allclose(E_now, E_ref)
@@ -155,7 +156,7 @@ def scale_velocities_to_energy(masses, v, E_desired):
     """
 
     E_cur = kinetic_energy_from_velocities(masses, v)  # in Hartree
-    scale = (E_desired / E_cur)**0.5
+    scale = (E_desired / E_cur) ** 0.5
     v *= scale
     return v
 
@@ -178,12 +179,13 @@ def unscaled_velocity_distribution(masses, T, seed=None):
         np.random.seed(seed)
 
     ps = np.random.standard_normal((len(masses), 3))
-    v = ps * np.sqrt(T / masses[:,None])
+    v = ps * np.sqrt(T / masses[:, None])
     return v
 
 
-def get_mb_velocities(masses, cart_coords, T, remove_com_v=True, remove_rot_v=True,
-                      seed=None):
+def get_mb_velocities(
+    masses, cart_coords, T, remove_com_v=True, remove_rot_v=True, seed=None
+):
     """Initial velocities from Maxwell-Boltzmann distribution.
 
     Parameters
@@ -223,7 +225,7 @@ def get_mb_velocities(masses, cart_coords, T, remove_com_v=True, remove_rot_v=Tr
 
     if remove_rot_v:
         # Right now this also removes the translational components
-        P = get_trans_rot_projector(cart_coords, masses, full=True)
+        P = get_hessian_projector(cart_coords, masses, full=True)
         v = P.dot(v.flatten()).reshape(-1, 3)
         fixed_dof = 6
 
@@ -233,17 +235,21 @@ def get_mb_velocities(masses, cart_coords, T, remove_com_v=True, remove_rot_v=Tr
     return v
 
 
-def get_mb_velocities_for_geom(geom, T, remove_com_v=True, remove_rot_v=True,
-                               seed=None):
+def get_mb_velocities_for_geom(
+    geom, T, remove_com_v=True, remove_rot_v=True, seed=None
+):
     """Initial velocities from Maxwell-Boltzmann distribution.
 
     See 'get_mb_velocities' for explanation.
     """
 
-    return get_mb_velocities(geom.masses, geom.cart_coords, T,
-                             remove_com_v=remove_com_v,
-                             remove_rot_v=remove_rot_v,
-                             seed=seed,
+    return get_mb_velocities(
+        geom.masses,
+        geom.cart_coords,
+        T,
+        remove_com_v=remove_com_v,
+        remove_rot_v=remove_rot_v,
+        seed=seed,
     )
 
 
@@ -253,4 +259,5 @@ def energy_forces_getter_closure(geom):
         energy = results["energy"]
         forces = results["forces"]
         return energy, forces
+
     return energy_forces_getter
