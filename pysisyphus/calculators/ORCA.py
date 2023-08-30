@@ -580,19 +580,6 @@ class ORCA(OverlapCalculator):
             "maxcore not allowed! " "Use 'mem: n' in the 'calc' section instead!"
         )
 
-        self.to_keep = (
-            "inp",
-            "out:orca.out",
-            "gbw",
-            "engrad",
-            "hessian",
-            "cis",
-            "molden:orca.molden",
-            "hess",
-            "pcgrad",
-            "densities:orca.densities",
-            "json",
-        )
         self.do_tddft = False
         if "tddft" in self.blocks:
             self.do_tddft = True
@@ -603,6 +590,19 @@ class ORCA(OverlapCalculator):
         self.triplets = bool(re.search(r"triplets\s+true", self.blocks))
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
+        self.to_keep = (
+            "inp",
+            f"out:{self.out_fn}",
+            "gbw",
+            "engrad",
+            "hessian",
+            "cis",
+            "molden:orca.molden",
+            "hess",
+            "pcgrad",
+            "densities:orca.densities",
+            "json",
+        )
 
         self.orca_input = """!{keywords} {calc_type}
         {moinp}
@@ -619,6 +619,7 @@ class ORCA(OverlapCalculator):
         """
 
         self.parser_funcs = {
+            "all_energies": self.parse_all_energies_from_path,
             "energy": self.parse_energy,
             "grad": self.parse_engrad,
             "hessian": self.parse_hessian,
@@ -700,7 +701,7 @@ class ORCA(OverlapCalculator):
             )
 
     def parse_stable(self, path):
-        with open(path / "orca.out") as handle:
+        with open(path / self.out_fn) as handle:
             text = handle.read()
 
         stable_re = re.compile("Stability Analysis indicates a stable")
@@ -733,6 +734,11 @@ class ORCA(OverlapCalculator):
         results = self.store_and_track(
             results, self.get_energy, atoms, coords, **prepare_kwargs
         )
+        return results
+
+    def get_all_energies(self, atoms, coords, **prepare_kwargs):
+        inp = self.prepare_input(atoms, coords, calc_type="", **prepare_kwargs)
+        results = self.run(inp, calc="all_energies")
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -871,7 +877,7 @@ class ORCA(OverlapCalculator):
         return results
 
     def parse_energy(self, path):
-        log_fn = glob.glob(os.path.join(path / "orca.out"))
+        log_fn = glob.glob(os.path.join(path / self.out_fn))
         if not log_fn:
             raise Exception("ORCA calculation failed.")
 
@@ -882,6 +888,11 @@ class ORCA(OverlapCalculator):
         mobj = re.search(r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)", text)
         energy = float(mobj[1])
         return {"energy": energy}
+
+    def parse_all_energies_from_path(self, path):
+        with open(path / self.out_fn) as handle:
+            text = handle.read()
+        return self.parse_all_energies(text=text)
 
     def parse_engrad(self, path):
         results = {}

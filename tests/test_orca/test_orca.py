@@ -295,3 +295,22 @@ def test_set_gbw_occs_ens_restricted(this_dir, tmp_path):
     moc2 = parse_orca_gbw_new(gbw_out)
     np.testing.assert_allclose(moc2.ensa, ensa)
     np.testing.assert_allclose(moc2.occsa, occsa / 2.0)
+
+
+@using("orca")
+@pytest.mark.parametrize(
+    "kind, ref_energies",
+    (
+        ("rhf", (-39.72627841, -38.89274941, -38.89274941, -38.89274941)),
+        ("uhf", (-39.72627831, -39.14167831, -39.06680231, -39.06680231)),
+    ),
+)
+def test_all_energies(kind, ref_energies):
+    kwargs = {
+        "keywords": f"{kind} hf sto-3g",
+        "blocks": "%tddft tda false nroots 3 end",
+    }
+    geom = ORCA.geom_from_fn("lib:methane.xyz", **kwargs)
+    calc = geom.calculator
+    all_ens = calc.get_all_energies(geom.atoms, geom.coords)
+    np.testing.assert_allclose(all_ens, ref_energies, atol=1e-8)
