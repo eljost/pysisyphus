@@ -1185,12 +1185,7 @@ class Geometry:
         else:
             mw_gradient = cart_gradient / np.sqrt(self.masses_rep)
 
-        # print(f"{np.linalg.norm(self.cart_gradient)=:.8e}")
-        # print(f"{np.linalg.norm(mw_gradient)=:.8e}")
         mw_hessian = self.mass_weigh_hessian(cart_hessian)
-        # _, P0 = self.eckart_projection(
-        # mw_hessian, return_P=True, mw_gradient=None, full=full
-        # )
         proj_hessian, P = self.eckart_projection(
             mw_hessian, return_P=True, mw_gradient=mw_gradient, full=full
         )
