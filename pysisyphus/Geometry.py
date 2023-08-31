@@ -33,6 +33,7 @@ from pysisyphus.helpers_pure import (
     eigval_to_wavenumber,
     full_expand,
     molecular_volume,
+    rms,
     to_subscript_num,
 )
 from pysisyphus.intcoords import (
@@ -145,33 +146,70 @@ def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-6):
     return tr_vecs
 
 
-def get_hessian_projector(cart_coords, masses, mw_gradient=None, full=False):
-    tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
-    if mw_gradient is not None:
-        rx_vec = mw_gradient / np.linalg.norm(mw_gradient)
-        vecs = np.concatenate((tr_vecs, rx_vec[None,]), axis=0)
-    else:
-        vecs = tr_vecs
+def get_projector(vecs):
+    """Vectors must be in rows.
 
     # P = I - sum_i vec_i @ vec_i.T
+    """
+    _, size = vecs.shape
+    P = np.eye(size)
+    for vec in vecs:
+        P = P - np.outer(vec, vec)
+    return P
+
+
+def get_hessian_projector(
+    cart_coords,
+    masses,
+    cart_gradient=None,
+    full=False,
+    # These thresholds correspond to the 'gau' threshold
+    max_grad_thresh=4.5e-4,
+    rms_grad_thresh=3e-4,
+):
+    tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
+    vecs = tr_vecs
+
+    # Only project out along gradient direction when we are NOT at a stationary point.
+    if cart_gradient is not None:
+        at_stationary_point = (np.abs(cart_gradient).max() <= max_grad_thresh) and (
+            rms(cart_gradient) <= rms_grad_thresh
+        )
+        print(f"{at_stationary_point=}")
+        if not at_stationary_point:
+            P0 = get_projector(tr_vecs)
+            # Project translation & rotation from gradient. This is usually already done
+            # in the QC codes.
+            mw_gradient = cart_gradient / np.sqrt(np.repeat(masses, 3))
+            mw_gradient = P0 @ mw_gradient
+            print(f"{np.linalg.norm(mw_gradient)=:.6f}")
+            # Construct normalized vector along reaction coordinate ...
+            rx_vec = mw_gradient / np.linalg.norm(mw_gradient)
+            # ... and add it to the array that is used to construct the projector.
+            vecs = np.concatenate(
+                (
+                    vecs,
+                    rx_vec[None,],
+                ),
+                axis=0,
+            )
     if full:
-        P = np.eye(cart_coords.size)
-        for vec in vecs:
-            P -= np.outer(vec, vec)
+        P = get_projector(vecs)
     else:
         U, s, _ = np.linalg.svd(vecs.T)
         P = U[:, s.size :].T
     return P
 
+
 def get_trans_rot_projector(cart_coords, masses, mw_gradient=None, full=False):
     warnings.warn(
         "'get_trans_rot_projector()' is deprecated. Please use 'get_hessian_projector() "
-        "instead."
+        "instead.",
         DeprecationWarning,
     )
-    return get_hessian_projector(cart_coords, masses, mw_gradient=mw_gradient, full=full)
-
-
+    return get_hessian_projector(
+        cart_coords, masses, mw_gradient=mw_gradient, full=full
+    )
 
 
 class Geometry:
@@ -1134,13 +1172,28 @@ class Geometry:
         if valid:
             self.cart_hessian = hessian
 
-    def get_normal_modes(self, cart_hessian=None, full=False):
+    def get_normal_modes(
+        self, cart_hessian=None, cart_gradient=None, proj_gradient=False, full=False
+    ):
         """Normal mode wavenumbers, eigenvalues and Cartesian displacements Hessian."""
         if cart_hessian is None:
             cart_hessian = self.cart_hessian
+        if not proj_gradient:
+            mw_gradient = None
+        elif cart_gradient is None:
+            mw_gradient = self.mw_gradient
+        else:
+            mw_gradient = cart_gradient / np.sqrt(self.masses_rep)
 
+        # print(f"{np.linalg.norm(self.cart_gradient)=:.8e}")
+        # print(f"{np.linalg.norm(mw_gradient)=:.8e}")
         mw_hessian = self.mass_weigh_hessian(cart_hessian)
-        proj_hessian, P = self.eckart_projection(mw_hessian, return_P=True, full=full)
+        # _, P0 = self.eckart_projection(
+        # mw_hessian, return_P=True, mw_gradient=None, full=full
+        # )
+        proj_hessian, P = self.eckart_projection(
+            mw_hessian, return_P=True, mw_gradient=mw_gradient, full=full
+        )
         eigvals, eigvecs = np.linalg.eigh(proj_hessian)
         mw_cart_displs = P.T.dot(eigvecs)
         cart_displs = self.mm_sqrt_inv.dot(mw_cart_displs)
@@ -1191,20 +1244,28 @@ class Geometry:
     def get_trans_rot_projector(self, full=False):
         warnings.warn(
             "'Geometry.get_trans_rot_projector()' is deprecated. Please use "
-            "'Geometry.get_hessian_projector() instead."
+            "'Geometry.get_hessian_projector() instead.",
             DeprecationWarning,
         )
         return get_hessian_projector(self.cart_coords, masses=self.masses, full=full)
 
-    def get_hessian_projector(self, full=False):
-        return get_hessian_projector(self.cart_coords, masses=self.masses, full=full)
+    def get_hessian_projector(self, cart_gradient=None, full=False):
+        return get_hessian_projector(
+            self.cart_coords, masses=self.masses, cart_gradient=cart_gradient, full=full
+        )
 
-    def eckart_projection(self, mw_hessian, return_P=False, full=False):
+    def eckart_projection(
+        self, mw_hessian, return_P=False, mw_gradient=None, full=False
+    ):
         # Must not project analytical 2d potentials.
         if self.is_analytical_2d:
             return mw_hessian
 
-        P = self.get_hessian_projector(full=full)
+        if mw_gradient is not None:
+            cart_gradient = mw_gradient * np.sqrt(self.masses_rep)
+        else:
+            cart_gradient = None
+        P = self.get_hessian_projector(cart_gradient=cart_gradient, full=full)
         proj_hessian = P.dot(mw_hessian).dot(P.T)
         # Projection seems to slightly break symmetry (sometimes?). Resymmetrize.
         proj_hessian = (proj_hessian + proj_hessian.T) / 2

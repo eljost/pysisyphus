@@ -20,7 +20,14 @@
 # I actually never read [3] and [4], but they seem to give a good overview.
 
 
+import functools
+import warnings
+
 import numpy as np
+
+
+from pysisyphus.constants import AU2MDYNEPERANG
+from pysisyphus.Geometry import Geometry
 
 
 def compliance_mat(hessian, B):
@@ -153,3 +160,37 @@ def local_mode_overlaps(hessian, L, local_modes):
     # Eq. (30) in [2]
     C = S / S.sum(axis=0)[None, :]
     return S, C
+
+
+@functools.singledispatch
+def stretch_constants(hessian: np.ndarray, L, typed_prims, B):
+    force_constants, local_modes = get_local_force_constants(hessian, B, L)
+    results = dict()
+    for tp, fc in zip(typed_prims, force_constants):
+        fc_cgs = fc * AU2MDYNEPERANG
+        print(f"{tp}, k={fc_cgs:8.3f} mdyn/Å")
+        results[tp] = fc
+    return results
+
+
+@stretch_constants.register
+def _(geom: Geometry):
+    hessian = geom.cart_hessian
+    # Please note, that we also project out the remaining gradient. This will only be
+    # done at non-stationary points with non-vanishing gradient.
+    nus, *_, L = geom.get_normal_modes(proj_gradient=True)
+    neg_mask = nus <= 0.0
+    if neg_mask.sum() > 0:
+        neg_nus = nus[neg_mask]
+        warnings.warn(f"Found negative wavenumbers: '{neg_nus}'!")
+
+    geom_redund = geom.copy_all(
+        coord_type="redund",
+        coord_kwargs={
+            "bonds_only": True,
+        },
+    )
+    B = geom_redund.internal.B
+    typed_prims = geom_redund.internal.typed_prims
+
+    return stretch_constants(hessian, L, typed_prims, B)

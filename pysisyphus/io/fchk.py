@@ -167,8 +167,9 @@ def wavefunction_from_fchk(text):
 
 
 @file_or_str(".fchk")
-def geom_from_fchk(text, **geom_kwargs):
-    data = parse_fchk(text)
+def geom_from_fchk(text, data=None, **geom_kwargs):
+    if data is None:
+        data = parse_fchk(text)
     atoms = atoms_from_data(data)
 
     try:
@@ -182,3 +183,32 @@ def geom_from_fchk(text, **geom_kwargs):
     if len(geoms) == 1:
         geoms = geoms[0]
     return geoms
+
+
+@file_or_str(".fchk")
+def geom_with_hessian_from_fchk(text, **geom_kwargs):
+    data = parse_fchk(text)
+    geom = geom_from_fchk(text, data=data, **geom_kwargs)
+
+    # atoms = atoms_from_data(data)
+    # coords = data["Current cartesian coordinates"]
+    # coords = np.array(coords)
+    # coords = coords.reshape(-1, 3 * len(atoms))
+    # geom = Geometry(atoms, coords, **geom_kwargs)
+
+    natoms3 = geom.coords3d.size
+
+    # Energy
+    geom.energy = data["Total Energy"]
+    # Gradient
+    gradient = np.array(data["Cartesian Gradient"])
+    geom.cart_gradient = gradient
+    # Hessian
+    H = np.empty((natoms3, natoms3))
+    tril = np.tril_indices(natoms3)
+    triu1 = np.triu_indices(natoms3, k=1)
+    H[tril] = data["Cartesian Force Constants"]
+    H[triu1] = H.T[triu1]
+    geom.cart_hessian = H
+
+    return geom
