@@ -8,7 +8,7 @@ import math
 
 import numpy as np
 
-from pysisyphus.drivers.marcusdim_param import solve_marcus_wavenums_and_ang
+from pysisyphus.marcus_dim.param import solve_marcus_wavenums_and_ang
 
 
 def assert_parametrization(model, lambda_ref, dG_ref, _2Vab_ref, d_ref):
