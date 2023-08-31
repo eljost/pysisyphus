@@ -562,7 +562,7 @@ class ChainOfStates:
                         f"Using tangent with hash={self.prev_lanczos_hash} "
                         "as initial guess for Lanczos algorithm."
                     )
-                w_min, tangent = geom_lanczos(
+                w_min, tangent, _ = geom_lanczos(
                     ith_image, guess=guess, logger=self.logger
                 )
                 self.lanczos_tangents[cur_hash] = tangent
