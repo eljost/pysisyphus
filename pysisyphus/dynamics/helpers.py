@@ -1,8 +1,8 @@
 import numpy as np
 
-from pysisyphus.xyzloader import make_trj_str
-from pysisyphus.Geometry import get_hessian_projector
 from pysisyphus.constants import BOHR2ANG, KBAU, VELO2E
+from pysisyphus.hessian_proj import get_hessian_projector
+from pysisyphus.xyzloader import make_trj_str
 
 
 def dump_coords(atoms, coords, trj_fn):

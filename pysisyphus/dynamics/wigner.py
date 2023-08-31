@@ -34,8 +34,9 @@ from numpy.polynomial.laguerre import Laguerre
 
 from pysisyphus.constants import AMU2AU, AU2EV, AU2SEC, C, KB, PLANCK
 from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.hessian_proj import get_hessian_projector
 from pysisyphus.io import geom_from_hessian
-from pysisyphus.Geometry import Geometry, get_hessian_projector
+from pysisyphus.Geometry import Geometry
 
 
 # From cm⁻¹ to angular frequency in atomic units
