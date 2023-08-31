@@ -9,7 +9,7 @@ import sys
 import numpy as np
 
 from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.Geometry import get_hessian_projector
+from pysisyphus.hessian_proj import get_hessian_projector
 from pysisyphus.modefollow.NormalMode import NormalMode
 from pysisyphus.TablePrinter import TablePrinter
 
