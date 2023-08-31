@@ -21,14 +21,17 @@ logger.addHandler(handler)
 def test_anapot_lanczos():
     geom = AnaPot.get_geom((-0.5767, 1.6810, 0.0))
     guess = (0.4, 0.3, 0.0)
-    w_min, v_min = geom_lanczos(geom, guess=guess, dx=1e-5, dl=1e-5, logger=logger)
+    w_min, v_min, converged = geom_lanczos(
+        geom, guess=guess, dx=1e-5, dl=1e-5, logger=logger
+    )
+    assert converged
 
     H = geom.hessian
     w, v = np.linalg.eigh(H)
     w_ref = w[0]
     v_ref = v[:, 0]
     assert w_min == pytest.approx(w_ref, abs=1e-4)
-    assert any([np.allclose(v, v_ref, atol=5e-2) for v in (v_min, -v_min)])
+    np.testing.assert_allclose(v_min, -v_ref, atol=1e-5)
 
 
 @using("pyscf")
@@ -47,7 +50,8 @@ def test_hcn_iso_lanczos(coord_type, guess):
     calc = PySCF(pal=2, basis="sto3g")
     geom.set_calculator(calc)
 
-    w_min, v_min = geom_lanczos(geom, guess=guess, logger=logger)
+    w_min, v_min, converged = geom_lanczos(geom, guess=guess, logger=logger)
+    assert converged
 
     # Reference values
     H = geom.hessian
