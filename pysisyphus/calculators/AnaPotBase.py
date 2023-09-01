@@ -21,8 +21,9 @@ class AnaPotBase(Calculator):
         use_sympify=True,
         minima=None,
         saddles=None,
+        **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         self.V_str = V_str
         self.scale = scale
         self.xlim = xlim
