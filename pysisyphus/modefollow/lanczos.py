@@ -64,12 +64,14 @@ def lanczos(
     """
     assert max_cycles > 0
     assert ncoords > 0
+    assert dx > 0.0
+    assert dl > 0.0
 
     def log(msg):
         if logger is not None:
             logger.debug(msg)
 
-    log("Lanczos Algorithm")
+    log(f"Lanczos Algorithm, convergence when abs(w_quot) <= {dl: 8.4e}")
     if guess is None:
         guess = np.random.rand(ncoords)
     else:
@@ -140,7 +142,7 @@ def lanczos(
         # Check eigenvalue convergence. Eq. (8) in [1]
         w_diff = w_min - w_min_prev
         w_quot = w_diff / w_min_prev
-        converged = (i > 0) and abs(w_quot) < dl
+        converged = (i > 0) and abs(w_quot) <= dl
         # Report current minimum eigenvalue, the quotient and the overlap between
         # current eigenvector and original guess vector.
         log(
