@@ -91,11 +91,13 @@ def lanczos(
         # Normalize q
         q = r_prev / beta_prev
         Q[:, i] = q
+
         # Approximate action of Hessian on q (u = Hq) by finite differences.
         # Eq. (9) and (10) in [1]
         # Gradient at perturbed coordinates
         grad_k = grad_getter(dx * q)
         u = (grad_k - grad_l) / dx
+
         # Residue
         r = u - beta_prev * q_prev
         alpha = q.dot(r)
