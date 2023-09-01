@@ -784,4 +784,6 @@ class ChainOfStates:
         return f"ChainOfStates, {len(imgs)} images, ({img.sum_formula}, {len(img.atoms)} atoms) per image"
 
     def __str__(self):
-        return self.__class__.__name__
+        name = self.__class__.__name__
+        nimages = len(self.images)
+        return f"{name}({nimages} images)"
