@@ -161,11 +161,13 @@ class AnimPlot:
             if not os.path.exists(frame_fn):
                 self.fig.savefig(frame_fn)
 
-    def animate(self):
+    def animate(self, show=False):
         cycles = range(self.optimizer.cur_cycle)
         self.animation = animation.FuncAnimation(
             self.fig, self.func, frames=cycles, interval=self.interval
         )
+        if show:
+            plt.show()
 
     def as_html5(self, out_fn):
         mpl.rcParams["animation.bitrate"] = 5000
