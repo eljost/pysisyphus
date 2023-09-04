@@ -158,10 +158,10 @@ class OverlapCalculator(Calculator):
         jmol_cmd = get_cmd("jmol")
         mwfn_cmd = get_cmd("mwfn")
         if (self.cdds == "render") and not jmol_cmd:
-            logger.debug(msg.format(self.cdds, "Jmol", "calc"))
+            logger.warning(msg.format(self.cdds, "Jmol", "calc"))
             self.cdds = "calc"
         if (self.cdds in ("calc", "render")) and not mwfn_cmd:
-            logger.debug(msg.format(self.cdds, "Multiwfn", None))
+            logger.warning(msg.format(self.cdds, "Multiwfn", None))
             self.cdds = None
         self.log(f"cdds: {self.cdds}, jmol={jmol_cmd}, mwfn={mwfn_cmd}")
         assert self.cdds in self.VALID_CDDS

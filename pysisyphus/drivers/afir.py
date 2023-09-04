@@ -24,7 +24,6 @@ from rmsd import kabsch_rmsd
 from scipy.spatial.distance import pdist
 from scipy.optimize import least_squares
 
-from pysisyphus import logger as pysis_logger
 from pysisyphus.calculators.AFIR import AFIR, CovRadiiSumZero
 from pysisyphus.calculators import HardSphere
 from pysisyphus.config import AFIR_RMSD_THRESH, OUT_DIR_DEFAULT
@@ -42,7 +41,7 @@ from pysisyphus.optimizers.FIRE import FIRE
 from pysisyphus.xyzloader import make_xyz_str
 
 
-logger = pysis_logger.getChild("afir")
+logger = logging.getLogger("pysis.afir")
 logger.setLevel(logging.DEBUG)
 file_handler = logging.FileHandler("afir.log", mode="w", delay=True)
 logger.addHandler(file_handler)
