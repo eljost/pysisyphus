@@ -156,7 +156,9 @@ class Calculator:
         try:
             return get_cmd(section=self.conf_key, key=key, use_defaults=True)
         except KeyError:
-            logger.debug(f"Failed to load key '{key}' from section '{self.conf_key}'!")
+            logger.warning(
+                f"Failed to load key '{key}' from section '{self.conf_key}'!"
+            )
 
     @classmethod
     def geom_from_fn(cls, fn, **kwargs):

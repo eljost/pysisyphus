@@ -26,7 +26,6 @@ def direct_cycle(
     T=T_DEFAULT,
     p=p_DEFAULT,
 ):
-
     G_aq_acid = G_aq_from_h5_hessian(acid_h5, acid_solv_en, T=T, p=p)
     G_aq_base = G_aq_from_h5_hessian(base_h5, base_solv_en, T=T, p=p)
 
@@ -39,7 +38,7 @@ def direct_cycle(
 
     pKa = dG_aq_corr / (KBAU * T * log(10))
 
-    logger.debug(
+    logger.info(
         f"pKa calculation using direct cycle:\n"
         f"\tAcid HDF5: {acid_h5}\n\tBase HDF5: {base_h5}\n"
         f"\tT={T:.4f}, p={p:.1f} Pa\n"
