@@ -5,7 +5,6 @@ from scipy.optimize import newton
 
 from pysisyphus.irc.IRC import IRC
 from pysisyphus.optimizers.hessian_updates import bfgs_update
-from pysisyphus.TableFormatter import TableFormatter
 
 
 # [1] An improved algorithm for reaction path following
@@ -37,10 +36,6 @@ class GonzalezSchlegel(IRC):
         self.micro_coords = list()
         self.eye = np.eye(self.geometry.coords.size)
         self.micro_counter = 0
-
-        micro_header = "# |dx| |tangent|".split()
-        micro_fmts = ["d", ".2E", ".3E"]
-        self.micro_formatter = TableFormatter(micro_header, micro_fmts, 10)
 
     def perp_component(self, vec, perp_to):
         # Substract parallel component
