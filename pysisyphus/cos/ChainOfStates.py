@@ -37,6 +37,8 @@ class ChainOfStates:
         climb_lanczos=False,
         climb_lanczos_rms=5e-3,
         climb_fixed=False,
+        ts_opt=False,
+        ts_opt_rms=2.5e-3,
         energy_min_mix=False,
         scheduler=None,
         cluster=False,
@@ -51,11 +53,15 @@ class ChainOfStates:
         self.climb = climb
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
+        self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
+        self.ts_opt = ts_opt
+        self.ts_opt_rms = ts_opt_rms
         # I really wonder what made me pick 'climb_fixed = True' in e9f039a0 ...
+        # ... now i know! Sometimes it hampers the convergence, when the CI index
+        # flips between multiple images.
         self.climb_fixed = climb_fixed
         self.energy_min_mix = energy_min_mix
         # Must not be lower than climb_rms
-        self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
         self.scheduler = scheduler
         # Providing only cluster_kwargs also enables dask
         self._cluster = bool(cluster) or (cluster_kwargs is not None)
@@ -91,7 +97,12 @@ class ChainOfStates:
         self.started_climbing = self.climb_rms == -1
         if self.started_climbing:
             self.log("Will start climbing immediately.")
-        self.started_climbing_lanczos = False
+        self.started_climbing_lanczos = self.climb_lanczos_rms == -1
+        if self.started_climbing_lanczos:
+            self.log("Will use Lanczos algorithm immediately.")
+        self.started_ts_opt = self.ts_opt_rms == -1
+        if self.started_ts_opt:
+            self.log("Will use TS image(s) immediately.")
         self.fixed_climb_indices = None
         # Use original forces for these images
         self.org_forces_indices = list()
@@ -111,12 +122,24 @@ class ChainOfStates:
             self.typed_prims = None
 
     @property
+    def nimages(self) -> int:
+        return len(self.images)
+
+    @property
     def calculator(self):
         try:
             calc = self.images[0].calculator
         except IndexError:
             calc = None
         return calc
+
+    @property
+    def is_analytical_2d(self):
+        try:
+            ia2d = self.images[0].calculator.analytical_2d
+        except AttributeError:
+            ia2d = False
+        return ia2d
 
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
@@ -598,34 +621,45 @@ class ChainOfStates:
         self.coords_list.append(last_coords)
         self.forces_list.append(last_forces)
 
-        # Return False if we don't want to climb or are already
-        # climbing.
+        messages = list()
+        # Check if we can start climbing.
         already_climbing = self.started_climbing
         if self.climb and not already_climbing:
-            self.started_climbing = self.check_for_climbing_start(self.climb_rms)
+            self.started_climbing = self.compare_image_rms_forces(self.climb_rms)
             if self.started_climbing:
                 msg = "Will use climbing image(s) in next cycle."
                 self.log(msg)
-                print(msg)
-        # Determine climbing index/indices if not set, but requested.
+                messages.append(msg)
+
+        # Fix climbing index/indices if not already set, but requested.
         if already_climbing and self.climb_fixed and (self.fixed_climb_indices is None):
             self.fixed_climb_indices = self.get_climbing_indices()
 
+        # Check if we can start to converge the HEI tangent using the Lanczos algorithm.
         already_climbing_lanczos = self.started_climbing_lanczos
         if (
             self.climb_lanczos
             and self.started_climbing
             and not already_climbing_lanczos
         ):
-            self.started_climbing_lanczos = self.check_for_climbing_start(
+            self.started_climbing_lanczos = self.compare_image_rms_forces(
                 self.climb_lanczos_rms
             )
             if self.started_climbing_lanczos:
                 msg = "Will use Lanczos algorithm for HEI tangent in next cycle."
                 self.log(msg)
-                print(msg)
+                messages.append(msg)
 
-        return not already_climbing and self.started_climbing
+        # Starting TS optimization does not influence the return value. Expand on this?!
+        if self.ts_opt and not self.started_ts_opt:
+            self.started_ts_opt = self.compare_image_rms_forces(self.ts_opt_rms)
+            if self.started_ts_opt:
+                msg = "Will use TS image(s) in next cycle."
+                self.log(msg)
+                messages.append(msg)
+
+        reset_flag = not already_climbing and self.started_climbing
+        return reset_flag, messages
 
     def rms(self, arr):
         """Root mean square
@@ -643,11 +677,17 @@ class ChainOfStates:
         """
         return np.sqrt(np.mean(np.square(arr)))
 
-    def check_for_climbing_start(self, ref_rms):
-        # Only initiate climbing on a sufficiently converged MEP.
-        # This can be determined from a supplied threshold for the
-        # RMS force (rms_force) or from a multiple of the
-        # RMS force convergence threshold (rms_multiple, default).
+    def compare_image_rms_forces(self, ref_rms):
+        """Compare rms(forces) value of an image against a reference value.
+
+        Used to decide if we designate an image as climbing image or a
+        TS node.
+
+        Only initiate climbing on a sufficiently converged MEP.
+        This can be determined from a supplied threshold for the
+        RMS force (rms_force) or from a multiple of the
+        RMS force convergence threshold (rms_multiple, default).
+        """
         rms_forces = self.rms(self.forces_list[-1])
         # Only start climbing when the COS is fully grown. This
         # attribute may not be defined in all subclasses, so it
@@ -681,8 +721,7 @@ class ChainOfStates:
         elif hei_index in move_inds[1:-1]:
             climb_indices = (hei_index - 1, hei_index + 1)
             # climb_indices = (hei_index,)
-        # Don't climb when the HEI is the first or last image of the whole
-        # NEB.
+        # Don't climb when the HEI is the first or last image of the whole NEB.
         else:
             climb_indices = tuple()
             self.log("Want to climb but can't. HEI is first or last image!")
@@ -712,10 +751,21 @@ class ChainOfStates:
             )
         return forces
 
+    def get_ts_image_indices(self):
+        hei_index = self.get_hei_index()
+        if not self.started_ts_opt:
+            ts_images = tuple()
+        else:
+            ts_images = (hei_index,)
+            self.log(f"Images {ts_images} are TS images.")
+        return ts_images
+
     def get_splined_hei(self):
         self.log("Splining HEI")
         # Interpolate energies
-        cart_coords = align_coords([image.cart_coords for image in self.images])
+        cart_coords = np.array([image.cart_coords for image in self.images])
+        if not self.is_analytical_2d:
+            cart_coords = align_coords(cart_coords)
         coord_diffs = get_coords_diffs(cart_coords)
         self.log(f"\tCoordinate differences: {coord_diffs}")
         energies = np.array(self.energy)

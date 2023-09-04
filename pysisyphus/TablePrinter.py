@@ -1,3 +1,4 @@
+import logging
 import textwrap
 
 
@@ -11,6 +12,8 @@ class TablePrinter:
         shift_left=0,
         fmts_update=None,
         mark="*",
+        logger=None,
+        level=logging.INFO,
     ):
         self.header = header
         self.col_fmts = col_fmts
@@ -21,6 +24,8 @@ class TablePrinter:
             fmts_update = {}
         self.fmts_update = fmts_update
         self.mark = mark
+        self.logger = logger
+        self.level = level
 
         w = str(self.width - 1)
 
@@ -47,11 +52,19 @@ class TablePrinter:
             + "-" * abs(self.shift_left)
         )
 
+    def _print(self, msg, level=None):
+        if level is None:
+            level = self.level
+        if self.logger:
+            self.logger.log(level, msg)
+        else:
+            print(msg)
+
     def print_sep(self):
-        print(self.sep)
+        self._print(self.sep)
 
     def print_header(self, with_sep=True):
-        print(self.header_str)
+        self._print(self.header_str)
         if with_sep:
             self.print_sep()
 
@@ -62,7 +75,7 @@ class TablePrinter:
         for arg, to_mark in zip(args, marks):
             marked_args.append(arg)
             marked_args.append(self.mark if to_mark else " ")
-        print(self.conv_str.format(*marked_args))
+        self._print(self.conv_str.format(*marked_args))
 
     def print(self, *args, **kwargs):
         text = " ".join([str(a) for a in args])
@@ -71,4 +84,4 @@ class TablePrinter:
         except KeyError:
             level = 0
         level_prefix = "    " * level
-        print(textwrap.indent(text, self.prefix + level_prefix))
+        self._print(textwrap.indent(text, self.prefix + level_prefix))
