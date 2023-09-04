@@ -4,6 +4,8 @@ import logging
 
 import numpy as np
 
+from pysisyphus.helpers_pure import log as hp_log
+
 
 class LineSearchConverged(Exception):
     def __init__(self, alpha):
@@ -37,6 +39,7 @@ class LineSearch(metaclass=abc.ABCMeta):
         c2=0.9,
         max_cycles=10,
         alpha_min=1e-6,
+        logger=None,
     ):
         self.p = p
         self.geometry = geometry
@@ -89,10 +92,10 @@ class LineSearch(metaclass=abc.ABCMeta):
         self.cond_func = self.cond_funcs[cond]
         self.can_eval_cond_func = self.can_eval_cond_funcs[cond]
 
-        self.logger = logging.getLogger("optimizer")
+        self.logger = logger
 
-    def log(self, message):
-        self.logger.debug(message)
+    def log(self, message, level=logging.DEBUG):
+        hp_log(message, level)
 
     def prepare_line_search(self):
         if self.f0 is None:

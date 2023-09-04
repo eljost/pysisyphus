@@ -19,7 +19,6 @@ try:
 except ModuleNotFoundError:
     pass
 
-from pysisyphus import logger
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.hessian_proj import get_hessian_projector, inertia_tensor
@@ -1062,9 +1061,9 @@ class Geometry:
             mult = self.calculator.mult
         except AttributeError:
             mult = 1
-            logger.debug(
+            warnings.warn(
                 "Multiplicity for electronic entropy could not be determined! "
-                f"Using 2S+1 = {mult}."
+                f"Falling back to Using 2S+1 = {mult}."
             )
 
         thermo_dict = {

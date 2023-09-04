@@ -72,11 +72,11 @@ class MicroOptimizer:
             results = self.geometry.get_energy_and_forces_at(self.geometry.coords)
             forces = results["forces"]
             energy = results["energy"]
-            rms = np.sqrt(np.mean(forces ** 2))
-            print(f"{self.cur_cycle:03d} rms(f)={rms:.6f}")
+            rms = np.sqrt(np.mean(forces**2))
+            self.print(f"{self.cur_cycle:03d} rms(f)={rms:.6f}")
             sys.stdout.flush()
             if self.rms_force and rms <= self.rms_force:
-                print("Converged!")
+                self.print("Converged!")
                 self.is_converged = True
                 break
 
