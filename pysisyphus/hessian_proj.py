@@ -5,6 +5,10 @@
 # [2] https://doi.org/10.1021/jp9724028
 #     Reaction-Path Dynamics in Redundant Internal Coordinates
 #     Chuang, Truhlar, 1998
+# [3] https://onlinelibrary.wiley.com/doi/full/10.1002/jcc.10089
+#     Quantum chemical calculation of vibrational spectra of large
+#     molecules — Raman and IR spectra for Buckminsterfullerene
+#     Neugebauer, Reiher, Hess, 2002
 
 
 import warnings
