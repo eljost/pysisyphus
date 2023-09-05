@@ -124,6 +124,7 @@ class ChainOfStates:
         if self.started_ts_opt:
             self.log("Will use TS image(s) immediately.")
         self.fixed_climb_indices = None
+        self.fixed_ts_indices = None
         # Use original forces for these images
         self.org_forces_indices = list()
 
@@ -787,12 +788,14 @@ class ChainOfStates:
         return forces
 
     def get_ts_image_indices(self):
-        hei_index = self.get_hei_index()
         if not self.started_ts_opt:
             ts_images = tuple()
         else:
-            ts_images = (hei_index,)
-            self.log(f"Images {ts_images} are TS images.")
+            if self.fixed_ts_indices is None:
+                hei_index = self.get_hei_index()
+                self.fixed_ts_indices = (hei_index,)
+                self.log(f"Fixed TS image to index {hei_index}.")
+            ts_images = self.fixed_ts_indices
         return ts_images
 
     def get_splined_hei(self):
