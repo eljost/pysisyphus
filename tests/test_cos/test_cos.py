@@ -9,12 +9,13 @@ from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.interpolate.Interpolator import Interpolator
-from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
-from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.FIRE import FIRE
-from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+from pysisyphus.optimizers.guess_hessians import ts_hessian_from_cos
+from pysisyphus.optimizers.LBFGS import LBFGS
+from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.plotters.AnimPlot import AnimPlot
 from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
@@ -103,12 +104,12 @@ def test_anapot_szts(between, param, ref_cycle):
     assert_cos_opt(opt, ref_cycle)
 
 
-def animate(opt):
+def animate(opt, show=False):
     xlim = (-2, 2.5)
     ylim = (0, 5)
     levels = (-3, 4, 80)
     ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
-    ap.animate()
+    ap.animate(show=show)
     return ap
 
 
@@ -257,3 +258,47 @@ def test_neb_climb(climb, ref_cycles):
     # plt.show()
     assert opt.is_converged
     assert opt.cur_cycle == ref_cycles
+
+
+def test_cos_image_ts_opt():
+    initial = AnaPot.get_geom((-1.05274, 1.02776, 0))
+    final = AnaPot.get_geom((1.94101, 3.85427, 0))
+    images = (initial, final)
+    interpol = Interpolator(images, between=5)
+    images = interpol.interpolate_all()
+
+    for image in images:
+        image.set_calculator(AnaPot())
+
+    cos_kwargs = {
+        "k_min": 0.01,
+        "climb": "one",
+        "ts_opt": True,
+        "ts_opt_rms": 0.0045,
+    }
+    cos = NEB(images, **cos_kwargs)
+
+    opt_kwargs = {
+        "dump": True,
+        "image_opt_kwargs": {
+            "type": "rsprfo",
+            "thresh": "gau_vtight",
+            "dump": True,
+        },
+        # Level 10 equals logging.DEBUG and is the default for child optimizers
+        # "logging_level": 10,
+    }
+    opt = SteepestDescent(cos, **opt_kwargs)
+    opt.run()
+
+    hei_coords = cos.images[cos.get_hei_index()].coords
+    ref_ts_coords = (0.6117310435507957, 1.4929729492717998, 0.0)
+
+    H = ts_hessian_from_cos(cos, cos.get_hei_index())
+    w, _ = np.linalg.eigh(H)
+    w_min = w[0]
+    assert w_min == pytest.approx(-1.46736345)
+
+    # animate(opt, show=True)
+
+    np.testing.assert_allclose(hei_coords, ref_ts_coords, atol=2e-6)
