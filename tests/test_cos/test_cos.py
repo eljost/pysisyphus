@@ -237,7 +237,7 @@ def test_stiff_neb_nfk():
     # plt.show()
 
 
-@pytest.mark.parametrize("climb, ref_cycles", ((True, 209), ("one", 109), (False, 120)))
+@pytest.mark.parametrize("climb, ref_cycles", ((True, 217), ("one", 101), (False, 120)))
 def test_neb_climb(climb, ref_cycles):
     geoms = get_geoms()
 
@@ -273,8 +273,9 @@ def test_cos_image_ts_opt():
     cos_kwargs = {
         "k_min": 0.01,
         "climb": "one",
+        "climb_rms": 0.5,
         "ts_opt": True,
-        "ts_opt_rms": 0.0045,
+        "ts_opt_rms": 0.005,
     }
     cos = NEB(images, **cos_kwargs)
 
@@ -297,7 +298,7 @@ def test_cos_image_ts_opt():
     H = ts_hessian_from_cos(cos, cos.get_hei_index())
     w, _ = np.linalg.eigh(H)
     w_min = w[0]
-    assert w_min == pytest.approx(-1.46736345)
+    assert w_min == pytest.approx(-9.45998968)
 
     # animate(opt, show=True)
 

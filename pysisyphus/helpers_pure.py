@@ -661,5 +661,18 @@ def kill_dir(path):
     path.rmdir()
 
 
-def rms(arr):
+def rms(arr: np.ndarray) -> float:
+    """Root mean square
+
+    Returns the root mean square of the given array.
+
+    Parameters
+    ----------
+    arr : iterable of numbers
+
+    Returns
+    -------
+    rms : float
+        Root mean square of the given array.
+    """
     return np.sqrt(np.mean(arr**2))

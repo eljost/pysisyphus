@@ -13,7 +13,7 @@ import psutil
 from scipy.interpolate import interp1d, splprep, splev
 
 from pysisyphus.helpers import align_coords, get_coords_diffs
-from pysisyphus.helpers_pure import hash_arr
+from pysisyphus.helpers_pure import hash_arr, rms
 from pysisyphus.modefollow import geom_lanczos
 
 
@@ -713,22 +713,6 @@ class ChainOfStates:
         reset_flag = not already_climbing and self.started_climbing
         return reset_flag, messages
 
-    def rms(self, arr):
-        """Root mean square
-
-        Returns the root mean square of the given array.
-
-        Parameters
-        ----------
-        arr : iterable of numbers
-
-        Returns
-        -------
-        rms : float
-            Root mean square of the given array.
-        """
-        return np.sqrt(np.mean(np.square(arr)))
-
     def compare_image_rms_forces(self, ref_rms):
         """Compare rms(forces) value of an image against a reference value.
 
@@ -740,7 +724,7 @@ class ChainOfStates:
         RMS force (rms_force) or from a multiple of the
         RMS force convergence threshold (rms_multiple, default).
         """
-        rms_forces = self.rms(self.forces_list[-1])
+        rms_forces = rms(self.perpendicular_forces)
         # Only start climbing when the COS is fully grown. This
         # attribute may not be defined in all subclasses, so it
         # defaults to True here.
