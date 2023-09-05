@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 import sys
+import warnings
 
 import numpy as np
 
@@ -24,6 +25,10 @@ class MicroOptimizer:
         dump=False,
         **kwargs,
     ):
+        warnings.warn(
+            "MicroOptimizer will be removed soon. Please consider using LayerOpt instead!",
+            DeprecationWarning,
+        )
         self.geometry = geom
         self.step_funcs = {
             "sd": self.sd_step,
@@ -73,10 +78,10 @@ class MicroOptimizer:
             forces = results["forces"]
             energy = results["energy"]
             rms = np.sqrt(np.mean(forces**2))
-            self.print(f"{self.cur_cycle:03d} rms(f)={rms:.6f}")
+            self.log(f"{self.cur_cycle:03d} rms(f)={rms:.6f}")
             sys.stdout.flush()
             if self.rms_force and rms <= self.rms_force:
-                self.print("Converged!")
+                self.log("Converged!")
                 self.is_converged = True
                 break
 

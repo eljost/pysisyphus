@@ -95,7 +95,7 @@ class LineSearch(metaclass=abc.ABCMeta):
         self.logger = logger
 
     def log(self, message, level=logging.DEBUG):
-        hp_log(message, level)
+        hp_log(self.logger, message, level)
 
     def prepare_line_search(self):
         if self.f0 is None:
