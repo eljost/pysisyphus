@@ -14,6 +14,7 @@ import pyparsing as pp
 from pysisyphus.calculators.MOCoeffs import MOCoeffs
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction import norm_ci_coeffs, Wavefunction
 
@@ -503,6 +504,23 @@ def get_exc_ens_fosc(wf_fn, cis_fn, log_fn):
     warnings.warn("Only alpha TDM is currently taken into account!")
     fosc = wf.oscillator_strength(exc_ens, tdens)
     return exc_ens, fosc
+
+
+def geom_from_orca_hess(fn):
+    data = ORCA.parse_hess_file(fn)
+    hessian = make_sym_mat(data["hessian"])
+
+    atoms = list()
+    coords3d = list()
+    # mass is neglected
+    for atom, _, coords in data["atoms"][2:]:
+        atoms.append(atom)
+        coords3d.append(coords.as_list())
+    coords = np.array(coords3d).flatten()
+
+    geom = Geometry(atoms, coords)
+    geom.cart_hessian = hessian
+    return geom
 
 
 class ORCA(OverlapCalculator):
