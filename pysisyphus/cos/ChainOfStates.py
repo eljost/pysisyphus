@@ -86,10 +86,30 @@ class ChainOfStates:
         self.cart_coords_length = self.images[0].cart_coords.size
         self.zero_vec = np.zeros(self.coords_length)
 
+        """
+        It was a rather unfortunate choice to fill/grow self.coords_list and
+        self.all_true_forces in different methods. self.prepare_opt_cycle()
+        appends to self.coords_list, while self.calculate_forces() appends to
+        self.all_true_forces().
+
+        After a succsessful COS optimization both lists differ in length;
+        self.all_true_forces has 1 additional item, compared to self.coords_list,
+        as self.calculate_forces() is called in Optimizer.prepare_opt() once.
+        Afterwards, self.coords_list and self.all_true_forces grow in a consistent
+        manner.
+
+        Two choices can be made: keep this discrepancy in mind and omit/neglect
+        the first item in self.coords_list, or grow another list in
+        self.calculate_forces(). For now, we will go with the latter option.
+        """
+        # coords_list & force_list are updated in prepare_opt_cycle
         self.coords_list = list()
         self.forces_list = list()
+        # all_energies & all_true_forces are updated in calculate_forces()
         self.all_energies = list()
         self.all_true_forces = list()
+        # See the multiline comment above
+        self.all_cart_coords = list()
         self.lanczos_tangents = dict()
         self.prev_lanczos_hash = None
 
@@ -387,6 +407,9 @@ class ChainOfStates:
         self.set_zero_forces_for_fixed_images()
         self.counter += 1
 
+        # EnergyMin calculator carries out multiple calculations at the same
+        # geometry, e.g., in different spin states or different electronic states
+        # and picks the one with the lowest energy.
         if self.energy_min_mix:
             # Will be None for calculators that already mix
             all_energies = np.array([image.all_energies for image in self.images])
@@ -416,7 +439,8 @@ class ChainOfStates:
         energies = [image.energy for image in self.images]
         forces = np.array([image.forces for image in self.images])
         self.all_energies.append(energies)
-        self.all_true_forces.append(forces)
+        self.all_true_forces.append(forces.copy())
+        self.all_cart_coords.append(self.cart_coords.copy())
 
         return {
             "energies": energies,
@@ -610,6 +634,32 @@ class ChainOfStates:
             energies = [image.energy for image in self.images]
         return np.argmax(energies)
 
+    def get_full_cycles(self) -> np.ndarray:
+        """Return array of integers that indexes self.all_true_forces/self.all_cart_coords.
+
+        When the ChainOfStates is not yet fully grown this list will be empty.
+        The items of this list can be used to index self.all_true_forces and
+        related lists, to extract image coordinate & forces data for all
+        cycles when the COS was already fully grown.
+
+        This data can then be used to, e.g., construct a (TS)-Hessian for an
+        selected image."""
+
+        try:
+            fully_grown = self.fully_grown
+        except AttributeError:
+            fully_grown = True
+
+        if not fully_grown:
+            return np.empty(0)
+
+        full_size = self.cart_coords_length * self.nimages
+        all_sizes = np.array([true_forces.size for true_forces in self.all_true_forces])
+        mask = all_sizes == full_size
+        indices = np.arange(len(all_sizes))
+        full_cycles = indices[mask]
+        return full_cycles
+
     def prepare_opt_cycle(self, last_coords, last_energies, last_forces):
         """Implements additional logic in preparation of the next
         optimization cycle.
@@ -654,7 +704,9 @@ class ChainOfStates:
         if self.ts_opt and not self.started_ts_opt:
             self.started_ts_opt = self.compare_image_rms_forces(self.ts_opt_rms)
             if self.started_ts_opt:
-                msg = "Will use TS image(s) in next cycle."
+                msg = "Will use TS image(s) in next cycle. Disabled any climbing/Lanczos image."
+                self.climb_lanczos = False
+                self.climb = False
                 self.log(msg)
                 messages.append(msg)
 
@@ -720,7 +772,6 @@ class ChainOfStates:
         # elif self.climb != "one" and hei_index in move_inds[1:-1]:
         elif hei_index in move_inds[1:-1]:
             climb_indices = (hei_index - 1, hei_index + 1)
-            # climb_indices = (hei_index,)
         # Don't climb when the HEI is the first or last image of the whole NEB.
         else:
             climb_indices = tuple()
@@ -738,7 +789,7 @@ class ChainOfStates:
 
     def set_climbing_forces(self, forces):
         # Avoids calling the other methods with their logging output etc.
-        if not self.started_climbing:
+        if not (self.climb and self.started_climbing):
             return forces
 
         for i in self.get_climbing_indices():
