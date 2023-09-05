@@ -27,15 +27,17 @@ from pysisyphus.optimizers.exceptions import ZeroStepLength
 from pysisyphus.TablePrinter import TablePrinter
 
 
-def get_optimizer(geom, index, opt_kwargs):
+def get_optimizer(geom, index, opt_kwargs, prefix):
     # Import here, to avoid cyclic import error
     from pysisyphus.optimizers.cls_map import get_opt_cls
 
     opt_kwargs = opt_kwargs.copy()
     opt_type = opt_kwargs.pop("type")
 
+    prefix = f"{prefix}_img_{index:02d}"
     _opt_kwargs = {
-        "prefix": f"ts_img_{index:02d}",
+        "prefix": prefix,
+        "h5_group_name": f"{prefix}_opt",
         # Child optimizers don't print to STDOUT/pysisyphus.log by default,
         # only to their respective log files.
         "logging_level": logging.DEBUG,
@@ -369,6 +371,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         # Don't use prefix for this fn, as different optimizations
         # can be distinguished according to their group in the HDF5 file.
         self.h5_fn = self.get_path_for_fn(h5_fn, with_prefix=False)
+        # TODO: make this also depend on 'prefix'?!
         self.h5_group_name = h5_group_name
 
         current_fn = "current_geometries.trj" if self.is_cos else "current_geometry.xyz"
@@ -543,8 +546,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         if overachieve_factor is None:
             overachieve_factor = self.overachieve_factor
 
-        # When using a ChainOfStates method we are only interested
-        # in optimizing the forces perpendicular to the MEP.
+        # When using a ChainOfStates method convergence depends on the
+        # perpendicular component of the force along the MEP.
         if self.is_cos:
             forces = self.geometry.perpendicular_forces
         elif len(self.modified_forces) == len(self.forces):
@@ -738,49 +741,34 @@ class Optimizer(metaclass=abc.ABCMeta):
     def optimize(self):
         pass
 
-    """
-    def update_step_for_ts_image(self, image_index, prev_image_step=None):
-        geom = self.geometry.images[image_index]
-        try:
-            ts_opt = self.ts_opts[image_index]
-            cur_cycle = self.ts_opt_cycles[image_index]
-        except KeyError:
-            ts_opt = get_ts_optimizer(geom, image_index)
-            self.ts_opts[image_index] = ts_opt
-            cur_cycle = 0
-            self.ts_opt_cycles[image_index] = cur_cycle
-            ts_opt.prepare_opt()
-
-        if prev_image_step is not None:
-            ts_opt.steps.append(prev_image_step)
-        ts_opt.coords.append(geom.coords.copy())
-        ts_opt.cart_coords.append(geom.cart_coords.copy())
-
-        # Calculate one step
-        updated_step = ts_opt.optimize()
-        cur_cycle = cur_cycle + 1
-        ts_opt.cur_cycle = cur_cycle
-        self.ts_opt_cycles[image_index] = cur_cycle
-        return updated_step
-    """
-
     def update_image_step(self, image_index, prefix=""):
+        """Calculate a new step for an image in a COS using another Optimizer.
+
+        This method is useful to update an image step, e.g, by a TS optimizer.
+        """
         if prefix != "":
             prefix = f"{prefix}-"
         geom = self.geometry.images[image_index]
+        # Try to look up the Optimizer ...
         try:
-            ts_opt = self.image_opts[image_index]
+            opt = self.image_opts[image_index]
+        # ... if it is not already present we create it and store it.
         except KeyError:
-            ts_opt = get_optimizer(geom, image_index, self.image_opt_kwargs)
-            self.image_opts[image_index] = ts_opt
+            opt = get_optimizer(
+                geom, image_index, opt_kwargs=self.image_opt_kwargs, prefix="ts"
+            )
+            self.image_opts[image_index] = opt
             self.print(f"Created new {prefix}optimizer for image {image_index}")
 
         try:
-            next(ts_opt.run_generator)
+            # Advance the generator one cycle and fetch the new step
+            next(opt.run_generator)
+            updated_step = opt.steps[-1]
         except StopIteration:
-            return np.zeros_like(self.geometry.images[0].coords)
+            # When the optimzation already converged the generator is exhausted
+            # and we return a zero-step.
+            updated_step = np.zeros_like(self.geometry.images[0].coords)
 
-        updated_step = self.image_opts[image_index].steps[-1]
         return updated_step
 
     def write_to_out_dir(self, out_fn, content, mode="w"):
@@ -892,6 +880,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         if not self.restarted:
             prep_start_time = time.time()
+            # Set up the optimizer in prepare_opt, e.g., prepare initial Hessiane etc.
             self.prepare_opt()
             self.log(f"{self.geometry.coords.size} degrees of freedom.")
             prep_end_time = time.time()
@@ -936,7 +925,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                     self.coords[-1], self.energies[-1], self.forces[-1]
                 )
                 if messages:
-                    self.log("\n".join(messages))
+                    self.print("\n".join(messages))
             # Reset when number of coordinates changed, compared to the previous cycle.
             elif self.cur_cycle > 0:
                 reset_flag = reset_flag or (
