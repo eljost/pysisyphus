@@ -167,7 +167,7 @@ class PySCF(OverlapCalculator):
         root = 0 if self.root is None else self.root
         try:
             energy = energy[root]
-        except TypeError:
+        except (IndexError, TypeError):
             pass
 
         results = {

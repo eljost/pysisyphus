@@ -9,6 +9,7 @@ import numpy as np
 
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.interpolate import interpolate
+from pysisyphus.helpers_pure import rms
 
 
 class AdaptiveNEB(NEB):
@@ -104,11 +105,9 @@ class AdaptiveNEB(NEB):
         # This ensures that the adapt_fact increases as we recurse
         # deeper.
         if self.scale_fact:
-            self.adapt_thresh = (
-                self.rms(forces) * self.adapt_fact / np.sqrt(1 / self.level)
-            )
+            self.adapt_thresh = rms(forces) * self.adapt_fact / np.sqrt(1 / self.level)
         else:
-            self.adapt_thresh = self.rms(forces) * self.adapt_fact
+            self.adapt_thresh = rms(forces) * self.adapt_fact
         # arr / np.sqrt(1/np.arange(1, 6))
         self.log(
             f"Updating adapt_thres. Old thresh was {old_thresh:}. "
@@ -128,7 +127,7 @@ class AdaptiveNEB(NEB):
         adapt : bool
             Flag that indicates if adaption should take place in this cycle.
         """
-        cur_rms = self.rms(forces)
+        cur_rms = rms(forces)
         adapt = cur_rms <= self.adapt_thresh
         self.log(
             f"Current RMS of forces is {cur_rms:03f}. Current thresh "
