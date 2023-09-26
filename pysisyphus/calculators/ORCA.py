@@ -531,7 +531,7 @@ class ORCA(OverlapCalculator):
         "cis",
         "densities",
         ("molden", "mwfn_wf"),
-        "json",
+        "bson",
     )
 
     def __init__(
@@ -573,7 +573,7 @@ class ORCA(OverlapCalculator):
         json_dump : bool, optional, deprecated
             Use 'wavefunction_dump' instead.
         wavefunction_dump : bool, optional
-            Whether to dump the wavefunction to JSON via orca_2json. The JSON can become
+            Whether to dump the wavefunction to BSON via orca_2json. The BSON can become
             very large in calculations comprising many basis functions.
         """
         super().__init__(**kwargs)
@@ -619,7 +619,7 @@ class ORCA(OverlapCalculator):
             "hess",
             "pcgrad",
             "densities:orca.densities",
-            "json",
+            "bson",
         )
 
         self.orca_input = """!{keywords} {calc_type}
@@ -742,12 +742,10 @@ class ORCA(OverlapCalculator):
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
-        calc_type = ""
-
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
+        inp = self.prepare_input(atoms, coords, calc_type="", **prepare_kwargs)
         results = self.run(inp, calc="energy")
         results = self.store_and_track(
             results, self.get_energy, atoms, coords, **prepare_kwargs
@@ -755,8 +753,16 @@ class ORCA(OverlapCalculator):
         return results
 
     def get_all_energies(self, atoms, coords, **prepare_kwargs):
+        # Calculating a stable wavfunction in this method may lead to unnecessary
+        # ES calculation.
+        if self.do_stable:
+            self.get_stable_wavefunction(atoms, coords)
+
         inp = self.prepare_input(atoms, coords, calc_type="", **prepare_kwargs)
         results = self.run(inp, calc="all_energies")
+        results = self.store_and_track(
+            results, self.get_all_energies, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -765,22 +771,20 @@ class ORCA(OverlapCalculator):
 
         calc_type = "engrad"
         inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
-        kwargs = {
-            "calc": "grad",
-        }
-        results = self.run(inp, **kwargs)
+        results = self.run(inp, calc="grad")
         results = self.store_and_track(
             results, self.get_forces, atoms, coords, **prepare_kwargs
         )
         return results
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
-        calc_type = self.freq_keyword
-
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
+        # self.freq_keyword maybe numfreq/anfreq
+        inp = self.prepare_input(
+            atoms, coords, calc_type=self.freq_keyword, **prepare_kwargs
+        )
         results = self.run(inp, calc="hessian")
         results = self.store_and_track(
             results, self.get_hessian, atoms, coords, **prepare_kwargs
@@ -788,7 +792,7 @@ class ORCA(OverlapCalculator):
         return results
 
     def get_stored_wavefunction(self, **kwargs):
-        return self.load_wavefunction_from_file(self.json, **kwargs)
+        return self.load_wavefunction_from_file(self.bson, **kwargs)
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         """Basically some kind of dummy method that can be called
@@ -811,7 +815,7 @@ class ORCA(OverlapCalculator):
 
         if self.wavefunction_dump:
             # Will silently fail with ECPs
-            cmd = "orca_2json orca"
+            cmd = "orca_2json orca -bson"
             proc = self.popen(cmd, cwd=path)
             if (ret := proc.returncode) != 0:
                 self.log(f"orca_2json call failed with return-code {ret}!")
