@@ -140,6 +140,7 @@ class Wavefunction:
 
         from_funcs = {
             ".json": Wavefunction.from_orca_json,
+            ".bson": Wavefunction.from_orca_bson,
             ".fchk": Wavefunction.from_fchk,
         }
         from_funcs_for_str = (
@@ -179,7 +180,7 @@ class Wavefunction:
 
     @staticmethod
     @file_or_str(".json")
-    def from_orca_json(text):
+    def from_orca_json(text, **kwargs):
         """Create wavefunction from ORCA JSON.
 
         As of version 5.0.3 ORCA does not create JSON files for systems
@@ -187,8 +188,18 @@ class Wavefunction:
         args or kwargs in contrast to from_orca_molden."""
         from pysisyphus.io.orca import wavefunction_from_json
 
-        wf = wavefunction_from_json(text)
+        wf = wavefunction_from_json(text, **kwargs)
         return wf
+
+    @staticmethod
+    @file_or_str(".bson", mode="rb")
+    def from_orca_bson(text, **kwargs):
+        """Create wavefunction from ORCA BSON.
+
+        See from_orca_json for further comments."""
+        from pysisyphus.io.orca import wavefunction_from_bson
+
+        return wavefunction_from_bson(text, **kwargs)
 
     @staticmethod
     @file_or_str(".molden", ".molden.input")

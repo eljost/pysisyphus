@@ -198,10 +198,14 @@ def file_or_str(*args, method=False, mode="r", exact=False):
             if method:
                 obj = inp
                 inp, *args = args
-            p = Path(inp)
-            looks_like_file = exts and (
-                (p.suffix in exts) or (exact and p.name in exts)
-            )
+            try:
+                p = Path(inp)
+                looks_like_file = exts and (
+                    (p.suffix in exts) or (exact and p.name in exts)
+                )
+            # TypeError will be raised when bytes were already read from a file
+            except TypeError:
+                looks_like_file = False
             if looks_like_file and p.is_file():
                 with open(p, mode=mode) as handle:
                     inp = handle.read()
