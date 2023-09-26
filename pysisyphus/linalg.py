@@ -375,7 +375,7 @@ def matrix_power(mat, p, thresh=1e-12, strict=True):
     assert (not strict) or (
         w > 0.0
     ).all(), "matrix_power must be called with a (semi)-positive-definite matrix!"
-    mask = np.abs(w) > thresh
+    mask = w > thresh
     w_pow = w[mask] ** p
     v_mask = v[:, mask]
     return v_mask @ np.diag(w_pow) @ v_mask.T

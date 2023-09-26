@@ -9,6 +9,7 @@ import numpy as np
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.io import bson
 from pysisyphus.io import molden
 from pysisyphus.wavefunction import (
     get_l,
@@ -32,9 +33,7 @@ def get_coord_factor(data):
     return factor
 
 
-@file_or_str(".json")
-def shells_from_json(text):
-    data = json.loads(text)
+def shells_from_json_dict(data):
     atoms = data["Molecule"]["Atoms"]
     # unit = data["Molecule"]["CoordinateUnits"]
     coord_factor = get_coord_factor(data)
@@ -63,8 +62,12 @@ def shells_from_json(text):
 
 
 @file_or_str(".json")
-def wavefunction_from_json(text):
+def shells_from_json(text):
     data = json.loads(text)
+    return shells_from_json_dict(data)
+
+
+def wavefunction_from_json_dict(data):
     mol = data["Molecule"]
     coord_factor = get_coord_factor(data)
 
@@ -115,7 +118,7 @@ def wavefunction_from_json(text):
         occ_a = occ_b = occ_a // 2
     C = np.stack((Ca, Cb))
 
-    shells = shells_from_json(text)
+    shells = shells_from_json_dict(data)
 
     return Wavefunction(
         atoms=atoms,
@@ -128,6 +131,18 @@ def wavefunction_from_json(text):
         bf_type=BFType.PURE_SPHERICAL,
         shells=shells,
     )
+
+
+@file_or_str(".json")
+def wavefunction_from_json(text):
+    data = json.loads(text)
+    return wavefunction_from_json_dict(data)
+
+
+@file_or_str(".bson")
+def wavefunction_from_bson(text):
+    data = bson.loads(text)
+    return wavefunction_from_json_dict(data)
 
 
 @file_or_str(".molden", ".input")
