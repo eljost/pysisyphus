@@ -599,10 +599,20 @@ class ORCA(OverlapCalculator):
         )
 
         self.do_tddft = False
-        if "tddft" in self.blocks:
+        self.es_block_header = [key for key in ("tddft", "cis") if key in self.blocks]
+        if self.es_block_header:
+            assert len(self.es_block_header) == 1
+            self.es_block_header = self.es_block_header[0]
+        if self.es_block_header:
             self.do_tddft = True
             try:
                 self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
+                warnings.warn(
+                    f"Using root {self.root}, as specified w/ 'iroot' keyword. Please "
+                    "use the designated 'root' keyword in the future, as the 'iroot' route "
+                    "will be deprecated.",
+                    DeprecationWarning,
+                )
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
         self.triplets = bool(re.search(r"triplets\s+true", self.blocks))
@@ -694,9 +704,17 @@ class ORCA(OverlapCalculator):
 
     def get_block_str(self):
         block_str = self.blocks
-        # Use the correct root if we track it
-        if self.track:
-            block_str = re.sub(r"iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
+        # Use the correct root if we track and a root is supplied
+        if self.track and (self.root is not None):
+            if "iroot" in self.blocks:
+                block_str = re.sub(r"iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
+            # Insert appropriate iroot keyword if not already present
+            else:
+                block_str = re.sub(
+                    f"{self.es_block_header}",
+                    f"{self.es_block_header} iroot {self.root}",
+                    self.blocks,
+                )
             self.log(f"Using iroot '{self.root}' for excited state gradient.")
         return block_str
 

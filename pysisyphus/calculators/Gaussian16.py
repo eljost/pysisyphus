@@ -5,6 +5,7 @@ import re
 import shutil
 import subprocess
 import textwrap
+import warnings
 
 import numpy as np
 import pyparsing as pp
@@ -53,8 +54,7 @@ class Gaussian16(OverlapCalculator):
             for kw, option in [self.parse_keyword(kw) for kw in self.route.split()]
         }
         exc_keyword = [key for key in "td tda cis".split() if key in keywords]
-        self.root = None
-        self.nstates = None
+        self.nstates = self.nroots
         if exc_keyword:
             self.exc_key = exc_keyword[0]
             exc_dict = keywords[self.exc_key]
@@ -62,9 +62,8 @@ class Gaussian16(OverlapCalculator):
             try:
                 self.root = int(exc_dict["root"])
             except KeyError:
-                self.root = 1
-                self.log("No explicit root was specified! Using root=1 as default!")
-            # Collect remaining options if specified
+                warnings.warn("No explicit root was specified!")
+            # Collect remaining additional options if specified
             self.exc_args = {
                 k: v for k, v in exc_dict.items() if k not in ("nstates", "root")
             }
@@ -120,13 +119,14 @@ class Gaussian16(OverlapCalculator):
 
     def make_exc_str(self):
         # Ground state calculation
-        if not self.root:
+        if not self.track and (self.root is None):
             return ""
-        root = f"root={self.root}"
+        root = self.root if self.root is not None else 1
+        root_str = f"root={root}"
         nstates = f"nstates={self.nstates}"
         pair2str = lambda k, v: f"{k}" + (f"={v}" if v else "")
         arg_str = ",".join([pair2str(k, v) for k, v in self.exc_args.items()])
-        exc_str = f"{self.exc_key}=({root},{nstates},{arg_str})"
+        exc_str = f"{self.exc_key}=({root_str},{nstates},{arg_str})"
         return exc_str
 
     def reuse_data(self, path):
@@ -341,11 +341,7 @@ class Gaussian16(OverlapCalculator):
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
-        results = self.get_forces(atoms, coords, **prepare_kwargs)
-        results = self.store_and_track(
-            results, self.get_energy, atoms, coords, **prepare_kwargs
-        )
-        return results
+        return self.get_forces(atoms, coords, **prepare_kwargs)
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
         did_stable = False
@@ -592,7 +588,8 @@ class Gaussian16(OverlapCalculator):
             exc_energies = self.parse_tddft(path)
             # G16 root input is 1 based, so we substract 1 to get
             # the right index here.
-            root_exc_en = exc_energies[self.root - 1]
+            root = self.root if self.root is not None else 1
+            root_exc_en = exc_energies[root - 1]
             gs_energy = fchk_dict["SCF Energy"]
             # Add excitation energy to ground state energy.
             results["energy"] += root_exc_en
