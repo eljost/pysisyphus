@@ -312,5 +312,6 @@ def test_all_energies(kind, ref_energies):
     }
     geom = ORCA.geom_from_fn("lib:methane.xyz", **kwargs)
     calc = geom.calculator
-    all_ens = calc.get_all_energies(geom.atoms, geom.coords)
+    result = calc.get_all_energies(geom.atoms, geom.coords)
+    all_ens = result["all_energies"]
     np.testing.assert_allclose(all_ens, ref_energies, atol=1e-8)
