@@ -910,10 +910,13 @@ class ORCA(OverlapCalculator):
     def parse_all_energies_from_path(self, path):
         with open(path / self.out_fn) as handle:
             text = handle.read()
-        return self.parse_all_energies(text=text)
+        all_ens = self.parse_all_energies(text=text)
+        return {
+            "energy": all_ens[0],
+            "all_energies": all_ens,
+        }
 
     def parse_engrad(self, path):
-        results = {}
         engrad_fn = glob.glob(os.path.join(path, "*.engrad"))
         if not engrad_fn:
             raise Exception("ORCA calculation failed.")
@@ -926,8 +929,10 @@ class ORCA(OverlapCalculator):
         atoms = int(engrad.pop(0))
         energy = float(engrad.pop(0))
         force = -np.array(engrad[: 3 * atoms], dtype=float)
-        results["energy"] = energy
-        results["forces"] = force
+        results = {
+            "energy": energy,
+            "forces": force,
+        }
 
         return results
 
