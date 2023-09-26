@@ -39,8 +39,6 @@ class PySCF(OverlapCalculator):
         basis,
         xc=None,
         method="scf",
-        root=None,
-        nstates=None,
         auxbasis=None,
         keep_chk=True,
         verbose=0,
@@ -58,14 +56,8 @@ class PySCF(OverlapCalculator):
             self.multisteps[self.method] = ("scf", self.method)
         if self.xc and self.method != "tddft":
             self.method = "dft"
-        self.root = root
-        self.nstates = nstates
         if self.method == "tddft":
-            assert self.nstates, "nstates must be set with method='tddft'!"
-        if self.track:
-            assert self.root <= self.nstates, (
-                "'root' must be smaller " "than 'nstates'!"
-            )
+            assert self.nroots, "nroots must be set with method='tddft'!"
         self.auxbasis = auxbasis
         self.keep_chk = keep_chk
         self.verbose = int(verbose)
@@ -121,10 +113,10 @@ class PySCF(OverlapCalculator):
             mf = mp2_mf(mf)
         elif mf and (step == "tddft"):
             mf = pyscf.tddft.TDDFT(mf)
-            mf.nstates = self.nstates
+            mf.nstates = self.nroots
         elif mf and (step == "tda"):
             mf = pyscf.tddft.TDA(mf)
-            mf.nstates = self.nstates
+            mf.nstates = self.nroots
         else:
             raise Exception("Unknown method '{step}'!")
         return mf
@@ -171,8 +163,15 @@ class PySCF(OverlapCalculator):
 
         mol = self.prepare_input(atoms, coords)
         mf = self.run(mol, point_charges=point_charges)
+        energy = mf.e_tot
+        root = 0 if self.root is None else self.root
+        try:
+            energy = energy[root]
+        except TypeError:
+            pass
+
         results = {
-            "energy": mf.e_tot,
+            "energy": energy,
         }
         results = self.store_and_track(
             results, self.get_energy, atoms, coords, **prepare_kwargs

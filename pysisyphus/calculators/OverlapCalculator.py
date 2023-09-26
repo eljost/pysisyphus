@@ -104,6 +104,8 @@ class OverlapCalculator(Calculator):
     def __init__(
         self,
         *args,
+        root=None,
+        nroots=None,
         track=False,
         ovlp_type="tden",
         double_mol=False,
@@ -126,7 +128,13 @@ class OverlapCalculator(Calculator):
     ):
         super().__init__(*args, **kwargs)
 
+        self.root = root
+        self.nroots = nroots
         self.track = track
+
+        # TODO: enable this, when all calculators implement self.root & self.nroots
+        # if self.track:
+        # assert self.root <= self.nroots, "'root' must be smaller " "than 'nroots'!"
         self.ovlp_type = ovlp_type
         assert (
             self.ovlp_type in self.OVLP_TYPE_VERBOSE.keys()
@@ -219,7 +227,6 @@ class OverlapCalculator(Calculator):
         self.ref_cycle = 0
         self.ref_cycles = list()
         self.atoms = None
-        self.root = None
 
         if track:
             self.log(
