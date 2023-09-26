@@ -1,3 +1,4 @@
+import itertools as it
 from math import ceil
 from pathlib import Path
 import re
@@ -35,13 +36,15 @@ def parse_xplusy(text):
     for i in range(states):
         block = lines[i * block_size : (i + 1) * block_size]
         _, *rest = block
-        xpy = np.array([line.split() for line in rest], dtype=float)
+        xpy = list()
+        for line in block[1:]:
+            xpy.extend(line.split())
+        xpy = np.array(xpy, dtype=float)
         xpys.append(xpy)
     return size, states, np.array(xpys)
 
 
 class DFTBp(OverlapCalculator):
-
     conf_key = "dftbp"
     _set_plans = (
         "out",
@@ -95,7 +98,7 @@ class DFTBp(OverlapCalculator):
         },
     }
 
-    def __init__(self, parameter, *args, slakos=None, root=None, **kwargs):
+    def __init__(self, parameter, *args, slakos=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         assert self.mult == 1, "Open-shell not yet supported!"
@@ -107,8 +110,6 @@ class DFTBp(OverlapCalculator):
             f"Expected '{self.parameter}' sub-directory in '{self.slakos_prefix}' "
             "but could not find it!"
         )
-        self.root = root
-
         self.base_cmd = self.get_cmd()
         self.gen_geom_fn = "geometry.gen"
         self.inp_fn = "dftb_in.hsd"
@@ -203,8 +204,8 @@ class DFTBp(OverlapCalculator):
         return gen_str
 
     @staticmethod
-    def get_excited_state_str(root, forces=False):
-        if root is None:
+    def get_excited_state_str(track, root, nroots, forces=False):
+        if root is None and (track == False):
             return ""
 
         casida_tpl = jinja2.Template(
@@ -213,7 +214,7 @@ class DFTBp(OverlapCalculator):
             Casida {
                 NrOfExcitations = {{ nstates }}
                 Symmetry = Singlet
-                StateOfInterest = {{ root }}
+                {% if root %}StateOfInterest = {{ root }}{% endif %}
                 WriteXplusY = Yes
                 {{ es_forces }}
             }
@@ -222,7 +223,7 @@ class DFTBp(OverlapCalculator):
         )
         es_forces = "ExcitedStateForces = Yes" if forces else ""
         es_str = casida_tpl.render(
-            nstates=root + 5,
+            nstates=nroots if nroots else root + 5,
             root=root,
             es_forces=es_forces,
         )
@@ -236,7 +237,7 @@ class DFTBp(OverlapCalculator):
         analysis = list()
         if calc_type == "forces":
             analysis.append("CalculateForces = Yes")
-        if self.root:
+        if self.track or self.root:
             analysis.extend(("WriteEigenvectors = Yes", "EigenvectorsAsText = Yes"))
         ang_moms = self.max_ang_moms[self.parameter]
         unique_atoms = set(atoms)
@@ -265,7 +266,9 @@ class DFTBp(OverlapCalculator):
             parameter=self.parameter,
             max_ang_moms=max_ang_moms,
             hubbard_derivs=hubbard_derivs,
-            excited_state_str=self.get_excited_state_str(self.root, es_forces),
+            excited_state_str=self.get_excited_state_str(
+                self.track, self.root, self.nroots, es_forces
+            ),
             analysis=analysis,
         )
         return inp, path

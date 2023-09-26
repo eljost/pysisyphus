@@ -173,7 +173,6 @@ class Turbomole(OverlapCalculator):
         self,
         control_path=None,
         simple_input=None,
-        root=None,
         double_mol_path=None,
         cosmo_kwargs=None,
         **kwargs,
@@ -186,9 +185,6 @@ class Turbomole(OverlapCalculator):
 
         # Handle simple input
         if simple_input:
-            control_path = Path(
-                "/home/johannes/Code/pysisyphus/tests/test_turbomole/sic"
-            )
             control_path = (self.out_dir / get_random_path("control_path")).absolute()
             self.log(
                 "Set 'control_path' to '{control_path}'. Creating 'control' from simple input in it."
@@ -209,7 +205,6 @@ class Turbomole(OverlapCalculator):
         # Set provided control_path or use the one generated for simple_input
         self.control_path = Path(control_path).absolute()
 
-        self.root = root
         self.double_mol_path = double_mol_path
         if self.double_mol_path:
             self.double_mol_path = Path(self.double_mol_path)
@@ -353,11 +348,9 @@ class Turbomole(OverlapCalculator):
         self.log("\tHessian cmd: " + self.hessian_cmd)
 
         if self.td or self.ricc2 and (self.root is None):
-            self.root = 1
             warnings.warn(
                 "No root set! Either include '$exopt' for TDA/TDDFT or "
                 "'geoopt' for ricc2 in the control or supply a value for 'root'! "
-                f"Continuing with root={self.root}."
             )
 
     def set_occ_and_mo_nums(self, text):
@@ -649,7 +642,8 @@ class Turbomole(OverlapCalculator):
 
         if self.td:
             # Drop ground state energy that is repeated
-            tot_en = tot_ens[1:][self.root]
+            root = self.root if self.root is not None else 1
+            tot_en = tot_ens[1:][root]
         elif self.ricc2 and self.ricc2_opt:
             results = parse_turbo_gradient(path)
             tot_en = results["energy"]
