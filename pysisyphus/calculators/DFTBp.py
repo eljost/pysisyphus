@@ -319,9 +319,9 @@ class DFTBp(OverlapCalculator):
             "hold": self.track,
         }
         results = self.run(inp, **run_kwargs)
-        if self.track:
-            self.calc_counter += 1
-            self.store_overlap_data(atoms, coords, path)
+        results = self.store_and_track(
+            results, self.run_calculation, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def parse_total_energy(self, text):
@@ -397,7 +397,7 @@ class DFTBp(OverlapCalculator):
         # with open(path / "detailed.out") as handle:
         with open(self.out) as handle:
             detailed = handle.read()
-        all_energies = self.parse_all_energies(path)
+        all_energies = self.parse_all_energies(out_fn=self.out)
 
         #
         # MO coefficients
