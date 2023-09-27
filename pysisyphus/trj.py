@@ -1,6 +1,7 @@
 import argparse
 import copy
 import itertools as it
+import math
 from pathlib import Path
 import re
 import sys
@@ -75,6 +76,11 @@ def parse_args(args):
         type=int,
         help="Create new .trj with every N-th geometry. "
         "Always includes the first and last point.",
+    )
+    action_group.add_argument(
+        "--sample",
+        type=int,
+        help="Sample N evenly equally spaced geometries from .trj.",
     )
     action_group.add_argument(
         "--center",
@@ -469,6 +475,31 @@ def every(geoms, every_nth):
     return every_nth_geom
 
 
+def sample(geoms, samplen):
+    ngeoms = len(geoms)
+    max_ind = ngeoms - 1
+    assert (
+        0 < samplen <= ngeoms
+    ), f"Can't sample more geometries as there are in the given path.!"
+    float_indices = np.linspace(0, 1, num=samplen) * max_ind
+    indices = np.empty_like(float_indices, dtype=int)
+    prev_ind = None
+    for i, fi in enumerate(float_indices):
+        ind = round(fi)
+        if prev_ind is not None and ind == prev_ind:
+            ind += 1
+            # Is this condition ever hit?!
+            if ind > max_ind:
+                raise Exception(
+                    "Can't sample {samplen} distinct geometries! "
+                    "Please reduce the number."
+                )
+        indices[i] = ind
+    print(f"Sampling geometries with {indices=}.")
+    sampled_geoms = [geoms[i] for i in indices]
+    return sampled_geoms
+
+
 def center(geoms):
     for geom in geoms:
         geom.coords3d = geom.coords3d - geom.centroid
@@ -753,6 +784,10 @@ def run():
         to_dump = every(geoms, args.every)
         fn_base = "every"
         trj_infix = f"_{args.every}th"
+    elif args.sample:
+        to_dump = sample(geoms, args.sample)
+        fn_base = "sampled"
+        trj_infix = f"_{args.sample}"
     elif args.center:
         to_dump = center(geoms)
         fn_base = "centered"
