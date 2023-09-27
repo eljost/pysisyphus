@@ -725,9 +725,10 @@ class OverlapCalculator(Calculator):
         if ovlp_type is None:
             ovlp_type = self.ovlp_type
 
-        # Nothing to compare to if only one calculation was done yet.
+        # Nothing to compare to if only one calculation was done yet OR self.root
+        # is set to None, e.g., there is nothing to compare to.
         # Nonetheless, dump the first cycle to HDF5.
-        if self.stored_calculations < 2:
+        if (self.root is None) or (self.stored_calculations < 2):
             self.dump_overlap_data()
             self.log(
                 "Skipping overlap calculation in the first cycle "
@@ -747,6 +748,7 @@ class OverlapCalculator(Calculator):
             S_AO = self.get_sao_from_mo_coeffs(self.Ca_list[-1])
             self.log("Created S_AO to avoid its creation in WFOverlap.")
 
+        self.log(f"Calculating '{self.ovlp_type}' overlaps.")
         if ovlp_type == "wf":
             raise Exception("wf-overlaps are not yet implemented!")
             overlap_mats = self.get_wf_overlaps(S_AO=S_AO)
