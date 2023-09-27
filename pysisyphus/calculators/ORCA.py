@@ -820,8 +820,9 @@ class ORCA(OverlapCalculator):
             "calc": "energy",
         }
         results = self.run(inp, **kwargs)
-        if self.track:
-            self.store_overlap_data(atoms, coords)
+        results = self.store_and_track(
+            results, self.run_calculation, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def run_after(self, path):
