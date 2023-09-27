@@ -3,11 +3,12 @@
 #     guess for electronic structure calculations in Gaussian basis sets
 #     Lehtola, Visscher, Engel,  2020
 
+from enum import Enum
 import itertools as it
 from math import sqrt, log, pi
 from pathlib import Path
 import textwrap
-from typing import List, Literal
+from typing import List, Literal, Union
 
 
 import h5py
@@ -26,6 +27,8 @@ from pysisyphus.elem_data import (
 )
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.linalg import multi_component_sym_mat
+from pysisyphus.wavefunction import backend_python
+from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 from pysisyphus.wavefunction.helpers import (
     canonical_order,
     get_l,
@@ -33,19 +36,8 @@ from pysisyphus.wavefunction.helpers import (
     permut_for_order,
 )
 
-from pysisyphus.wavefunction.ints import (
-    cart_gto3d,
-    coulomb3d,
-    diag_quadrupole3d,
-    dipole3d,
-    kinetic3d,
-    ovlp3d,
-    quadrupole3d,
-    int2c2e3d,
-    int3c2e3d_sph,
-)
-
-from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
+# TODO: move this to python backend
+from pysisyphus.wavefunction.ints import cart_gto3d
 from pysisyphus.wavefunction.normalization import norm_cgto_lmn
 
 
@@ -196,6 +188,11 @@ class Shell:
 
 Ordering = Literal["native", "pysis"]
 
+IntegralBackend = Enum("IntegralBackend", ["PYTHON", ])
+BACKEND_MODULES = {
+    IntegralBackend.PYTHON: backend_python,
+}
+
 
 class Shells:
     sph_Ps = {l: np.eye(2 * l + 1) for l in range(max(L_MAX, L_AUX_MAX) + 1)}
@@ -207,12 +204,19 @@ class Shells:
         cache: bool = False,
         cache_path: str = "./cache",
         ordering: Ordering = "native",
+        backend: Union[str, IntegralBackend] = IntegralBackend.PYTHON,
     ):
         self.shells = shells
         self.ordering = ordering
         self.screen = screen
         self.cache = cache
         self.cache_path = Path(cache_path)
+        try:
+            self.backend = IntegralBackend(backend)
+        # ValueError is raised when backend is a string, not an Enum
+        except ValueError:
+            self.backend = IntegralBackend[backend.upper()]
+        self.backend_module = BACKEND_MODULES[self.backend]
         """
         'native' refers to the original ordering, as used in the QC program. The
         ordering will be reflected in the MO coefficient ordering. With 'native'
@@ -605,88 +609,38 @@ class Shells:
 
     def get_1el_ints_cart(
         self,
-        func_dict,
+        key,
         other=None,
         can_reorder=True,
-        components=0,
         screen_func=None,
         **kwargs,
     ):
-        shells_a = self
-        symmetric = other is None
-        shells_b = shells_a if symmetric else other
-        cart_bf_num_a = shells_a.cart_bf_num
-        cart_bf_num_b = shells_b.cart_bf_num
-
-        # components = 0 indicates, that a plain 2d matrix is desired.
-        if is_2d := (components == 0):
-            components = 1
-
-        # Preallocate empty matrices and directly assign the calculated values
-        integrals = np.zeros((components, cart_bf_num_a, cart_bf_num_b))
-
-        # Dummy screen function that always returns True
-        if (not self.screen) or (screen_func is None):
-            screen_func = lambda *args: True
-
-        for i, shell_a in enumerate(shells_a):
-            La, A, da, ax, a_ind, a_size = shell_a.as_tuple()
-            a_slice = slice(a_ind, a_ind + a_size)
-            # When we don't deal with symmetric matrices we have to iterate over
-            # all other basis functions in shells_b, so we reset i to 0.
-            if not symmetric:
-                i = 0
-            a_min_exp = ax.min()  # Minimum exponent used for screening
-            for shell_b in shells_b[i:]:
-                Lb, B, db, bx, b_ind, b_size = shell_b.as_tuple()
-                b_slice = slice(b_ind, b_ind + b_size)
-                # Screen shell pair
-                b_min_exp = bx.min()  # Minimum exponent used for screening
-                R_ab = np.linalg.norm(A - B)  # Shell center distance
-                if not screen_func(a_min_exp, b_min_exp, R_ab):
-                    continue
-                integrals[:, a_slice, b_slice] = func_dict[(La, Lb)](
-                    ax[:, None],
-                    da[:, None],
-                    A,
-                    bx[None, :],
-                    db[None, :],
-                    B,
-                    **kwargs,
-                )
-                # Fill up the lower tringular part of the matrix in the symmetric
-                # case.
-                # TODO: this may be (?) better done outside of this loop, after
-                # everything is calculated...
-                if symmetric:
-                    integrals[:, b_slice, a_slice] = np.transpose(
-                        integrals[:, a_slice, b_slice], axes=(0, 2, 1)
-                    )
-
-        # Return plain 2d array if components is set to 0, i.e., remove first axis.
-        if is_2d:
-            integrals = np.squeeze(integrals, axis=0)
-
-        # Reordering will be disabled, when spherical integrals are desired. They
-        # are reordered outside of this function. Reordering them already here
-        # would mess up the results after the 2nd reordering.
-        if can_reorder and self.ordering == "native":
-            integrals = np.einsum(
-                "ij,...jk,kl->...il",
-                self.P_cart,
-                integrals,
-                shells_b.P_cart.T,
-                optimize="greedy",
-            )
-        return integrals
+        # Dispatch to external backend
+        func_dict, components = self.backend_module.get_func_dict(key)
+        return self.backend_module.get_1el_ints_cart(
+            self,
+            func_dict,
+            shells_b=other,
+            can_reorder=can_reorder,
+            ordering=self.ordering,
+            components=components,
+            screen_func=screen_func,
+            screen=self.screen,
+            **kwargs,
+        )
 
     def get_1el_ints_sph(
-        self, int_func=None, int_matrix=None, other=None, **kwargs
+        # self, int_func=None, int_matrix=None, other=None, **kwargs
+        self,
+        key=None,
+        int_matrix=None,
+        other=None,
+        **kwargs,
     ) -> NDArray:
         if int_matrix is None:
             # Disallow reordering of the Cartesian integrals
             int_matrix = self.get_1el_ints_cart(
-                int_func, other=other, can_reorder=False, **kwargs
+                key, other=other, can_reorder=False, **kwargs
             )
 
         shells_b = self if other is None else other
@@ -698,59 +652,24 @@ class Shells:
         )
         return int_matrix_sph
 
+    #################################
+    # 2-center 2-electron integrals #
+    #################################
+
     def get_2c2el_ints_cart(self):
-        return self.get_1el_ints_cart(int2c2e3d.int2c2e3d)
+        # return self.get_1el_ints_cart(int2c2e3d.int2c2e3d)
+        return self.get_1el_ints_cart("int2c2e")
 
     def get_2c2el_ints_sph(self):
-        return self.get_1el_ints_sph(int2c2e3d.int2c2e3d)
+        return self.get_1el_ints_sph("int2c2e")
+
+    #################################
+    # 3-center 2-electron integrals #
+    #################################
 
     def get_3c2el_ints_cart(self, shells_aux):
-        """Cartesian 3-center-2-electron integrals.
-
-        DO NOT USE THESE INTEGRALS AS THEY ARE RETURNED FROM THIS METHOD.
-        These integrals utilize recurrence relations that are only valid,
-        when the resulting Cartesian integrals are transformed into spherical
-        integrals.
-
-        Contrary to the general function 'get_1el_ints_cart', that supports
-        different 'func_dict' arguments and cross-integrals between two
-        different shells this function is less general. This function is
-        restricted to '_3center2el_sph' and always uses 'self.shells' as well as
-        'self.shells_aux'.
-        """
-        shells_a = self
-        cart_bf_num_a = shells_a.cart_bf_num
-        cart_bf_num_aux = shells_aux.cart_bf_num
-
-        integrals = np.zeros((cart_bf_num_a, cart_bf_num_a, cart_bf_num_aux))
-        # func_dict = _3center2el3d_sph._3center2el3d_sph
-        func_dict = int3c2e3d_sph.int3c2e3d_sph
-
-        for i, shell_a in enumerate(shells_a):
-            La, A, da, ax, a_ind, a_size = shell_a.as_tuple()
-            a_slice = slice(a_ind, a_ind + a_size)
-            # As noted in the docstring, we iterate over pairs of self.shells (shells_a)
-            for shell_b in shells_a[i:]:
-                Lb, B, db, bx, b_ind, b_size = shell_b.as_tuple()
-                b_slice = slice(b_ind, b_ind + b_size)
-                for shell_c in shells_aux:
-                    Lc, C, dc, cx, c_ind, c_size = shell_c.as_tuple()
-                    c_slice = slice(c_ind, c_ind + c_size)
-                    integrals[a_slice, b_slice, c_slice] = func_dict[(La, Lb, Lc)](
-                        ax[:, None, None],
-                        da[:, None, None],
-                        A,
-                        bx[None, :, None],
-                        db[None, :, None],
-                        B,
-                        cx[None, None, :],
-                        dc[None, None, :],
-                        C,
-                    )
-                    integrals[b_slice, a_slice, c_slice] = np.transpose(
-                        integrals[a_slice, b_slice, c_slice], axes=(1, 0, 2)
-                    )
-        return integrals
+        # Dispatch to external backend
+        return self.backend_module.get_3c2el_ints_cart(self, shells_aux)
 
     def get_3c2el_ints_sph(self, shells_aux):
         int_matrix = self.get_3c2el_ints_cart(shells_aux)
@@ -802,12 +721,12 @@ class Shells:
     def get_S_cart(self, other=None) -> NDArray:
         # return self.get_1el_ints_cart(ovlp, other=other, screen_func=Shells.screen_S)
         return self.get_1el_ints_cart(
-            ovlp3d.ovlp3d, other=other, screen_func=Shells.screen_S
+            "int1e_ovlp", other=other, screen_func=Shells.screen_S
         )
 
     def get_S_sph(self, other=None) -> NDArray:
         return self.get_1el_ints_sph(
-            ovlp3d.ovlp3d, other=other, screen_func=Shells.screen_S
+            "int1e_ovlp", other=other, screen_func=Shells.screen_S
         )
 
     @property
@@ -822,12 +741,11 @@ class Shells:
     # Kinetic energy integrals #
     ############################
 
-    def get_T_cart(self, other=None) -> NDArray:
-        # return self.get_1el_ints_cart(kinetic, other=other)
-        return self.get_1el_ints_cart(kinetic3d.kinetic3d, other=other)
+    def get_T_cart(self) -> NDArray:
+        return self.get_1el_ints_cart("int1e_kin")
 
-    def get_T_sph(self, other=None) -> NDArray:
-        return self.get_1el_ints_sph(kinetic3d.kinetic3d, other=other)
+    def get_T_sph(self) -> NDArray:
+        return self.get_1el_ints_sph("int1e_kin")
 
     @property
     def T_cart(self):
@@ -870,7 +788,7 @@ class Shells:
         for R, Z in zip(coords3d, charges):
             # -Z = -1 * Z, because electrons have negative charge.
             V_nuc += -Z * self.get_1el_ints_cart(
-                coulomb3d.coulomb3d,
+                "int1e_rinv",
                 R=R,
                 **kwargs,
             )
@@ -878,7 +796,8 @@ class Shells:
 
     def get_V_sph(self, coords3d=None, charges=None) -> NDArray:
         V_cart = self.get_V_cart(coords3d, charges, can_reorder=False)
-        return self.get_1el_ints_sph(int_func=None, int_matrix=V_cart)
+        # Just convert to spherical basis functions
+        return self.get_1el_ints_sph(key=None, int_matrix=V_cart)
 
     @property
     def V_cart(self):
@@ -893,14 +812,10 @@ class Shells:
     ###########################
 
     def get_dipole_ints_cart(self, origin):
-        return self.get_1el_ints_cart(
-            dipole3d.dipole3d, components=3, R=origin, screen_func=Shells.screen_S
-        )
+        return self.get_1el_ints_cart("int1e_r", R=origin, screen_func=Shells.screen_S)
 
     def get_dipole_ints_sph(self, origin) -> NDArray:
-        return self.get_1el_ints_sph(
-            dipole3d.dipole3d, components=3, R=origin, screen_func=Shells.screen_S
-        )
+        return self.get_1el_ints_sph("int1e_r", R=origin, screen_func=Shells.screen_S)
 
     ##################################################
     # Quadrupole moment integrals, diagonal elements #
@@ -908,16 +823,14 @@ class Shells:
 
     def get_diag_quadrupole_ints_cart(self, origin):
         return self.get_1el_ints_cart(
-            diag_quadrupole3d.diag_quadrupole3d,
-            components=3,
+            "int1e_drr",
             R=origin,
             screen_func=Shells.screen_S,
         )
 
     def get_diag_quadrupole_ints_sph(self, origin):
         return self.get_1el_ints_sph(
-            diag_quadrupole3d.diag_quadrupole3d,
-            components=3,
+            "int1e_drr",
             R=origin,
             screen_func=Shells.screen_S,
         )
@@ -928,8 +841,7 @@ class Shells:
 
     def get_quadrupole_ints_cart(self, origin):
         ints_flat = self.get_1el_ints_cart(
-            quadrupole3d.quadrupole3d,
-            components=6,
+            "int1e_rr",
             R=origin,
             screen_func=Shells.screen_S,
         )
@@ -937,8 +849,7 @@ class Shells:
 
     def get_quadrupole_ints_sph(self, origin) -> NDArray:
         ints_flat = self.get_1el_ints_sph(
-            quadrupole3d.quadrupole3d,
-            components=6,
+            "int1e_rr",
             R=origin,
             screen_func=Shells.screen_S,
         )
