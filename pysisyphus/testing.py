@@ -22,14 +22,15 @@ _reason = "Calculator {} is not available."
 _using_cache = dict()
 # Python modules to be imported using importlib.import_module
 IMPORT_DICT = {
-    "dftd4": "dftd4",
-    "pyscf": "pyscf",
     "dalton": "daltonproject",
-    "qcengine": "qcengine",
-    "openmm": "simtk.openmm",
-    "thermoanalysis": "thermoanalysis",
-    "pyxtb": "xtb.interface",
+    "dftd4": "dftd4",
+    "numba": "numba",
     "obabel": "openbabel.openbabel",
+    "openmm": "simtk.openmm",
+    "pyscf": "pyscf",
+    "pyxtb": "xtb.interface",
+    "qcengine": "qcengine",
+    "thermoanalysis": "thermoanalysis",
 }
 
 
@@ -48,9 +49,8 @@ def module_available(calculator):
 
 
 class DummyMark:
-
     def __init__(self, available):
-        self.args = (available, )
+        self.args = (available,)
 
 
 def using(calculator, set_pytest_mark=True):
