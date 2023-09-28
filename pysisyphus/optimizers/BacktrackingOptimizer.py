@@ -2,19 +2,26 @@ import numpy as np
 
 from pysisyphus.optimizers.Optimizer import Optimizer
 
-class BacktrackingOptimizer(Optimizer):
 
-    def __init__(self, geometry, alpha, bt_force=5,
-                 dont_skip_after=2, bt_max_scale=4,
-                 bt_disable=False, **kwargs):
+class BacktrackingOptimizer(Optimizer):
+    def __init__(
+        self,
+        geometry,
+        alpha,
+        bt_force=5,
+        dont_skip_after=2,
+        bt_max_scale=4,
+        bt_disable=False,
+        **kwargs,
+    ):
         # Setting some default values
         self.alpha = alpha
-        assert(self.alpha > 0), "Alpha must be positive!"
+        assert self.alpha > 0, "Alpha must be positive!"
         self.bt_force = bt_force
         self.dont_skip_after = dont_skip_after
         self.bt_max_scale = bt_max_scale
         self.bt_disable = bt_disable
-        assert(self.dont_skip_after >= 1)
+        assert self.dont_skip_after >= 1
         self.cycles_since_backtrack = self.bt_force
         self.scale_factor = 0.5
 
@@ -41,23 +48,21 @@ class BacktrackingOptimizer(Optimizer):
     def reset(self):
         if self.alpha > self.alpha0:
             self.alpha = self.alpha0
-            self.log(f"Resetting! Current alpha is {self.alpha}. Lowering "
-                     f"it to {self.alpha0}.")
+            self.log(
+                f"Reset current alpha {self.alpha} to initial value {self.alpha0}."
+            )
 
-    def backtrack(self, cur_forces, prev_forces, reset_hessian=None):
+    def backtrack(self, cur_forces, prev_forces, reset_hessian=None, epsilon=1e-3):
         """Accelerated backtracking line search."""
         if self.bt_disable:
             return False
-
-        epsilon = 1e-3
 
         rms = lambda f: np.sqrt(np.mean(np.square(f)))
         cur_rms_force = rms(cur_forces)
         prev_rms_force = rms(prev_forces)
 
-        rms_diff = (
-            (cur_rms_force - prev_rms_force) /
-            np.abs(cur_rms_force + prev_rms_force)
+        rms_diff = (cur_rms_force - prev_rms_force) / np.abs(
+            cur_rms_force + prev_rms_force
         )
 
         # Skip tells us if we overshot
@@ -68,9 +73,9 @@ class BacktrackingOptimizer(Optimizer):
         # and hence smaller than epsilon, which is a positive number.
 
         # We went uphill, slow alpha
-        self.log(f"Backtracking: rms_diff = {rms_diff:.03f}")
+        self.log(f"Backtracking: rms_diff = {rms_diff:.03f}, {epsilon=:.4f}")
         if rms_diff > epsilon:
-            self.log(f"Scaling alpha with {self.scale_factor:.03f}")
+            self.log(f"rms_diff > epsilon! Scaling alpha with {self.scale_factor:.03f}")
             # self.alpha = max(self.alpha0*.5, self.alpha*self.scale_factor)
             self.alpha *= self.scale_factor
             skip = True
@@ -94,15 +99,20 @@ class BacktrackingOptimizer(Optimizer):
         # Avoid huge alphas
         if self.alpha > self.alpha_max:
             self.alpha = self.alpha_max
-            self.log("Didn't accelerate as alpha would become too large. "
-                     f"keeping it at {self.alpha}.")
+            self.log(
+                "Didn't accelerate as alpha would become too large. "
+                f"keeping it at {self.alpha}."
+            )
 
         # Don't skip if we already skipped the previous iterations to
         # avoid infinite skipping.
-        if ((len(self.skip_log) >= self.dont_skip_after)
-            and all(self.skip_log[-self.dont_skip_after:])):
-            self.log(f"already skipped last {self.dont_skip_after} "
-                      "iterations don't skip now.")
+        if (len(self.skip_log) >= self.dont_skip_after) and all(
+            self.skip_log[-self.dont_skip_after :]
+        ):
+            self.log(
+                f"already skipped last {self.dont_skip_after} "
+                "iterations don't skip now."
+            )
             skip = False
             if self.alpha > self.alpha0:
                 self.alpha = self.alpha0
