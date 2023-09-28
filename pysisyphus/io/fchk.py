@@ -51,7 +51,7 @@ def parse_fchk(text):
 
 
 @file_or_str(".fchk")
-def shells_from_fchk(text):
+def shells_from_fchk(text, **kwargs):
     data = parse_fchk(text)
 
     def to_arr(key, dtype):
@@ -116,7 +116,7 @@ def shells_from_fchk(text):
         if is_sp:
             # Explicitly create p-shell
             append_shell(p_coeffs, L=1)
-    shells = FCHKShells(_shells)
+    shells = FCHKShells(_shells, **kwargs)
     return shells
 
 
@@ -127,7 +127,10 @@ def atoms_from_data(data):
 
 
 @file_or_str(".fchk")
-def wavefunction_from_fchk(text):
+def wavefunction_from_fchk(text, **kwargs):
+    kwargs = kwargs.copy()
+    shell_kwargs = kwargs.pop("shell_kwargs", {})
+
     data = parse_fchk(text)
 
     charge = data["Charge"]
@@ -152,7 +155,7 @@ def wavefunction_from_fchk(text):
         C_b = C_a.copy()
         occ_b = occ_a
     C = np.stack((C_a, C_b))
-    shells = shells_from_fchk(text)
+    shells = shells_from_fchk(text, **shell_kwargs)
     return Wavefunction(
         atoms=atoms,
         coords=coords,
@@ -163,6 +166,7 @@ def wavefunction_from_fchk(text):
         C=C,
         bf_type=BFType.PURE_SPHERICAL,
         shells=shells,
+        **kwargs,
     )
 
 

@@ -33,9 +33,8 @@ def get_coord_factor(data):
     return factor
 
 
-def shells_from_json_dict(data):
+def shells_from_json_dict(data, **kwargs):
     atoms = data["Molecule"]["Atoms"]
-    # unit = data["Molecule"]["CoordinateUnits"]
     coord_factor = get_coord_factor(data)
 
     _shells = list()
@@ -57,17 +56,20 @@ def shells_from_json_dict(data):
                 atomic_num=atomic_num,
             )
             _shells.append(shell)
-    shells = ORCAShells(_shells)
+    shells = ORCAShells(_shells, **kwargs)
     return shells
 
 
 @file_or_str(".json")
-def shells_from_json(text):
+def shells_from_json(text, **kwargs):
     data = json.loads(text)
-    return shells_from_json_dict(data)
+    return shells_from_json_dict(data, **kwargs)
 
 
-def wavefunction_from_json_dict(data):
+def wavefunction_from_json_dict(data, **kwargs):
+    kwargs = kwargs.copy()
+    shell_kwargs = kwargs.pop("shell_kwargs", {})
+
     mol = data["Molecule"]
     coord_factor = get_coord_factor(data)
 
@@ -118,7 +120,7 @@ def wavefunction_from_json_dict(data):
         occ_a = occ_b = occ_a // 2
     C = np.stack((Ca, Cb))
 
-    shells = shells_from_json_dict(data)
+    shells = shells_from_json_dict(data, **shell_kwargs)
 
     return Wavefunction(
         atoms=atoms,
@@ -130,23 +132,24 @@ def wavefunction_from_json_dict(data):
         C=C,
         bf_type=BFType.PURE_SPHERICAL,
         shells=shells,
+        **kwargs,
     )
 
 
 @file_or_str(".json")
-def wavefunction_from_json(text):
+def wavefunction_from_json(text, **kwargs):
     data = json.loads(text)
-    return wavefunction_from_json_dict(data)
+    return wavefunction_from_json_dict(data, **kwargs)
 
 
 @file_or_str(".bson")
-def wavefunction_from_bson(text):
+def wavefunction_from_bson(text, **kwargs):
     data = bson.loads(text)
-    return wavefunction_from_json_dict(data)
+    return wavefunction_from_json_dict(data, **kwargs)
 
 
 @file_or_str(".molden", ".input")
-def wavefunction_from_orca_molden(text, charge=None, **wf_kwargs):
+def wavefunction_from_orca_molden(text, charge=None, **kwargs):
     return molden.wavefunction_from_molden(
-        text, charge=charge, orca_contr_renorm=True, **wf_kwargs
+        text, charge=charge, orca_contr_renorm=True, **kwargs
     )

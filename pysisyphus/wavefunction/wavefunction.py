@@ -10,6 +10,7 @@ import warnings
 import numpy as np
 from numpy.typing import NDArray
 
+from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.elem_data import nuc_charges_for_atoms, MASS_DICT
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
@@ -133,6 +134,8 @@ class Wavefunction:
 
     @staticmethod
     def from_file(fn, **kwargs):
+        if str(fn).startswith("lib:"):
+            fn = WF_LIB_DIR / fn[4:]
         path = Path(fn)
 
         if not path.exists():
@@ -146,10 +149,10 @@ class Wavefunction:
         from_funcs_for_str = (
             # ORCA
             ("Molden file created by orca_2mkl", Wavefunction.from_orca_molden),
-            # XTB detection, as done in Multiwfn. Doesn't appear too stable/specific ...
-            ("[Atoms] AU", Wavefunction.from_orca_molden),
             # AOMix, e.g. from Turbomole
             ("[AOMix Format", Wavefunction.from_aomix),
+            # XTB detection, as done in Multiwfn. Doesn't appear too stable/specific ...
+            ("[Atoms] AU", Wavefunction.from_orca_molden),
             # OpenMolcas; seems buggy. Maybe also related to messed up contr. coeffs?
             # ("[N_Atoms]", Wavefunction.from_molden),
             # # General Molden fallback
@@ -168,7 +171,7 @@ class Wavefunction:
                     break
             else:
                 raise Exception("Could not determine file format!")
-        return from_func(fn, **kwargs)
+        return from_func(path, **kwargs)
 
     @staticmethod
     @file_or_str(".molden", ".molden.input")
@@ -216,24 +219,21 @@ class Wavefunction:
 
         from pysisyphus.io.orca import wavefunction_from_orca_molden
 
-        wf = wavefunction_from_orca_molden(text, **kwargs)
-        return wf
+        return wavefunction_from_orca_molden(text, **kwargs)
 
     @staticmethod
     @file_or_str(".molden", ".molden.input")
     def from_fchk(text, **kwargs):
         from pysisyphus.io.fchk import wavefunction_from_fchk
 
-        wf = wavefunction_from_fchk(text, **kwargs)
-        return wf
+        return wavefunction_from_fchk(text, **kwargs)
 
     @staticmethod
     @file_or_str(".in")
     def from_aomix(text, **kwargs):
         from pysisyphus.io.aomix import wavefunction_from_aomix
 
-        wf = wavefunction_from_aomix(text, **kwargs)
-        return wf
+        return wavefunction_from_aomix(text, **kwargs)
 
     @property
     def C_occ(self):

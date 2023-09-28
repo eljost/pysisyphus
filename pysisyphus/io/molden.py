@@ -255,7 +255,7 @@ def parse_molden_atoms(data):
 
 
 @file_or_str(".molden", ".input")
-def shells_from_molden(text):
+def shells_from_molden(text, **kwargs):
     data = parse_molden(text, with_mos=False)
 
     atoms, coords, _ = parse_molden_atoms(data)
@@ -279,7 +279,7 @@ def shells_from_molden(text):
             )
             _shells.append(shell)
 
-    shells = MoldenShells(_shells)
+    shells = MoldenShells(_shells, **kwargs)
     return shells
 
 
@@ -312,7 +312,7 @@ def radial_integral(l, exponent):
 
 
 @file_or_str(".molden", ".input")
-def shells_from_orca_molden(text):
+def shells_from_orca_molden(text, **kwargs):
     molden_shells = shells_from_molden(text)
 
     dividers = {
@@ -347,7 +347,7 @@ def shells_from_orca_molden(text):
             atomic_num=shell.atomic_num,
         )
         _shells.append(fixed_shell)
-    shells = ORCAMoldenShells(_shells)
+    shells = ORCAMoldenShells(_shells, **kwargs)
     return shells
 
 
@@ -357,13 +357,16 @@ def wavefunction_from_molden(
     charge=None,
     orca_contr_renorm=False,
     xtb_nuc_charges: bool = False,
-    **wf_kwargs,
+    **kwargs,
 ):
     """Construct Wavefunction object from .molden file.
 
     orca_contr_renorm fixes contraction coefficients, as required for
     ORCA and XTB.
     """
+    kwargs = kwargs.copy()
+    shell_kwargs = kwargs.pop("shell_kwargs", {})
+
     data = parse_molden(text)
     atoms, coords, nuc_charges = parse_molden_atoms(data)
     nuc_charge = sum(nuc_charges)
@@ -371,7 +374,7 @@ def wavefunction_from_molden(
     # treated as ECP electrons.
     if xtb_nuc_charges:
         ecp_electrons = get_xtb_nuc_charges(atoms, as_ecp_electrons=True)
-        wf_kwargs["ecp_electrons"] = ecp_electrons
+        kwargs["ecp_electrons"] = ecp_electrons
         nuc_charge = nuc_charge - sum(ecp_electrons)
 
     spins = list()
@@ -437,7 +440,7 @@ def wavefunction_from_molden(
     else:
         shells_func = shells_from_molden
 
-    shells = shells_func(text)
+    shells = shells_func(text, **shell_kwargs)
 
     return Wavefunction(
         atoms=atoms,
@@ -449,5 +452,5 @@ def wavefunction_from_molden(
         C=C,
         bf_type=BFType.PURE_SPHERICAL,
         shells=shells,
-        **wf_kwargs,
+        **kwargs,
     )
