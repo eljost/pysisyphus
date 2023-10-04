@@ -13,7 +13,14 @@ from pysisyphus.testing import using
 @pytest.mark.skip_ci
 @using("orca")
 def test_dask():
-    with LocalCluster(n_workers=5, threads_per_worker=1) as cluster:
+    ncores = 5
+    with LocalCluster(
+        n_workers=1,
+        threads_per_worker=ncores,
+        resources={
+            "CPU": ncores,
+        },
+    ) as cluster:
         address = cluster.scheduler_address
 
         geoms = geom_loader("lib:ala_dipeptide_iso_b3lyp_631gd_10_images.trj")
@@ -35,16 +42,19 @@ def test_dask():
 @pytest.mark.parametrize("is_external", (True, False))
 @using("orca")
 def test_external(is_external):
-    n_workers = 5
+    ncores = 5
     cos_kwargs = {}
     if is_external:
-        cluster = LocalCluster(n_workers=n_workers, threads_per_worker=1)
+        cluster = LocalCluster(
+            n_workers=1,
+            threads_per_worker=ncores,
+            resources={
+                "CPU": ncores,
+            },
+        )
         cos_kwargs["scheduler"] = cluster.scheduler_address
     else:
         cos_kwargs["cluster"] = True
-        cos_kwargs["cluster_kwargs"] = {
-            "n_workers": 5,
-        }
 
     geoms = geom_loader("lib:ala_dipeptide_iso_b3lyp_631gd_10_images.trj")
 
