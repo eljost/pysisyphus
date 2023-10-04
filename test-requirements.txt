@@ -109,7 +109,7 @@ paramiko==3.2.0
     # via fabric
 partd==1.4.0
     # via dask
-pillow==9.5.0
+pillow==10.0.1
     # via matplotlib
 pint==0.22
     # via qcelemental
