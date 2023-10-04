@@ -16,6 +16,9 @@ from pysisyphus.helpers import align_coords, get_coords_diffs
 from pysisyphus.helpers_pure import hash_arr, rms
 from pysisyphus.modefollow import geom_lanczos
 
+# from pysisyphus.calculators.parallel import distributed_calculations
+from pysisyphus.cos.distributed import distributed_calculations
+
 
 class ClusterDummy:
     def close(self):
@@ -67,10 +70,20 @@ class ChainOfStates:
         self._cluster = bool(cluster) or (cluster_kwargs is not None)
         if cluster_kwargs is None:
             cluster_kwargs = dict()
+        # _cluster_kwargs = {
+        # # Only one calculation / worker
+        # "threads_per_worker": 1,
+        # "n_workers": psutil.cpu_count(logical=False),
+        # }
+        ncores = psutil.cpu_count(logical=False)
         _cluster_kwargs = {
-            # Only one calculation / worker
-            "threads_per_worker": 1,
-            "n_workers": psutil.cpu_count(logical=False),
+            # One worker per cluster with multiple threads
+            "threads_per_worker": ncores,
+            "n_workers": 1,
+            # Register available cores as resource
+            "resources": {
+                "CPU": ncores,
+            },
         }
         _cluster_kwargs.update(cluster_kwargs)
         self.cluster_kwargs = _cluster_kwargs
@@ -175,10 +188,6 @@ class ChainOfStates:
 
     def get_dask_local_cluster(self):
         cluster = LocalCluster(**self.cluster_kwargs)
-        dashboard = cluster.scheduler.services["dashboard"]
-        # address = dashboard.address
-        # port = dashboard.port
-        # link = f"http://{address}:{port}/status"
         link = cluster.dashboard_link
         self.log(f"Created {cluster}. Dashboard is available at {link}")
         return cluster
@@ -335,47 +344,18 @@ class ChainOfStates:
         image.calc_energy_and_forces()
         return image
 
-    def set_images(self, indices, images):
-        for ind, image in zip(indices, images):
-            self.images[ind] = image
-
     def concurrent_force_calcs(self, images_to_calculate, image_indices):
         client = self.get_dask_client()
         self.log(f"Doing concurrent force calculations using {client}")
-
-        # save original pals to restore them later
-        orig_pal = images_to_calculate[0].calculator.pal
-
-        # divide pal of each image by the number of workers available or available images
-        # number of workers available
-        n_workers = len(client.scheduler_info()["workers"])
-        # number of images to calculate
-        n_images = len(images_to_calculate)
-        # divide pal by the number of workers (or 1 if more workers)
-        new_pal = max(1, orig_pal // n_workers)
-
-        # split images to calculate into batches of n_workers and set pal of each image
-        n_batches = n_images // n_workers
-        for i in range(0, n_batches):
-            for j in range(i * n_workers, (i + 1) * n_workers):
-                images_to_calculate[j].calculator.pal = new_pal
-
-        # distribute the pals among the remaining images
-        n_last_batch = n_images % n_workers
-        if n_last_batch > 0:
-            # divide pal by the remainder
-            new_pal = max(1, orig_pal // n_last_batch)
-            for i in range(n_batches * n_workers, n_images):
-                images_to_calculate[i].calculator.pal = new_pal
-
-        # map images to workers
-        image_futures = client.map(self.par_image_calc, images_to_calculate)
-        # set images to the results of the calculations
-        self.set_images(image_indices, client.gather(image_futures))
-
-        # Restore original pals
-        for i in range(0, n_images):
-            self.images[i].calculator.pal = orig_pal
+        calculated_images = distributed_calculations(
+            client,
+            images_to_calculate,
+            self.par_image_calc,
+            logger=self.logger,
+        )
+        # Set calculated images
+        for ind, image in zip(image_indices, calculated_images):
+            self.images[ind] = image
         client.close()
 
     def calculate_forces(self):
