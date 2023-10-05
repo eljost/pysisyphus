@@ -23,10 +23,11 @@ from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.hessian_proj import get_hessian_projector, inertia_tensor
 from pysisyphus.elem_data import (
-    MASS_DICT,
-    ISOTOPE_DICT,
     ATOMIC_NUMBERS,
     COVALENT_RADII as CR,
+    INV_ATOMIC_NUMBERS,
+    ISOTOPE_DICT,
+    MASS_DICT,
     VDW_RADII as VDWR,
 )
 from pysisyphus.helpers_pure import (
@@ -55,6 +56,22 @@ from pysisyphus.intcoords.setup import BOND_FACTOR
 from pysisyphus.intcoords.setup_fast import find_bonds
 from pysisyphus.plot_ascii import plot_wrapper
 from pysisyphus.xyzloader import make_xyz_str
+
+
+def normalize_atoms(atoms) -> tuple[str]:
+    atomic_numbers = set(INV_ATOMIC_NUMBERS.keys())
+    _atoms = list()
+    for atom in atoms:
+        try:
+            atom_int = int(atom)
+            if atom_int in atomic_numbers:
+                atom = INV_ATOMIC_NUMBERS[atom_int]
+        except ValueError:
+            pass
+        # Was atom.capitalize() before ...
+        atom = atom.lower()
+        _atoms.append(atom)
+    return tuple(_atoms)
 
 
 class Geometry:
@@ -121,7 +138,7 @@ class Geometry:
         name : str, optional
             Verbose name of the geometry, e.g. methanal or water. Used for printing
         """
-        self.atoms = tuple([atom.capitalize() for atom in atoms])
+        self.atoms = normalize_atoms(atoms)
         # self._coords always holds cartesian coordinates.
         self._coords = np.array(coords, dtype=float).flatten()
         assert self._coords.size == (3 * len(self.atoms)), (
@@ -208,8 +225,10 @@ class Geometry:
 
     @property
     def sum_formula(self):
-        unique_atoms = sorted(set(self.atoms))
-        counter = Counter(self.atoms)
+        atoms = self.atoms
+        atoms = [atom.capitalize() for atom in atoms]
+        unique_atoms = sorted(set(atoms))
+        counter = Counter(atoms)
         atoms = list()
         num_strs = list()
 
