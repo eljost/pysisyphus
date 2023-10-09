@@ -11,7 +11,6 @@ from pysisyphus.xyzloader import make_xyz_str
 
 
 class OpenMolcas(Calculator):
-
     conf_key = "openmolcas"
     _set_plans = (
         ("rasorb", "inporb"),
@@ -25,16 +24,14 @@ class OpenMolcas(Calculator):
         rasscf=None,
         gateway=None,
         mcpdft=None,
+        rassi=None,
+        nprocs=1,
         track=True,
+        omp_var="OMP_NUM_THREADS",
         **kwargs,
     ):
         super(OpenMolcas, self).__init__(**kwargs)
 
-        assert self.pal == 1, (
-            "RI SA-CASSCF analytical gradients do not work correctly in "
-            "parallel (yet). Consider using pal=1 instead of the current "
-            f"pal={self.pal}!"
-        )
         env = os.environ
         if not ("MOLCAS" in env):
             warnings.warn(
@@ -54,9 +51,28 @@ class OpenMolcas(Calculator):
         if mcpdft is None:
             mcpdft = {}
         self.mcpdft = mcpdft
+        if rassi is None:
+            rassi = {}
+        self.rassi = rassi
+
+        self.nprocs = nprocs
+        self.omp_var = omp_var
+        assert self.nprocs == 1, (
+            "RI SA-CASSCF analytical gradients do not work correctly in "
+            "parallel (yet). Consider using nprocs=1 instead of the current "
+            f"nprocs={self.nprocs}!"
+        )
         self.track = track
 
-        self.to_keep = ("RasOrb", "out", "in", "JobIph", "rasscf.molden")
+        self.to_keep = (
+            "RasOrb",
+            "out",
+            "in",
+            "JobIph",
+            "rasscf.molden",
+            "rassi.h5",
+            "rasscf.h5",
+        )
         self.jobiph = ""
 
         self.inp_fn = "openmolcas.in"
@@ -75,7 +91,6 @@ class OpenMolcas(Calculator):
          {gateway_kwargs}
 
         &seward
-         doanalytical
 
         &rasscf
          charge
@@ -123,17 +138,24 @@ class OpenMolcas(Calculator):
 
     def build_rassi_str(self):
         # In the first iteration self.jobiph isn't set yet.
-        if (not self.track) or (self.calc_counter == 0):
-            return ""
+        if self.rassi:
+            rassi_keywords = self.build_str_from_dict(self.rassi)
+            rassi_str = f"""
+            &rassi
+             {rassi_keywords}
+            """
+        elif (not self.track) or (self.calc_counter == 0):
+            rassi_str = ""
         else:
             # JOB001 corresponds to the current iteration,
             # JOB002 to the previous iteration.
-            return f"""
+            rassi_str = f"""
             >> copy $Project.JobIph JOB001
             >> copy {self.jobiph} JOB002
             &rassi
              track
             """
+        return rassi_str
 
     def build_mcpdft_str(self):
         if not self.mcpdft:
@@ -144,7 +166,10 @@ class OpenMolcas(Calculator):
 
     def get_pal_env(self):
         env_copy = os.environ.copy()
-        env_copy["MOLCAS_NPROCS"] = str(self.pal)
+        env_copy["MOLCAS_NPROCS"] = str(self.nprocs)
+        env_copy[self.omp_var] = str(self.pal)
+        # Memory is per process
+        env_copy["MOLCAS_MEM"] = str(self.mem * self.pal)
 
         return env_copy
 
@@ -171,10 +196,12 @@ class OpenMolcas(Calculator):
         return inp
 
     def run_calculation(self, atoms, coords, calc_type="energy"):
+        path = self.prepare_path(use_in_run=True)
         inp = self.prepare_input(atoms, coords, calc_type)
         add_args = ("-clean", "-oe", self.out_fn)
         env_copy = self.get_pal_env()
-        env_copy["MOLCAS_PROJECT"] = f"{self.name}_{self.calc_counter}"
+        env_copy["MOLCAS_PROJECT"] = f"openmolcas"
+        env_copy["MOLCAS_WORKDIR"] = str(path)
         kwargs = {
             "calc": calc_type,
             "add_args": add_args,
@@ -201,21 +228,27 @@ class OpenMolcas(Calculator):
             root = self.get_root()
             energy = root_energies[root - 1]
         else:
-            # Energy of root for which gradient was computed
-            energy_regex = r"RASSCF state energy =\s*" + self.float_regex
-            energy = float(re.search(energy_regex, text).groups()[0])
             # All state average energies
             root_re = "RASSCF root number.+Total energy.+?" + self.float_regex
             matches = re.findall(root_re, text)
             root_energies = np.array(matches, dtype=float)
+
+            # Energy of root for which gradient was computed
+            energy_regex = r"RASSCF state energy =\s*" + self.float_regex
+            try:
+                energy = float(re.search(energy_regex, text).groups()[0])
+            # Fallback to first energy, when no gradient was computed
+            except AttributeError:
+                energy = root_energies[0]
         return energy, root_energies
 
     def parse_energy(self, path):
         with open(path / self.out_fn) as handle:
             text = handle.read()
-        energy, _ = self.parse_energies(text)
+        energy, all_energies = self.parse_energies(text)
         return {
             "energy": energy,
+            "all_energies": all_energies,
         }
 
     def parse_gradient(self, path):
