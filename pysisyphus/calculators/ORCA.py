@@ -403,7 +403,7 @@ def parse_orca_cis(cis_fn):
 
 
 @file_or_str(".log", ".out")
-def parse_orca_all_energies(text, triplets=False, do_tddft=False):
+def parse_orca_all_energies(text, triplets=False, do_tddft=False, do_ice=False):
     energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
     energy_mobj = re.search(energy_re, text)
     gs_energy = float(energy_mobj.groups()[0])
@@ -425,6 +425,10 @@ def parse_orca_all_energies(text, triplets=False, do_tddft=False):
         assert len(exc_ens) == len(set(states))
         all_energies = np.full(1 + len(exc_ens), gs_energy)
         all_energies[1:] += exc_ens
+    elif do_ice:
+        ice_re = re.compile(r"Final CIPSI Energy Root\s*(\d+):\s*([\d\.\-]+) EH")
+        ice_root_ens = ice_re.findall(text)
+        all_energies = [float(en) for _, en in ice_root_ens]
     all_energies = np.array(all_energies)
     return all_energies
 
@@ -598,12 +602,21 @@ class ORCA(OverlapCalculator):
             "maxcore not allowed! " "Use 'mem: n' in the 'calc' section instead!"
         )
 
+        td_blocks = (
+            "%tddft",
+            "%cis",
+        )
+        ice_blocks = ("%ice",)
         self.do_tddft = False
-        self.es_block_header = [key for key in ("tddft", "cis") if key in self.blocks]
+        self.es_block_header = [
+            key for key in (td_blocks + ice_blocks) if key in self.blocks
+        ]
+        # There can be at most on ES block at a time
         if self.es_block_header:
             assert len(self.es_block_header) == 1
             self.es_block_header = self.es_block_header[0]
-        if self.es_block_header:
+
+        if self.es_block_header in td_blocks:
             self.do_tddft = True
             try:
                 self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
@@ -615,11 +628,14 @@ class ORCA(OverlapCalculator):
                 )
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
+        elif self.es_block_header in ice_blocks:
+            self.do_ice = True
         self.triplets = bool(re.search(r"triplets\s+true", self.blocks))
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
         self.to_keep = (
-            "inp",
+            # *inp will match the input file and cipsi.inp in ICE-CI calculations
+            "*inp",
             f"out:{self.out_fn}",
             "gbw",
             "engrad",
@@ -630,6 +646,9 @@ class ORCA(OverlapCalculator):
             "pcgrad",
             "densities:orca.densities",
             "bson",
+            "cipsi.nat",
+            "cipsi.out",
+            "mp2nat",
         )
 
         self.orca_input = """!{keywords} {calc_type}
@@ -989,7 +1008,9 @@ class ORCA(OverlapCalculator):
         if triplets is None:
             triplets = self.triplets
 
-        return parse_orca_all_energies(text, triplets, self.do_tddft)
+        return parse_orca_all_energies(
+            text, triplets, do_tddft=self.do_tddft, do_ice=self.do_ice
+        )
 
     @staticmethod
     @file_or_str(".out", method=False)
