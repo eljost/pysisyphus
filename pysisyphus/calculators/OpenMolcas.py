@@ -13,7 +13,7 @@ from pysisyphus.xyzloader import make_xyz_str
 class OpenMolcas(Calculator):
     conf_key = "openmolcas"
     _set_plans = (
-        ("rasorb", "inporb"),
+        ("rasscf.h5", "inporb"),
         "jobiph",
     )
 
@@ -80,7 +80,7 @@ class OpenMolcas(Calculator):
         self.float_regex = r"([\d\.\-E]+)"
 
         self.openmolcas_input = """
-        >> copy {inporb}  $Project.RasOrb
+        >> copy {inporb}  $Project.rasscf.{inporb_ext}
         &gateway
          coord
           {xyz_str}
@@ -98,7 +98,7 @@ class OpenMolcas(Calculator):
          spin
           {mult}
          fileorb
-          $Project.RasOrb
+          $Project.rasscf.{inporb_ext}
          {rasscf_kwargs}
 
         {mcpdft}
@@ -181,8 +181,10 @@ class OpenMolcas(Calculator):
         self.log(f"using inporb: {self.inporb}")
         xyz_str = self.prepare_coords(atoms, coords)
         alaska_str = "&alaska\npnew" if calc_type == "grad" else ""
+        inporb_ext = Path(self.inporb).suffix[1:]  # Drop dot
         inp = self.openmolcas_input.format(
             inporb=self.inporb,
+            inporb_ext=inporb_ext,
             xyz_str=xyz_str,
             basis=self.basis,
             charge=self.charge,
