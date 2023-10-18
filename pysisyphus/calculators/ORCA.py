@@ -607,17 +607,19 @@ class ORCA(OverlapCalculator):
             "%cis",
         )
         ice_blocks = ("%ice",)
-        self.do_tddft = False
         self.es_block_header = [
             key for key in (td_blocks + ice_blocks) if key in self.blocks
         ]
+
+        self.do_tddft = self.es_block_header in td_blocks
+        self.do_ice = self.es_block_header in ice_blocks
         # There can be at most on ES block at a time
+        assert not (self.do_tddft and self.do_ice)
         if self.es_block_header:
             assert len(self.es_block_header) == 1
             self.es_block_header = self.es_block_header[0]
 
-        if self.es_block_header in td_blocks:
-            self.do_tddft = True
+        if self.do_tddft:
             try:
                 self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
                 warnings.warn(
@@ -628,8 +630,6 @@ class ORCA(OverlapCalculator):
                 )
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
-        elif self.es_block_header in ice_blocks:
-            self.do_ice = True
         self.triplets = bool(re.search(r"triplets\s+true", self.blocks))
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
