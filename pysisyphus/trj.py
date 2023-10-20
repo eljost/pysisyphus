@@ -1,7 +1,6 @@
 import argparse
 import copy
 import itertools as it
-import math
 from pathlib import Path
 import re
 import sys
@@ -13,15 +12,15 @@ import rmsd as rmsd
 from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
-from pysisyphus.intcoords.setup import get_fragments
-from pysisyphus.intcoords.PrimTypes import prim_for_human
 from pysisyphus.drivers.merge import hardsphere_merge as hardsphere_merge_driver
 from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
 from pysisyphus.helpers_pure import highlight_text
-from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
-from pysisyphus.intcoords.PrimTypes import normalize_prim_input, PrimMap
+from pysisyphus.intcoords.PrimTypes import prim_for_human, normalize_prim_input, PrimMap
+from pysisyphus.intcoords.setup import get_fragments
+from pysisyphus.interpolate import *
 from pysisyphus.io.pdb import geom_to_pdb_str
+import pysisyphus.linalg_affine3 as aff3
 from pysisyphus.stocastic.align import match_geom_atoms
 
 
@@ -721,6 +720,24 @@ def frag_sort(geoms):
         new_coords = geom.coords3d[new_indices]
         sorted_geoms.append(Geometry(new_atoms, new_coords))
     return sorted_geoms
+
+
+def align_coords3d_onto_vec(
+    coords3d: np.ndarray, ind1: int, ind2: int, ref_vec: np.ndarray
+) -> np.ndarray:
+    """Get rotated coords, so vec between ind1 and in2 is parallel to ref_vec.
+
+    Can be used to rotate given coordinates in a way, to make a selected
+    bond (distance) vector parallel to a selected axis."""
+    assert ind1 != ind2, "Indices must be different!"
+    coords3d = coords3d.copy()
+    coords1 = coords3d[ind1]
+    coords2 = coords3d[ind2]
+    vec1 = coords2 - coords1
+    vec1 = vec1 / np.linalg.norm(vec1)
+    R = aff3.rotation_matrix_for_vec_align(vec1, ref_vec)
+    coords3d_rot = coords3d @ R.T
+    return coords3d_rot
 
 
 def run():

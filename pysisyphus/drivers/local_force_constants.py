@@ -166,19 +166,19 @@ def local_mode_overlaps(hessian, L, local_modes):
 def stretch_constants(hessian: np.ndarray, L, typed_prims, B):
     force_constants, local_modes = get_local_force_constants(hessian, B, L)
     results = dict()
-    for tp, fc in zip(typed_prims, force_constants):
+    for i, (tp, fc) in enumerate(zip(typed_prims, force_constants)):
         fc_cgs = fc * AU2MDYNEPERANG
-        print(f"{tp}, k={fc_cgs:8.3f} mdyn/Å")
+        # print(f"{i:03d}: {tp}, k={fc_cgs:8.3f} mdyn/Å")
         results[tp] = fc
     return results
 
 
 @stretch_constants.register
-def _(geom: Geometry):
+def _(geom: Geometry, proj_gradient: bool = True, **kwargs):
     hessian = geom.cart_hessian
     # Please note, that we also project out the remaining gradient. This will only be
     # done at non-stationary points with non-vanishing gradient.
-    nus, *_, L = geom.get_normal_modes(proj_gradient=True)
+    nus, *_, L = geom.get_normal_modes(proj_gradient=proj_gradient)
     neg_mask = nus <= 0.0
     if neg_mask.sum() > 0:
         neg_nus = nus[neg_mask]
