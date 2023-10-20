@@ -95,3 +95,57 @@ def reflect_coords(R, coords3d):
     acoords3d = augment_vectors(coords3d)
     racoords3d = acoords3d @ R.T
     return racoords3d[:, :3]
+
+
+def rotation_matrix_for_vec_align(
+    vec1: np.ndarray, vec2: np.ndarray, thresh: float = 1e-8
+) -> np.ndarray:
+    """Returns rotation matrix that rotates vec1 onto vec2.
+
+    Code adapted from https://math.stackexchange.com/a/476311
+
+    (R @ vec1) and vec2 are parallel.
+
+    Parameters
+    ----------
+    vec1
+        3d vector.
+    vec2
+        3d vector.
+    thresh
+        Positive floating point for detecting parallel vectors.
+
+    Returns
+    -------
+    R
+        3x3 rotation matrix that rotates vec1 onto vec2.
+    """
+    assert thresh > 0.0
+    vec1_norm = np.linalg.norm(vec1)
+    assert vec1_norm >= thresh, f"Norm of vec1 is below {thresh=:.4e}!"
+    vec2_norm = np.linalg.norm(vec2)
+    assert vec2_norm >= thresh, f"Norm of vec2 is below {thresh=:.4e}!"
+    vec1 = vec1 / vec1_norm
+    vec2 = vec2 / vec2_norm
+    cosine = vec1.dot(vec2)
+    R = np.eye(3)
+    # Shortcuts when vectors are already
+    # ... parallel, dot product is ~ 1.0
+    if abs(cosine - 1.0) <= thresh:
+        return R
+    # ... antiparallel, dot product is ~ -1.0
+    elif abs(cosine + 1.0) <= thresh:
+        return -R
+
+    v1, v2, v3 = np.cross(vec1, vec2)
+    vx = np.array(
+        (
+            (0, -v3, v2),
+            (v3, 0, -v1),
+            (-v2, v1, 0),
+        )
+    )
+    quot = 1 / (1 + cosine)
+    # Identity matrix was already assigned before to R
+    R = R + vx + vx @ vx * quot
+    return R

@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from pysisyphus.helpers import geom_loader
@@ -45,3 +46,45 @@ def test_reflect_cycle():
 
     geom_ref = geom_loader("lib:affine3_output.xyz")
     assert geom.rmsd(geom_ref) == pytest.approx(0.0, abs=1e-8)
+
+
+def test_rotation_matrix_for_vec_align():
+    a = np.arange(3)
+    b = np.array((7, 8, 9))
+
+    def check(vec1, vec2):
+        R = aff3.rotation_matrix_for_vec_align(vec1, vec2)
+        vec1n = vec1 / np.linalg.norm(vec1)
+        vec2n = vec2 / np.linalg.norm(vec2)
+        np.testing.assert_allclose(R @ vec1n, vec2n)
+
+    # Normal case for different vectors
+    check(a, b)
+    # Vectors are already parallel
+    check(b, b)
+    check(3 * b, b)
+    # Vectors are already antiparallel
+    check(-b, b)
+
+
+a = np.arange(3)
+b = np.array((7, 8, 9))
+
+
+@pytest.mark.parametrize(
+    "vec1, vec2",
+    (
+        # Normal case for different vectors
+        (a, b),
+        # Vectors are already parallel
+        (b, b),
+        (3 * b, b),
+        # Vectors are already antiparallel
+        (-b, b),
+    ),
+)
+def test_param(vec1, vec2):
+    R = aff3.rotation_matrix_for_vec_align(vec1, vec2)
+    vec1n = vec1 / np.linalg.norm(vec1)
+    vec2n = vec2 / np.linalg.norm(vec2)
+    np.testing.assert_allclose(R @ vec1n, vec2n)
