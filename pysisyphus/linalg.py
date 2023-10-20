@@ -149,6 +149,34 @@ def norm3(a):
     return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
 
 
+def finite_difference_gradient(
+    coords: np.ndarray,
+    scalar_func: Callable,
+    step_size: float = 1e-2,
+):
+    """Stripped down version of finite_difference_hessian.
+
+    Both functions could probably be unified."""
+    size = coords.size
+    fd_gradient = np.zeros(size)
+    zero_step = np.zeros(size)
+
+    coeffs = ((-0.5, -1), (0.5, 1))
+    for i, _ in enumerate(coords):
+        step = zero_step.copy()
+        step[i] = step_size
+
+        def get_scalar(factor, displ):
+            displ_coords = coords + step * displ
+            scalar = scalar_func(displ_coords)
+            return factor * scalar
+
+        plus, minus = [get_scalar(factor, displ) for factor, displ in coeffs]
+        fd_gradient[i] = (plus + minus) / step_size
+
+    return fd_gradient
+
+
 def finite_difference_hessian(
     coords: NDArray[float],
     grad_func: Callable[[NDArray[float]], NDArray[float]],
@@ -299,6 +327,25 @@ def rmsd_grad(
 
     grad = (c3d - ref_c3d @ U) / (rmsd * atom_num)
     return rmsd, grad
+
+
+def fd_rmsd_hessian(
+    coords3d: NDArray[float], ref_coords3d: NDArray[float], step_size=1e-4,
+):
+
+    def grad_func(coords):
+        _, grad = rmsd_grad(coords.reshape(-1, 3), ref_coords3d)
+        return grad.flatten()
+
+    coords = coords3d.flatten()
+    fd_hessian = finite_difference_hessian(
+        coords,
+        grad_func,
+        step_size=step_size,
+        acc=4
+    )
+    rmsd, _ = rmsd_grad(coords3d, ref_coords3d)
+    return rmsd, fd_hessian
 
 
 def pivoted_cholesky(A: NDArray, tol: float = -1.0):
