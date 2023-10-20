@@ -1,9 +1,11 @@
 import abc
 from collections import namedtuple
 import logging
+from typing import Callable, Literal, Optional
 
 import numpy as np
 
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import log as hp_log
 
 
@@ -22,25 +24,70 @@ LineSearchResult = namedtuple(
     # defaults=( None, None, None, None,   None,    None),
 )
 
+LSCondition = Literal["armijo", "wolfe", "strong_wolfe"]
+
 
 class LineSearch(metaclass=abc.ABCMeta):
     def __init__(
         self,
-        p,
-        cond="armijo",
-        x0=None,
-        geometry=None,
-        f=None,
-        df=None,
-        alpha_init=None,
-        f0=None,
-        g0=None,
-        c1=0.1,
-        c2=0.9,
-        max_cycles=10,
-        alpha_min=1e-6,
-        logger=None,
+        p: np.ndarray,
+        cond: LSCondition = "armijo",
+        x0: Optional[np.ndarray] = None,
+        geometry: Optional[Geometry] = None,
+        f: Optional[Callable] = None,
+        df: Optional[Callable] = None,
+        alpha_init: Optional[float] = None,
+        f0: Optional[np.ndarray] = None,
+        g0: Optional[np.ndarray] = None,
+        c1: float = 0.1,
+        c2: float = 0.9,
+        max_cycles: int = 10,
+        alpha_min: float = 1e-6,
+        logger: Optional[logging.Logger] = None,
     ):
+        """Abstract line search base class.
+
+        Choice of variable names (p, c1, c2, ...) is adapted from
+        "Nocedal & Wright - Numerical Optimization".
+
+        Parameters
+        ----------
+        p
+            1d numpy array containing the step direction, along which the
+            line search is carried out.
+        cond
+            Condition to be fulfilled by the line search. Must be one of
+            'armijo', 'wolfe', 'strong_wolfe'.
+        x0
+            1d array of initial coordinates, from where the line search is started.
+        geometry
+            Optional geometry object.
+        f
+            Callable taking a 1d coordinate array as argument, returning
+            the corresponding energy.
+        df
+            Callable taking a 1d coordinate array as argument, returning
+            the corresponding 1d gradient array.
+        alpha_init
+            Optional, positive float. Initial step scaling value alpha.
+        f0
+            Optional, scalar energy value at x0.
+        g0
+            Optional, 1d gradient array at x0.
+        c1
+            Optional, positive float controlling the strictness of the selected
+            condition. Must fullfil 0.0 < c1 < c2 < 1.0
+        c2
+            Optional, positive float controlling the strictness of the selected
+            condition. Must fullfil 0.0 < c1 < c2 < 1.0. Depending on the condition
+            c2 may be unused.
+        max_cycles
+            Optional, positive integer controlling the maximum number of
+            cycles in one line search.
+        alpha_min
+            Optional, positive float value giving the smallest allowed alpha
+            value, before the line search is aborted.
+        """
         self.p = p
         self.geometry = geometry
         self.f = f
