@@ -1,5 +1,6 @@
 import abc
 from collections import namedtuple
+import functools
 import logging
 from typing import Callable, Literal, Optional
 
@@ -28,17 +29,17 @@ LSCondition = Literal["armijo", "wolfe", "strong_wolfe"]
 
 
 class LineSearch(metaclass=abc.ABCMeta):
+    @functools.singledispatchmethod
     def __init__(
         self,
         p: np.ndarray,
-        cond: LSCondition = "armijo",
-        x0: Optional[np.ndarray] = None,
-        geometry: Optional[Geometry] = None,
-        f: Optional[Callable] = None,
-        df: Optional[Callable] = None,
+        x0: np.ndarray,
+        f: Callable,
+        df: Callable,
         alpha_init: Optional[float] = None,
         f0: Optional[np.ndarray] = None,
         g0: Optional[np.ndarray] = None,
+        cond: LSCondition = "armijo",
         c1: float = 0.1,
         c2: float = 0.9,
         max_cycles: int = 10,
@@ -46,6 +47,15 @@ class LineSearch(metaclass=abc.ABCMeta):
         logger: Optional[logging.Logger] = None,
     ):
         """Abstract line search base class.
+
+        Derived line search classes can either be instantiated from a
+        search direction p and the other required arrays and callables,
+        OR from a geometry object, a search direction p and other kwargs.
+        In the latter case the appropriate arguments are derived automatically
+        from the geometry object. Please see the from_geom() method definition.
+        This is realized via functools.singledispatchmethod.
+
+        HagerZhang(p, x0, f, ...) or HagerZhang(geometry, p, ...)
 
         Choice of variable names (p, c1, c2, ...) is adapted from
         "Nocedal & Wright - Numerical Optimization".
@@ -55,13 +65,8 @@ class LineSearch(metaclass=abc.ABCMeta):
         p
             1d numpy array containing the step direction, along which the
             line search is carried out.
-        cond
-            Condition to be fulfilled by the line search. Must be one of
-            'armijo', 'wolfe', 'strong_wolfe'.
         x0
             1d array of initial coordinates, from where the line search is started.
-        geometry
-            Optional geometry object.
         f
             Callable taking a 1d coordinate array as argument, returning
             the corresponding energy.
@@ -74,6 +79,9 @@ class LineSearch(metaclass=abc.ABCMeta):
             Optional, scalar energy value at x0.
         g0
             Optional, 1d gradient array at x0.
+        cond
+            Condition to be fulfilled by the line search. Must be one of
+            'armijo', 'wolfe', 'strong_wolfe'.
         c1
             Optional, positive float controlling the strictness of the selected
             condition. Must fullfil 0.0 < c1 < c2 < 1.0
@@ -88,28 +96,12 @@ class LineSearch(metaclass=abc.ABCMeta):
             Optional, positive float value giving the smallest allowed alpha
             value, before the line search is aborted.
         """
+        # Mandatory arguments
         self.p = p
-        self.geometry = geometry
+        self.x0 = x0
         self.f = f
         self.df = df
-
-        geometry_supplied = self.geometry is not None
-        assert geometry_supplied or (
-            x0 is not None
-        ), "Supply either 'geometry' or the starting coordinates 'x0'!"
-        assert geometry_supplied or (self.f and self.df), (
-            "Supply either 'geometry' with a calculator or the two functions "
-            "'f' and 'df' to calculate the energy and its gradient!"
-        )
-
-        self.x0 = x0
-        if self.geometry:
-            self.f = lambda coords: self.geometry.get_energy_at(coords)
-            self.df = lambda coords: -self.geometry.get_energy_and_forces_at(coords)[
-                "forces"
-            ]
-            self.x0 = self.geometry.coords.copy()
-
+        # Optional arguments
         self.alpha_init = alpha_init
         self.f0 = f0
         self.g0 = g0
@@ -117,6 +109,7 @@ class LineSearch(metaclass=abc.ABCMeta):
         self.c2 = c2
         self.max_cycles = max_cycles
         self.alpha_min = alpha_min
+        self.logger = logger
 
         # Store calculated energies & gradients
         self.alpha_fs = {}
@@ -139,7 +132,24 @@ class LineSearch(metaclass=abc.ABCMeta):
         self.cond_func = self.cond_funcs[cond]
         self.can_eval_cond_func = self.can_eval_cond_funcs[cond]
 
-        self.logger = logger
+    @__init__.register
+    def from_geom(self, geom: Geometry, p: np.ndarray, **kwargs: dict):
+        """Construct LineSearch from geometry object and search direction."""
+        assert geom.calculator is not None, "Geometry must have a calculator!"
+
+        kwargs.update(
+            {
+                "x0": geom.coords.copy(),
+                "f": lambda coords: geom.get_energy_at(coords),
+                "df": lambda coords: -geom.get_energy_and_forces_at(coords)["forces"],
+            }
+        )
+        # Set initial energy and gradient if not already given and present at the geometry
+        if "f0" not in kwargs and geom.has_energy:
+            kwargs["f0"] = geom.energy
+        if "g0" not in kwargs and geom.has_forces:
+            kwargs["g0"] = geom.gradient
+        return self.__init__(p, **kwargs)
 
     def log(self, message, level=logging.DEBUG):
         hp_log(self.logger, message, level)

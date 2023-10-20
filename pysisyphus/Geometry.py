@@ -854,6 +854,10 @@ class Geometry:
         self._energy = energy
 
     @property
+    def has_energy(self):
+        return self._energy is not None
+
+    @property
     def all_energies(self):
         """Return energies of all states that were calculated.
 
@@ -863,6 +867,9 @@ class Geometry:
             results = self.calculator.get_energy(self.atoms, self._coords)
             self.set_results(results)
         return self._all_energies
+
+    def has_all_energies(self):
+        return self._all_energies is not None
 
     @all_energies.setter
     def all_energies(self, all_energies):
@@ -913,6 +920,10 @@ class Geometry:
         forces = np.array(forces)
         assert forces.shape == self.cart_coords.shape
         self._forces = forces
+
+    @property
+    def has_forces(self):
+        return self._forces is not None
 
     @property
     def cart_gradient(self):
@@ -981,6 +992,9 @@ class Geometry:
             int_gradient = self.gradient
             return self.internal.transform_hessian(hessian, int_gradient)
         return hessian
+
+    def has_hessian(self):
+        return self._hessian is not None
 
     # @hessian.setter
     # def hessian(self, hessian):
