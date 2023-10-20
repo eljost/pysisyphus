@@ -256,7 +256,8 @@ def get_optimal_bias(
     k_thresh: float = 1e-3,
     strict=True,
 ) -> Tuple[OptResult, float, bool]:
-    """Driver to determine optimal bias value k for RMSD restraint.
+    """Driver to determine optimal bias value k for RMSD restraint,
+    as required in single point hessian (SPH) calculations.
 
     Parameters
     ----------
