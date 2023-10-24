@@ -2,12 +2,7 @@
   description = "Python suite for optimization of stationary points on ground- and excited states PES and determination of reaction paths";
 
   inputs = {
-    nixpkgs.url = "nixpkgs/nixpkgs-unstable";
-
-    qchem = {
-      url = "github:markuskowa/nixos-qchem/master";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    qchem.url = "github:nix-qchem/nixos-qchem/master";
 
     flake-compat = {
       url = "github:edolstra/flake-compat";
@@ -25,11 +20,11 @@
     extra-subtituters = [ "https://pysisyphus.cachix.org" ];
   };
 
-  outputs = { self, nixpkgs, qchem, flake-utils, nixBundlers, ... }:
+  outputs = { self, qchem, flake-utils, nixBundlers, ... }:
     flake-utils.lib.eachSystem [ "x86_64-linux" ]
       (system:
         let
-          pkgs = import nixpkgs {
+          pkgs = import qchem.inputs.nixpkgs {
             inherit system;
             overlays = [ qchem.overlays.default (import ./nix/overlay.nix) ];
             config = {
@@ -103,11 +98,13 @@
           };
 
           formatter = pkgs.nixpkgs-fmt;
+
+          checks = {
+            inherit (self.packages."${system}") pysisyphus;
+          };
         }) // {
       overlays.default = import ./nix/overlay.nix;
 
-      hydraJobs."x86_64-linux" = {
-        inherit (self.packages."x86_64-linux") pysisyphus pysisyphusFull;
-      };
+      hydraJobs = self.checks;
     };
 }
