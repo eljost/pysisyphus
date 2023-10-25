@@ -1,7 +1,16 @@
 import argparse
 import sys
+import warnings
 
 import numpy as np
+
+try:
+    from openbabel import pybel
+
+    HAS_OPENBABEL = True
+except ModuleNotFoundError:
+    HAS_OPENBABEL = False
+
 
 from pysisyphus.calculators import Composite, HardSphere, TransTorque
 from pysisyphus.calculators.OBabel import OBabel
@@ -187,7 +196,6 @@ def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False
 
 def merge_opt(union, bond_diff, ff="uff"):
     """Fragment merging along given bond by forcefield optimization."""
-    from openbabel import pybel
 
     geom1 = union.get_fragments("geom1")
     freeze = list(range(len(geom1.atoms)))
@@ -244,7 +252,9 @@ def align_on_subset(geom1, union, del1=None):
     return aligned, subset, rest
 
 
-def merge_with_frozen_geom(frozen_geom, lig_geom, make_bonds, frozen_del, lig_del):
+def merge_with_frozen_geom(
+    frozen_geom, lig_geom, make_bonds, frozen_del, lig_del, ff="uff"
+):
     union, make_bonds_cor = merge_geoms(
         frozen_geom, lig_geom, frozen_del, lig_del, make_bonds
     )
@@ -256,7 +266,11 @@ def merge_with_frozen_geom(frozen_geom, lig_geom, make_bonds, frozen_del, lig_de
         print(f"\t{i:02d} {from_atom}{from_}-{to_atom}{to_}")
 
     union = prepare_merge(union, make_bonds_cor, dump=True)
-    opt_union = merge_opt(union, make_bonds_cor, ff="uff")
+    if HAS_OPENBABEL:
+        opt_union = merge_opt(union, make_bonds_cor, ff=ff)
+    else:
+        warnings.warn(f"Could not import openbabel. Skipping '{ff}' optimization.")
+        opt_union = union
     # aligned: whole system
     # subset: frozen_geom - deleted atoms
     # rest: aligned ligand
@@ -312,7 +326,6 @@ def run_merge():
     aligned, subset, rest = merge_with_frozen_geom(
         frozen_geom, lig_geom, make_bonds, prot_del, lig_del
     )
-    aligned.jmol()
 
     trj_fn = "merged.trj"
     trj = "\n".join([geom.as_xyz() for geom in (aligned, rest)])

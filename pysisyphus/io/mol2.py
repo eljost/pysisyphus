@@ -74,9 +74,13 @@ def parse_mol2(text):
     parser.ignore(pp.helpers.python_style_comment)
 
     result = parser.parseString(text)
+    return result
+
+
+@file_or_str(".mol2")
+def atoms_coords_from_mol2(text):
+    result = parse_mol2(text)
     as_dict = result.asDict()
-    # from pprint import pprint as pp_
-    # pp_(as_dict)
 
     atoms = list()
     coords = np.zeros((as_dict["num_atoms"], 3), dtype=float)
@@ -94,34 +98,49 @@ def parse_mol2(text):
 
 
 def geom_from_mol2(text, **kwargs):
-    atoms, coords = parse_mol2(text)
+    atoms, coords = atoms_coords_from_mol2(text)
     geom = Geometry(atoms, coords, **kwargs)
     return geom
 
 
-MOL2_TPL = jinja2.Template(
-    """
-@<TRIPOS>MOLECULE
+MOL2_DICT_TPL = jinja2.Template(
+    """@<TRIPOS>MOLECULE
 {{ mol_name }}
-{{ num_atoms }}
+{{ num_atoms }} {{ num_bonds}} {{ num_subst }} {{ num_feat }} {{ num_sets }}
 {{ mol_type }}
 {{ charge_type }}
+
+@<TRIPOS>ATOM
+{%- for ax in atoms_xyzs %}
+{{ ax["atom_id"] }} {{ ax["atom_name"] }} {{ render_xyz(ax["xyz"])}} {{ ax["atom_type"] }}  {{ ax["subst_id"] }} {{ ax["subst_name"] }} {{ ax["charge"]}}
+{%- endfor %}
+@<TRIPOS>BOND
+{%- for bond in bonds %}
+ {{ bond["bond_id"] }} {{ bond["origin_atom_id"]}} {{ bond["target_atom_id"] }} {{ bond["bond_type"]}}
+{%- endfor %}
 
 """
 )
 
 
-def atoms_coords_to_mol2_string(
-    atoms, coords, mol_name, mol_type="SMALL", charge_type="NO_CHARGES", bonds=None
-):
-    if bonds is not None:
-        num_bonds = len(bonds)
-    num_atoms = len(atoms)
+def render_xyz(xyz):
+    fmt = " >12.6f"
+    return " ".join(map(lambda _: f"{_:{fmt}}", xyz))
 
-    rendered = MOL2_TPL.render(
-        mol_name=mol_name,
-        num_atoms=num_atoms,
-        mol_type=mol_type,
-        charge_type=charge_type,
+
+def dict_to_mol2_string(as_dict):
+    d = as_dict
+    rendered = MOL2_DICT_TPL.render(
+        mol_name=d["mol_name"],
+        num_bonds=d["num_bonds"],
+        num_subst=d["num_subst"],
+        num_feat=d["num_feat"],
+        num_sets=d["num_sets"],
+        num_atoms=d["num_atoms"],
+        mol_type=d["mol_type"],
+        charge_type=d["charge_type"],
+        atoms_xyzs=d["atoms_xyzs"],
+        bonds=d["bond"],
+        render_xyz=render_xyz,
     )
-    print(rendered)
+    return rendered
