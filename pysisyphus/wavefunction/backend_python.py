@@ -19,13 +19,13 @@ _FUNC_DATA = {
     "int1e_rr": (quadrupole3d.quadrupole3d, 6),
     "int1e_drr": (diag_quadrupole3d.diag_quadrupole3d, 3),
     "int1e_kin": (kinetic3d.kinetic3d, 0),
-    "int1e_rinv": (coulomb3d.coulomb3d, 0),
+    "int1e_nuc": (coulomb3d.coulomb3d, 0),
     "int2c2e": (int2c2e3d.int2c2e3d, 0),
     "int3c2e_sph": (int3c2e3d_sph.int3c2e3d_sph, 3),
 }
 
 
-def get_func_dict(key):
+def get_func_data(key):
     # func_dict, components
     return _FUNC_DATA[key]
 
@@ -39,6 +39,7 @@ def get_1el_ints_cart(
     components=0,
     screen=False,
     screen_func=None,
+    R=np.zeros(3),
     **kwargs,
 ):
     symmetric = shells_b is None
@@ -80,6 +81,7 @@ def get_1el_ints_cart(
                 bx[None, :],
                 db[None, :],
                 B,
+                # R=R,
                 **kwargs,
             )
             # Fill up the lower tringular part of the matrix in the symmetric

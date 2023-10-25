@@ -9,6 +9,7 @@ from math import sqrt, log, pi
 from pathlib import Path
 import textwrap
 from typing import List, Literal, Union
+import warnings
 
 
 import h5py
@@ -27,6 +28,8 @@ from pysisyphus.elem_data import (
 )
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.linalg import multi_component_sym_mat
+
+# Numba backend is not imported here, as the compilation times kill any joy
 from pysisyphus.wavefunction import backend_python
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 from pysisyphus.wavefunction.helpers import (
@@ -38,6 +41,7 @@ from pysisyphus.wavefunction.helpers import (
 
 # TODO: move this to python backend
 from pysisyphus.wavefunction.ints import cart_gto3d
+from pysisyphus.wavefunction.molcas_shells import get_molcas_P_sph
 from pysisyphus.wavefunction.normalization import norm_cgto_lmn
 
 
@@ -188,8 +192,8 @@ class Shell:
 
 Ordering = Literal["native", "pysis"]
 
-IntegralBackend = Enum("IntegralBackend", ["PYTHON", ])
-BACKEND_MODULES = {
+IntegralBackend = Enum("IntegralBackend", ["PYTHON", "NUMBA"])
+_backend_modules = {
     IntegralBackend.PYTHON: backend_python,
 }
 
@@ -211,12 +215,30 @@ class Shells:
         self.screen = screen
         self.cache = cache
         self.cache_path = Path(cache_path)
+
+        # Start integral backend setup
         try:
             self.backend = IntegralBackend(backend)
         # ValueError is raised when backend is a string, not an Enum
         except ValueError:
             self.backend = IntegralBackend[backend.upper()]
-        self.backend_module = BACKEND_MODULES[self.backend]
+        # Only ever import (and compile) numba backend when actually requested,
+        # as the compilation/setup takes quite some time.
+        if self.backend == IntegralBackend.NUMBA:
+            try:
+                from pysisyphus.wavefunction import backend_numba
+
+                _backend_modules[IntegralBackend.NUMBA] = backend_numba
+            except ModuleNotFoundError:
+                print(
+                    "numba integral backend was requested but numba package is "
+                    "not installed!.\n Falling back to python backend."
+                )
+                self.backend = IntegralBackend.PYTHON
+        # Pick the actual backend module
+        self.backend_module = _backend_modules[self.backend]
+        # End integral backend setup
+
         """
         'native' refers to the original ordering, as used in the QC program. The
         ordering will be reflected in the MO coefficient ordering. With 'native'
@@ -256,6 +278,8 @@ class Shells:
             self.get_1el_ints_cart = self.memory.cache(self.get_1el_ints_cart)
             self.get_1el_ints_sph = self.memory.cache(self.get_1el_ints_sph)
 
+        self._numba_shells = None
+
     def __len__(self):
         return len(self.shells)
 
@@ -270,6 +294,22 @@ class Shells:
         # Ls, centers, contr_coeffs, exponents, indices, sizes
         # indices and sizes are for Cartesian basis functions!
         return zip(*[shell.as_tuple() for shell in self.shells])
+
+    @property
+    def numba_shells(self):
+        if self._numba_shells is None:
+            self._numba_shells = self.as_numba_shells()
+        return self._numba_shells
+
+    def as_numba_shells(self):
+        import numba
+
+        from pysisyphus.wavefunction import backend_numba
+
+        numba_shells = numba.typed.List()
+        for shell in self:
+            numba_shells.append(backend_numba.NumbaShell(*shell.as_tuple()))
+        return numba_shells
 
     @property
     def cart_size(self):
@@ -616,9 +656,15 @@ class Shells:
         **kwargs,
     ):
         # Dispatch to external backend
-        func_dict, components = self.backend_module.get_func_dict(key)
+        func_dict, components = self.backend_module.get_func_data(key)
+        if self.backend == IntegralBackend.PYTHON:
+            shells = self
+        elif self.backend == IntegralBackend.NUMBA:
+            shells = self.numba_shells
+            if other is not None:
+                other = other.numba_shells
         return self.backend_module.get_1el_ints_cart(
-            self,
+            shells,
             func_dict,
             shells_b=other,
             can_reorder=can_reorder,
@@ -630,7 +676,6 @@ class Shells:
         )
 
     def get_1el_ints_sph(
-        # self, int_func=None, int_matrix=None, other=None, **kwargs
         self,
         key=None,
         int_matrix=None,
@@ -657,7 +702,6 @@ class Shells:
     #################################
 
     def get_2c2el_ints_cart(self):
-        # return self.get_1el_ints_cart(int2c2e3d.int2c2e3d)
         return self.get_1el_ints_cart("int2c2e")
 
     def get_2c2el_ints_sph(self):
@@ -719,7 +763,6 @@ class Shells:
         )
 
     def get_S_cart(self, other=None) -> NDArray:
-        # return self.get_1el_ints_cart(ovlp, other=other, screen_func=Shells.screen_S)
         return self.get_1el_ints_cart(
             "int1e_ovlp", other=other, screen_func=Shells.screen_S
         )
@@ -788,7 +831,7 @@ class Shells:
         for R, Z in zip(coords3d, charges):
             # -Z = -1 * Z, because electrons have negative charge.
             V_nuc += -Z * self.get_1el_ints_cart(
-                "int1e_rinv",
+                "int1e_nuc",
                 R=R,
                 **kwargs,
             )
@@ -1101,3 +1144,33 @@ class PySCFShells(Shells):
             [1, 0, 0, 0, 0, 0, 0, 0, 0],
         ],
     }
+
+
+class MolcasShells(Shells):
+    """Override some properties to accomodate the insane basis function
+    ordering in OpenMolcas."""
+
+    # Store spherical permutation matrix once constructed.
+    _P_sph = None
+
+    @property
+    def cart2sph_coeffs(self):
+        """Cartesian-to-spherical coefficients w/ Cartesian p-Orbitals."""
+        cart2sph = cart2sph_coeffs(self.l_max)
+        # Disable conversion of p-orbitals, as they stay usually Cartesian in OpenMolcas.
+        cart2sph[1] = np.eye(3)
+        C = sp.linalg.block_diag(*[cart2sph[shell.L] for shell in self.shells])
+        return C
+
+    @property
+    def P_sph(self):
+        """Permutation matrix for mixed spherical/Cartesian basis functions.
+
+        Cartesian p-functions are assumed! Molcas stores the basis functions not
+        per shell, but (more or less) per center and angular momentum. So for a
+        given center the order would be something like this
+        1s, 2s, 3s, 1px, 2px, 1py, 2py, 1pz, 2pz, etc.
+        """
+        if self._P_sph is None:
+            self._P_sph = get_molcas_P_sph(self.shells, nbfs=self.sph_size)
+        return self._P_sph
