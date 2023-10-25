@@ -194,7 +194,7 @@ def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False
     return union
 
 
-def merge_opt(union, bond_diff, ff="uff"):
+def merge_opt(union, bond_diff, ff="mmff94"):
     """Fragment merging along given bond by forcefield optimization."""
 
     geom1 = union.get_fragments("geom1")
@@ -253,7 +253,7 @@ def align_on_subset(geom1, union, del1=None):
 
 
 def merge_with_frozen_geom(
-    frozen_geom, lig_geom, make_bonds, frozen_del, lig_del, ff="uff"
+    frozen_geom, lig_geom, make_bonds, frozen_del, lig_del, ff="mmff94"
 ):
     union, make_bonds_cor = merge_geoms(
         frozen_geom, lig_geom, frozen_del, lig_del, make_bonds

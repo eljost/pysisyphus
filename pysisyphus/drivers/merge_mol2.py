@@ -1,6 +1,7 @@
 import argparse
 import copy
 import sys
+from typing import Optional
 import warnings
 
 import numpy as np
@@ -11,7 +12,27 @@ from pysisyphus.helpers import geom_loader
 from pysisyphus.io.mol2 import parse_mol2, dict_to_mol2_string
 
 
-def delete_atoms_bonds_inplace(as_dict, inds, atom_offset=0, bond_offset=0):
+def delete_atoms_bonds_inplace(
+    as_dict: dict, inds: list[int], atom_offset: int = 0, bond_offset: int = 0
+) -> dict[int, int]:
+    """Update atom_ids and bonds in mol2-dict inplace.
+
+    Parameter
+    ---------
+    as_dict
+        mol2-dict as returned from pysisyphus.io.mol2.parse_mol2.
+    inds
+        List of positive integer atom_ids to be deleted.
+    atom_offset
+        Integer >= 0. atom_ids will be shifted by this number.
+    bond_offset
+        Integer >= 0. bond_ids will be shifted by this number.
+
+    Returns
+    -------
+    atom_map
+        Dictionary w/ origin atom_ids as keys and updated atom_ids as values.
+    """
     to_del = set(inds)
 
     # Atoms
@@ -49,9 +70,11 @@ def delete_atoms_bonds_inplace(as_dict, inds, atom_offset=0, bond_offset=0):
         bond["target_atom_id"] = atom_map[bond["target_atom_id"]]
         bonds_mod.append(bond)
     as_dict["bond"] = bonds_mod
+    return atom_map
 
 
-def update_coords_inplace(as_dict, coords3d):
+def update_coords_inplace(as_dict: dict, coords3d: np.ndarray):
+    """Update xyz coordinates in mol2 dict inplace."""
     axs = as_dict["atoms_xyzs"]
     assert len(axs) == len(coords3d)
 
@@ -59,7 +82,22 @@ def update_coords_inplace(as_dict, coords3d):
         ax["xyz"] = (nc3d * BOHR2ANG).tolist()
 
 
-def merge_mol2_dicts(as_dict1, as_dict2):
+def merge_mol2_dicts(as_dict1: dict, as_dict2: dict) -> dict:
+    """Merge two mol2 dict. Atoms, bonds and associated numbers will be updated.
+
+    Parameters
+    ----------
+    as_dict1
+        Mol2 dict.
+    as_dict2
+        Mo2 dict.
+
+    Returns
+    -------
+    merged
+        Merged mol2 dict. Most entries will be copied from as_dict1 but atoms,
+        bonds and associated counts will be updated with entries from as_dict2.
+    """
     # Atoms
     atoms_xyzs = as_dict1["atoms_xyzs"] + as_dict2["atoms_xyzs"]
 
@@ -79,26 +117,36 @@ def merge_mol2_dicts(as_dict1, as_dict2):
     return merged
 
 
-def merge_mol2(fn1, fn2, del1=None, del2=None, bonds=None, new_coords=None):
+def merge_mol2(
+    fn1: str,
+    fn2: str,
+    del1: Optional[list[int]] = None,
+    del2: Optional[list[int]] = None,
+    bonds: Optional[list[int]] = None,
+    new_coords: Optional[np.ndarray] = None,
+) -> dict:
     if del1 is None:
         del1 = list()
     if del2 is None:
         del2 = list()
     if bonds is None:
         bonds = list()
-    m1 = parse_mol2(fn1)
-    dict1 = m1.as_dict()
+    bonds = np.array(bonds, dtype=int).reshape(-1, 2)
 
-    m2 = parse_mol2(fn2)
-    dict2 = m2.as_dict()
+    dict1 = parse_mol2(fn1).as_dict()
+    # dict1 = m1.as_dict()
+    dict2 = parse_mol2(fn2).as_dict()
+    # dict2 = m2.as_dict()
 
     # Delete atoms and assoicated bonds
-    delete_atoms_bonds_inplace(dict1, del1)
+    atom_map1 = delete_atoms_bonds_inplace(dict1, del1)
     print()
     natoms1 = len(dict1["atoms_xyzs"])
     nbonds1 = len(dict1["bond"])
 
-    delete_atoms_bonds_inplace(dict2, del2, atom_offset=natoms1, bond_offset=nbonds1)
+    atom_map2 = delete_atoms_bonds_inplace(
+        dict2, del2, atom_offset=natoms1, bond_offset=nbonds1
+    )
 
     if new_coords is not None:
         coords1 = new_coords[:natoms1]
@@ -111,10 +159,10 @@ def merge_mol2(fn1, fn2, del1=None, del2=None, bonds=None, new_coords=None):
     # Add new bond(s) to dict2
     bond2 = dict2["bond"]
     nbonds2 = len(bond2)
-    nnewbonds = len(bonds) // 2
-    for i in range(nnewbonds):
-        origin = bonds[2 * i]
-        target = bonds[2 * i + 1] + natoms1
+    for from_, to_ in bonds:
+        # Use updated atom_ids for the bond target/origin
+        origin = atom_map1[from_]
+        target = atom_map2[to_]
         nbonds2 += 1
         bond_type = 1
         new_bond = {
@@ -132,7 +180,9 @@ def merge_mol2(fn1, fn2, del1=None, del2=None, bonds=None, new_coords=None):
 
 
 def parse_args(args):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Merge two mol2 files w/ atom deletion & bond formation."
+    )
 
     parser.add_argument("fn1", help="Name of frozen mol2 file.")
     parser.add_argument("fn2", help="Name of mobile mol2 file.")
@@ -167,8 +217,8 @@ def run():
 
     fn1 = args.fn1
     fn2 = args.fn2
-    del1 = args.del1
-    del2 = args.del2
+    del1 = list(sorted(args.del1))
+    del2 = list(sorted(args.del2))
     bonds = args.bonds
     out = args.out
 
