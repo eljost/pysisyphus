@@ -43,7 +43,7 @@ def delete_atoms_bonds_inplace(
     for ax in axs:
         if ax["atom_id"] in to_del:
             warnings.warn("Charges were not updated after deleting atoms!")
-            print("Deleted", ax)
+            print(f"Deleted atom {ax['atom_name']} with atom_id {ax['atom_id']}")
             atoms_del += 1
             continue
         atom_id = ax["atom_id"]
@@ -61,7 +61,7 @@ def delete_atoms_bonds_inplace(
     for bond in as_dict["bond"]:
         bond_inds = set((bond["origin_atom_id"], bond["target_atom_id"]))
         if bond_inds & to_del:
-            print("Deleted", bond)
+            print(f"Deleted bond with bond_id {bond['bond_id']}")
             bonds_del += 1
             continue
         bond["bond_id"] -= bonds_del
@@ -117,6 +117,21 @@ def merge_mol2_dicts(as_dict1: dict, as_dict2: dict) -> dict:
     return merged
 
 
+def get_substs(as_dict: dict) -> tuple[set[tuple[int, str]], int]:
+    keys = set()
+    for ax in as_dict["atoms_xyzs"]:
+        key = (ax["subst_id"], ax["subst_name"])
+        keys.add(key)
+    subst_ids, _ = zip(*keys)
+    max_subst_id = max(subst_ids)
+    return keys, max_subst_id
+
+
+def update_subst_ids_inplace(as_dict: dict, offset: int):
+    for ax in as_dict["atoms_xyzs"]:
+        ax["subst_id"] += offset
+
+
 def merge_mol2(
     fn1: str,
     fn2: str,
@@ -139,14 +154,21 @@ def merge_mol2(
     # dict2 = m2.as_dict()
 
     # Delete atoms and assoicated bonds
+    print(f"Deleting atoms/bonds from '{fn1}'")
     atom_map1 = delete_atoms_bonds_inplace(dict1, del1)
     print()
     natoms1 = len(dict1["atoms_xyzs"])
     nbonds1 = len(dict1["bond"])
 
+    print(f"Deleting atoms/bonds from '{fn2}'")
     atom_map2 = delete_atoms_bonds_inplace(
         dict2, del2, atom_offset=natoms1, bond_offset=nbonds1
     )
+
+    # Determine highest subst_id in dict1, to shift subst_ids in dict2
+    _, max_subst_id1 = get_substs(dict1)
+    print(f"Highest subst_id in '{fn1}' is {max_subst_id1}.")
+    update_subst_ids_inplace(dict2, max_subst_id1)
 
     if new_coords is not None:
         coords1 = new_coords[:natoms1]
