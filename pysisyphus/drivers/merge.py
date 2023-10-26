@@ -16,9 +16,10 @@ from pysisyphus.calculators import Composite, HardSphere, TransTorque
 from pysisyphus.calculators.OBabel import OBabel
 from pysisyphus.drivers.precon_pos_rot import (
     center_fragments,
-    get_steps_to_active_atom_mean,
     form_A,
+    get_steps_to_active_atom_mean,
     get_which_frag,
+    rotate_inplace,
     SteepestDescent,
 )
 from pysisyphus.Geometry import Geometry
@@ -147,12 +148,13 @@ def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False
         union.coords3d[frag] += alpha
     keep("Shifted centroids to active atoms")
 
-    def get_hs(kappa=1.0):
+    def get_hs(kappa=1.0, **kwargs):
         return HardSphere(
             union,
             frag_lists,
             permutations=True,
             kappa=kappa,
+            **kwargs,
         )
 
     union.set_calculator(get_hs(1.0))
@@ -165,8 +167,11 @@ def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False
     opt.run()
     keep("Initial hardsphere optimization")
 
+    # Corresponds to A.3 S_3 initial orientation of molecules in Habershon paper
+    rotate_inplace(frag_lists, union, bond_diff)
+
     keys_calcs = {
-        "hs": get_hs(10.0),
+        "hs": get_hs(750.0, radii_offset=5.0),
         "tt": TransTorque(frag_lists, frag_lists, AR, AR, kappa=2, do_trans=True),
     }
     comp = Composite("hs + tt", keys_calcs, remove_translation=True)

@@ -9,7 +9,15 @@ from pysisyphus.helpers_pure import get_molecular_radius
 
 
 class HardSphere:
-    def __init__(self, geom, frags, kappa=1.0, permutations=False, frag_radii=None):
+    def __init__(
+        self,
+        geom,
+        frags,
+        kappa=1.0,
+        permutations=False,
+        frag_radii=None,
+        radii_offset=0.9452,
+    ):
         """Intra-Image Inter-Molecular Hard-Sphere force.
 
         See A.2. in [1], Eq. (A1).
@@ -28,7 +36,10 @@ class HardSphere:
         frag_c3ds = [c3d[frag] for frag in self.frags]
         self.frag_radii = frag_radii
         if self.frag_radii is None:
-            self.frag_radii = [get_molecular_radius(frag_c3d) for frag_c3d in frag_c3ds]
+            self.frag_radii = [
+                get_molecular_radius(frag_c3d, min_offset=radii_offset)
+                for frag_c3d in frag_c3ds
+            ]
         self.radii_sums = np.array(
             [self.frag_radii[i] + self.frag_radii[j] for i, j in self.pair_inds]
         )

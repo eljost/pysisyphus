@@ -64,7 +64,7 @@ class SteepestDescent:
             results = self.geom.get_energy_and_forces_at(coords)
             forces = results["forces"]
             norm = np.linalg.norm(forces)
-            rms = np.sqrt(np.mean(forces ** 2))
+            rms = np.sqrt(np.mean(forces**2))
             if rms <= self.rms_force:
                 print(f"Converged in cycle {i}. Breaking.")
                 break
@@ -226,6 +226,42 @@ def form_A(frags, which_frag, formed_bonds):
         A.setdefault(key, list()).append(m)
         A.setdefault(key[::-1], list()).append(n)
     return A
+
+
+def rotate_inplace(frags, union, bonds):
+    # which_frag could also be calculated outside of this function
+    which_frag = dict()
+    for i, frag in enumerate(frags):
+        for ind in frag:
+            which_frag[ind] = i
+    AR = form_A(frags, which_frag, bonds)
+
+    def form_G(A):
+        G = dict()
+        for (m, n), inds in A.items():
+            G.setdefault(m, set())
+            G[m] |= set(inds)
+
+        for k, v in G.items():
+            G[k] = list(v)
+            assert len(v) > 0
+        return G
+
+    GR = form_G(AR)
+
+    # Rotate R fragments
+    alphas = get_steps_to_active_atom_mean(frags, frags, AR, union.coords3d)
+    gammas = np.zeros_like(alphas)
+    for m, rfrag in enumerate(frags):
+        Gm = GR[m]
+        gammas[m] = union.coords3d[Gm].mean(axis=0)
+    r_means = np.array([union.coords3d[frag].mean(axis=0) for frag in frags])
+
+    for m, rfrag in enumerate(frags):
+        gm = r_means[m]
+        rot_mat = get_rot_mat(gammas[m] - gm, alphas[m] - gm)
+        rot_coords = (union.coords3d[rfrag] - gm).dot(rot_mat)
+        union.coords3d[rfrag] = rot_coords + gm - rot_coords.mean(axis=0)
 
 
 CONFIG = {
@@ -414,6 +450,7 @@ def precon_pos_rot(reactants, products, prefix=None, config=CONFIG):
     print(highlight_text("Stage 3, Initial Orientation"))
 
     # Rotate R fragments
+    # TODO: refactor to use rotate_inplace()
     if len(rfrag_lists) > 1:
         alphas = get_steps_to_active_atom_mean(
             rfrag_lists, rfrag_lists, AR, runion.coords3d
