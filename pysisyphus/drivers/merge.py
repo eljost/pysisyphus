@@ -41,27 +41,32 @@ def merge_geoms(geom1, geom2, geom1_del=None, geom2_del=None, make_bonds=None):
     if geom2_del is None:
         geom2_del = list()
 
-    atom_num1 = len(geom1.atoms)
+    geom1_del = np.array(geom1_del)
     geom2_del = np.array(geom2_del)
-    # Offset by number of atoms in geom1
+    # Update indices of atoms to be deleted in geom2 by the number of atoms in geom1,
+    # as geom1 and geom2 will be merged.
+    # If we want to delete atom 0 and atom 1 in geom2 and geom1 comprises 10 atoms,
+    # then the updated indices in geom2 will be 0 + 10 = 10 and 1 + 10 = 11 in the
+    # merged geometry.
+    atom_num1 = len(geom1.atoms)
     geom2_del += atom_num1
+
+    ndel1 = len(geom1_del)
 
     if make_bonds is not None:
         make_bonds = np.array(make_bonds, dtype=int)
         geom1_bond_inds, geom2_bond_inds = make_bonds.T
         geom2_bond_inds += atom_num1
-
         # Correct original bond indices given in make_bonds
-        to_del = np.concatenate((geom1_del, geom2_del))
-        # If geom1_del/geom2_del are empty then there is nothing to do
-        for to_del in geom1_del:
-            mask = geom1_bond_inds > to_del
-            geom1_bond_inds[mask] -= 1
-            geom2_bond_inds -= 1
-
-        for to_del in geom2_del:
-            mask = geom2_bond_inds > to_del
-            geom2_bond_inds[mask] -= 1
+        #
+        # Determe how many atoms to be deleted lie below the atom(s) that are
+        # used to form new bonds.
+        corr1 = (geom1_del < geom1_bond_inds[:, None]).sum(axis=1)
+        geom1_bond_inds -= corr1
+        # Correct bond indices in geom2 by the number of deleted atoms in geom1.
+        geom2_bond_inds -= ndel1
+        corr2 = (geom2_del < geom2_bond_inds[:, None]).sum(axis=1)
+        geom2_bond_inds -= corr2
         make_bonds_cor = np.stack((geom1_bond_inds, geom2_bond_inds), axis=1)
     else:
         make_bonds_cor = None
