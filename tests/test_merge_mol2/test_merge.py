@@ -43,10 +43,10 @@ from pysisyphus.drivers.merge_mol2 import merge_mol2_geoms
         ),
     ),
 )
-def test_merge_mol2_geoms(fn1, fn2, bonds, del1, del2, ref):
-    merged = merge_mol2_geoms(fn1, fn2, bonds, del1, del2)
+def test_merge_mol2_geoms(fn1, fn2, bonds, del1, del2, ref, this_dir):
+    merged = merge_mol2_geoms(this_dir / fn1, this_dir / fn2, bonds, del1, del2)
 
     with tempfile.NamedTemporaryFile(mode="w") as handle:
         handle.write(merged)
         handle.flush()
-        assert filecmp.cmp(handle.name, ref)
+        assert filecmp.cmp(handle.name, this_dir / ref)
