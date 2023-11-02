@@ -201,52 +201,51 @@ def merge_mol2(
     return merged
 
 
-def parse_args(args):
-    parser = argparse.ArgumentParser(
-        description="Merge two mol2 files w/ atom deletion & bond formation."
-    )
+def merge_mol2_geoms(
+    fn1: str,
+    fn2: str,
+    bonds: list[list[int]],
+    del1: Optional[list[int]] = None,
+    del2: Optional[list[int]] = None,
+    out_fn: Optional[str] = None,
+) -> str:
+    """Merge geometries in mol2 files w/ atom deletion and bond formation.
 
-    parser.add_argument("fn1", help="Name of frozen mol2 file.")
-    parser.add_argument("fn2", help="Name of mobile mol2 file.")
-    parser.add_argument(
-        "--del1",
-        nargs="+",
-        type=int,
-        help="1-based atom ids to be deleted from fn1.",
-    )
-    parser.add_argument(
-        "--del2",
-        nargs="+",
-        type=int,
-        help="1-based atom ids to be deleted from fn2.",
-    )
-    parser.add_argument(
-        "--bonds",
-        nargs="+",
-        type=int,
-        help="1-based atom id pairs (id1, id2), between which bonds are formed."
-        "The original atom ids must be used, regardless of any atom deletions.",
-    )
-    parser.add_argument(
-        "--out", default="merged.mol2", help="Name of the final mol2 file."
-    )
+    Parameters
+    ----------
+    fn1
+        Filename of first mol2 file.
+    fn2
+        Filename of second mol2 file.
+    bonds
+        List of list of two integers. Each integer pair comprises an atom
+        of fn1 and an atom of fn2. Original indices/atom_ids must be used,
+        regardless of any atom deletion.
+    del1
+        Optional list of integers of atoms to be deleted. As for 'bonds',
+        atom_ids as appearing in the mol2 file must used.
+    del2
+        Same as 'del1' but deletes atoms in 'fn2'.
+    out_fn
+        Optional str. If given the resulting mol2-file will be written to
+        this filename.
 
-    return parser.parse_args(args)
+    Returns
+    -------
+    rendered
+        Merged mol2 w/ deleted atoms.
+    """
 
+    if del1 is None:
+        del1 = []
+    if del2 is None:
+        del2 = []
 
-def run():
-    args = parse_args(sys.argv[1:])
-
-    fn1 = args.fn1
-    fn2 = args.fn2
-    del1 = list(sorted(args.del1))
-    del2 = list(sorted(args.del2))
-    bonds = args.bonds
-    out = args.out
-
+    del1 = list(sorted(del1))
+    del2 = list(sorted(del2))
     # Make 0-based indices from 1-based mol2 indices
-    del10 = [d - 1 for d in args.del1]
-    del20 = [d - 1 for d in args.del2]
+    del10 = [d - 1 for d in del1]
+    del20 = [d - 1 for d in del2]
     bonds0 = np.array(bonds, dtype=int).reshape(-1, 2) - 1
 
     geom1 = geom_loader(fn1)
@@ -264,9 +263,59 @@ def run():
     rendered = dict_to_mol2_string(merged)
 
     # Dump merged mol2 dict to file
-    with open(out, "w") as handle:
-        handle.write(rendered)
-    print(f"Dumped merged geometry to '{out}'.")
+    if out_fn is not None:
+        with open(out_fn, "w") as handle:
+            handle.write(rendered)
+        print(f"Dumped merged geometry to '{out_fn}'.")
+    return rendered
+
+
+def parse_args(args):
+    parser = argparse.ArgumentParser(
+        description="Merge two mol2 files w/ atom deletion & bond formation."
+    )
+
+    parser.add_argument("fn1", help="Name of frozen mol2 file.")
+    parser.add_argument("fn2", help="Name of mobile mol2 file.")
+    parser.add_argument(
+        "--bonds",
+        nargs="+",
+        type=int,
+        help="1-based atom id pairs (id1, id2), between which bonds are formed."
+        "The original atom ids must be used, regardless of any atom deletions.",
+    )
+    parser.add_argument(
+        "--del1",
+        nargs="+",
+        type=int,
+        help="1-based atom ids to be deleted from fn1.",
+    )
+    parser.add_argument(
+        "--del2",
+        nargs="+",
+        type=int,
+        help="1-based atom ids to be deleted from fn2.",
+    )
+    parser.add_argument(
+        "--out", default="merged.mol2", help="Name of the final mol2 file."
+    )
+
+    return parser.parse_args(args)
+
+
+def run() -> str:
+    """CLI frontend for merge_mol2_geoms()."""
+
+    args = parse_args(sys.argv[1:])
+
+    fn1 = args.fn1
+    fn2 = args.fn2
+    bonds = args.bonds
+    del1 = args.del1
+    del2 = args.del2
+    out = args.out
+
+    return merge_mol2_geoms(fn1, fn2, bonds, del1, del2, out)
 
 
 if __name__ == "__main__":

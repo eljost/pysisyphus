@@ -26,6 +26,7 @@ from pysisyphus.init_logging import init_logging
 from pysisyphus.intcoords.setup import get_fragments, get_bond_sets
 from pysisyphus.xyzloader import coords_to_trj, make_xyz_str
 
+
 init_logging()
 
 
@@ -39,16 +40,20 @@ class SteepestDescent:
         rms_force_only=True,
         prefix=None,
         dump=False,
-        print_mod=25,
+        dump_every=100,
+        print_every=100,
     ):
         self.geom = geom
         self.max_cycles = max_cycles
         self.max_step = max_step
         self.rms_force = rms_force
         self.rms_force_only = rms_force_only
+        if prefix is not None:
+            prefix = f"{prefix}_"
         self.prefix = prefix
         self.dump = dump
-        self.print_mod = print_mod
+        self.dump_every = dump_every
+        self.print_every = print_every
 
         self.all_coords = np.zeros((max_cycles, self.geom.coords.size))
 
@@ -59,30 +64,34 @@ class SteepestDescent:
 
         for i in range(self.max_cycles):
             self.all_coords[i] = coords.copy()
-            if self.dump and (i % 100) == 0:
+            if self.dump and (i % self.dump_every) == 0:
                 to_dump.append(self.geom.as_xyz(cart_coords=coords))
             results = self.geom.get_energy_and_forces_at(coords)
             forces = results["forces"]
             norm = np.linalg.norm(forces)
             rms = np.sqrt(np.mean(forces**2))
-            if rms <= self.rms_force:
-                print(f"Converged in cycle {i}. Breaking.")
-                break
 
             if i > 0:
                 beta = forces.dot(forces) / self.prev_forces.dot(self.prev_forces)
                 step = forces + beta * self.prev_step
             else:
                 step = forces.copy()
-            # step = forces.copy()
 
             step *= min(self.max_step / np.abs(step).max(), 1)
-            if i % self.print_mod == 0:
+            converged = rms <= self.rms_force
+
+            # Append step information when not yet converged
+            if i % self.print_every == 0 or converged:
                 print(
-                    f"{i:03d}: |forces|={norm: >12.6f} "
+                    f"{i:05d}: |forces|={norm: >12.6f} "
                     f"rms(forces)={np.sqrt(np.mean(forces**2)): >12.6f} "
-                    f"|step|={np.linalg.norm(step): >12.6f}"
+                    f" |step|={np.linalg.norm(step): >12.6f}"
                 )
+
+            if converged:
+                print(f"Converged in cycle {i}. Breaking.")
+                break
+
             coords += step
 
             self.prev_step = step
@@ -91,7 +100,7 @@ class SteepestDescent:
         self.all_coords = self.all_coords[: i + 1]
 
         if to_dump:
-            with open("optimization.trj", "w") as handle:
+            with open(f"{self.prefix}optimization.trj", "w") as handle:
                 handle.write("\n".join(to_dump))
 
 

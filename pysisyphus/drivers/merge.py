@@ -12,7 +12,12 @@ except ModuleNotFoundError:
     HAS_OPENBABEL = False
 
 
-from pysisyphus.calculators import Composite, HardSphere, TransTorque
+from pysisyphus.calculators import (
+    Composite,
+    HardSphere,
+    PWHardSphere,
+    TransTorque,
+)
 from pysisyphus.calculators.OBabel import OBabel
 from pysisyphus.drivers.precon_pos_rot import (
     center_fragments,
@@ -114,12 +119,13 @@ def hardsphere_merge(geom1, geom2):
 
 
 def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False):
-    if del1:
+    bond_diff = np.array(bond_diff, dtype=int)
+    if del1 is not None:
         geom1 = geom1.del_atoms(del1)
-    if del2:
-        geom2 = geom2.del_atoms(del2)
 
     if geom2:
+        if del2 is not None:
+            geom2 = geom2.del_atoms(del2)
         union = geom1 + geom2
         atom_num = len(geom1.atoms)
         # Set up lists containing the atom indices for the two fragments
@@ -174,14 +180,19 @@ def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False
 
     # Corresponds to A.3 S_3 initial orientation of molecules in Habershon paper
     rotate_inplace(frag_lists, union, bond_diff)
+    keep("Rotated after inital hardsphere optimization")
 
+    sub_frags = [bond_diff[:, 0].tolist(), bond_diff[:, 1].tolist()]
     keys_calcs = {
-        "hs": get_hs(750.0, radii_offset=5.0),
+        "hs": get_hs(100.0, radii_offset=3.0),
         "tt": TransTorque(frag_lists, frag_lists, AR, AR, kappa=2, do_trans=True),
+        "pwhs": PWHardSphere(union, frag_lists, sub_frags=sub_frags, kappa=10.0),
     }
-    comp = Composite("hs + tt", keys_calcs, remove_translation=True)
-
+    # comp = Composite("hs + tt", keys_calcs, remove_translation=True)
+    # comp = Composite("hs", keys_calcs, remove_translation=True)
+    comp = Composite("hs + tt + pwhs", keys_calcs, remove_translation=True)
     union.set_calculator(comp)
+
     max_cycles = 15_000
     max_dist = 50
     max_step = max_dist / max_cycles
@@ -223,7 +234,7 @@ def merge_opt(union, bond_diff, ff="mmff94"):
     funion.freeze_atoms = freeze
     funion.set_calculator(calc)
 
-    opt = LBFGS(funion, max_cycles=1000, max_step=0.5, dump=False)
+    opt = LBFGS(funion, max_cycles=1000, max_step=0.5, dump=False, print_every=25)
     opt.run()
 
     return funion
@@ -270,7 +281,7 @@ def merge_with_frozen_geom(
     )
     atoms = union.atoms
     print("Docking to form bonds:")
-    for i, (from_, to_) in enumerate(make_bonds):
+    for i, (from_, to_) in enumerate(make_bonds_cor):
         from_atom = atoms[from_]
         to_atom = atoms[to_]
         print(f"\t{i:02d} {from_atom}{from_}-{to_atom}{to_}")

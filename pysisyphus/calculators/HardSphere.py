@@ -74,3 +74,85 @@ class HardSphere:
         f3d -= f3d.mean(axis=0)[None, :]
 
         return {"energy": 1, "forces": forces}
+
+
+class PWHardSphere:
+    def __init__(
+        self,
+        geom,
+        frags,
+        sub_frags,
+        kappa=1.0,
+    ):
+        """Inter-Molecular Hard-Sphere force.
+
+        Hardsphere forces are only applied between certain atoms of given fragments,
+        but the whole fragment is moved.
+        """
+        self.frags = frags
+        self.sub_frags = sub_frags
+        self.kappa = kappa
+
+        self.frag_num = len(self.frags)
+        self.frag_sizes = np.array([len(frag) for frag in self.frags])
+        self.pair_inds = np.array(list(it.combinations(range(self.frag_num), 2)))
+        cov_rads = geom.covalent_radii
+        self.pair_atom_inds = list()
+        self.pair_cov_radii = list()
+        for m, n in self.pair_inds:
+            frag_m = self.sub_frags[m]
+            frag_n = self.sub_frags[n]
+            painds = list()
+            pcr = list()
+            for fm in frag_m:
+                crm = cov_rads[m]
+                for fn in frag_n:
+                    crn = cov_rads[m]
+                    crsum = crm + crn
+                    painds.append([fm, fn])
+                    pcr.append(crsum)
+            self.pair_atom_inds.append(painds)
+            self.pair_cov_radii.append(pcr)
+
+    def get_forces(self, atoms, coords, kappa=None):
+        if kappa is None:
+            kappa = self.kappa
+        c3d = coords.reshape(-1, 3)
+
+        # Break early when only 1 fragment is present
+        if len(self.pair_inds) == 0:
+            return {"energy": 1, "forces": np.zeros_like(coords)}
+
+        forces = np.zeros_like(c3d)
+        centroids = np.array([c3d[frag].mean(axis=0) for frag in self.frags])
+        N = 1.0
+        N_inv = 1 / N
+        for (m, n), pai, pcr in zip(
+            self.pair_inds, self.pair_atom_inds, self.pair_cov_radii
+        ):
+            frag_m = self.frags[m]
+            frag_n = self.frags[n]
+            centr_m = centroids[m]
+            centr_n = centroids[n]
+            dcentr = centr_m - centr_n
+            force_dir = dcentr / np.linalg.norm(dcentr)
+            for (am, an), crmn in zip(pai, pcr):
+                amn = c3d[am] - c3d[an]
+                distmn = np.linalg.norm(amn)
+                diff = distmn - crmn
+                fact = int(distmn < crmn)
+                if not fact:
+                    continue
+                # Magnitude of applied force
+                magn = kappa * N_inv * diff
+                force = magn * force_dir
+                # Distribute half of the force onto each fragment
+                force_2 = force / 2
+                # The signs below depend on the difference centr_m - centr_n above
+                forces[frag_m] -= force_2
+                forces[frag_n] += force_2
+
+        forces -= forces.mean(axis=0)[None, :]
+        forces = forces.flatten()
+
+        return {"energy": 1, "forces": forces}
