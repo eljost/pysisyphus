@@ -602,17 +602,20 @@ class ORCA(OverlapCalculator):
             "maxcore not allowed! " "Use 'mem: n' in the 'calc' section instead!"
         )
 
-        td_blocks = (
+        td_blocks = {
             "%tddft",
             "%cis",
-        )
-        ice_blocks = ("%ice",)
+        }
+        ice_blocks = {
+            "%ice",
+        }
         self.es_block_header = [
-            key for key in (td_blocks + ice_blocks) if key in self.blocks
+            key for key in (td_blocks | ice_blocks) if key in self.blocks
         ]
+        es_block_header_set = set(self.es_block_header)
 
-        self.do_tddft = self.es_block_header in td_blocks
-        self.do_ice = self.es_block_header in ice_blocks
+        self.do_tddft = bool(es_block_header_set & td_blocks)
+        self.do_ice = bool(es_block_header_set & ice_blocks)
         # There can be at most on ES block at a time
         assert not (self.do_tddft and self.do_ice)
         if self.es_block_header:
