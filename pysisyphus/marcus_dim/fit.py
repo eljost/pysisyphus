@@ -16,11 +16,9 @@ from typing import Callable, List, Tuple
 from distributed import Client, LocalCluster
 import matplotlib.pyplot as plt
 import numpy as np
-import psutil
 
+from pysisyphus.marcus_dim.config import RMS_THRESH, FIT_RESULTS_FN
 import pysisyphus.marcus_dim.types as mdtypes
-from pysisyphus.marcus_dim.param import param_marcus
-from pysisyphus.marcus_dim.scan import plot_scan, scan
 from pysisyphus.dynamics import get_wigner_sampler
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import get_tangent_trj_str, get_fragment_xyzs, highlight_text
@@ -120,7 +118,7 @@ def create_correlation_plots(
         ax.plot(deposfit, poly(deposfit), c="red")
         ax.set_xlim(deposmin, deposmax)
         ax.set_ylim(qmin, qmax)
-        ax.set_xlabel("epos")
+        ax.set_xlabel("Δepos")
         ax.set_ylabel(f"$q_{{{i+drop_first}}}$")
         title = rf"Batch {batch:02d}: Mode {i:03d}, {nu: >8.2f} cm⁻¹, $\rho$ = {corr:> 8.4f}"
         ax.set_title(title)
@@ -323,7 +321,7 @@ def fit_marcus_dim(
     property=mdtypes.Property.EPOS,
     batch_size: int = 25,
     max_batches: int = 20,
-    rms_thresh: float = 0.005,
+    rms_thresh: float = RMS_THRESH,
     correlations: bool = False,
     corr_thresh: float = _CORR_THRESH,
     scheduler=None,
@@ -413,7 +411,9 @@ def fit_marcus_dim(
         # Additional keys will be added/updated throughout the run.
         # "marcus_dim": np.zeros_like(geom.cart_coords),
         # "coeffs": np.zeros_like(all_norm_coords),
+        "rms_thresh": rms_thresh,
     }
+    results_fn = out_dir / FIT_RESULTS_FN
 
     masses = geom.masses
     sqrt_masses_rep = np.repeat(np.sqrt(masses), 3)
@@ -495,7 +495,6 @@ def fit_marcus_dim(
         to_save["marcus_dim"] = marcus_dim
         to_save["coeffs"] = coeffs
         to_save["end_ind"] = end_ind
-        np.savez("marcusdim_results.npz", **to_save)
 
         # XYZ representation of Marcus dimension and animation
         marcus_dim_xyz_str = make_xyz_str(geom.atoms, marcus_dim.reshape(-1, 3))
@@ -509,6 +508,7 @@ def fit_marcus_dim(
 
         # Report expansion coefficients and rms values
         report_marcus_coefficients(coeffs, nus, drop_first)
+        sys.stdout.flush()
         print()
         if prev_coeffs is not None:
             rms_coeffs = rms(prev_coeffs - coeffs)
@@ -516,6 +516,14 @@ def fit_marcus_dim(
             print(
                 f"rms(Δcoeffs)={rms_coeffs:.6f}, rms(ΔMarcus dim)={rms_marcus_dim:.6f}"
             )
+            rms_converged = rms_marcus_dim <= rms_thresh
+            # Will result in scalar entries
+            to_save["rms_coeffs"] = rms_coeffs
+            to_save["rms_marcus_dim"] = rms_marcus_dim
+            to_save["rms_converged"] = rms_converged
+        else:
+            rms_converged = False
+        np.savez(results_fn, **to_save)
 
         # Plot of expansion coefficients
         fig, _ = create_marcus_coefficient_plot(
@@ -540,7 +548,8 @@ def fit_marcus_dim(
                 corr_thresh=corr_thresh,
             )
 
-        if (rms_marcus_dim is not None) and (rms_marcus_dim <= rms_thresh):
+        sys.stdout.flush()
+        if (rms_marcus_dim is not None) and rms_converged:
             print(
                 f"\nCalculation of Marcus dimension converged after {end_ind} calculations!"
             )

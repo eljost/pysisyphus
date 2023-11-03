@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 import sys
 import warnings
 
@@ -7,6 +8,7 @@ import numpy as np
 
 
 from pysisyphus.constants import AU2EV
+from pysisyphus.marcus_dim.config import SCAN_RESULTS_FN
 
 
 def scan_dir(
@@ -108,7 +110,8 @@ def scan_dir(
     )
 
 
-def scan(coords_init, direction, get_properties, **kwargs):
+def scan(coords_init, direction, get_properties, out_dir=".", **kwargs):
+    out_dir = Path(out_dir)
     dir_norm = np.linalg.norm(direction)
     if not math.isclose(dir_norm, 1.0):
         warnings.warn(f"norm(direction)={dir_norm:.6f} is not 1.0! Renormalizing.")
@@ -143,6 +146,16 @@ def scan(coords_init, direction, get_properties, **kwargs):
     # When we consider the difference w.r.t. initial geometry then
     # the property is always 0.0.
     all_properties = concat(neg_props, prop0, pos_props)
+
+    to_save = {
+        "factors": all_facts,
+        "coords": all_coords,
+        "energies": all_energies,
+        "properties": all_properties,
+
+    }
+    scan_results_fn = out_dir / SCAN_RESULTS_FN
+    np.savez(scan_results_fn, **to_save)
 
     return all_facts, all_coords, all_energies, all_properties
 
