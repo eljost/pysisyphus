@@ -435,9 +435,9 @@ def fit_marcus_dim(
         calc_msg = f"Running calculations in serial with {pal=}."
     print(calc_msg)
 
-    def calculate_property(i):
+    def calculate_property(i, coords):
         displ_geom = geom.copy()
-        displ_geom.coords = batch_displ_coords[i - start_ind]
+        displ_geom.coords = coords
         displ_geom.set_calculator(
             calc_getter(pal=pal, calc_number=i, base_name="displ")
         )
@@ -469,7 +469,7 @@ def fit_marcus_dim(
         batch_start = time.time()
         batch_range = range(start_ind, end_ind)
         if client is not None:
-            futures = client.map(calculate_property, batch_range)
+            futures = client.map(calculate_property, batch_range, batch_displ_coords)
             batch_properties = client.gather(futures)
             all_properties[start_ind:end_ind] = batch_properties
         else:
