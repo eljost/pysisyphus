@@ -39,7 +39,7 @@ def scan_dir(
 
     all_factors = np.arange(max_steps) + 1
     all_coords = np.empty((max_steps, *x0.shape))
-    all_energies = list()
+    all_energies = np.empty((max_steps, 2))
     all_properties = np.empty(max_steps)
     for i in range(max_steps):
         factor = all_factors[i]
@@ -47,7 +47,7 @@ def scan_dir(
         # Calculate & store property
         energies, prop = get_property(factor, xcur)
         all_properties[i] = prop
-        all_energies.append(energies)
+        all_energies[i] = energies
 
         # Determine gradient from finite differences
         if prop_prev is not None:
@@ -102,11 +102,12 @@ def scan_dir(
     all_energies = np.array(all_energies)
     # Truncate arrays and drop empty part. This will also drop the last calculation
     # that lead to the break from the loop.
+    end_ind = i + 1
     return (
-        all_factors[:i] * step_size,
-        all_coords[:i],
-        all_energies[:i],
-        all_properties[:i],
+        all_factors[:end_ind] * step_size,
+        all_coords[:end_ind],
+        all_energies[:end_ind],
+        all_properties[:end_ind],
     )
 
 
@@ -120,7 +121,9 @@ def scan(coords_init, direction, get_properties, out_dir=".", **kwargs):
     ens0, prop0 = get_properties(0.0, coords_init)
 
     def get_property_changes(factor, xi):
-        """Get property changes w.r.t. initial geometry."""
+        """Get property changes w.r.t. initial geometry.
+
+        TODO: rename this because prop0 isn't substracted ..."""
         ens, prop = get_properties(factor, xi)
         return ens, prop  # - prop0
 
@@ -152,7 +155,6 @@ def scan(coords_init, direction, get_properties, out_dir=".", **kwargs):
         "coords": all_coords,
         "energies": all_energies,
         "properties": all_properties,
-
     }
     scan_results_fn = out_dir / SCAN_RESULTS_FN
     np.savez(scan_results_fn, **to_save)
