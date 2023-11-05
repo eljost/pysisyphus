@@ -40,6 +40,7 @@ def run_marcus_dim(
     fit_kwargs = fit_kwargs.copy()
     scan_kwargs = scan_kwargs.copy()
     cwd = Path(cwd)
+    org_pal = geom.calculator.pal
 
     # 1.) Fit Marcus dimension
     print(highlight_text("Fitting of Marcus Dimension"))
@@ -71,18 +72,22 @@ def run_marcus_dim(
     # 2.) Scan along Marcus dimension
     print()
     print(highlight_text("Scan along Marcus Dimension"))
-    pos_calc = calc_getter(base_name="scan_pos")
-    neg_calc = calc_getter(base_name="scan_neg")
+    pos_calc = calc_getter(base_name="scan_pos", pal=org_pal)
+    neg_calc = calc_getter(base_name="scan_neg", pal=org_pal)
+    print(f"Created scan calculators with pal={org_pal}")
 
     def get_properties(factor, coords_i):
         # Use one of two different calculators, depending on the scan direction.
         calc = pos_calc if factor > 0.0 else neg_calc
 
-        results = calc.get_energy(geom.atoms, coords_i)
-        energy = results["energy"]
+        # gs_energy, *es_energies = calc.get_all_energies(geom.atoms, coords_i)
+        results = calc.get_all_energies(geom.atoms, coords_i)
+        all_energies = results["all_energies"]
+        energies = all_energies[:2]
+        assert len(energies) == 2
         wf = calc.get_stored_wavefunction()
         tot_epos, alpha_epos = epos_from_wf(wf, fragments)
-        return energy, alpha_epos
+        return energies, alpha_epos
 
     scan_results_path = cwd / SCAN_RESULTS_FN
     scan_converged = False
