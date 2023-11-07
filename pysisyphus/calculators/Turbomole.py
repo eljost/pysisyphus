@@ -214,6 +214,7 @@ class Turbomole(OverlapCalculator):
         simple_input=None,
         double_mol_path=None,
         cosmo_kwargs=None,
+        wavefunction_dump=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -260,6 +261,7 @@ class Turbomole(OverlapCalculator):
             assert (
                 "epsilon" in self.cosmo_kwargs
             ), "If 'cosmo_kwargs' is given 'epsilon' must be specified!"
+        self.wavefunction_dump = wavefunction_dump
 
         self.to_keep = (
             "control",
@@ -633,6 +635,9 @@ class Turbomole(OverlapCalculator):
         )
         return results
 
+    def get_stored_wavefunction(self, **kwargs):
+        return self.load_wavefunction_from_file(self.mwfn_wf, **kwargs)
+
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         return self.get_energy(atoms, coords, **prepare_kwargs)
 
@@ -941,7 +946,7 @@ class Turbomole(OverlapCalculator):
                 stderr=subprocess.PIPE,
             )
 
-        if self.td:
+        if self.wavefunction_dump or self.td:
             self.make_molden(path)
         # With ricc2 we probably have a frozen core that we have to disable
         # temporarily before creating the molden file. Afterwards we restore
