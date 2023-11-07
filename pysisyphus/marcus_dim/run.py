@@ -9,17 +9,22 @@
 
 
 from pathlib import Path
+import warnings
 
 from distributed import LocalCluster
 import matplotlib.pyplot as plt
 import numpy as np
 import psutil
 
+from pysisyphus.constants import AU2EV
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.marcus_dim.config import FIT_RESULTS_FN, SCAN_RESULTS_FN
 from pysisyphus.marcus_dim.fit import epos_from_wf, fit_marcus_dim
 from pysisyphus.marcus_dim.param import param_marcus
 from pysisyphus.marcus_dim.scan import plot_scan, scan
+
+
+_2EV = 2 / AU2EV
 
 
 def run_marcus_dim(
@@ -31,6 +36,7 @@ def run_marcus_dim(
     scan_kwargs=None,
     cwd=".",
     force=False,
+    dummy_scan=False,
 ):
     """Fit Marucs dimension, scan along it and try to parametrize Marcus models."""
     if fit_kwargs is None:
@@ -76,13 +82,26 @@ def run_marcus_dim(
     neg_calc = calc_getter(base_name="scan_neg", pal=org_pal)
     print(f"Created scan calculators with pal={org_pal}")
 
+    has_all_energies = hasattr(pos_calc, "get_all_energies")
+    if dummy_scan and not has_all_energies:
+        warnings.warn(
+            f"Calculator '{pos_calc}' does not implement 'get_all_energies()'! "
+            f"Using dummy values for first excited state!'",
+        )
+
     def get_properties(factor, coords_i):
         # Use one of two different calculators, depending on the scan direction.
         calc = pos_calc if factor > 0.0 else neg_calc
 
-        # gs_energy, *es_energies = calc.get_all_energies(geom.atoms, coords_i)
-        results = calc.get_all_energies(geom.atoms, coords_i)
-        all_energies = results["all_energies"]
+        try:
+            results = calc.get_all_energies(geom.atoms, coords_i)
+            all_energies = results["all_energies"]
+        except AttributeError as err:
+            if not dummy_scan:
+                raise err
+            results = calc.get_energy(geom.atoms, coords_i)
+            energy = results["energy"]
+            all_energies = np.array((energy, energy + _2EV))
         energies = all_energies[:2]
         assert len(energies) == 2
         wf = calc.get_stored_wavefunction()
@@ -93,20 +112,29 @@ def run_marcus_dim(
     scan_converged = False
     if scan_results_path.exists():
         scan_results = np.load(scan_results_path)
+        print(f"Loaded scan data from '{scan_results_path}'.")
         scan_factors = scan_results["factors"]
         # scan_coords = scan_results["coords"]
         scan_energies = scan_results["energies"]
         scan_properties = scan_results["properties"]
-        print(f"Loaded scan data from '{scan_results_path}'. Skipping scan.")
-    else:
+        try:
+            scan_converged = bool(scan_results["scan_converged"])
+        except KeyError:
+            pass
+
+    if not scan_converged:
         scan_factors, scan_coords, scan_energies, scan_properties = scan(
             coords_init=geom.cart_coords.copy(),
             direction=marcus_dim,
             get_properties=get_properties,
             **scan_kwargs,
         )
-    scan_fig, scan_axs = plot_scan(scan_factors, scan_energies, scan_properties)
-    scan_fig.savefig("scan.png")
+    else:
+        print("Skipping scan.")
+    scan_fig, scan_axs = plot_scan(
+        scan_factors, scan_energies, scan_properties, dummy_scan=dummy_scan
+    )
+    scan_fig.savefig("scan.svg")
     plt.close(scan_fig)
 
     # 3.) Parametrization of Marcus model

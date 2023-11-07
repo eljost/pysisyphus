@@ -102,7 +102,7 @@ def scan_dir(
     all_energies = np.array(all_energies)
     # Truncate arrays and drop empty part. This will also drop the last calculation
     # that lead to the break from the loop.
-    end_ind = i + 1
+    end_ind = i
     return (
         all_factors[:end_ind] * step_size,
         all_coords[:end_ind],
@@ -155,6 +155,7 @@ def scan(coords_init, direction, get_properties, out_dir=".", **kwargs):
         "coords": all_coords,
         "energies": all_energies,
         "properties": all_properties,
+        "scan_converged": True,
     }
     scan_results_fn = out_dir / SCAN_RESULTS_FN
     np.savez(scan_results_fn, **to_save)
@@ -162,16 +163,23 @@ def scan(coords_init, direction, get_properties, out_dir=".", **kwargs):
     return all_facts, all_coords, all_energies, all_properties
 
 
-def plot_scan(factors, energies, properties):
+def plot_scan(factors, energies, properties, dummy_scan=False):
     fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
+    xlim = factors[[0, -1]]
     energies = energies - energies.min()
     energies *= AU2EV
     ax0.plot(factors, energies, "o-")
     ax0.set_ylabel("dE / eV")
     ax1.plot(factors, properties, "o-", label="props")
-    ax1.set_ylabel("Property")
+    ax1.set_ylabel("e$^-$ position")
     ax1.legend()
     ax1.set_xlabel("Marcus dimension / $a_0$")
-    fig.suptitle("Scan along Marcus dimension")
+    for ax in (ax0, ax1):
+        ax.axvline(0.0, c="k", ls="--")
+        ax.set_xlim(xlim)
+    title = "Scan along Marcus dimension"
+    if dummy_scan:
+        title += " (dummy values!)"
+    fig.suptitle(title)
     fig.tight_layout()
     return fig, (ax0, ax1)
