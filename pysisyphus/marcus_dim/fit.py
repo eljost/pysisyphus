@@ -122,7 +122,7 @@ def create_correlation_plots(
         ax.set_ylabel(f"$q_{{{i+drop_first}}}$")
         title = rf"Batch {batch:02d}: Mode {i:03d}, {nu: >8.2f} cm⁻¹, $\rho$ = {corr:> 8.4f}"
         ax.set_title(title)
-        fn = f"correlation_batch_{batch:02d}_mode_{i:03d}.png"
+        fn = f"correlation_batch_{batch:02d}_mode_{i:03d}.svg"
         fig.savefig(out_dir / fn)
         ax.cla()
         nplots += 1
@@ -529,7 +529,7 @@ def fit_marcus_dim(
         fig, _ = create_marcus_coefficient_plot(
             nmodes, coeffs, batch=batch, ncalcs=end_ind
         )
-        plot_fn = out_dir / f"marcus_coeffs_{batch_str}.png"
+        plot_fn = out_dir / f"marcus_coeffs_{batch_str}.svg"
         fig.savefig(plot_fn)
         print(f"Saved expansion coefficent plot to '{plot_fn}'.\n")
         plt.close(fig)
