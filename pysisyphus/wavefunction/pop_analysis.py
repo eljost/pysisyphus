@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
-from numpy.typing import NDArray
+
 import scipy as sp
 
 from pysisyphus.wavefunction.helpers import symmetric_orthogonalization
@@ -13,12 +13,12 @@ from pysisyphus.wavefunction import Wavefunction
 class PopAnalysis:
     # Also store atoms and coordinates?!
     # atoms: List[str]
-    # coords3d: NDArray[float]
+    # coords3d: np.ndarray
 
     # Population of alpha and beta electrons
-    pop_a: NDArray[float]
-    pop_b: NDArray[float]
-    nuc_charges: NDArray[float]
+    pop_a: np.ndarray
+    pop_b: np.ndarray
+    nuc_charges: np.ndarray
 
     @property
     def charges(self):
@@ -48,12 +48,12 @@ class PopAnalysis:
 
 
 def mulliken_charges(
-    P: Tuple[NDArray[float]],
-    S: NDArray[float],
-    nuc_charges: NDArray[int],
+    P: Tuple[np.ndarray, np.ndarray],
+    S: np.ndarray,
+    nuc_charges: np.ndarray,
     ao_centers: List[int],
 ) -> PopAnalysis:
-    def mulliken_atom_pops(P: NDArray[float], S: NDArray[float]) -> NDArray[float]:
+    def mulliken_atom_pops(P: np.ndarray, S: np.ndarray) -> np.ndarray:
         ao_populations = np.einsum("ij,ji->i", P, S)
         atom_populations = np.zeros(len(nuc_charges))
         for i, center in enumerate(ao_centers):
@@ -71,7 +71,7 @@ def mulliken_charges(
     return pop_ana
 
 
-def mulliken_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
+def mulliken_charges_from_wf(wf: Wavefunction) -> np.ndarray:
     return mulliken_charges(
         P=wf.P,
         S=wf.S,
@@ -81,11 +81,11 @@ def mulliken_charges_from_wf(wf: Wavefunction) -> NDArray[float]:
 
 
 def make_iaos(
-    C_occ: NDArray[float],
-    S_org: NDArray[float],
-    S_minao: NDArray[float],
-    S_cross: NDArray[float],
-) -> NDArray[float]:
+    C_occ: np.ndarray,
+    S_org: np.ndarray,
+    S_minao: np.ndarray,
+    S_cross: np.ndarray,
+) -> np.ndarray:
     """Intrinsic atomic orbitals.
 
     [1] https://doi.org/10.1021/ct400687b
@@ -119,7 +119,7 @@ def iao_charges_from_wf(wf: Wavefunction) -> PopAnalysis:
         minao_shells
     )  # Overlap between original and MINAO  basis
 
-    def get_iao_P(C_occ: NDArray[float]):
+    def get_iao_P(C_occ: np.ndarray):
         iaos = make_iaos(C_occ, S_org, S_minao, S_cross)
         C_iao = iaos.T @ S_org @ C_occ  # Projection of original MOs onto IAOs
         P_iao = C_iao @ C_iao.T
