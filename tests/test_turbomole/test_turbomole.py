@@ -182,3 +182,16 @@ def test_mem(mem):
     assert f"$maxcor {mem} MiB per_core" in text
     kill_dir(calc.control_path)
     kill_dir(calc.path_already_prepared)
+
+
+@using("turbomole")
+def test_h2o_all_energies(geom, this_dir):
+    control_path = "./control_path_dft_es1"
+    turbo_kwargs = {
+        "control_path": this_dir / control_path,
+    }
+    calc = Turbomole(**turbo_kwargs)
+    geom.set_calculator(calc)
+    all_energies = geom.all_energies
+    ref_energies = (-76.36357868, -76.0926179, -76.02085091)
+    np.testing.assert_allclose(all_energies, ref_energies)

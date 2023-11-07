@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from math import sqrt
 import os
 from pathlib import Path
@@ -10,7 +11,7 @@ from jinja2 import Template
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.calculators.cosmo_data import COSMO_RADII
+# from pysisyphus.calculators.cosmo_data import COSMO_RADII
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.calculators.parser import (
     parse_turbo_gradient,
@@ -20,6 +21,42 @@ from pysisyphus.calculators.parser import (
     parse_turbo_exstates_re as parse_turbo_exstates,
 )
 from pysisyphus.helpers_pure import file_or_str, get_random_path
+
+
+@dataclass
+class ExSpectrumRoot:
+    root: int
+    sym: str
+    exc_energy: float
+    osc_vel: float
+    osc_len: float
+
+
+@file_or_str(".exspectrum")
+def parse_exspectrum(text: str) -> list[ExSpectrumRoot]:
+    """Parse root data from exspectrum file."""
+    roots = list()
+    for line in text.strip().split("\n"):
+        line = line.strip()
+        is_comment = line.startswith("#")
+        is_empty = line == ""
+        if is_comment or is_empty:
+            continue
+        # root, sym, energy_au, energy_ev, energy_cm⁻¹, energy_nm, osc_vel, osc_len
+        root, sym, exc_energy, *_, osc_vel, osc_len = line.split()
+        root = int(root)
+        exc_energy = float(exc_energy)
+        osc_vel = float(osc_vel)
+        osc_len = float(osc_len)
+        root = ExSpectrumRoot(
+            root=root,
+            sym=sym,
+            exc_energy=exc_energy,
+            osc_vel=osc_vel,
+            osc_len=osc_len,
+        )
+        roots.append(root)
+    return roots
 
 
 def index_strs_for_atoms(atoms):
@@ -78,6 +115,7 @@ def get_cosmo_data_groups(atoms, epsilon, rsolv=None, refind=None, dcosmo_rs=Non
     cosmo_atoms = dict()
     # This does not yet work; so we stick with the default radii.
     # for key, index_str in index_strs.items():
+    # TODO: reenable COSMO_RADII import
     # radius = COSMO_RADII[key].radius
     # cosmo_atoms[index_str] = f"\nradius={radius:.6f}"
     # cosmo_dgs["cosmo_atoms"] = cosmo_atoms
@@ -161,12 +199,13 @@ class Turbomole(OverlapCalculator):
         "control",
         "alpha",
         "beta",
+        "ccres",
+        "exspectrum",
+        "exstates",
         "mos",
+        "mwfn_wf",
         ("ciss_a", "td_vec_fn"),
         ("sing_a", "td_vec_fn"),
-        "ccres",
-        "exstates",
-        "mwfn_wf",
     )
 
     def __init__(
@@ -552,6 +591,9 @@ class Turbomole(OverlapCalculator):
         )
         return results
 
+    def get_all_energies(self, atoms, coords, **prepare_kwargs):
+        return self.get_energy(atoms, coords, **prepare_kwargs)
+
     def get_forces(self, atoms, coords, cmd=None, **prepare_kwargs):
         self.prepare_input(atoms, coords, "force", **prepare_kwargs)
 
@@ -670,7 +712,10 @@ class Turbomole(OverlapCalculator):
         # Parse eigenvectors from escf/egrad calculation
         gs_energy = self.parse_gs_energy()
         if self.second_cmd in ("escf", "egrad"):
-            exc_energies = Turbomole.parse_tddft_tden(self.td_vec_fn)
+            # I don't know why, but sometimes sing_a contains wrong excitation energies...
+            # exc_energies = Turbomole.parse_tddft_tden(self.td_vec_fn)
+            roots = parse_exspectrum(self.exspectrum)
+            exc_energies = np.array([root.exc_energy for root in roots])
         # Parse eigenvectors from ricc2 calculation
         elif self.second_cmd == "ricc2":
             with open(self.exstates) as handle:
