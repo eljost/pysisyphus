@@ -912,6 +912,7 @@ class AOMixShells(Shells):
         ("x", "y", "z"),
         ("xx", "yy", "zz", "xy", "xz", "yz"),
         ("xxx", "yyy", "zzz", "xyy", "xxy", "xxz", "xzz", "yzz", "yyz", "xyz"),
+        # Is this g-order actually correct?
         (
             "zzzz",
             "yzzz",
@@ -1057,6 +1058,29 @@ class MoldenShells(Shells):
             [0, 0, 0, 0, 0, 0, 0, 0, 1],
         ],
     }
+    cart_order = (
+        ("",),
+        ("x", "y", "z"),
+        ("xx", "yy", "zz", "xy", "xz", "yz"),
+        ("xxx", "yyy", "zzz", "xyy", "xxy", "xxz", "xzz", "yzz", "yyz", "xyz"),
+        (
+            "xxxx",
+            "yyyy",
+            "zzzz",
+            "xxxy",
+            "xxxz",
+            "yyyx",
+            "yyyz",
+            "zzzx",
+            "zzzy",
+            "xxyy",
+            "xxzz",
+            "yyzz",
+            "xxyz",
+            "yyxz",
+            "zzxy",
+        ),
+    )
 
 
 class ORCAMoldenShells(Shells):

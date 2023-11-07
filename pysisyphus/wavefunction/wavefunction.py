@@ -142,31 +142,26 @@ class Wavefunction:
             raise FileNotFoundError(path)
 
         from_funcs = {
-            ".json": Wavefunction.from_orca_json,
             ".bson": Wavefunction.from_orca_bson,
             ".fchk": Wavefunction.from_fchk,
+            ".json": Wavefunction.from_orca_json,
+            ".molden": Wavefunction.from_molden,
         }
-        from_funcs_for_str = (
-            # ORCA
-            ("Molden file created by orca_2mkl", Wavefunction.from_orca_molden),
+        from_funcs_for_line = (
+            # Molden format
+            ("[Molden Format]", Wavefunction.from_molden),
             # AOMix, e.g. from Turbomole
             ("[AOMix Format", Wavefunction.from_aomix),
-            # XTB detection, as done in Multiwfn. Doesn't appear too stable/specific ...
-            ("[Atoms] AU", Wavefunction.from_orca_molden),
-            # OpenMolcas; seems buggy. Maybe also related to messed up contr. coeffs?
-            # ("[N_Atoms]", Wavefunction.from_molden),
-            # # General Molden fallback
-            # ("[Molden Format]", Wavefunction.from_molden),
         )
         # If possible I would advise to stay away from .molden files :)
         try:
             from_func = from_funcs[path.suffix.lower().strip()]
         except KeyError:
-            # Search for certain strings in the file
+            # Try to guess wavefunction kind from first line
             with open(fn) as handle:
-                text = handle.read()
-            for key, func in from_funcs_for_str:
-                if key in text:
+                first_line = handle.readline().strip()
+            for key, func in from_funcs_for_line:
+                if first_line.startswith(key):
                     from_func = func
                     break
             else:
