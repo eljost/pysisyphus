@@ -20,6 +20,7 @@ def get_molcas_P_sph(shells, nbfs):
     )
     bf_inds = list()
     prev_key = None
+    shell_ind = 0  # Define shell_ind to satisfy the linter
     for shell in shells:
         center_ind = shell.center_ind
         L = shell.L
