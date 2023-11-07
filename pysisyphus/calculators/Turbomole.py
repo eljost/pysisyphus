@@ -160,7 +160,7 @@ def render_data_groups(raw_data_groups):
             data_groups[dg] = dict()
         # datagroup w/ one keyword on same line. Here we just merge the name and the keyword,
         # so they appear on the same line.
-        elif type(kws) == str:
+        elif type(kws) in (str, int, float):
             data_groups[f"{dg} {kws}"] = dict()
         # Otherwise a dict is expected
         elif type(kws) == dict:
