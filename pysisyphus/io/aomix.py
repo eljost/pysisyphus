@@ -6,7 +6,7 @@ from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction import get_l, Shell, AOMixShells, Wavefunction
 from pysisyphus.wavefunction.helpers import BFType
 
-AOMIX_EXTS = ".in"
+AOMIX_EXTS = (".in", ".aomix")
 
 
 @file_or_str(*AOMIX_EXTS)
@@ -147,6 +147,13 @@ def wavefunction_from_aomix_dict(aomix_dict, **kwargs):
     nuc_charge = nuc_charges_for_atoms(atoms).sum()
     charge = nuc_charge - occ_a - occ_b
     C = np.array((np.transpose(C_a), np.transpose(C_b)))
+
+    _, nao, _ = C.shape
+    bf_type = {
+        shells.cart_size: BFType.CARTESIAN,
+        shells.sph_size: BFType.PURE_SPHERICAL,
+    }[nao]
+
     wf_kwargs = {
         "atoms": atoms,
         "coords": coords,
@@ -155,7 +162,7 @@ def wavefunction_from_aomix_dict(aomix_dict, **kwargs):
         "unrestricted": unrestricted,
         "occ": (occ_a, occ_b),
         "C": C,
-        "bf_type": BFType.CARTESIAN,
+        "bf_type": bf_type,
         "shells": shells,
         **kwargs,
     }
