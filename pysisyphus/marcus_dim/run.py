@@ -109,6 +109,7 @@ def run_marcus_dim(
         return energies, alpha_epos
 
     scan_results_path = cwd / SCAN_RESULTS_FN
+    scan_trj_path = cwd / "marcus_dim_scan.trj"
     scan_converged = False
     if scan_results_path.exists():
         scan_results = np.load(scan_results_path)
@@ -129,6 +130,13 @@ def run_marcus_dim(
             get_properties=get_properties,
             **scan_kwargs,
         )
+        # Dump scan geometries into trj file
+        xyzs = list()
+        for sc, (se_gs, _) in zip(scan_coords, scan_energies):
+            xyz = geom.as_xyz(cart_coords=sc, comment=f"{se_gs:.6f}")
+            xyzs.append(xyz)
+        with open(scan_trj_path, "w") as handle:
+            handle.write("\n".join(xyzs))
     else:
         print("Skipping scan.")
     scan_fig, scan_axs = plot_scan(
