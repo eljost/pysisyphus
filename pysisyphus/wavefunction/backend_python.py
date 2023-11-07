@@ -39,7 +39,7 @@ def get_1el_ints_cart(
     components=0,
     screen=False,
     screen_func=None,
-    R=np.zeros(3),
+    # R=np.zeros(3),
     **kwargs,
 ):
     symmetric = shells_b is None

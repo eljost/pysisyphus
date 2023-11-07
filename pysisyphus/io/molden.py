@@ -1,4 +1,6 @@
+import collections
 import re
+from typing import Optional
 
 import numpy as np
 import pyparsing as pp
@@ -16,6 +18,54 @@ from pysisyphus.wavefunction import (
     Wavefunction,
 )
 from pysisyphus.wavefunction.helpers import BFType
+
+
+class MoldenError(Exception):
+    pass
+
+
+HEADER_RE = re.compile(
+    r"\[Molden Format]\s+"
+    r"\[Title\](?P<title>.*)\s+"
+    r"\[Atoms\]\s*(?P<unit>Angs|Au){0,1}\s*"
+    r"(?P<first_atom>\w)\s+",
+    re.IGNORECASE | re.DOTALL,
+)
+
+MOLDEN_FROM = collections.defaultdict()
+MOLDEN_FROM.update(
+    {
+        # key:
+        #   (atoms lowercase, title of length 0, unit)
+        #
+        # XTB capitalizes atoms, has no title and uses AU as unit
+        (False, True, "AU"): "xtb",
+        # TURBOMOLE has lowercase atoms, a title full of whitespace and uses AU as unit
+        (True, False, "AU"): "turbomole",
+    }
+)
+
+
+@file_or_str(".molden", ".input")
+def molden_is_from(text: str) -> Optional[str]:
+    mobj = HEADER_RE.match(text)
+    if not mobj:
+        raise MoldenError("Parsing molden header failed!")
+
+    title = mobj.group("title")
+    unit = mobj.group("unit")
+    first_atom = mobj.group("first_atom")
+
+    # Quick check for ORCA
+    orca_title = "Molden file created by orca_2mkl"
+    if title.strip().startswith(orca_title):
+        return "orca"
+
+    atom_lower = first_atom[0] == first_atom[0].lower()
+    len0_title = len(title) == 0
+
+    key = (atom_lower, len0_title, unit)
+    return MOLDEN_FROM[key]
 
 
 @file_or_str(".molden", ".input")
@@ -366,6 +416,13 @@ def wavefunction_from_molden(
     """
     kwargs = kwargs.copy()
     shell_kwargs = kwargs.pop("shell_kwargs", {})
+    is_from = molden_is_from(text)
+    if is_from in ("orca", "xtb"):
+        orca_contr_renorm = True
+    elif is_from == "turbomole":
+        orca_contr_renorm = False
+    else:
+        raise Exception("Could not determine origin of molden file!")
 
     data = parse_molden(text)
     atoms, coords, nuc_charges = parse_molden_atoms(data)
@@ -442,6 +499,14 @@ def wavefunction_from_molden(
 
     shells = shells_func(text, **shell_kwargs)
 
+    # Molden defaults to Cartesian bfs. Below, we pick the correct basis function type,
+    # depending on the number of present basis functions.
+    _, nao, _ = C.shape
+    bf_type = {
+        shells.cart_size: BFType.CARTESIAN,
+        shells.sph_size: BFType.PURE_SPHERICAL,
+    }[nao]
+
     return Wavefunction(
         atoms=atoms,
         coords=coords,
@@ -450,7 +515,7 @@ def wavefunction_from_molden(
         unrestricted=unrestricted,
         occ=(occ_a, occ_b),
         C=C,
-        bf_type=BFType.PURE_SPHERICAL,
+        bf_type=bf_type,
         shells=shells,
         **kwargs,
     )
