@@ -4,8 +4,10 @@ import tempfile
 import pytest
 
 from pysisyphus.drivers.merge_mol2 import merge_mol2_geoms
+from pysisyphus.testing import using
 
 
+@using("openbabel")
 @pytest.mark.parametrize(
     "fn1, fn2, bonds, del1, del2, ref",
     (
