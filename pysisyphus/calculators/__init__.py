@@ -51,7 +51,7 @@ from pysisyphus.calculators.FakeASE import FakeASE
 from pysisyphus.calculators.Gaussian09 import Gaussian09
 from pysisyphus.calculators.Gaussian16 import Gaussian16
 from pysisyphus.calculators.IPIServer import IPIServer
-from pysisyphus.calculators.HardSphere import HardSphere
+from pysisyphus.calculators.HardSphere import HardSphere, PWHardSphere
 from pysisyphus.calculators.LennardJones import LennardJones
 from pysisyphus.calculators.MultiCalc import MultiCalc
 from pysisyphus.calculators.MOPAC import MOPAC

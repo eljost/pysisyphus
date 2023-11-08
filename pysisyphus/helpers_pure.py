@@ -327,7 +327,10 @@ def get_molecular_radius(coords3d, min_offset=0.9452):
     mean = coords3d.mean(axis=0)
     coords3d -= mean[None, :]
     distances = np.linalg.norm(coords3d, axis=1)
-    std = max(min_offset, np.std(distances))  # at least 2 angstrom apart
+    # When this function is utilized in a HardSphere calculator
+    # the radii will be at least '2 * (2 * std)' apart,
+    # as the std-offset will be added two times to all radii.
+    std = max(min_offset, np.std(distances))
     radius = distances.mean() + 2 * std
     return radius
 

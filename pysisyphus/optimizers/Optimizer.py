@@ -131,6 +131,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         align_factor: float = 1.0,
         dump: bool = False,
         dump_restart: bool = False,
+        print_every: int = 1,
         prefix: str = "",
         reparam_thresh: float = 1e-3,
         reparam_check_rms: bool = True,
@@ -191,6 +192,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         dump_restart
             Flag to control whether restart information is dumped to the
             filesystem.
+        print_every
+            Report optimization progress every nth cycle.
         prefix
             Short string that is prepended to several files created by
             the optimizer. Allows distinguishing several optimizations carried
@@ -248,6 +251,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.align_factor = align_factor
         self.dump = dump
         self.dump_restart = dump_restart
+        print_every = int(print_every)
+        assert print_every >= 1
+        self.print_every = print_every
         self.prefix = f"{prefix}_" if prefix else prefix
         self.reparam_thresh = reparam_thresh
         self.reparam_check_rms = reparam_check_rms
@@ -882,7 +888,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             ):
                 self.dump_restart_info()
 
-            self.print_opt_progress(conv_info)
+            if (self.cur_cycle % self.print_every) == 0 or self.is_converged:
+                self.print_opt_progress(conv_info)
             if self.is_converged:
                 self.table.print("Converged!")
                 break

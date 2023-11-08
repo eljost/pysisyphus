@@ -1,15 +1,30 @@
 import argparse
 import sys
+import warnings
 
 import numpy as np
 
-from pysisyphus.calculators import Composite, HardSphere, TransTorque
+try:
+    from openbabel import pybel
+
+    HAS_OPENBABEL = True
+except ModuleNotFoundError:
+    HAS_OPENBABEL = False
+
+
+from pysisyphus.calculators import (
+    Composite,
+    HardSphere,
+    PWHardSphere,
+    TransTorque,
+)
 from pysisyphus.calculators.OBabel import OBabel
 from pysisyphus.drivers.precon_pos_rot import (
     center_fragments,
-    get_steps_to_active_atom_mean,
     form_A,
+    get_steps_to_active_atom_mean,
     get_which_frag,
+    rotate_inplace,
     SteepestDescent,
 )
 from pysisyphus.Geometry import Geometry
@@ -31,27 +46,32 @@ def merge_geoms(geom1, geom2, geom1_del=None, geom2_del=None, make_bonds=None):
     if geom2_del is None:
         geom2_del = list()
 
-    atom_num1 = len(geom1.atoms)
+    geom1_del = np.array(geom1_del)
     geom2_del = np.array(geom2_del)
-    # Offset by number of atoms in geom1
+    # Update indices of atoms to be deleted in geom2 by the number of atoms in geom1,
+    # as geom1 and geom2 will be merged.
+    # If we want to delete atom 0 and atom 1 in geom2 and geom1 comprises 10 atoms,
+    # then the updated indices in geom2 will be 0 + 10 = 10 and 1 + 10 = 11 in the
+    # merged geometry.
+    atom_num1 = len(geom1.atoms)
     geom2_del += atom_num1
+
+    ndel1 = len(geom1_del)
 
     if make_bonds is not None:
         make_bonds = np.array(make_bonds, dtype=int)
         geom1_bond_inds, geom2_bond_inds = make_bonds.T
         geom2_bond_inds += atom_num1
-
         # Correct original bond indices given in make_bonds
-        to_del = np.concatenate((geom1_del, geom2_del))
-        # If geom1_del/geom2_del are empty then there is nothing to do
-        for to_del in geom1_del:
-            mask = geom1_bond_inds > to_del
-            geom1_bond_inds[mask] -= 1
-            geom2_bond_inds -= 1
-
-        for to_del in geom2_del:
-            mask = geom2_bond_inds > to_del
-            geom2_bond_inds[mask] -= 1
+        #
+        # Determe how many atoms to be deleted lie below the atom(s) that are
+        # used to form new bonds.
+        corr1 = (geom1_del < geom1_bond_inds[:, None]).sum(axis=1)
+        geom1_bond_inds -= corr1
+        # Correct bond indices in geom2 by the number of deleted atoms in geom1.
+        geom2_bond_inds -= ndel1
+        corr2 = (geom2_del < geom2_bond_inds[:, None]).sum(axis=1)
+        geom2_bond_inds -= corr2
         make_bonds_cor = np.stack((geom1_bond_inds, geom2_bond_inds), axis=1)
     else:
         make_bonds_cor = None
@@ -99,12 +119,13 @@ def hardsphere_merge(geom1, geom2):
 
 
 def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False):
-    if del1:
+    bond_diff = np.array(bond_diff, dtype=int)
+    if del1 is not None:
         geom1 = geom1.del_atoms(del1)
-    if del2:
-        geom2 = geom2.del_atoms(del2)
 
     if geom2:
+        if del2 is not None:
+            geom2 = geom2.del_atoms(del2)
         union = geom1 + geom2
         atom_num = len(geom1.atoms)
         # Set up lists containing the atom indices for the two fragments
@@ -138,12 +159,13 @@ def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False
         union.coords3d[frag] += alpha
     keep("Shifted centroids to active atoms")
 
-    def get_hs(kappa=1.0):
+    def get_hs(kappa=1.0, **kwargs):
         return HardSphere(
             union,
             frag_lists,
             permutations=True,
             kappa=kappa,
+            **kwargs,
         )
 
     union.set_calculator(get_hs(1.0))
@@ -156,13 +178,19 @@ def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False
     opt.run()
     keep("Initial hardsphere optimization")
 
-    keys_calcs = {
-        "hs": get_hs(10.0),
-        "tt": TransTorque(frag_lists, frag_lists, AR, AR, kappa=2, do_trans=True),
-    }
-    comp = Composite("hs + tt", keys_calcs, remove_translation=True)
+    # Corresponds to A.3 S_3 initial orientation of molecules in Habershon paper
+    rotate_inplace(frag_lists, union, bond_diff)
+    keep("Rotated after inital hardsphere optimization")
 
+    sub_frags = [bond_diff[:, 0].tolist(), bond_diff[:, 1].tolist()]
+    keys_calcs = {
+        "hs": get_hs(100.0, radii_offset=3.0),
+        "tt": TransTorque(frag_lists, frag_lists, AR, AR, kappa=2, do_trans=True),
+        "pwhs": PWHardSphere(union, frag_lists, sub_frags=sub_frags, kappa=10.0),
+    }
+    comp = Composite("hs + tt + pwhs", keys_calcs, remove_translation=True)
     union.set_calculator(comp)
+
     max_cycles = 15_000
     max_dist = 50
     max_step = max_dist / max_cycles
@@ -185,9 +213,8 @@ def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False
     return union
 
 
-def merge_opt(union, bond_diff, ff="uff"):
+def merge_opt(union, bond_diff, ff="mmff94"):
     """Fragment merging along given bond by forcefield optimization."""
-    from openbabel import pybel
 
     geom1 = union.get_fragments("geom1")
     freeze = list(range(len(geom1.atoms)))
@@ -205,7 +232,7 @@ def merge_opt(union, bond_diff, ff="uff"):
     funion.freeze_atoms = freeze
     funion.set_calculator(calc)
 
-    opt = LBFGS(funion, max_cycles=1000, max_step=0.5, dump=False)
+    opt = LBFGS(funion, max_cycles=1000, max_step=0.5, dump=False, print_every=25)
     opt.run()
 
     return funion
@@ -244,19 +271,25 @@ def align_on_subset(geom1, union, del1=None):
     return aligned, subset, rest
 
 
-def merge_with_frozen_geom(frozen_geom, lig_geom, make_bonds, frozen_del, lig_del):
+def merge_with_frozen_geom(
+    frozen_geom, lig_geom, make_bonds, frozen_del, lig_del, ff="mmff94"
+):
     union, make_bonds_cor = merge_geoms(
         frozen_geom, lig_geom, frozen_del, lig_del, make_bonds
     )
     atoms = union.atoms
     print("Docking to form bonds:")
-    for i, (from_, to_) in enumerate(make_bonds):
+    for i, (from_, to_) in enumerate(make_bonds_cor):
         from_atom = atoms[from_]
         to_atom = atoms[to_]
         print(f"\t{i:02d} {from_atom}{from_}-{to_atom}{to_}")
 
     union = prepare_merge(union, make_bonds_cor, dump=True)
-    opt_union = merge_opt(union, make_bonds_cor, ff="uff")
+    if HAS_OPENBABEL:
+        opt_union = merge_opt(union, make_bonds_cor, ff=ff)
+    else:
+        warnings.warn(f"Could not import openbabel. Skipping '{ff}' optimization.")
+        opt_union = union
     # aligned: whole system
     # subset: frozen_geom - deleted atoms
     # rest: aligned ligand
@@ -312,7 +345,6 @@ def run_merge():
     aligned, subset, rest = merge_with_frozen_geom(
         frozen_geom, lig_geom, make_bonds, prot_del, lig_del
     )
-    aligned.jmol()
 
     trj_fn = "merged.trj"
     trj = "\n".join([geom.as_xyz() for geom in (aligned, rest)])
