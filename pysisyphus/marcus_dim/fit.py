@@ -13,7 +13,7 @@ import sys
 import time
 from typing import Callable, List, Tuple
 
-from distributed import Client, LocalCluster
+from distributed import Client
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -477,7 +477,9 @@ def fit_marcus_dim(
                 if i % 5 == 0:
                     print(f"\t{i}")
                     sys.stdout.flush()
-                all_properties[i] = calculate_property(i)
+                all_properties[i] = calculate_property(
+                    i, batch_displ_coords[i - start_ind]
+                )
         # End loop over calculations in one batch
 
         batch_dur = time.time() - batch_start
