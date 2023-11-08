@@ -188,8 +188,6 @@ def prepare_merge(geom1, bond_diff, geom2=None, del1=None, del2=None, dump=False
         "tt": TransTorque(frag_lists, frag_lists, AR, AR, kappa=2, do_trans=True),
         "pwhs": PWHardSphere(union, frag_lists, sub_frags=sub_frags, kappa=10.0),
     }
-    # comp = Composite("hs + tt", keys_calcs, remove_translation=True)
-    # comp = Composite("hs", keys_calcs, remove_translation=True)
     comp = Composite("hs + tt + pwhs", keys_calcs, remove_translation=True)
     union.set_calculator(comp)
 

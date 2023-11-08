@@ -84,10 +84,11 @@ class PWHardSphere:
         sub_frags,
         kappa=1.0,
     ):
-        """Inter-Molecular Hard-Sphere force.
+        """Inter-Molecular pairwise Hard-Sphere forces between atoms.
 
         Hardsphere forces are only applied between certain atoms of given fragments,
-        but the whole fragment is moved.
+        but the whole fragment is moved. Can be used to remove atom inter-molecular
+        atom clashes.
         """
         self.frags = frags
         self.sub_frags = sub_frags
