@@ -513,7 +513,7 @@ class Calculator:
                     env=env,
                     shell=shell,
                 )
-                result.wait()
+                result.communicate()
                 try:
                     normal_termination = False
                     # Calling check_termination may result in an exception and
