@@ -2,9 +2,20 @@ from math import prod
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.special import factorial2
+from scipy.special import factorial2 as sp_factorial2
 
 from pysisyphus.wavefunction.helpers import canonical_order
+
+
+def factorial2(n: int):
+    """Scipy 1.11 decided that (-1)!! is not 1 anymore!
+
+    Please see https://github.com/scipy/scipy/issues/18813."""
+    if n == -1:
+        return 1
+    elif n < -1:
+        raise Exception(f"Only supported negative argument is -1, but got {n}!")
+    return sp_factorial2(n)
 
 
 # @functools.cache
