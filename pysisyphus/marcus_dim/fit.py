@@ -21,7 +21,12 @@ from pysisyphus.marcus_dim.config import RMS_THRESH, FIT_RESULTS_FN
 import pysisyphus.marcus_dim.types as mdtypes
 from pysisyphus.dynamics import get_wigner_sampler
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers import get_tangent_trj_str, get_fragment_xyzs, highlight_text
+from pysisyphus.helpers import (
+    get_tangent_trj_str,
+    get_fragment_xyzs,
+    highlight_text,
+    check_for_end_sign,
+)
 from pysisyphus.helpers_pure import (
     approx_float,
     eigval_to_wavenumber,
@@ -556,6 +561,12 @@ def fit_marcus_dim(
                 f"\nCalculation of Marcus dimension converged after {end_ind} calculations!"
             )
             break
+
+        sign = check_for_end_sign()
+        if sign == "stop":
+            print("Found stop sign.")
+            break
+        # End of loop
         prev_coeffs = coeffs
         prev_marcus_dim = marcus_dim
 
