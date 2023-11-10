@@ -15,6 +15,7 @@ from pysisyphus import logger
 from pysisyphus import helpers_pure
 from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.exceptions import CalculationFailedException
 from pysisyphus.helpers import geom_loader
 from pysisyphus.linalg import finite_difference_hessian
 from pysisyphus.wavefunction import Wavefunction
@@ -522,6 +523,8 @@ class Calculator:
                     shell=shell,
                 )
                 result.communicate()
+                returncode = result.returncode
+                nonzero_return = returncode != 0
                 try:
                     normal_termination = False
                     # Calling check_termination may result in an exception and
@@ -562,6 +565,14 @@ class Calculator:
 
         # Parse results for desired quantities
         try:
+            # Don't try to parse calculation results when the calculated already
+            # returned an nonzero error code.
+            if nonzero_return:
+                raise CalculationFailedException(
+                    msg=f"Calculation in '{path}' returned with code {returncode}!",
+                    path=path,
+                )
+
             if run_after:
                 self.run_after(path)
             parser_kwargs = {} if parser_kwargs is None else parser_kwargs
