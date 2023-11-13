@@ -17,7 +17,10 @@ from distributed import Client
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pysisyphus.exceptions import CalculationFailedException
+from pysisyphus.exceptions import (
+    CalculationFailedException,
+    RunAfterCalculationFailedException,
+)
 from pysisyphus.marcus_dim.config import RMS_THRESH, FIT_RESULTS_FN
 import pysisyphus.marcus_dim.types as mdtypes
 from pysisyphus.dynamics import get_wigner_sampler
@@ -247,24 +250,18 @@ def epos_from_wf(wf, fragments):
 
 
 def epos_property(geom, fragments, eq_property):
-    try:
-        wf = geom.calculator.get_stored_wavefunction()
-        # Only use alpha part
-        # TODO: make this toggable?
-        _, alpha_epos = epos_from_wf(wf, fragments)
-        property = alpha_epos - eq_property
-    except CalculationFailedException:
-        property = np.nan
+    wf = geom.calculator.get_stored_wavefunction()
+    # Only use alpha part
+    # TODO: make this toggable?
+    _, alpha_epos = epos_from_wf(wf, fragments)
+    property = alpha_epos - eq_property
     return property
 
 
 def en_exc_property(geom, fragments, eq_property):
-    try:
-        gs_energy, *es_energies = geom.all_energies
-        assert len(es_energies) > 0
-        property = es_energies[0] - gs_energy
-    except CalculationFailedException:
-        property = np.nan
+    gs_energy, *es_energies = geom.all_energies
+    assert len(es_energies) > 0
+    property = es_energies[0] - gs_energy
     return property
 
 
@@ -360,14 +357,6 @@ def fit_marcus_dim(
 
     out_dir = Path(out_dir)
 
-    # Load geometry from pysisyphus HDF5 Hessian
-    # geom, h5_attrs = geom_from_hessian(h5_fn, with_attrs=True)
-    # try:
-    # charge = h5_attrs["charge"]
-    # mult = h5_attrs["mult"]
-    # except KeyError:
-    # charge = None
-    # mult = None
     charge = geom.calculator.charge
     mult = geom.calculator.mult
 
@@ -461,9 +450,17 @@ def fit_marcus_dim(
         displ_geom.set_calculator(
             calc_getter(pal=pal, calc_number=i, base_name="displ")
         )
-        # TODO: move actual calculation into property functions?!
-        displ_geom.all_energies
-        property = property_func(displ_geom, fragments, property_eq)
+        property = np.nan
+        try:
+            # TODO: move actual calculation into property functions?!
+            displ_geom.all_energies
+            property = property_func(displ_geom, fragments, property_eq)
+        except CalculationFailedException as err:
+            print(err)
+            print(f"Calculation {i:03d} failed!")
+        except RunAfterCalculationFailedException as err:
+            print(err)
+            print(f"Postprocessing of calculation {i:03d} failed!")
         return property
 
     print()
@@ -489,7 +486,9 @@ def fit_marcus_dim(
         batch_start = time.time()
         batch_range = range(start_ind, end_ind)
         if client is not None:
-            futures = client.map(calculate_property, batch_range, batch_displ_coords)
+            futures = client.map(
+                calculate_property, batch_range, batch_displ_coords, pure=False
+            )
             batch_properties = client.gather(futures)
             all_properties[start_ind:end_ind] = batch_properties
         else:
@@ -581,11 +580,16 @@ def fit_marcus_dim(
         if sign in ("stop", "converged"):
             print(f"Found '{sign}' sign. Breaking.")
             break
-        # End of loop
         prev_coeffs = coeffs
         prev_marcus_dim = marcus_dim
-
         print()
+    # End of loop
+
+    calc_indices = np.arange(end_ind)
+    failed_mask = np.isnan(all_properties[:end_ind])
+    for i in calc_indices[failed_mask]:
+        print(f"Calculation {i:03d} failed!")
+    print(f"{failed_mask.sum()}/{end_ind} calculations failed.")
 
     print()
     print(f"Final Marcus dimension:\n{marcus_dim_xyz_str}\n")
