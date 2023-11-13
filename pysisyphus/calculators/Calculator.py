@@ -15,7 +15,10 @@ from pysisyphus import logger
 from pysisyphus import helpers_pure
 from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
-from pysisyphus.exceptions import CalculationFailedException
+from pysisyphus.exceptions import (
+    CalculationFailedException,
+    RunAfterCalculationFailedException,
+)
 from pysisyphus.helpers import geom_loader
 from pysisyphus.linalg import finite_difference_hessian
 from pysisyphus.wavefunction import Wavefunction
@@ -592,7 +595,9 @@ class Calculator:
                 f"Copied contents of\n\t'{path}'\nto\n\t'{backup_dir}'.\n"
                 "Consider checking the log files there.\n"
             )
-            raise err
+            raise RunAfterCalculationFailedException(
+                "Postprocessing calculation failed!", err
+            )
         finally:
             if (not hold) and self.clean_after:
                 self.clean(path)
