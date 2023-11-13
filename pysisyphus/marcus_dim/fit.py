@@ -11,12 +11,13 @@ import datetime
 from pathlib import Path
 import sys
 import time
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from distributed import Client
 import matplotlib.pyplot as plt
 import numpy as np
 
+from pysisyphus.exceptions import CalculationFailedException
 from pysisyphus.marcus_dim.config import RMS_THRESH, FIT_RESULTS_FN
 import pysisyphus.marcus_dim.types as mdtypes
 from pysisyphus.dynamics import get_wigner_sampler
@@ -154,7 +155,7 @@ def report_correlations(nus, corrs, drop_first, corr_thresh=_CORR_THRESH):
     print()
 
 
-def get_marcus_dim(eigvecs, masses, qs, depos):
+def get_marcus_dim(eigvecs, masses, qs, properties):
     """Determine Marcus dimension from normal coordinates and properties.
 
     Parameters
@@ -167,9 +168,9 @@ def get_marcus_dim(eigvecs, masses, qs, depos):
     qs
         2d array with shape (nsamples, nmodes) holding the normal coordinates
         for each sample.
-    depos
-        1d array with shape (nsamples, ) holding the differences in electron
-        positions from the equilbrium geometries.
+    properties
+        1d array with shape (nsamples, ) holding the calculated properties, e.g,.
+        electron position (centroid of spin density) or exciation energy.
 
     Returns
     -------
@@ -181,6 +182,12 @@ def get_marcus_dim(eigvecs, masses, qs, depos):
         Normalized Marcus dimension in unweighted Cartesiand coordinates
         of shape (3*natoms, ).
     """
+
+    # Only use non-NaN values
+    mask = ~np.isnan(properties)
+    qs = qs[mask]
+    properties = properties[mask]
+
     sqrt_masses_rep = np.repeat(np.sqrt(masses), 3)
 
     # Number of normal modes
@@ -188,13 +195,13 @@ def get_marcus_dim(eigvecs, masses, qs, depos):
 
     corrs = np.zeros(nmodes)
     for i, q in enumerate(qs.T):
-        corr = np.corrcoef(depos, q)[0, 1]
+        corr = np.corrcoef(properties, q)[0, 1]
         corrs[i] = corr
 
     # Do least-squares.
     print("Solving least squares 'qs . coeffs = depos' for 'coeffs'")
     # Residuals are an empty array
-    coeffs, _, rank, singvals = np.linalg.lstsq(qs, depos, rcond=None)
+    coeffs, _, rank, singvals = np.linalg.lstsq(qs, properties, rcond=None)
 
     # Construct Marcus dimension as linear combination of normal modes
     # according to coefficients b from least-squares fit.
@@ -240,18 +247,24 @@ def epos_from_wf(wf, fragments):
 
 
 def epos_property(geom, fragments, eq_property):
-    wf = geom.calculator.get_stored_wavefunction()
-    # Only use alpha part
-    # TODO: make this toggable?
-    _, alpha_epos = epos_from_wf(wf, fragments)
-    property = alpha_epos - eq_property
+    try:
+        wf = geom.calculator.get_stored_wavefunction()
+        # Only use alpha part
+        # TODO: make this toggable?
+        _, alpha_epos = epos_from_wf(wf, fragments)
+        property = alpha_epos - eq_property
+    except CalculationFailedException:
+        property = np.nan
     return property
 
 
 def en_exc_property(geom, fragments, eq_property):
-    gs_energy, *es_energies = geom.all_energies
-    assert len(es_energies) > 0
-    property = es_energies[0] - gs_energy
+    try:
+        gs_energy, *es_energies = geom.all_energies
+        assert len(es_energies) > 0
+        property = es_energies[0] - gs_energy
+    except CalculationFailedException:
+        property = np.nan
     return property
 
 
@@ -330,6 +343,7 @@ def fit_marcus_dim(
     correlations: bool = False,
     corr_thresh: float = _CORR_THRESH,
     scheduler=None,
+    seed: Optional[int] = None,
     out_dir=".",
 ):
     assert T >= 0.0
@@ -398,7 +412,8 @@ def fit_marcus_dim(
     property_eq = property_func(geom, fragments, 0.0)
 
     # Function that create displaced geometries by drawing from a Wigner distribution
-    wigner_sampler = get_wigner_sampler(geom, temperature=T)
+    wigner_sampler, seed = get_wigner_sampler(geom, temperature=T, seed=seed)
+    print(f"Seed for Wigner sampling: {seed}")
 
     # Arrays holding normal coordinates and properties
     all_norm_coords = np.zeros((max_ncalcs, nmodes))
@@ -563,8 +578,8 @@ def fit_marcus_dim(
             break
 
         sign = check_for_end_sign()
-        if sign == "stop":
-            print("Found stop sign.")
+        if sign in ("stop", "converged"):
+            print(f"Found '{sign}' sign. Breaking.")
             break
         # End of loop
         prev_coeffs = coeffs
