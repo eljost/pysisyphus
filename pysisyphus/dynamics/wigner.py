@@ -25,6 +25,7 @@ import argparse
 import functools
 from math import exp, pi
 from typing import Callable, Optional
+import secrets
 import sys
 
 import matplotlib.pyplot as plt
@@ -45,8 +46,14 @@ from pysisyphus.Geometry import Geometry
 NU2ANGFREQAU = 2 * pi * 100 * C * AU2SEC
 
 
-def get_vib_state(wavenumber: float, temperature: Optional[float] = None) -> int:
+def get_vib_state(
+    wavenumber: float,
+    rng: Optional[np.random.Generator] = None,
+    temperature: Optional[float] = None,
+) -> int:
     """Return random vibrational state n for given wavenumber and temperature."""
+    if rng is None:
+        rng = np.random.default_rng()
     if temperature is None:
         return 0  # Ground state
 
@@ -90,7 +97,8 @@ def get_vib_state(wavenumber: float, temperature: Optional[float] = None) -> int
     # Generate random number that is smaller than the current sum.
     while True:
         # Sample from the possible interval
-        random_state = np.random.random() * thresh
+        random_state = rng.random() * thresh
+        random_state = rng.random() * thresh
         if random_state < probability_sum:
             break
 
@@ -113,9 +121,14 @@ def get_wigner_sampler(
     temperature: Optional[float] = None,
     nu_thresh: float = 20.0,
     stddevs: float = 6.0,
-) -> Callable:
+    seed: Optional[int] = None,
+) -> tuple[Callable, int]:
     assert coords3d.shape == (len(masses), 3)
     assert hessian.shape == (coords3d.size, coords3d.size)
+
+    if seed is None:
+        seed = secrets.randbits(128)
+    rng = np.random.default_rng(seed)
 
     # Projector to remove translation & rotation
     Proj = get_hessian_projector(coords3d, masses, full=True)
@@ -163,7 +176,7 @@ def get_wigner_sampler(
         Qs = np.zeros(nnus)
         Ps = np.zeros(nnus)
         for i in range(nnus):
-            n = get_vib_state(nus[i], temperature)
+            n = get_vib_state(nus[i], rng, temperature=temperature)
             try:
                 lag = laguerres[n]
             except KeyError:
@@ -176,7 +189,7 @@ def get_wigner_sampler(
             # to map 'ref' from [0, 1) to [0, 1/π)].
             prefact = (-1) ** n
             while True:
-                q, p, ref = np.random.random_sample(3)
+                q, p, ref = rng.random(3)
                 # Map q and p from [0, 1) onto chosen interval [-stddevs, stddevs)
                 q = q * span - stddevs
                 p = p * span - stddevs
@@ -210,7 +223,7 @@ def get_wigner_sampler(
         velocities = P.dot(velocities)
         return displ_coords3d, velocities.reshape(-1, 3)
 
-    return sampler
+    return sampler, seed
 
 
 @get_wigner_sampler.register
@@ -219,7 +232,7 @@ def _(geom: Geometry, **kwargs):
 
 
 @get_wigner_sampler.register
-def _(h5_fn: str, **kwargs):
+def _(h5_fn: str):
     geom = geom_from_hessian(h5_fn)
     return get_wigner_sampler(geom)
 
@@ -243,7 +256,8 @@ def run():
 
     geom = geom_from_hessian(h5_fn)
 
-    sampler = get_wigner_sampler(geom, temperature=temperature)
+    sampler, seed = get_wigner_sampler(geom, temperature=temperature)
+    print(f"Seed: {seed}")
     xyzs = list()
     velocities = np.zeros((n, len(geom.atoms), 3))
     for i in range(n):
