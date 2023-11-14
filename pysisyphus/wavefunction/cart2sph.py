@@ -168,7 +168,6 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("l_max", type=int, default=3)
-    parser.add_argument("--not-normalized", action="store_true")
 
     return parser.parse_args(args)
 
@@ -177,9 +176,8 @@ def run():
     args = parse_args(sys.argv[1:])
 
     l_max = args.l_max
-    normalized = not args.not_normalized
 
-    Cs = cart2sph_coeffs(l_max, normalized=normalized)
+    Cs = cart2sph_coeffs(l_max)
     for l, C in Cs.items():
         print(f"{l=}")
         print_coeffs(l, C.T)
