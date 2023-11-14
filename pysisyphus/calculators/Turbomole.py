@@ -316,7 +316,7 @@ class Turbomole(OverlapCalculator):
         try:
             self.set_occ_and_mo_nums(text)
         except TypeError:
-            print(
+            warnings.warn(
                 "Parsing of occupied and virtual MO numbers failed! Disabling "
                 "excited state tracking!"
             )
