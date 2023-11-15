@@ -1019,8 +1019,6 @@ class Optimizer(metaclass=abc.ABCMeta):
                     with open(ascii_fn, "w") as handle:
                         handle.write(asciiart)
 
-            self.print_opt_progress(conv_info)
-
             if self.is_converged:
                 self.table.print("Converged!")
                 break
