@@ -27,60 +27,14 @@ from pysisyphus.marcus_dim.scan import plot_scan, scan
 _2EV = 2 / AU2EV
 
 
-def run_marcus_dim(
-    geom,
-    fragments,
-    calc_getter,
-    fit_kwargs=None,
-    cluster=True,
-    scan_kwargs=None,
-    cwd=".",
-    force=False,
-    dummy_scan=False,
+def run_scan(
+    geom, marcus_dim, calc_getter, fragments, dummy_scan=False, cwd=".", **kwargs
 ):
-    """Fit Marucs dimension, scan along it and try to parametrize Marcus models."""
-    if fit_kwargs is None:
-        fit_kwargs = {}
-    if scan_kwargs is None:
-        scan_kwargs = {}
-    fit_kwargs = fit_kwargs.copy()
-    scan_kwargs = scan_kwargs.copy()
     cwd = Path(cwd)
-    org_pal = geom.calculator.pal
-
-    # 1.) Fit Marcus dimension
-    print(highlight_text("Fitting of Marcus Dimension"))
-
-    fit_results_path = cwd / FIT_RESULTS_FN
-    rms_converged = False
-    if fit_results_path.exists():
-        md_results = np.load(fit_results_path)
-        try:
-            rms_converged = bool(md_results["rms_converged"])
-        except KeyError:
-            print("Could not determine if Marcus dimension already converged!")
-    # When rms_converged is True md_results will always be present
-    if not force and rms_converged:
-        marcus_dim = md_results["marcus_dim"]
-        print(f"Loaded Marcus dimension from '{fit_results_path}'. Skipping fit.")
-        # TODO: report dimension?
-    else:
-        # Use scheduler/cluster/cluster_kwargs as in ChainOfStates.py?
-        if cluster:
-            n_workers = psutil.cpu_count(logical=False)
-            scheduler = LocalCluster(n_workers=n_workers, threads_per_worker=1)
-            fit_kwargs["scheduler"] = scheduler
-        # Carry out fitting of Marcus dimension
-        marcus_dim = fit_marcus_dim(geom, calc_getter, fragments, **fit_kwargs)
-        if cluster:
-            scheduler.close()
-
     # 2.) Scan along Marcus dimension
-    print()
     print(highlight_text("Scan along Marcus Dimension"))
-    pos_calc = calc_getter(base_name="scan_pos", pal=org_pal)
-    neg_calc = calc_getter(base_name="scan_neg", pal=org_pal)
-    print(f"Created scan calculators with pal={org_pal}")
+    pos_calc = calc_getter(base_name="scan_pos")
+    neg_calc = calc_getter(base_name="scan_neg")
 
     has_all_energies = hasattr(pos_calc, "get_all_energies")
     if dummy_scan and not has_all_energies:
@@ -115,7 +69,7 @@ def run_marcus_dim(
         scan_results = np.load(scan_results_path)
         print(f"Loaded scan data from '{scan_results_path}'.")
         scan_factors = scan_results["factors"]
-        # scan_coords = scan_results["coords"]
+        scan_coords = scan_results["coords"]
         scan_energies = scan_results["energies"]
         scan_properties = scan_results["properties"]
         try:
@@ -128,7 +82,7 @@ def run_marcus_dim(
             coords_init=geom.cart_coords.copy(),
             direction=marcus_dim,
             get_properties=get_properties,
-            **scan_kwargs,
+            **kwargs,
         )
         # Dump scan geometries into trj file
         xyzs = list()
@@ -142,8 +96,70 @@ def run_marcus_dim(
     scan_fig, scan_axs = plot_scan(
         scan_factors, scan_energies, scan_properties, dummy_scan=dummy_scan
     )
-    scan_fig.savefig("scan.svg")
+    scan_fig.savefig(cwd / "scan.svg")
     plt.close(scan_fig)
+
+    return scan_factors, scan_coords, scan_energies, scan_properties
+
+
+def run_marcus_dim(
+    geom,
+    fragments,
+    calc_getter,
+    fit_kwargs=None,
+    cluster=True,
+    scan_kwargs=None,
+    cwd=".",
+    force=False,
+    dummy_scan=False,
+):
+    """Fit Marucs dimension, scan along it and try to parametrize Marcus models."""
+    if fit_kwargs is None:
+        fit_kwargs = {}
+    if scan_kwargs is None:
+        scan_kwargs = {}
+    fit_kwargs = fit_kwargs.copy()
+    scan_kwargs = scan_kwargs.copy()
+    cwd = Path(cwd)
+
+    # 1.) Fit Marcus dimension
+    print(highlight_text("Fitting of Marcus Dimension"))
+
+    fit_results_path = cwd / FIT_RESULTS_FN
+    rms_converged = False
+    if fit_results_path.exists():
+        md_results = np.load(fit_results_path)
+        try:
+            rms_converged = bool(md_results["rms_converged"])
+        except KeyError:
+            print("Could not determine if Marcus dimension already converged!")
+    # When rms_converged is True md_results will always be present
+    if not force and rms_converged:
+        marcus_dim = md_results["marcus_dim"]
+        print(f"Loaded Marcus dimension from '{fit_results_path}'. Skipping fit.")
+        # TODO: report dimension?
+    else:
+        # Use scheduler/cluster/cluster_kwargs as in ChainOfStates.py?
+        if cluster:
+            n_workers = psutil.cpu_count(logical=False)
+            scheduler = LocalCluster(n_workers=n_workers, threads_per_worker=1)
+            fit_kwargs["scheduler"] = scheduler
+        # Carry out fitting of Marcus dimension
+        marcus_dim = fit_marcus_dim(geom, calc_getter, fragments, **fit_kwargs)
+        if cluster:
+            scheduler.close()
+    print()
+
+    # 2.) Scan along Marcus dimension
+    scan_factors, scan_coords, scan_energies, scan_properties = run_scan(
+        geom,
+        marcus_dim,
+        calc_getter,
+        fragments,
+        dummy_scan=dummy_scan,
+        cwd=cwd,
+        **scan_kwargs,
+    )
 
     # 3.) Parametrization of Marcus model
     print()

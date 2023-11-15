@@ -585,6 +585,9 @@ def fit_marcus_dim(
         print()
     # End of loop
 
+    with open("marcus_dim.xyz", "w") as handle:
+        handle.write(marcus_dim_xyz_str)
+
     calc_indices = np.arange(end_ind)
     failed_mask = np.isnan(all_properties[:end_ind])
     for i in calc_indices[failed_mask]:
