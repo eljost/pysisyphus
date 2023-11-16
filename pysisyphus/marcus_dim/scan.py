@@ -18,6 +18,7 @@ from pysisyphus.marcus_dim.config import SCAN_RESULTS_FN
 def scan_dir(
     x0,
     direction,
+    prefact,
     get_property,
     step_size=0.05,
     add_steps=10,
@@ -31,7 +32,7 @@ def scan_dir(
     assert min_steps >= 0, f"{min_steps=} must be positive!"
     assert grad_thresh > 0.0, f"{grad_thresh} must be positive!"
 
-    step = step_size * direction
+    step = prefact * step_size * direction
     stop_in = add_steps
     xcur = x0 + step
 
@@ -41,7 +42,7 @@ def scan_dir(
     abs_grad_prev = None
     grad_decreased_already = False
 
-    all_factors = np.arange(max_steps) + 1
+    all_factors = prefact * (np.arange(max_steps) + 1)
     all_coords = np.empty((max_steps, *x0.shape))
     all_energies = np.empty((max_steps, 2))
     all_properties = np.empty(max_steps)
@@ -144,30 +145,28 @@ def scan(
         return ens, prop  # - prop0
 
     print("Positive direction")
-    pos_dir = direction
     pos_kwargs = kwargs.copy()
     if pos_min_steps is not None:
         assert pos_min_steps >= 0
         pos_kwargs["min_steps"] = pos_min_steps
     pos_facts, pos_coords, pos_ens, pos_props = scan_dir(
-        coords_init, pos_dir, get_property_changes, **pos_kwargs
+        coords_init, direction, 1.0, get_property_changes, **pos_kwargs
     )
     print()
 
     print("Negative direction")
-    neg_dir = -1.0 * direction
     neg_kwargs = kwargs.copy()
     if neg_min_steps is not None:
         assert neg_min_steps >= 0
         neg_kwargs["min_steps"] = neg_min_steps
     neg_facts, neg_coords, neg_ens, neg_props = scan_dir(
-        coords_init, neg_dir, get_property_changes, **neg_kwargs
+        coords_init, direction, -1.0, get_property_changes, **neg_kwargs
     )
 
     def concat(neg, init, pos):
         return np.concatenate((neg[::-1], [init], pos))
 
-    all_facts = concat(-neg_facts, 0.0, pos_facts)
+    all_facts = concat(neg_facts, 0, pos_facts)
     all_coords = concat(neg_coords, coords_init, pos_coords)
     all_energies = concat(neg_ens, ens0, pos_ens)
     # When we consider the difference w.r.t. initial geometry then

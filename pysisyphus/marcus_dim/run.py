@@ -43,9 +43,9 @@ def run_scan(
             f"Using dummy values for first excited state!'",
         )
 
-    def get_properties(factor, coords_i):
+    def get_properties(factor: int, coords_i: np.ndarray):
         # Use one of two different calculators, depending on the scan direction.
-        calc = pos_calc if factor > 0.0 else neg_calc
+        calc = neg_calc if factor < 0 else pos_calc
 
         try:
             results = calc.get_all_energies(geom.atoms, coords_i)
