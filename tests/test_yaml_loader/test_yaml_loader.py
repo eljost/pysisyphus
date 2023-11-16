@@ -21,13 +21,12 @@ from pysisyphus.constants import AU2KJPERMOL, AU2KCALPERMOL, AU2EV, ANG2BOHR, BO
         # Lengths
         ("a0", 1.0),
         ("nm", BOHR2M * 1e-9),
-        ("angstrom", ANG2BOHR),
-        ("kJpermol", [AU2KJPERMOL]*3),
+        ("angstrom", 1.0 / ANG2BOHR),
+        ("kJpermol", [AU2KJPERMOL] * 3),
     ),
 )
 def test_units(unit, value):
     yaml_str = f"value: !{unit} {value}"
-    loader = yaml.SafeLoader
     loader = get_loader()
     run_dict = yaml.load(yaml_str, Loader=loader)
     value = run_dict["value"]
