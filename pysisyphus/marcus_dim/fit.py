@@ -473,6 +473,7 @@ def fit_marcus_dim(
         return property
 
     print()
+    sys.stdout.flush()
     for batch in range(max_batches):
         batch_str = f"batch_{batch:02d}"
         start_ind = batch * batch_size
