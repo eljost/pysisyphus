@@ -8,6 +8,10 @@ import numpy as np
 
 
 from pysisyphus.constants import AU2EV
+from pysisyphus.exceptions import (
+    CalculationFailedException,
+    RunAfterCalculationFailedException,
+)
 from pysisyphus.marcus_dim.config import SCAN_RESULTS_FN
 
 
@@ -18,7 +22,7 @@ def scan_dir(
     step_size=0.05,
     add_steps=10,
     max_steps=500,
-    min_steps=5,
+    min_steps=10,
     grad_thresh=1e-2,
 ):
     assert step_size > 0.0, f"{step_size=} must be positive!"
@@ -45,7 +49,11 @@ def scan_dir(
         factor = all_factors[i]
         all_coords[i] = xcur
         # Calculate & store property
-        energies, prop = get_property(factor, xcur)
+        try:
+            energies, prop = get_property(factor, xcur)
+        except (CalculationFailedException, RunAfterCalculationFailedException):
+            print("Calculation failed! Breaking.")
+            break
         all_properties[i] = prop
         all_energies[i] = energies
 
@@ -111,7 +119,15 @@ def scan_dir(
     )
 
 
-def scan(coords_init, direction, get_properties, out_dir=".", **kwargs):
+def scan(
+    coords_init,
+    direction,
+    get_properties,
+    pos_min_steps=None,
+    neg_min_steps=None,
+    out_dir=".",
+    **kwargs,
+):
     out_dir = Path(out_dir)
     dir_norm = np.linalg.norm(direction)
     if not math.isclose(dir_norm, 1.0):
@@ -129,15 +145,23 @@ def scan(coords_init, direction, get_properties, out_dir=".", **kwargs):
 
     print("Positive direction")
     pos_dir = direction
+    pos_kwargs = kwargs.copy()
+    if pos_min_steps is not None:
+        assert pos_min_steps >= 0
+        pos_kwargs["min_steps"] = pos_min_steps
     pos_facts, pos_coords, pos_ens, pos_props = scan_dir(
-        coords_init, pos_dir, get_property_changes, **kwargs
+        coords_init, pos_dir, get_property_changes, **pos_kwargs
     )
     print()
 
     print("Negative direction")
     neg_dir = -1.0 * direction
+    neg_kwargs = kwargs.copy()
+    if neg_min_steps is not None:
+        assert neg_min_steps >= 0
+        neg_kwargs["min_steps"] = neg_min_steps
     neg_facts, neg_coords, neg_ens, neg_props = scan_dir(
-        coords_init, neg_dir, get_property_changes, **kwargs
+        coords_init, neg_dir, get_property_changes, **neg_kwargs
     )
 
     def concat(neg, init, pos):
