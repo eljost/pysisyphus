@@ -5,10 +5,13 @@
 
 
 from dataclasses import dataclass
+import functools
 import math
+import os
 import warnings
 
 import matplotlib.pyplot as plt
+import numpy as np
 import sympy as sym
 
 from pysisyphus.constants import BOHR2ANG, NU2AU
@@ -24,7 +27,6 @@ class MarcusModel:
     R: float  # Distance of adiabatic minimum to top of barrier in Bohr
     f: float  # Force constant in Hartree / Bohr**2
     d: float  # Separation of diabatic states in Bohr
-    # rdclass: mdtypes.RobinDay
 
     def as_wavenums_and_ang_tuple(self):
         return (
@@ -41,21 +43,34 @@ class MarcusModel:
         Gb = self.f * (x - self.d) ** 2
         return Ga, Gb
 
-    def plot_diabatic(self, x, show=False):
+    def G_adiabatic(self, x):
         Ga, Gb = self.G_diabatic(x)
+        plus = Ga + Gb
+        minus2 = (Ga - Gb) ** 2
+        sqrt = np.sqrt(minus2 + 4 * self.coupling)
+        G1 = 0.5 * (plus - sqrt)
+        G2 = 0.5 * (plus + sqrt)
+        return G1, G2
+
+    def plot(self, x, show=False):
+        Ga, Gb = self.G_diabatic(x)
+        G1, G2 = self.G_adiabatic(x)
         fig, ax = plt.subplots()
-        for state in (Ga, Gb):
-            ax.plot(x, state)
+        for label, state in (("$G_a$", Ga), ("$G_b$", Gb)):
+            ax.plot(x, state, label=label)
+        for label, state in (("$G_1$", G1), ("$G_2$", G2)):
+            ax.plot(x, state, label=label)
+        ax.legend()
         if show:
             plt.show()
         return fig, ax
 
     def pretty(self):
         reorg_en, dG, coupling, *_, d = self.as_wavenums_and_ang_tuple()
-        reorg_en = f"{reorg_en:.0f} cm⁻¹"
-        dG = f"{dG:.0f} cm⁻¹"
-        _2coupling = f"{2*coupling:.0f} cm⁻¹"
-        d = f"{d:.3f} Å"
+        reorg_en = f"{reorg_en: >5.0f} cm⁻¹"
+        dG = f"{dG: >5.0f} cm⁻¹"
+        _2coupling = f"{2*coupling: >5.0f} cm⁻¹"
+        d = f"{d: >6.4f} Å"
         return f"MarcusModel(λ={reorg_en}, ΔG={dG}, 2Vab={_2coupling}, d={d})"
 
 
@@ -143,7 +158,8 @@ def find_minima(arr):
     return first_min + inner_mins + last_min
 
 
-def param_marcus(coordinate, energies):
+@functools.singledispatch
+def param_marcus(coordinate: np.ndarray, energies: np.ndarray):
     """Parametrize Marcus model with results from scan along Marcus dimension."""
     assert coordinate.ndim == 1, (
         "Parametrization requires a 1d coordinate, e.g. an "
@@ -153,6 +169,7 @@ def param_marcus(coordinate, energies):
         energies.ndim == 2
     ), "Parametrization requires potential energy curves of 2 states!"
 
+    energies = energies - energies.min()
     # Excitation energy at adiabatic minimum
     min_inds = find_minima(energies[:, 0])  # Search minima in lower state
     if len(min_inds) == 2:
@@ -178,8 +195,16 @@ def param_marcus(coordinate, energies):
     # Electronic coupling
     Vab = en_exc_barr / 2
     # Distance R between adiabatic minimum and top of barrier
-    R = coordinate[barr_ind] - coordinate[adia_min_ind]
+    R = abs(coordinate[barr_ind] - coordinate[adia_min_ind])
     # Barrier height ΔG
     dG = energies[barr_ind, 0]
 
     return solve_marcus(R, Vab, dG=dG, en_exc_min=en_exc_min)
+
+
+@param_marcus.register
+def _(path: os.PathLike):
+    data = np.load(path)
+    factors = data["factors"]
+    energies = data["energies"]
+    return param_marcus(factors, energies)
