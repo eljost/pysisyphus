@@ -249,16 +249,16 @@ def epos_from_wf(wf, fragments):
     return tot_epos, alpha_epos
 
 
-def epos_property(geom, fragments, eq_property):
+def epos_property(geom, fragments):
     wf = geom.calculator.get_stored_wavefunction()
     # Only use alpha part
     # TODO: make this toggable?
     _, alpha_epos = epos_from_wf(wf, fragments)
-    property = alpha_epos - eq_property
+    property = alpha_epos
     return property
 
 
-def en_exc_property(geom, fragments, eq_property):
+def en_exc_property(geom, fragments):
     gs_energy, *es_energies = geom.all_energies
     assert len(es_energies) > 0
     property = es_energies[0] - gs_energy
@@ -388,17 +388,17 @@ def fit_marcus_dim(
     eigvals, eigvecs = np.linalg.eigh(
         geom.eckart_projection(geom.mw_hessian, full=True)
     )
-    nus = eigval_to_wavenumber(eigvals)
+    eigvals = eigvals[drop_first:]
     eigvecs = eigvecs[:, drop_first:]
-    nus = nus[drop_first:]
+    nus = eigval_to_wavenumber(eigvals)
     nmodes = len(nus)
     # geom.set_calculator(calc_getter(base_name="eq"))
 
     # Calculate wavefunction at equilibrium geometry
-    print("Starting calculation of equilibrium geometry")
+    print("Starting calculation at equilibrium geometry")
     geom.all_energies
-    print("Finished calculation of equilibrium geometry")
-    property_eq = property_func(geom, fragments, 0.0)
+    property_eq = property_func(geom, fragments)
+    print("Finished calculation at equilibrium geometry")
 
     # Function that create displaced geometries by drawing from a Wigner distribution
     wigner_sampler, seed = get_wigner_sampler(geom, temperature=T, seed=seed)
@@ -407,6 +407,10 @@ def fit_marcus_dim(
     # Arrays holding normal coordinates and properties
     all_norm_coords = np.zeros((max_ncalcs, nmodes))
     all_properties = np.zeros(max_ncalcs)
+
+    masses = geom.masses
+    sqrt_masses_rep = np.repeat(np.sqrt(masses), 3)
+    M = np.diag(1 / sqrt_masses_rep)
 
     to_save = {
         # Property key
@@ -417,6 +421,10 @@ def fit_marcus_dim(
         # Samples
         "normal_coordinates": all_norm_coords,
         "properties": all_properties,
+        "masses": masses,
+        "eigvals": eigvals,
+        "eigvecs": eigvecs,
+        "nus": nus,
         # Additional keys will be added/updated throughout the run.
         # "marcus_dim": np.zeros_like(geom.cart_coords),
         # "coeffs": np.zeros_like(all_norm_coords),
@@ -424,9 +432,6 @@ def fit_marcus_dim(
     }
     results_fn = out_dir / FIT_RESULTS_FN
 
-    masses = geom.masses
-    sqrt_masses_rep = np.repeat(np.sqrt(masses), 3)
-    M = np.diag(1 / sqrt_masses_rep)
     prev_coeffs = None
     prev_marcus_dim = None
     rms_coeffs = None
@@ -454,7 +459,11 @@ def fit_marcus_dim(
         try:
             # TODO: move actual calculation into property functions?!
             displ_geom.all_energies
-            property = property_func(displ_geom, fragments, property_eq)
+            property = property_func(displ_geom, fragments)
+            # Subtract property at equilibrium geometry
+            # If we would not subtract the equilibrium property we would have to pad
+            # the normal coordinate matrix with an additional column.
+            property = property - property_eq
         except CalculationFailedException as err:
             print(err)
             print(f"Calculation {i:03d} failed!")
