@@ -19,8 +19,8 @@ from pysisyphus.exceptions import (
     CalculationFailedException,
     RunAfterCalculationFailedException,
 )
+from pysisyphus.finite_diffs import finite_difference_hessian
 from pysisyphus.helpers import geom_loader
-from pysisyphus.linalg import finite_difference_hessian
 from pysisyphus.wavefunction import Wavefunction
 
 
@@ -212,8 +212,8 @@ class Calculator:
             gradient = -results["forces"]
             return gradient
 
-        def callback(i, j):
-            self.log(f"Displacement {j} of coordinate  {i}")
+        def callback(i):
+            self.log(f"Displacement {i}")
 
         _num_hess_kwargs = {
             "step_size": 0.005,

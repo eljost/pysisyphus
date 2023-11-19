@@ -2,7 +2,8 @@ import numpy as np
 from numpy.random import MT19937, RandomState, SeedSequence
 from pytest import approx
 
-from pysisyphus.linalg import fd_rmsd_hessian, rmsd_grad, finite_difference_gradient
+from pysisyphus.finite_diffs import finite_difference_gradient
+from pysisyphus.linalg import fd_rmsd_hessian, rmsd_grad
 
 
 def test_rmsd_grad():
