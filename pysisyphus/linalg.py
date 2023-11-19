@@ -6,6 +6,8 @@ from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 from scipy.linalg.lapack import dpstrf
 
+from pysisyphus.finite_diffs import finite_difference_hessian
+
 
 def gram_schmidt(vecs, thresh=1e-8):
     def proj(v1, v2):
@@ -149,83 +151,6 @@ def norm3(a):
     return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
 
 
-def finite_difference_gradient(
-    coords: np.ndarray,
-    scalar_func: Callable,
-    step_size: float = 1e-2,
-):
-    """Stripped down version of finite_difference_hessian.
-
-    Both functions could probably be unified."""
-    size = coords.size
-    fd_gradient = np.zeros(size)
-    zero_step = np.zeros(size)
-
-    coeffs = ((-0.5, -1), (0.5, 1))
-    for i, _ in enumerate(coords):
-        step = zero_step.copy()
-        step[i] = step_size
-
-        def get_scalar(factor, displ):
-            displ_coords = coords + step * displ
-            scalar = scalar_func(displ_coords)
-            return factor * scalar
-
-        plus, minus = [get_scalar(factor, displ) for factor, displ in coeffs]
-        fd_gradient[i] = (plus + minus) / step_size
-
-    return fd_gradient
-
-
-def finite_difference_hessian(
-    coords: NDArray[float],
-    grad_func: Callable[[NDArray[float]], NDArray[float]],
-    step_size: float = 1e-2,
-    acc: Literal[2, 4] = 2,
-    callback: Optional[Callable] = None,
-) -> NDArray[float]:
-    """Numerical Hessian from central finite gradient differences.
-
-    See central differences in
-      https://en.wikipedia.org/wiki/Finite_difference_coefficient
-    for the different accuracies.
-    """
-    if callback is None:
-
-        def callback(*args):
-            pass
-
-    accuracies = {
-        2: ((-0.5, -1), (0.5, 1)),  # 2 calculations
-        4: ((1 / 12, -2), (-2 / 3, -1), (2 / 3, 1), (-1 / 12, 2)),  # 4 calculations
-    }
-    accs_avail = list(accuracies.keys())
-    assert acc in accs_avail
-
-    size = coords.size
-    fd_hessian = np.zeros((size, size))
-    zero_step = np.zeros(size)
-
-    coeffs = accuracies[acc]
-    for i, _ in enumerate(coords):
-        step = zero_step.copy()
-        step[i] = step_size
-
-        def get_grad(factor, displ, j):
-            displ_coords = coords + step * displ
-            callback(i, j)
-            grad = grad_func(displ_coords)
-            return factor * grad
-
-        grads = [get_grad(factor, displ, j) for j, (factor, displ) in enumerate(coeffs)]
-        fd = np.sum(grads, axis=0) / step_size
-        fd_hessian[i] = fd
-
-    # Symmetrize
-    fd_hessian = (fd_hessian + fd_hessian.T) / 2
-    return fd_hessian
-
-
 def rot_quaternion(coords3d, ref_coords3d):
     # Translate to origin by removing centroid
     c3d = coords3d - coords3d.mean(axis=0)
@@ -330,19 +255,17 @@ def rmsd_grad(
 
 
 def fd_rmsd_hessian(
-    coords3d: NDArray[float], ref_coords3d: NDArray[float], step_size=1e-4,
+    coords3d: NDArray[float],
+    ref_coords3d: NDArray[float],
+    step_size=1e-4,
 ):
-
     def grad_func(coords):
         _, grad = rmsd_grad(coords.reshape(-1, 3), ref_coords3d)
         return grad.flatten()
 
     coords = coords3d.flatten()
     fd_hessian = finite_difference_hessian(
-        coords,
-        grad_func,
-        step_size=step_size,
-        acc=4
+        coords, grad_func, step_size=step_size, acc=4
     )
     rmsd, _ = rmsd_grad(coords3d, ref_coords3d)
     return rmsd, fd_hessian
