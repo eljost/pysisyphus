@@ -19,7 +19,7 @@ from pysisyphus.exceptions import (
     CalculationFailedException,
     RunAfterCalculationFailedException,
 )
-from pysisyphus.finite_diffs import finite_difference_hessian
+from pysisyphus.finite_diffs import finite_difference_hessian_mp
 from pysisyphus.helpers import geom_loader
 from pysisyphus.wavefunction import Wavefunction
 
@@ -217,15 +217,16 @@ class Calculator:
 
         _num_hess_kwargs = {
             "step_size": 0.005,
-            # Central difference by default
+            # Central difference with two displacements by default
             "acc": 2,
         }
         _num_hess_kwargs.update(self.num_hess_kwargs)
 
-        fd_hessian = finite_difference_hessian(
+        fd_hessian = finite_difference_hessian_mp(
+            atoms,
             coords,
-            grad_func,
-            callback=callback,
+            self,
+            prepare_kwargs=prepare_kwargs,
             **_num_hess_kwargs,
         )
         results["hessian"] = fd_hessian
