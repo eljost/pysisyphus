@@ -1,6 +1,8 @@
-import distributed
+import functools
 import numpy as np
 from typing import Callable, Literal, Optional
+
+from pysisyphus.executors import CloudpickleProcessPoolExecutor
 
 
 def finite_difference_gradient(
@@ -87,24 +89,47 @@ def finite_difference_hessian(
     return fd_hessian
 
 
-def finite_difference_hessian_pal(
+def grad_func(index, coords, factor, calc, atoms, prepare_kwargs: dict):
+    if index is not None:
+        # calc.base_name = f"{calc.base_name}_num_hess"
+        calc.calc_counter = index
+    results = calc.get_forces(atoms, coords, **prepare_kwargs)
+    gradient = -results["forces"]
+    return factor * gradient
+
+
+def finite_difference_hessian_mp(
+    atoms: tuple[str],
     coords: np.ndarray,
-    grad_func: Callable[[np.ndarray], np.ndarray],
+    calc,
     step_size: float = 1e-2,
     acc: Literal[2, 4] = 2,
-    client: distributed.Client = None,
+    serial: bool = False,
+    prepare_kwargs: Optional[dict] = None,
 ) -> np.ndarray:
-    """Numerical Hessian from central finite gradient differences.
+    """Finite-differences Hessian w/ multiprocessing support.
 
     See central differences in
       https://en.wikipedia.org/wiki/Finite_difference_coefficient
     for the different accuracies.
     """
+    if prepare_kwargs is None:
+        prepare_kwargs = {}
 
-    def get_grad(calc_number, step, factor):
-        displ_coords = coords + step
-        grad = grad_func(calc_number, displ_coords)
-        return factor * grad
+    try:
+        org_pal = calc.pal
+    except AttributeError:
+        org_pal = 1
+    # When multiprocessing is used all calculations will be carried out
+    # on one core each. In serial calculations we'll restore the original
+    # pal value.
+    calc.pal = 1
+
+    # Pre-supply some arguments so we later only have to supply the arguments
+    # speecific to the displacments.
+    gf = functools.partial(
+        grad_func, calc=calc, atoms=atoms, prepare_kwargs=prepare_kwargs
+    )
 
     accuracies = {
         # key: ((factor0, displacement_factor0), (factor1, displacement_factor1), ...)
@@ -117,10 +142,13 @@ def finite_difference_hessian_pal(
 
     size = coords.size
     fd_hessian = np.zeros((size, size))
+
     zero_step = np.zeros(size)
     row_inds = list()
     factors = list()
-    steps = list()
+    all_displ_coords = list()
+    # Prepare lists of displacments and associated factors, we can use them later
+    # in map-like function calls.
     for i, _ in enumerate(coords):
         for factor, displ in coeffs:
             row_inds.append(i)
@@ -128,18 +156,28 @@ def finite_difference_hessian_pal(
             # Change one coordinate at a time
             step = zero_step.copy()
             step[i] = displ * step_size
-            steps.append(step)
-    calc_numbers = list(range(len(steps)))
+            all_displ_coords.append(coords + step)
+    ndispls = len(all_displ_coords)
 
-    if client is not None:
-        futures = client.map(get_grad, calc_numbers, steps, factors, pure=False)
-        grads = client.gather(futures)
-    else:
+    if serial or (org_pal == 1):
+        # In serial mode we dont have to modify calc_counter, as we operate on the
+        # same object throughout.
+        calc.pal = org_pal
+        ndispls = [None] * ndispls
         grads = [
-            get_grad(calc_number, step, factor)
-            for calc_number, step, factor in zip(calc_numbers, steps, factors)
+            gf(i, displ_coords, factor)
+            for i, displ_coords, factor in zip(ndispls, all_displ_coords, factors)
         ]
+    else:
+        with CloudpickleProcessPoolExecutor(max_workers=org_pal) as executor:
+            grads = list(executor.map(gf, range(ndispls), all_displ_coords, factors))
+        # Update calc_counter, as the actual calculations were carried out on copies
+        # of the calculator.
+        calc.calc_counter += ndispls
+    # Restore original pal value
+    calc.pal = org_pal
 
+    # Distribute the gradients on the appropriate Hessian rows
     for row_ind, grad in zip(row_inds, grads):
         fd_hessian[row_ind] += grad
 
