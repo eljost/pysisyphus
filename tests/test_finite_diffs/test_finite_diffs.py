@@ -1,12 +1,11 @@
 import numpy as np
+import pytest
 
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators import XTB
 from pysisyphus.calculators.PySCF import PySCF
-from pysisyphus.finite_diffs import (
-    finite_difference_hessian,
-    finite_difference_hessian_pal,
-)
+from pysisyphus.constants import ANG2BOHR
+from pysisyphus.finite_diffs import finite_difference_hessian
 from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
 
@@ -35,24 +34,46 @@ def test_water_fd_hessian():
 
 
 @using("xtb")
-def test_fd_hessian_pal():
+@pytest.mark.parametrize(
+    "pal",
+    (1, 2),
+)
+def test_num_hessian(pal):
     geom = geom_loader("lib:benzene_xtb_opt.xyz")
+    calc = XTB(acc=0.3, pal=pal)
+    geom.set_calculator(calc)
 
-    def calc_getter(**calc_kwargs):
-        # By default, XTB uses acc=0.03 for numerical Hessians
-        return XTB(acc=0.3, **calc_kwargs)
+    num_res = geom.calculator.get_num_hessian(geom.atoms, geom.cart_coords)
+    num_hess = num_res["hessian"]
+    hess = geom.hessian
+    np.testing.assert_allclose(num_hess, hess, atol=5e-5)
 
-    geom.set_calculator(calc_getter())
-    org_name = geom.calculator.base_name
-    hessian = geom.hessian
 
-    def grad_func(calc_number, coords):
-        displ_geom = geom.copy()
-        displ_geom.coords = coords
-        base_name = f"{org_name}_num_hess"
-        calc = calc_getter(base_name=base_name, calc_number=calc_number, pal=1)
-        displ_geom.set_calculator(calc)
-        return -displ_geom.get_energy_and_forces_at(coords)["forces"]
+from pysisyphus.calculators import ORCA
 
-    fd_hessian = finite_difference_hessian_pal(geom.coords, grad_func, acc=4)
-    np.testing.assert_allclose(hessian, fd_hessian, atol=6e-5)
+
+@using("orca")
+@pytest.mark.skip_ci
+@pytest.mark.parametrize(
+    "serial",
+    (False, True),
+)
+def test_orca_num_hessian(serial):
+    geom = geom_loader("lib:benzene_xtb_opt.xyz")
+    num_hess_kwargs = {
+        "serial": serial,
+        "step_size": 0.005 * ANG2BOHR,
+    }
+    calc = ORCA(
+        keywords="tpss def2-svp tightscf",
+        pal=8,
+        # Compare against finite diff. Hessian calculated by ORCA itself
+        numfreq=True,
+        num_hess_kwargs=num_hess_kwargs,
+    )
+    geom.set_calculator(calc)
+
+    num_res = geom.calculator.get_num_hessian(geom.atoms, geom.cart_coords)
+    num_hess = num_res["hessian"]
+    hess = geom.hessian
+    np.testing.assert_allclose(num_hess, hess, atol=5e-4)
