@@ -126,6 +126,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         rms_force: Optional[float] = None,
         rms_force_only: bool = False,
         max_force_only: bool = False,
+        force_only: bool = False,
         converge_to_geom_rms_thresh: float = 0.05,
         align: bool = False,
         align_factor: float = 1.0,
@@ -174,6 +175,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             When set, convergence is signalled only based on rms(forces).
         max_force_only
             When set, convergence is signalled only based on max(|forces|).
+        force_only
+            When set, convergence is signalled only based on max(|forces|) and rms(forces).
         converge_to_geom_rms_thresh
             Threshold for the RMSD with another geometry. When the RMSD drops
             below this threshold convergence is signalled. Only used with
@@ -246,6 +249,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.assert_min_step = assert_min_step
         self.rms_force_only = rms_force_only
         self.max_force_only = max_force_only
+        self.force_only = force_only
         self.converge_to_geom_rms_thresh = converge_to_geom_rms_thresh
         self.align = align
         self.align_factor = align_factor
@@ -269,7 +273,7 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         # Set up convergence thresholds
         self.convergence = self.make_conv_dict(
-            thresh, rms_force, rms_force_only, max_force_only
+            thresh, rms_force, rms_force_only, max_force_only, force_only
         )
         for key, value in self.convergence.items():
             setattr(self, key, value)
@@ -368,7 +372,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         return self.out_dir / (prefix + fn)
 
     def make_conv_dict(
-        self, key, rms_force=None, rms_force_only=False, max_force_only=False
+        self, key, rms_force=None, rms_force_only=False, max_force_only=False, force_only=False
     ):
         if not rms_force:
             threshs = CONV_THRESHS[key]
@@ -401,6 +405,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         elif max_force_only:
             self.log("Checking convergence with max(forces) only!")
             keep_keys = ["max_force_thresh"]
+        elif force_only:
+            self.log("Checking convergence with max(forces) and rms(forces) only!")
+            keep_keys = ["max_force_thresh", "rms_force_thresh"]
 
         # The dictionary should only contain pairs that are needed
         conv_dict = {key: value for key, value in conv_dict.items() if key in keep_keys}
