@@ -567,8 +567,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         # checked, a wrong structure will prevent overachieved convergence.
         overachieved = False
         if overachieve_factor > 0 and desired_eigval_structure:
-            max_thresh = self.convergence["max_force_thresh"] / overachieve_factor
-            rms_thresh = self.convergence["rms_force_thresh"] / overachieve_factor
+            max_thresh = self.convergence.get("max_force_thresh", 0) / overachieve_factor
+            rms_thresh = self.convergence.get("rms_force_thresh", 0) / overachieve_factor
             max_ = max_force < max_thresh
             rms_ = rms_force < rms_thresh
             overachieved = max_ and rms_
