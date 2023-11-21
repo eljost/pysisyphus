@@ -442,6 +442,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             use_threshs = (threshs[1],)
         elif self.max_force_only:
             use_threshs = (threshs[0],)
+        elif self.force_only:
+            use_threshs = threshs
         elif self.is_cos:
             use_threshs = threshs
         else:
