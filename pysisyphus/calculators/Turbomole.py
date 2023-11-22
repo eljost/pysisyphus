@@ -211,6 +211,7 @@ class Turbomole(OverlapCalculator):
     def __init__(
         self,
         control_path=None,
+        numfreq=False,
         simple_input=None,
         double_mol_path=None,
         cosmo_kwargs=None,
@@ -244,6 +245,7 @@ class Turbomole(OverlapCalculator):
 
         # Set provided control_path or use the one generated for simple_input
         self.control_path = Path(control_path).absolute()
+        self.numfreq = numfreq
 
         self.double_mol_path = double_mol_path
         if self.double_mol_path:
@@ -305,7 +307,8 @@ class Turbomole(OverlapCalculator):
         scf_cmd = "dscf"
         second_cmd = "grad"
         # Check for RI
-        if ("$rij" in text) or ("$rik" in text):
+        self.ri = ("$rij" in text) or ("$rik" in text)
+        if self.ri:
             scf_cmd = "ridft"
             second_cmd = "rdgrad"
             self.log("Found RI calculation.")
@@ -365,6 +368,9 @@ class Turbomole(OverlapCalculator):
         # instead of egrad.
         self.scf_cmd = scf_cmd
         self.second_cmd = second_cmd
+        self.numforce_cmd = f"{self.second_cmd}; NumForce -central -d 0.005"
+        if self.ri:
+            self.numforce_cmd += " -ri"
 
         # Setup several cmds, depending on the calc type
         def get_cmd(cmd):
@@ -382,7 +388,9 @@ class Turbomole(OverlapCalculator):
         else:
             self.energy_cmd = self.scf_cmd
             self.forces_cmd = get_cmd(second_cmd)
-            self.hessian_cmd = get_cmd("aoforce")
+            self.hessian_cmd = (
+                get_cmd(self.numforce_cmd) if self.numfreq else get_cmd("aoforce")
+            )
         self.log("Prepared commands:")
         self.log("\tEnergy cmd: " + self.energy_cmd)
         self.log("\tForces cmd: " + self.forces_cmd)
@@ -780,7 +788,10 @@ class Turbomole(OverlapCalculator):
 
     def parse_hessian(self, path, fn=None):
         if fn is None:
-            fn = path / "nprhessian"
+            if self.numfreq:
+                fn = path / "numforce" / "nprhessian"
+            else:
+                fn = path / "nprhessian"
 
         with open(fn) as handle:
             text = handle.read()
