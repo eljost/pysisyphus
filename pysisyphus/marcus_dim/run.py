@@ -9,6 +9,7 @@
 
 
 from pathlib import Path
+import os
 import warnings
 
 from distributed import LocalCluster
@@ -17,7 +18,7 @@ import numpy as np
 import psutil
 
 from pysisyphus.constants import AU2EV
-from pysisyphus.helpers_pure import highlight_text
+from pysisyphus.helpers_pure import get_state_label, highlight_text
 from pysisyphus.marcus_dim.config import FIT_RESULTS_FN, SCAN_RESULTS_FN
 from pysisyphus.marcus_dim.fit import epos_from_wf, fit_marcus_dim
 from pysisyphus.marcus_dim.param import param_marcus
@@ -102,6 +103,41 @@ def run_scan(
     return scan_factors, scan_coords, scan_energies, scan_properties
 
 
+def run_param(
+    scan_factors: np.ndarray,
+    scan_energies: np.ndarray,
+    mult: int,
+    cwd: os.PathLike = ".",
+):
+    cwd = Path(cwd)
+    # 3.) Parametrization of Marcus model
+    print(highlight_text("Parametrization of Marcus Model"))
+    models = param_marcus(scan_factors, scan_energies)
+    shifted_scan_energies = scan_energies - scan_energies.min()
+    for para, model in models.items():
+        print(f"Parametrization {para}: {model.pretty()}")
+        fig, ax = model.plot(scan_factors)
+        # Before adiabatic and diabatic states can be plotted side by side the sign of
+        # scan_factors must be determined. Plotting should be done in  a way, to minimize
+        # the difference between adiabatic energies from the model, and adiabatic energies
+        # determined in the scan.
+        G1, _ = model.G_adiabatic(scan_factors)
+        # Determine sign that minimizes difference between parametrized adiabatic energies
+        # and scanned energies.
+        plus_diff = np.linalg.norm(G1 - shifted_scan_energies[:, 0])
+        min_diff = np.linalg.norm(G1 - shifted_scan_energies[:, 0][::-1])
+        sign = plus_diff if plus_diff < min_diff else -1
+
+        for i, state in enumerate(shifted_scan_energies.T):
+            label = get_state_label(mult, i)
+            ax.plot(sign * scan_factors, state, label=f"${label}$")
+            ax.legend()
+        fig_fn = cwd / f"marcus_model_{para}.svg"
+        fig.savefig(fig_fn)
+        print(f"Saved plot of Marcus model to '{fig_fn}'")
+    return models
+
+
 def run_marcus_dim(
     geom,
     fragments,
@@ -160,10 +196,16 @@ def run_marcus_dim(
         cwd=cwd,
         **scan_kwargs,
     )
+    print()
 
     # 3.) Parametrization of Marcus model
-    print()
-    print(highlight_text("Parametrization of Marcus Model"))
-    models = param_marcus(scan_factors, scan_energies)
-    for model in models:
-        print(model)
+
+    # Try to determine the multiplicity, for the creation of state labels as D_0, D_1, etc.
+    # for the following plots.
+    mult_calc = calc_getter()
+    try:
+        mult = mult_calc.mult
+    except:
+        mult = -1
+    models = run_param(scan_factors, scan_energies, mult, cwd=cwd)
+    return models
