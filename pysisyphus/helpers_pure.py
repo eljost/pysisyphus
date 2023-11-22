@@ -680,3 +680,18 @@ def rms(arr: np.ndarray) -> float:
         Root mean square of the given array.
     """
     return np.sqrt(np.mean(arr**2))
+
+
+SPIN_LABELS = {
+    1: "S",
+    2: "D",
+    3: "T",
+    4: "Q",
+    5: "5",
+    6: "6",
+}
+
+
+def get_state_label(mult: int, state_ind: int, default="?"):
+    spin_label = SPIN_LABELS.get(mult, default)
+    return f"{spin_label}_{state_ind:d}"

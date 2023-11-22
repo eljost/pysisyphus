@@ -56,14 +56,16 @@ class MarcusModel:
             G2 -= shift
         return G1, G2
 
-    def plot(self, x, show=False):
-        Ga, Gb = self.G_diabatic(x)
-        G1, G2 = self.G_adiabatic(x)
+    def plot(self, x, adiabatic=True, diabatic=False, show=False):
         fig, ax = plt.subplots()
-        for label, state in (("$G_a$", Ga), ("$G_b$", Gb)):
-            ax.plot(x, state, label=label)
-        for label, state in (("$G_1$", G1), ("$G_2$", G2)):
-            ax.plot(x, state, label=label)
+        if adiabatic:
+            G1, G2 = self.G_adiabatic(x)
+            for label, state in (("$G_1$", G1), ("$G_2$", G2)):
+                ax.plot(x, state, label=label)
+        if diabatic:
+            Ga, Gb = self.G_diabatic(x)
+            for label, state in (("$G_a$", Ga), ("$G_b$", Gb)):
+                ax.plot(x, state, label=label)
         ax.set_xlabel("Marcus dimension / $a_0$")
         ax.set_ylabel("Energy / $E_\mathrm{H}$")
         ax.legend()
