@@ -191,7 +191,8 @@ def param_marcus(coordinate: np.ndarray, energies: np.ndarray):
         barr_ind += ind0
     elif len(min_inds) == 1:
         warnings.warn(
-            "Found class III system. Parametrizing Marcus model is not possible!"
+            "Found class III system or scan is not yet finished. "
+            "Parametrizing Marcus model is not possible!"
         )
         adia_min_ind = barr_ind = min_inds[0]
     else:
