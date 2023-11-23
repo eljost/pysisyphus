@@ -74,10 +74,11 @@ def scan_dir(
         print(f"{i=:03d}, property={prop: >12.4f}, {grad=: >12.4f}")
         sys.stdout.flush()
 
+        did_min_steps = i >= min_steps - 1
         # Break when the gradient already decreased once and increased
         # unexpectedly aftwards. But do at least 'min_steps' steps.
         if (
-            (i >= min_steps)
+            did_min_steps
             and grad_decreased_already
             and (grad_decreased is not None)
             and not grad_decreased
@@ -86,7 +87,11 @@ def scan_dir(
             break
 
         # Check gradient convergence; this check is skipped once convergence is indicated.
-        if not converged and (converged := np.abs(grad) <= grad_thresh):
+        if not converged and (
+            # Bad idea to force to continue when converged?!
+            converged := did_min_steps
+            and np.abs(grad) <= grad_thresh
+        ):
             print("Converged!")
 
         # If requested, we carry out additional steps, if requested.
