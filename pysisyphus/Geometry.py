@@ -1269,7 +1269,9 @@ class Geometry:
             cart_coords = self._coords
         cart_coords = cart_coords.copy()
         cart_coords *= BOHR2ANG
-        if comment == "":
+        if comment is None:
+            comment = ""
+        elif comment == "":
             comment = self.comment
         return make_xyz_str(atoms, cart_coords.reshape((-1, 3)), comment)
 

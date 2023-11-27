@@ -213,7 +213,12 @@ def get_marcus_dim(eigvecs, masses, qs, properties):
     marcus_dim /= sqrt_masses_rep
     # and renormalize vector.
     marcus_dim /= np.linalg.norm(marcus_dim)
-    return corrs, coeffs, marcus_dim
+
+    marcus_dim_mw = marcus_dim / sqrt_masses_rep
+    # Transform mass-weighted displacements to normal coordinates
+    marcus_dim_q = eigvecs.T @ marcus_dim_mw
+
+    return corrs, coeffs, marcus_dim, marcus_dim_q
 
 
 def get_displaced_coordinates(wigner_sampler, eigvecs, coords_eq, M):
@@ -365,7 +370,7 @@ def fit_marcus_dim(
         print(f" Multiplicity: {mult}")
     print(f"  Temperature: {T:.2f} K")
     print(f"   Batch size: {batch_size}")
-    print(f" Max. batches: {max_batches}")
+    print(f"  Max batches: {max_batches}")
     print(f"rms threshold: {rms_thresh}")
     print(f"     Property: {property}")
 
@@ -419,6 +424,10 @@ def fit_marcus_dim(
         "cart_coords_eq": geom.cart_coords,
         "property_eq": property_eq,
         # Samples
+        "hessian": geom.cart_hessian,
+        "mw_hessian": geom.mw_hessian,
+        "linear": linear,
+        "wigner_seed": seed,
         "normal_coordinates": all_norm_coords,
         "properties": all_properties,
         "masses": masses,
@@ -518,13 +527,23 @@ def fit_marcus_dim(
         print(f"Total number of calculations done until now: {end_ind}")
 
         # Actually calculate Marcus dimension using least-squares
-        corrs, coeffs, marcus_dim = get_marcus_dim(
+        corrs, coeffs, marcus_dim, marcus_dim_q = get_marcus_dim(
             eigvecs, masses, all_norm_coords[:end_ind], all_properties[:end_ind]
         )
+        # Property change along Marcus dimension from fitted coefficients
+        prop_change_along_marcus_dim = marcus_dim_q.dot(coeffs)
+
+        # Mass and wavenumber of Marcus dimension mode
+        mass_marcus = get_mass(marcus_dim, masses)
+        nu_marcus = get_wavenumber(marcus_dim, nus, eigvecs, masses)
+        print(f"Mass along Marcus dimension: {mass_marcus:.6f} amu")
+        print(f"Wavenumber of Marcus dimension: {nu_marcus:.6f} cm⁻¹")
 
         # Dump results
-        to_save["marcus_dim"] = marcus_dim
         to_save["coeffs"] = coeffs
+        to_save["marcus_dim"] = marcus_dim
+        to_save["marcus_dim_q"] = marcus_dim_q
+        to_save["prop_change_along_marcus_dim"] = prop_change_along_marcus_dim
         to_save["end_ind"] = end_ind
 
         # XYZ representation of Marcus dimension and animation
@@ -606,9 +625,7 @@ def fit_marcus_dim(
 
     print()
     print(f"Final Marcus dimension:\n{marcus_dim_xyz_str}\n")
-    mass = get_mass(marcus_dim, masses)
-    nu_marcus = get_wavenumber(marcus_dim, nus, eigvecs, masses)
-    print(f"Mass along Marcus dimension: {mass:.6f} amu")
-    print(f"Wavenumber of Marcus dimension: {nu_marcus:.6f} cm⁻¹")
+    print(f"Mass along final Marcus dimension: {mass_marcus:.6f} amu")
+    print(f"Wavenumber of final Marcus dimension: {nu_marcus:.6f} cm⁻¹")
 
-    return marcus_dim
+    return to_save
