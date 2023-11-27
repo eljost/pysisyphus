@@ -206,6 +206,8 @@ class Turbomole(OverlapCalculator):
         "mwfn_wf",
         ("ciss_a", "td_vec_fn"),
         ("sing_a", "td_vec_fn"),
+        ("ucis_a", "td_vec_fn"),
+        ("unrs_a", "td_vec_fn"),
     )
 
     def __init__(
