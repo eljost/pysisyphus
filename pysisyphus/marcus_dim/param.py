@@ -138,7 +138,7 @@ def param_marcus(coordinate: np.ndarray, energies: np.ndarray):
     # Electronic coupling
     Vab = en_exc_barr / 2
     # Distance R between adiabatic minimum and top of barrier
-    R = abs(coordinate[barr_ind] - coordinate[adia_min_ind])
+    R = coordinate[barr_ind] - coordinate[adia_min_ind]
     # Barrier height ΔG
     dG = energies[barr_ind, 0]
 
