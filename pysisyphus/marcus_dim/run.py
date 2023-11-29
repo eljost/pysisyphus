@@ -225,7 +225,7 @@ def run_scan_parallel(
 
     marcus_dim = marcus_dim_data["marcus_dim"]
     normal_coords = marcus_dim_data["normal_coordinates"]
-    properties = marcus_dim_data["normal_coordinates"]
+    properties = marcus_dim_data["properties"]
     eigvecs = marcus_dim_data["eigvecs"]
     masses = marcus_dim_data["masses"]
 
