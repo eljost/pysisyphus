@@ -75,6 +75,7 @@ def get_classII_scan_info(
     # If the change is negative, then displacing against the Marcus dimension will bring
     # us towards the barrier.
     to_lower_eexc_factor = -1 if prop_change_along_marcus_dim > 0 else 1
+    to_higher_eexc_factor = -1 * to_lower_eexc_factor
 
     """
     # Alternatively one could also project the Marcus dimension in normal coordinates
@@ -98,8 +99,10 @@ def get_classII_scan_info(
     return (
         marcus_dim_to_lower_eexc,
         max_change_to_lower_eexc,
+        to_lower_eexc_factor,
         marcus_dim_to_higher_eexc,
         max_change_to_higher_eexc,
+        to_higher_eexc_factor,
     )
 
 
@@ -120,8 +123,10 @@ def get_scan_factors_and_steps(
         (
             md_lower,
             max_change_lower,
+            lower_factor,
             md_higher,
             max_change_higher,
+            higher_factor,
         ) = get_classII_scan_info(
             marcus_dim,
             normal_coords,
@@ -137,12 +142,14 @@ def get_scan_factors_and_steps(
             max_bond_change=max_change_lower,
             step_length=step_length,
         )
+        scan_factors_lower *= lower_factor
         scan_factors_higher, scan_steps_higher = scan_coords_for_max_bond_change(
             B,
             md_higher,
             max_bond_change=max_change_higher,
             step_length=step_length,
         )
+        scan_factors_higher *= higher_factor
         scan_factors_left = scan_factors_lower
         scan_steps_left = scan_steps_lower
         scan_factors_right = scan_factors_higher
