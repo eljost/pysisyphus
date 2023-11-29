@@ -291,23 +291,13 @@ def run_param(
     for para, model in models.items():
         print(f"Parametrization {para}: {model.pretty()}")
         fig, ax = model.plot(scan_factors)
-        # Before adiabatic and diabatic states can be plotted side by side the sign of
-        # scan_factors must be determined. Plotting should be done in  a way, to minimize
-        # the difference between adiabatic energies from the model, and adiabatic energies
-        # determined in the scan.
-        G1, _ = model.G_adiabatic(scan_factors)
-        # Determine sign that minimizes difference between parametrized adiabatic energies
-        # and scanned energies.
-        plus_diff = np.linalg.norm(G1 - shifted_scan_energies[:, 0])
-        min_diff = np.linalg.norm(G1 - shifted_scan_energies[:, 0][::-1])
-        sign = plus_diff if plus_diff < min_diff else -1
-
         for i, state in enumerate(shifted_scan_energies.T):
             label = get_state_label(mult, i)
-            ax.plot(sign * scan_factors, state, label=f"${label}$")
+            ax.plot(scan_factors, state, label=f"${label}$ scan")
             ax.legend()
         fig_fn = cwd / f"marcus_model_{para}.svg"
         fig.savefig(fig_fn)
+        plt.close(fig)
         print(f"Saved plot of Marcus model to '{fig_fn}'")
     return models
 

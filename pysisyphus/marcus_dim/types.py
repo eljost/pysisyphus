@@ -79,7 +79,10 @@ class MarcusModel:
         fig, ax = plt.subplots()
         if adiabatic:
             G1, G2 = self.G_adiabatic(x)
-            for label, state in (("$G_1$", G1), ("$G_2$", G2)):
+            for label, state in (
+                ("$G_1$ adia., model", G1),
+                ("$G_2$ adia., model", G2),
+            ):
                 ax.plot(x, state, label=label)
         if diabatic:
             Ga, Gb = self.G_diabatic(x)
