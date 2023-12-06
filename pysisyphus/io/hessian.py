@@ -5,6 +5,7 @@ import jinja2
 import h5py
 import numpy as np
 
+from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 
