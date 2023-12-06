@@ -35,6 +35,7 @@ class XTB(Calculator):
         alpb="",
         gfn=2,
         acc=1.0,
+        iterations=250,
         etemp=None,
         retry_etemp=None,
         restart=False,
@@ -61,7 +62,9 @@ class XTB(Calculator):
         acc : float, optional
             Accuracy control of the calculation, the lower the tighter several
             numerical thresholds are chosen.
-        topo: str, optional
+        iterations : int, optional
+            The number of iterations in SCC calculation.
+        topo : str, optional
             Path the a GFNFF-topolgy file. As setting up the topology may take
             some time for sizable systems, it may be desired to reuse the file.
         topo_update : int
@@ -78,6 +81,7 @@ class XTB(Calculator):
         self.alpb = alpb
         self.gfn = gfn
         self.acc = acc
+        self.iterations = iterations
         self.etemp = etemp
         self.retry_etemp = retry_etemp
         self.restart = restart
@@ -176,7 +180,7 @@ class XTB(Calculator):
     def prepare_add_args(self, xcontrol=None):
         add_args = (
             f"--input xcontrol --chrg {self.charge} --uhf {self.uhf} "
-            f"--acc {self.acc}".split()
+            f"--acc {self.acc} --iterations {self.iterations}".split()
         )
         if self.etemp:
             etemp = f"--etemp {self.etemp}".split()
