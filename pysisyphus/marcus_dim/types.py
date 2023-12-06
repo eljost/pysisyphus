@@ -7,8 +7,9 @@ import numpy as np
 
 from pysisyphus.constants import BOHR2ANG, NU2AU
 
-Property = Enum("Property", ["EPOS", "EEXC"])
+Property = Enum("Property", ["EPOS_IAO", "EPOS_MULLIKEN", "EEXC"])
 RobinDay = Enum("RobinDay", ["CLASS1", "CLASS2", "CLASS3"])
+PopKind = Enum("PopulationKind", ["IAO", "MULLIKEN"])
 
 
 @functools.singledispatch
