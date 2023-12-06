@@ -17,6 +17,7 @@ from distributed import Client
 import matplotlib.pyplot as plt
 import numpy as np
 
+from pysisyphus.constants import C
 from pysisyphus.exceptions import (
     CalculationFailedException,
     RunAfterCalculationFailedException,
@@ -39,7 +40,10 @@ from pysisyphus.helpers_pure import (
 )
 from pysisyphus.linalg import are_collinear
 from pysisyphus.TablePrinter import TablePrinter
-from pysisyphus.wavefunction.pop_analysis import iao_charges_from_wf
+from pysisyphus.wavefunction.pop_analysis import (
+    iao_charges_from_wf,
+    mulliken_charges_from_wf,
+)
 from pysisyphus.xyzloader import make_xyz_str
 
 
@@ -235,9 +239,16 @@ def get_displaced_coordinates(wigner_sampler, eigvecs, coords_eq, M):
     return displ_coords, norm_coords
 
 
-def epos_from_wf(wf, fragments):
+POP_FUNCS = {
+    mdtypes.PopKind.IAO: iao_charges_from_wf,
+    mdtypes.PopKind.MULLIKEN: mulliken_charges_from_wf,
+}
+
+
+def epos_from_wf(wf, fragments, pop_kind: mdtypes.PopKind = mdtypes.PopKind.IAO):
     """Fragment mulliken charges using intrinsic atomic orbital."""
-    pop_ana = iao_charges_from_wf(wf)
+    pop_func = POP_FUNCS[pop_kind]
+    pop_ana = pop_func(wf)
 
     assert approx_float(pop_ana.tot_charge, wf.charge)
 
@@ -254,13 +265,21 @@ def epos_from_wf(wf, fragments):
     return tot_epos, alpha_epos
 
 
-def epos_property(geom, fragments):
+def epos_property(geom, fragments, pop_kind):
     wf = geom.calculator.get_stored_wavefunction()
     # Only use alpha part
     # TODO: make this toggable?
-    _, alpha_epos = epos_from_wf(wf, fragments)
+    _, alpha_epos = epos_from_wf(wf, fragments, pop_kind=pop_kind)
     property = alpha_epos
     return property
+
+
+def epos_property_iao(geom, fragments):
+    return epos_property(geom, fragments, pop_kind=mdtypes.PopKind.IAO)
+
+
+def epos_property_mulliken(geom, fragments):
+    return epos_property(geom, fragments, pop_kind=mdtypes.PopKind.MULLIKEN)
 
 
 def en_exc_property(geom, fragments):
@@ -296,9 +315,30 @@ def get_mass(marcus_dim: np.ndarray, masses: np.ndarray) -> float:
 def get_wavenumber(
     marcus_dim: np.ndarray, nus: np.ndarray, eigvecs: np.ndarray, masses: np.ndarray
 ) -> float:
-    """Frequency along Marcus dimension.
+    """Wavenumber of Marcus dimension.
 
     Eq. (3) in SI of [2].
+
+    The angular frequency is obtained from the square root of the quotient between
+    force constants and reduced mass.
+
+        ω = sqrt(k/μ)
+
+    The 'normal' frequency ν is obtained as
+
+        ω_i = 2π ν_i = sqrt(k_i/μ_i)
+        ν_i = 1/2π * sqrt(k_i/μ_i)
+        ν_i = sqrt(k_i/(4π²μ_i))          (1)
+
+    Force constant k_i is
+
+        k_i = 4π²ν_i²μ_i                  (2)
+
+    The general ideo of Eq. (3) in the SI of [2] seems to be to calculate the
+    force constants of all normal modes in the numerator (Ω² C^T M C; compare to
+    ν² μ in (2)), then contract these values with the Marcus dimension in normal
+    coordinates. This number is then divided by the mass of the Marcus dimension.
+    The square root of this fraction yields a frequency with unit 1/s!
 
     Parameters
     ----------
@@ -317,28 +357,54 @@ def get_wavenumber(
         Wavenumber along Marcus dimension in cm⁻¹.
     """
     masses_rep = np.repeat(masses, 3)
-    a = eigvecs.T @ (masses_rep * marcus_dim)
+    a = eigvecs.T @ (np.sqrt(masses_rep) * marcus_dim)
     a = a / np.linalg.norm(a)
+
+    nus_m = nus * 100  # Wavenumber in 1/m
+    freqs_s = C * nus_m
     # Matrix multiplications with diagonal matrices are replaced by
     # element-wise multiplications.
     force_constant = (
         a[None, :]
-        @ ((nus**2)[:, None] * eigvecs.T)
+        @ ((freqs_s**2)[:, None] * eigvecs.T)
         @ (masses_rep[:, None] * eigvecs)
         @ a
     )
     mass = get_mass(marcus_dim, masses)
-    nu_marcus = np.sqrt(force_constant / mass)
-    nu_marcus = float(nu_marcus)
+    freq_marcus = np.sqrt(force_constant / mass)
+    nu_marcus = float(freq_marcus / C / 100)
     return nu_marcus
+
+
+def get_wavenumber_from_coeffs(coeffs: np.ndarray, nus: np.ndarray) -> float:
+    """Wavenumber in cm⁻¹ of Marcus dimension from fit coefficients."""
+    coeffs2 = coeffs**2
+    coeff_norm = (coeffs2).sum()
+    marcus_nu = (coeffs2 * nus).sum() / coeff_norm
+    return marcus_nu
+
+
+def plot_wigner_sampling(normal_coords):
+    ncoords, nnormal_coords = normal_coords.shape
+    fig, ax = plt.subplots()
+    ax.set_title(
+        f"Normal coordinate distribution from Wigner sampling ({ncoords} samples)"
+    )
+    ax.axhline(0.0, c="k", ls="--", zorder=0)
+    ax.violinplot(normal_coords)
+    ax.set_xlabel("Normal mode")
+    ax.set_ylabel("Normal coordinate")
+    ax.set_xlim(0, nnormal_coords + 1)
+    fig.tight_layout()
+    return fig, ax
 
 
 def fit_marcus_dim(
     geom: Geometry,
     calc_getter: Callable,
     fragments: List[Tuple[int]],
-    T: float = 300,
-    property=mdtypes.Property.EPOS,
+    T: float,
+    property=mdtypes.Property.EPOS_IAO,
     batch_size: int = 25,
     max_batches: int = 20,
     rms_thresh: float = RMS_THRESH,
@@ -355,7 +421,8 @@ def fit_marcus_dim(
     max_ncalcs = batch_size * max_batches
 
     property_funcs = {
-        property.EPOS: epos_property,
+        property.EPOS_IAO: epos_property_iao,
+        property.EPOS_MULLIKEN: epos_property_mulliken,
         property.EEXC: en_exc_property,
     }
     property_func = property_funcs[property]
@@ -535,7 +602,8 @@ def fit_marcus_dim(
 
         # Mass and wavenumber of Marcus dimension mode
         mass_marcus = get_mass(marcus_dim, masses)
-        nu_marcus = get_wavenumber(marcus_dim, nus, eigvecs, masses)
+        # nu_marcus = get_wavenumber(marcus_dim, nus, eigvecs, masses)
+        nu_marcus = get_wavenumber_from_coeffs(coeffs, nus)
         print(f"Mass along Marcus dimension: {mass_marcus:.6f} amu")
         print(f"Wavenumber of Marcus dimension: {nu_marcus:.6f} cm⁻¹")
 
@@ -543,6 +611,8 @@ def fit_marcus_dim(
         to_save["coeffs"] = coeffs
         to_save["marcus_dim"] = marcus_dim
         to_save["marcus_dim_q"] = marcus_dim_q
+        to_save["mass_marcus"] = mass_marcus
+        to_save["nu_marcus"] = nu_marcus
         to_save["prop_change_along_marcus_dim"] = prop_change_along_marcus_dim
         to_save["end_ind"] = end_ind
 
@@ -614,7 +684,7 @@ def fit_marcus_dim(
         print()
     # End of loop
 
-    with open("marcus_dim.xyz", "w") as handle:
+    with open(out_dir / "marcus_dim.xyz", "w") as handle:
         handle.write(marcus_dim_xyz_str)
 
     calc_indices = np.arange(end_ind)
@@ -622,6 +692,9 @@ def fit_marcus_dim(
     for i in calc_indices[failed_mask]:
         print(f"Calculation {i:03d} failed!")
     print(f"{failed_mask.sum()}/{end_ind} calculations failed.")
+
+    fig, _ = plot_wigner_sampling(all_norm_coords[:end_ind])
+    fig.savefig(out_dir / "normal_coords.svg")
 
     print()
     print(f"Final Marcus dimension:\n{marcus_dim_xyz_str}\n")

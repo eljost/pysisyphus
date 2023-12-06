@@ -309,6 +309,7 @@ def run_marcus_dim(
     rd_class: mdtypes.RobinDay,
     fit_kwargs: Optional[dict] = None,
     scan_kwargs: Optional[dict] = None,
+    T: float = 300.0,
     cluster: bool = True,
     force: bool = False,
     dummy_scan: bool = False,
@@ -333,6 +334,8 @@ def run_marcus_dim(
         Optional dict, containing additional arguments for fitting the Marcus dimension.
     scan_kwargs
         Optional dict, containing additional arguments for scanning along the Marcus dimension.
+    T
+        Temperature in Kelvin.
     cluster
         Boolean; controls wheter all calculations are done in serial or in parallel
         using dask.distributed.
@@ -352,6 +355,7 @@ def run_marcus_dim(
         scan_kwargs = {}
     fit_kwargs = fit_kwargs.copy()
     scan_kwargs = scan_kwargs.copy()
+    assert T > 0.0, f"Temperature {T=} must not be negative!"
     cwd = Path(cwd)
 
     # When no explicit property function choice is made, we derive the correct
@@ -361,7 +365,7 @@ def run_marcus_dim(
     except KeyError:
         property = {
             mdtypes.RobinDay.CLASS2: mdtypes.Property.EEXC,
-            mdtypes.RobinDay.CLASS3: mdtypes.Property.EPOS,
+            mdtypes.RobinDay.CLASS3: mdtypes.Property.EPOS_IAO,
         }[rd_class]
         fit_kwargs["property"] = property
         print(
@@ -393,7 +397,7 @@ def run_marcus_dim(
     else:
         with MaybeScheduler(cluster) as scheduler:
             marcus_dim_data = fit_marcus_dim(
-                geom, calc_getter, fragments, scheduler=scheduler, **fit_kwargs
+                geom, calc_getter, fragments, T=T, scheduler=scheduler, **fit_kwargs
             )
     print()
 
