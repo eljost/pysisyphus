@@ -22,6 +22,7 @@ except ModuleNotFoundError:
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.hessian_proj import get_hessian_projector, inertia_tensor
+from pysisyphus.linalg import are_collinear
 from pysisyphus.elem_data import (
     ATOMIC_NUMBERS,
     COVALENT_RADII as CR,
@@ -308,6 +309,10 @@ class Geometry:
         atoms = tuple(self.atoms) + tuple(other.atoms)
         coords = np.concatenate((self.cart_coords, other.cart_coords))
         return Geometry(atoms, coords)
+
+    @property
+    def is_linear(self):
+        return are_collinear(self.coords3d)
 
     def atom_xyz_iter(self):
         return iter(zip(self.atoms, self.coords3d))

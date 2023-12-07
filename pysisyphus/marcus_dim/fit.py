@@ -24,7 +24,7 @@ from pysisyphus.exceptions import (
 )
 from pysisyphus.marcus_dim.config import RMS_THRESH, FIT_RESULTS_FN
 import pysisyphus.marcus_dim.types as mdtypes
-from pysisyphus.dynamics import get_wigner_sampler
+from pysisyphus.dynamics.wigner import get_wigner_sampler, plot_normal_coords
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (
     get_tangent_trj_str,
@@ -225,7 +225,7 @@ def get_marcus_dim(eigvecs, masses, qs, properties):
     return corrs, coeffs, marcus_dim, marcus_dim_q
 
 
-def get_displaced_coordinates(wigner_sampler, eigvecs, coords_eq, M):
+def get_displaced_coordinates(wigner_sampler, eigvecs, coords_eq, M_sqrt):
     """Displaced (normal) coordinates from Wigner sampling."""
     # Displaced coordinates, drop velocities
     displ_coords, _ = wigner_sampler()
@@ -233,7 +233,7 @@ def get_displaced_coordinates(wigner_sampler, eigvecs, coords_eq, M):
     # Calculate mass-weighted displacements from equilibrium geometry and
     # transform to normal coordinates.
     displ = (displ_coords - coords_eq).flatten()
-    displ_mw = M @ displ
+    displ_mw = M_sqrt @ displ
     # Transform mass-weighted displacements to normal coordinates
     norm_coords = eigvecs.T @ displ_mw
     return displ_coords, norm_coords
@@ -384,21 +384,6 @@ def get_wavenumber_from_coeffs(coeffs: np.ndarray, nus: np.ndarray) -> float:
     return marcus_nu
 
 
-def plot_wigner_sampling(normal_coords):
-    ncoords, nnormal_coords = normal_coords.shape
-    fig, ax = plt.subplots()
-    ax.set_title(
-        f"Normal coordinate distribution from Wigner sampling ({ncoords} samples)"
-    )
-    ax.axhline(0.0, c="k", ls="--", zorder=0)
-    ax.violinplot(normal_coords)
-    ax.set_xlabel("Normal mode")
-    ax.set_ylabel("Normal coordinate")
-    ax.set_xlim(0, nnormal_coords + 1)
-    fig.tight_layout()
-    return fig, ax
-
-
 def fit_marcus_dim(
     geom: Geometry,
     calc_getter: Callable,
@@ -455,7 +440,7 @@ def fit_marcus_dim(
     coords_eq = geom.cart_coords
     # The function will probably never be applied to linear molecules,
     # but why not check this.
-    linear = are_collinear(geom.coords3d)
+    linear = geom.is_linear
     drop_first = 5 if linear else 6
     eigvals, eigvecs = np.linalg.eigh(
         geom.eckart_projection(geom.mw_hessian, full=True)
@@ -482,7 +467,7 @@ def fit_marcus_dim(
 
     masses = geom.masses
     sqrt_masses_rep = np.repeat(np.sqrt(masses), 3)
-    M = np.diag(1 / sqrt_masses_rep)
+    M_sqrt = np.diag(sqrt_masses_rep)
 
     to_save = {
         # Property key
@@ -563,7 +548,7 @@ def fit_marcus_dim(
         # Get and store displaced coordinates and normal coordinates
         for i in range(start_ind, end_ind):
             displ_coords, norm_coords = get_displaced_coordinates(
-                wigner_sampler, eigvecs, coords_eq, M
+                wigner_sampler, eigvecs, coords_eq, M_sqrt
             )
             batch_displ_coords[i - start_ind] = displ_coords
             all_norm_coords[i] = norm_coords
@@ -693,7 +678,7 @@ def fit_marcus_dim(
         print(f"Calculation {i:03d} failed!")
     print(f"{failed_mask.sum()}/{end_ind} calculations failed.")
 
-    fig, _ = plot_wigner_sampling(all_norm_coords[:end_ind])
+    fig, _ = plot_normal_coords(all_norm_coords[:end_ind])
     fig.savefig(out_dir / "normal_coords.svg")
 
     print()
