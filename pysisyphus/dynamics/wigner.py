@@ -237,12 +237,51 @@ def _(h5_fn: str):
     return get_wigner_sampler(geom)
 
 
+def plot_normal_coords(normal_coords):
+    ncoords, nnormal_coords = normal_coords.shape
+    fig, ax = plt.subplots()
+    ax.set_title(
+        f"Normal coordinate distribution from Wigner sampling ({ncoords} samples)"
+    )
+    ax.axhline(0.0, c="k", ls="--", zorder=0)
+    ax.violinplot(normal_coords)
+    ax.set_xlabel("Normal mode")
+    ax.set_ylabel("Normal coordinate")
+    ax.set_xlim(0, nnormal_coords + 1)
+    fig.tight_layout()
+    return fig, ax
+
+
+def to_normal_coords_getter(geom):
+    coords_eq = geom.coords
+    sqrt_masses = np.repeat(np.sqrt(geom.masses), 3)
+    M_sqrt = np.diag(sqrt_masses)
+    _, eigvecs = np.linalg.eigh(geom.eckart_projection(geom.mw_hessian, full=True))
+    drop_first = 5 if geom.is_linear else 6
+    eigvecs = eigvecs[:, drop_first:]
+
+    def to_normal_coords(coords):
+        displ = coords - coords_eq
+        displ_mw = M_sqrt @ displ
+        # Transform mass-weighted displacements to normal coordinates
+        norm_coords = eigvecs.T @ displ_mw
+        return norm_coords
+
+    return to_normal_coords
+
+
 def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("h5_fn", type=str, help="Filename of pysisyphus HDF5 Hessian.")
     parser.add_argument("-n", type=int, default=100, help="Number of samples.")
     parser.add_argument("-T", type=float, default=None, help="Temperature in K.")
+    parser.add_argument("--seed", type=int)
     parser.add_argument("--plotekin", action="store_true", help="Plot kinetic energy.")
+    parser.add_argument(
+        "--plotnormalcoords",
+        action="store_true",
+        help="Plot distribution of normal coordinates",
+    )
     return parser.parse_args(args)
 
 
@@ -252,17 +291,20 @@ def run():
     h5_fn = args.h5_fn
     n = args.n
     temperature = args.T
+    seed = args.seed
     plotekin = args.plotekin
+    plotnormalcoords = args.plotnormalcoords
 
     geom = geom_from_hessian(h5_fn)
 
-    sampler, seed = get_wigner_sampler(geom, temperature=temperature)
+    sampler, seed = get_wigner_sampler(geom, temperature=temperature, seed=seed)
     print(f"Seed: {seed}")
     xyzs = list()
-    velocities = np.zeros((n, len(geom.atoms), 3))
+    coords3d = np.empty((n, len(geom.atoms), 3))
+    velocities = np.empty_like(coords3d)
     for i in range(n):
-        c3d, velocities[i] = sampler()
-        xyzs.append(geom.as_xyz(cart_coords=c3d))
+        coords3d[i], velocities[i] = sampler()
+        xyzs.append(geom.as_xyz(cart_coords=coords3d[i]))
 
     trj_fn = f"samples_{n}.trj"
     with open(trj_fn, "w") as handle:
@@ -279,3 +321,9 @@ def run():
         _, ax = plt.subplots()
         ax.hist(E_kins_eV, bins=100)
         plt.show()
+    if plotnormalcoords:
+        to_normal_coords = to_normal_coords_getter(geom)
+        normal_coords = np.array([to_normal_coords(c3d.flatten()) for c3d in coords3d])
+        fig, ax = plot_normal_coords(normal_coords)
+        fig.tight_layout()
+        fig.savefig("normal_coords.pdf")
