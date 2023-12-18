@@ -17,7 +17,7 @@ from distributed import Client
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pysisyphus.constants import C
+from pysisyphus.constants import BOHR2ANG, C
 from pysisyphus.exceptions import (
     CalculationFailedException,
     RunAfterCalculationFailedException,
@@ -162,12 +162,12 @@ def report_correlations(nus, corrs, drop_first, corr_thresh=_CORR_THRESH):
     print()
 
 
-def get_marcus_dim(eigvecs, masses, qs, properties):
+def get_marcus_dim(cart_displs, qs, properties):
     """Determine Marcus dimension from normal coordinates and properties.
 
     Parameters
     ----------
-    eigevecs
+    cart_displs
         2d array with shape (3N, nmodes) holding normal modes, with N being the
         number of atoms.
     masses
@@ -195,10 +195,8 @@ def get_marcus_dim(eigvecs, masses, qs, properties):
     qs = qs[mask]
     properties = properties[mask]
 
-    sqrt_masses_rep = np.repeat(np.sqrt(masses), 3)
-
     # Number of normal modes
-    nmodes = eigvecs.shape[1]
+    nmodes = cart_displs.shape[1]
 
     corrs = np.zeros(nmodes)
     for i, q in enumerate(qs.T):
@@ -207,35 +205,27 @@ def get_marcus_dim(eigvecs, masses, qs, properties):
 
     # Do least-squares.
     print("Solving least squares 'qs . coeffs = depos' for 'coeffs'")
-    # Residuals are an empty array
-    coeffs, _, rank, singvals = np.linalg.lstsq(qs, properties, rcond=None)
+    coeffs, residual, rank, singvals = np.linalg.lstsq(qs, properties, rcond=None)
 
     # Construct Marcus dimension as linear combination of normal modes
-    # according to coefficients b from least-squares fit.
-    marcus_dim = np.einsum("i,ki->k", coeffs, eigvecs)
-    # Remove mass-weighting
-    marcus_dim /= sqrt_masses_rep
-    # and renormalize vector.
+    # according to coefficients b from least-squares fit ...
+    marcus_dim = np.einsum("i,ki->k", coeffs, cart_displs)
+    # ... and renormalize vector.
     marcus_dim /= np.linalg.norm(marcus_dim)
 
-    marcus_dim_mw = marcus_dim / sqrt_masses_rep
-    # Transform mass-weighted displacements to normal coordinates
-    marcus_dim_q = eigvecs.T @ marcus_dim_mw
+    # Also calculate Marcud dimension in normal coordinates
+    marcus_dim_q = cart_displs.T @ marcus_dim
 
     return corrs, coeffs, marcus_dim, marcus_dim_q
 
 
-def get_displaced_coordinates(wigner_sampler, eigvecs, coords_eq, M_sqrt):
+def get_displaced_coordinates(wigner_sampler, cart_displs, coords_eq):
     """Displaced (normal) coordinates from Wigner sampling."""
     # Displaced coordinates, drop velocities
     displ_coords, _ = wigner_sampler()
     displ_coords = displ_coords.flatten()
-    # Calculate mass-weighted displacements from equilibrium geometry and
-    # transform to normal coordinates.
-    displ = (displ_coords - coords_eq).flatten()
-    displ_mw = M_sqrt @ displ
-    # Transform mass-weighted displacements to normal coordinates
-    norm_coords = eigvecs.T @ displ_mw
+    # Calculate displacements from equilibrium geometry and transform to normal coordinates.
+    norm_coords = cart_displs.T @ (displ_coords - coords_eq).flatten()
     return displ_coords, norm_coords
 
 
@@ -442,14 +432,18 @@ def fit_marcus_dim(
     # but why not check this.
     linear = geom.is_linear
     drop_first = 5 if linear else 6
-    eigvals, eigvecs = np.linalg.eigh(
-        geom.eckart_projection(geom.mw_hessian, full=True)
-    )
+    proj_hessian, P = geom.eckart_projection(geom.mw_hessian, return_P=True, full=True)
+    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
+    # Drop eigenvalues/-vectors belonging to translation & rotation
     eigvals = eigvals[drop_first:]
     eigvecs = eigvecs[:, drop_first:]
     nus = eigval_to_wavenumber(eigvals)
     nmodes = len(nus)
-    # geom.set_calculator(calc_getter(base_name="eq"))
+
+    # cart_dipls has shape (3*N, nmodes) and contains normalized Cartesian displacements
+    # (normal modes) in columns.
+    cart_displs = geom.mm_sqrt_inv.dot(P.T.dot(eigvecs))
+    cart_displs /= np.linalg.norm(cart_displs, axis=0)
 
     # Calculate wavefunction at equilibrium geometry
     print("Starting calculation at equilibrium geometry")
@@ -461,13 +455,13 @@ def fit_marcus_dim(
     wigner_sampler, seed = get_wigner_sampler(geom, temperature=T, seed=seed)
     print(f"Seed for Wigner sampling: {seed}")
 
-    # Arrays holding normal coordinates and properties
+    # Arrays holding displace Cartesian coordinates, normal coordinates and properties
+    all_displ_coords = np.zeros((max_ncalcs, coords_eq.size))
     all_norm_coords = np.zeros((max_ncalcs, nmodes))
     all_properties = np.zeros(max_ncalcs)
 
     masses = geom.masses
     sqrt_masses_rep = np.repeat(np.sqrt(masses), 3)
-    M_sqrt = np.diag(sqrt_masses_rep)
 
     to_save = {
         # Property key
@@ -480,11 +474,13 @@ def fit_marcus_dim(
         "mw_hessian": geom.mw_hessian,
         "linear": linear,
         "wigner_seed": seed,
+        "cart_coords": all_displ_coords,
         "normal_coordinates": all_norm_coords,
         "properties": all_properties,
         "masses": masses,
         "eigvals": eigvals,
         "eigvecs": eigvecs,
+        "cart_displs": cart_displs,
         "nus": nus,
         # Additional keys will be added/updated throughout the run.
         # "marcus_dim": np.zeros_like(geom.cart_coords),
@@ -548,9 +544,10 @@ def fit_marcus_dim(
         # Get and store displaced coordinates and normal coordinates
         for i in range(start_ind, end_ind):
             displ_coords, norm_coords = get_displaced_coordinates(
-                wigner_sampler, eigvecs, coords_eq, M_sqrt
+                wigner_sampler, cart_displs, coords_eq
             )
             batch_displ_coords[i - start_ind] = displ_coords
+            all_displ_coords[i] = displ_coords
             all_norm_coords[i] = norm_coords
 
         # Loop over cacluclations in current batch
@@ -580,7 +577,7 @@ def fit_marcus_dim(
 
         # Actually calculate Marcus dimension using least-squares
         corrs, coeffs, marcus_dim, marcus_dim_q = get_marcus_dim(
-            eigvecs, masses, all_norm_coords[:end_ind], all_properties[:end_ind]
+            cart_displs, all_norm_coords[:end_ind], all_properties[:end_ind]
         )
         # Property change along Marcus dimension from fitted coefficients
         prop_change_along_marcus_dim = marcus_dim_q.dot(coeffs)
@@ -602,7 +599,9 @@ def fit_marcus_dim(
         to_save["end_ind"] = end_ind
 
         # XYZ representation of Marcus dimension and animation
-        marcus_dim_xyz_str = make_xyz_str(geom.atoms, marcus_dim.reshape(-1, 3))
+        marcus_dim_xyz_str = make_xyz_str(
+            geom.atoms, BOHR2ANG * marcus_dim.reshape(-1, 3)
+        )
         print(f"Current Marcus dimension:\n{marcus_dim_xyz_str}\n")
         marcus_dim_trj = get_tangent_trj_str(
             geom.atoms, geom.cart_coords, marcus_dim, comment="Marcus dimension"
