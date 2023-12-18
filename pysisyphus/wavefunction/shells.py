@@ -302,14 +302,14 @@ class Shells:
         return self._numba_shells
 
     def as_numba_shells(self):
-        import numba
-
         from pysisyphus.wavefunction import backend_numba
 
-        numba_shells = numba.typed.List()
-        for shell in self:
-            numba_shells.append(backend_numba.NumbaShell(*shell.as_tuple()))
-        return numba_shells
+        return backend_numba.to_numba_shells(self)
+
+    def as_numba_shellstructs(self):
+        from pysisyphus.wavefunction import backend_numba
+
+        return backend_numba.to_numba_shellstructs(self)
 
     @property
     def cart_size(self):
