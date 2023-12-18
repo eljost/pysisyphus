@@ -107,7 +107,11 @@ def geom_from_hessian(
 def cart_displs_to_vib_normal_modes(
     cart_displs: np.ndarray, chunk_size: int = 5
 ) -> str:
-    """Convert Cartesian normal modes into TURBOMOLE vib_normal_modes format."""
+    """Convert Cartesian normal modes into TURBOMOLE vib_normal_modes format.
+
+    cart_displs must be a matrix of shape (3N, 3N), with Cartesian displacements
+    in columns. One column per normal mode. The columns must be normalized.
+    """
     nchunks = math.ceil(cart_displs.shape[1] / chunk_size)
     fmt = " >14.10f"
     lines = [

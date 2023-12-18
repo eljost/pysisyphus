@@ -277,6 +277,7 @@ class Turbomole(OverlapCalculator):
             "ucis_a",
             "gradient",
             "sing_a",
+            "unrs_a",
             "__ccre*",
             "exstates",
             "coord",
