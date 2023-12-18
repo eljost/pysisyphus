@@ -203,3 +203,4 @@ version.py
 !tests/test_local_force_constants/bf3_ccsd_t_ccpvdz.h5
 !tests/test_wavefunction/bases/*
 !pysisyphus/wf_library/*
+!pysisyphus/numint/lebedev_grids_4pi.npz
