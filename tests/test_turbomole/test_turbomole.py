@@ -198,6 +198,19 @@ def test_h2o_all_energies(geom, this_dir):
 
 
 @using("turbomole")
+def test_h2o_all_energies_unrs(geom, this_dir):
+    control_path = "./control_path_dft_es1_unrs"
+    turbo_kwargs = {
+        "control_path": this_dir / control_path,
+    }
+    calc = Turbomole(**turbo_kwargs)
+    geom.set_calculator(calc)
+    all_energies = geom.all_energies
+    ref_energies = (-76.2310422, -76.1422539, -76.0162519)
+    np.testing.assert_allclose(all_energies, ref_energies)
+
+
+@using("turbomole")
 def test_h2o_numforce(geom, this_dir):
     control_path = "./control_path_dft_gs"
     turbo_kwargs = {
