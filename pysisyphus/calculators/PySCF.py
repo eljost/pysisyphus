@@ -22,6 +22,7 @@ class PySCF(OverlapCalculator):
     }
     multisteps = {
         "scf": ("scf",),
+        "tdhf": ("scf", "tddft"),
         "dft": ("dft",),
         "mp2": ("scf", "mp2"),
         "tddft": ("dft", "tddft"),
@@ -182,6 +183,12 @@ class PySCF(OverlapCalculator):
         results = self.store_and_track(
             results, self.get_energy, atoms, coords, **prepare_kwargs
         )
+        return results
+
+    def get_all_energies(self, atoms, coords, **prepare_kwargs):
+        results = self.get_energy(atoms, coords, **prepare_kwargs)
+        all_energies = self.parse_all_energies()
+        results["all_energies"] = all_energies
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):

@@ -869,7 +869,7 @@ class Geometry:
         This will also set self.energy, which may NOT be the ground state,
         but the state correspondig to the 'root' attribute of the calculator."""
         if self._all_energies is None:
-            results = self.calculator.get_energy(self.atoms, self._coords)
+            results = self.calculator.get_all_energies(self.atoms, self._coords)
             self.set_results(results)
         return self._all_energies
 
