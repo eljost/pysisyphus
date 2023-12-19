@@ -41,8 +41,8 @@ from pysisyphus.helpers_pure import (
 from pysisyphus.linalg import are_collinear
 from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.wavefunction.pop_analysis import (
-    iao_charges_from_wf,
-    mulliken_charges_from_wf,
+    iao_charges,
+    mulliken_charges,
 )
 from pysisyphus.xyzloader import make_xyz_str
 
@@ -230,8 +230,8 @@ def get_displaced_coordinates(wigner_sampler, cart_displs, coords_eq):
 
 
 POP_FUNCS = {
-    mdtypes.PopKind.IAO: iao_charges_from_wf,
-    mdtypes.PopKind.MULLIKEN: mulliken_charges_from_wf,
+    mdtypes.PopKind.IAO: iao_charges,
+    mdtypes.PopKind.MULLIKEN: mulliken_charges,
 }
 
 
