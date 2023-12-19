@@ -35,7 +35,7 @@ class ExSpectrumRoot:
 @file_or_str(".exspectrum")
 def parse_exspectrum(text: str) -> list[ExSpectrumRoot]:
     """Parse root data from exspectrum file."""
-    roots = list()
+    ex_roots = list()
     for line in text.strip().split("\n"):
         line = line.strip()
         is_comment = line.startswith("#")
@@ -48,15 +48,15 @@ def parse_exspectrum(text: str) -> list[ExSpectrumRoot]:
         exc_energy = float(exc_energy)
         osc_vel = float(osc_vel)
         osc_len = float(osc_len)
-        root = ExSpectrumRoot(
+        ex_root = ExSpectrumRoot(
             root=root,
             sym=sym,
             exc_energy=exc_energy,
             osc_vel=osc_vel,
             osc_len=osc_len,
         )
-        roots.append(root)
-    return roots
+        ex_roots.append(ex_root)
+    return ex_roots
 
 
 def index_strs_for_atoms(atoms):
