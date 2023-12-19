@@ -6,17 +6,18 @@ from pysisyphus.testing import using
 
 
 _ROOT_REF_ENERGIES = {
+    # -74.9607 au is the GS
     # -74.4893 au is the S1, not the GS
-    (ORCA, None): -74.4893,
+    (ORCA, None): -74.9607,
     (ORCA, 2): -74.3984,
-    (PySCF, None): -74.4893,
-    (PySCF, 2): -74.3714,
+    (PySCF, None): -74.9607,
+    (PySCF, 2): -74.3984,  # ???
+    (Turbomole, None): -74.9607,
+    (Turbomole, 2): -74.39837,
+    (Gaussian16, None): -74.9607,
+    (Gaussian16, 2): -74.39837,
     (DFTBp, None): -4.077751,
     (DFTBp, 2): -3.33313,
-    (Turbomole, None): -74.48927,
-    (Turbomole, 2): -74.39837,
-    (Gaussian16, None): -74.48927,
-    (Gaussian16, 2): -74.39837,
 }
 
 
@@ -35,7 +36,7 @@ _ROOT_REF_ENERGIES = {
             PySCF,
             {
                 "basis": "sto3g",
-                "method": "tddft",
+                "method": "tdhf",
                 "nroots": 3,
             },
             marks=(using("pyscf")),
@@ -63,9 +64,7 @@ _ROOT_REF_ENERGIES = {
         ),
         pytest.param(
             Gaussian16,
-            {
-                "route": "hf sto-3g td=(nstates=3)"
-            },
+            {"route": "hf sto-3g td=(nstates=3)"},
             marks=(using("gaussian16")),
         ),
     ),
