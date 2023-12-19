@@ -8,7 +8,7 @@ from pysisyphus.elem_data import INV_ATOMIC_NUMBERS
 from pysisyphus.helpers import geom_loader
 from pysisyphus.helpers_pure import eigval_to_wavenumber
 from pysisyphus.testing import using
-from pysisyphus.wavefunction.pop_analysis import mulliken_charges_from_wf
+from pysisyphus.wavefunction.pop_analysis import mulliken_charges
 
 
 @pytest.fixture
@@ -95,7 +95,7 @@ def test_xtb_stored_wavefunction():
     # Wavefunction already does some internal sanity checking
     wf = calc.get_stored_wavefunction()
     assert wf.charge == 0
-    pa = mulliken_charges_from_wf(wf)
+    pa = mulliken_charges(wf)
     ref_charges = (-0.56619393, 0.28309696, 0.28309696)
     np.testing.assert_allclose(pa.charges, ref_charges, atol=1e-6)
 

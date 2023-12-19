@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import functools
 from typing import List, Tuple
 
 import numpy as np
@@ -47,6 +48,7 @@ class PopAnalysis:
         return np.abs(spin_pop)
 
 
+@functools.singledispatch
 def mulliken_charges(
     P: Tuple[np.ndarray, np.ndarray],
     S: np.ndarray,
@@ -71,12 +73,13 @@ def mulliken_charges(
     return pop_ana
 
 
-def mulliken_charges_from_wf(wf: Wavefunction) -> np.ndarray:
+@mulliken_charges.register
+def _(wf: Wavefunction) -> PopAnalysis:
     return mulliken_charges(
-        P=wf.P,
-        S=wf.S,
-        nuc_charges=wf.nuc_charges,
-        ao_centers=wf.ao_centers,
+        wf.P,
+        wf.S,
+        wf.nuc_charges,
+        wf.ao_centers,
     )
 
 
@@ -105,7 +108,23 @@ def make_iaos(
     return iaos
 
 
-def iao_charges_from_wf(wf: Wavefunction) -> PopAnalysis:
+@functools.singledispatch
+def iao_charges(
+    P: Tuple[np.ndarray, np.ndarray],
+    nuc_charges: np.ndarray,
+    ao_centers: List[int],
+) -> PopAnalysis:
+    return mulliken_charges(
+        P,
+        # IAOs are are orthonormal, so the overlap matriy is the identity matrix
+        np.eye(len(ao_centers)),
+        nuc_charges,
+        ao_centers,
+    )
+
+
+@iao_charges.register
+def _(wf: Wavefunction) -> PopAnalysis:
     """IAO charges.
 
     Extension to ES is described here:
@@ -129,9 +148,8 @@ def iao_charges_from_wf(wf: Wavefunction) -> PopAnalysis:
     P_iao = np.array([get_iao_P(c_occ) for c_occ in C_occ])
 
     minao_ao_centers = list(minao_shells.sph_ao_centers)
-    return mulliken_charges(
-        P=P_iao,
-        S=np.eye(len(minao_ao_centers)),
-        nuc_charges=wf.nuc_charges,
-        ao_centers=minao_ao_centers,
+    return iao_charges(
+        P_iao,
+        wf.nuc_charges,
+        minao_ao_centers,
     )
