@@ -205,7 +205,7 @@ class DFTBp(OverlapCalculator):
 
     @staticmethod
     def get_excited_state_str(track, root, nroots, forces=False):
-        if root is None and (track == False):
+        if (nroots is None) and (root is None) and (track == False):
             return ""
 
         casida_tpl = jinja2.Template(
@@ -230,6 +230,7 @@ class DFTBp(OverlapCalculator):
         return es_str
 
     def prepare_input(self, atoms, coords, calc_type):
+        atoms = [atom.capitalize() for atom in atoms]
         path = self.prepare_path(use_in_run=True)
         gen_str = self.get_gen_str(atoms, coords)
         with open(path / self.gen_geom_fn, "w") as handle:
@@ -289,6 +290,9 @@ class DFTBp(OverlapCalculator):
             results, self.get_energy, atoms, coords, **prepare_kwargs
         )
         return results
+
+    def get_all_energies(self, atoms, coords, **prepare_kwargs):
+        return self.get_energy(atoms, coords, **prepare_kwargs)
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
         inp, path = self.prepare_input(atoms, coords, "forces")
