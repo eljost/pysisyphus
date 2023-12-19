@@ -873,6 +873,9 @@ class Geometry:
             self.set_results(results)
         return self._all_energies
 
+    def get_root_energy(self, root):
+        return self.all_energies[root]
+
     def has_all_energies(self):
         return self._all_energies is not None
 

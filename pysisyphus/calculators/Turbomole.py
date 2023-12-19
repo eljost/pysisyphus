@@ -698,10 +698,11 @@ class Turbomole(OverlapCalculator):
         en_regex = re.compile(r"Total energy\s*:?\s*=?\s*([\d\-\.]+)", re.IGNORECASE)
         tot_ens = en_regex.findall(text)
 
-        if self.td:
-            # Drop ground state energy that is repeated
-            root = self.root if self.root is not None else 1
-            tot_en = tot_ens[1:][root]
+        # Only modify energy when self.root is set; otherwise stick with the GS energy.
+        if self.td and self.root is not None:
+            # Drop ground state energy that is repeated. That is why we don't subtract
+            # 1 from self.root.
+            tot_en = tot_ens[1:][self.root]
         elif self.ricc2 and self.ricc2_opt:
             results = parse_turbo_gradient(path)
             tot_en = results["energy"]

@@ -55,6 +55,7 @@ class Gaussian16(OverlapCalculator):
         }
         exc_keyword = [key for key in "td tda cis".split() if key in keywords]
         self.nstates = self.nroots
+        self.exc_args = None
         if exc_keyword:
             self.exc_key = exc_keyword[0]
             exc_dict = keywords[self.exc_key]
@@ -101,6 +102,7 @@ class Gaussian16(OverlapCalculator):
         self.gaussian_input = textwrap.dedent(self.gaussian_input)
 
         self.parser_funcs = {
+            "energy": self.parse_energy,
             "force": self.parse_force,
             "hessian": self.parse_hessian,
             "stable": self.parse_stable,
@@ -118,8 +120,7 @@ class Gaussian16(OverlapCalculator):
         )
 
     def make_exc_str(self):
-        # Ground state calculation
-        if not self.track and (self.root is None):
+        if self.exc_args is None:
             return ""
         root = self.root if self.root is not None else 1
         root_str = f"root={root}"
@@ -341,7 +342,25 @@ class Gaussian16(OverlapCalculator):
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
-        return self.get_forces(atoms, coords, **prepare_kwargs)
+        did_stable = False
+        if self.stable:
+            is_stable = self.run_stable(atoms, coords)
+            self.log(f"Wavefunction is now stable: {is_stable}")
+            did_stable = True
+        inp = self.prepare_input(
+            atoms, coords, "sp", did_stable=did_stable, **prepare_kwargs
+        )
+        kwargs = {
+            "calc": "energy",
+        }
+        results = self.run(inp, **kwargs)
+        results = self.store_and_track(
+            results, self.get_energy, atoms, coords, **prepare_kwargs
+        )
+        return results
+
+    def get_all_energies(self, atoms, coords, **prepare_kwargs):
+        return self.get_energy(atoms, coords, **prepare_kwargs)
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
         did_stable = False
@@ -574,13 +593,12 @@ class Gaussian16(OverlapCalculator):
         all_energies[1:] += exc_energies
         return C, X, Y, all_energies
 
-    def parse_force(self, path):
+    def parse_energy(self, path):
         results = {}
-        keys = ("SCF Energy", "Total Energy", "Cartesian Gradient")
+        keys = ("SCF Energy", "Total Energy")
         fchk_path = Path(path) / f"{self.fn_base}.fchk"
         fchk_dict = self.parse_fchk(fchk_path, keys)
         results["energy"] = fchk_dict["SCF Energy"]
-        results["forces"] = -fchk_dict["Cartesian Gradient"]
 
         if self.nstates:
             # This sets the proper excited state energy in the
@@ -588,17 +606,26 @@ class Gaussian16(OverlapCalculator):
             exc_energies = self.parse_tddft(path)
             # G16 root input is 1 based, so we substract 1 to get
             # the right index here.
-            root = self.root if self.root is not None else 1
-            root_exc_en = exc_energies[root - 1]
             gs_energy = fchk_dict["SCF Energy"]
-            # Add excitation energy to ground state energy.
-            results["energy"] += root_exc_en
-            # Create a new array including the ground state energy
-            # to save the energies of all states.
-            all_ens = np.full(len(exc_energies) + 1, gs_energy)
-            all_ens[1:] += exc_energies
-            results["all_energies"] = all_ens
+            # Modify "energy" when a root is selected
+            if self.root is not None:
+                root_exc_en = exc_energies[self.root - 1]
+                # Add excitation energy to ground state energy.
+                results["energy"] += root_exc_en
+                # Create a new array including the ground state energy
+                # to save the energies of all states.
+                all_ens = np.full(len(exc_energies) + 1, gs_energy)
+                all_ens[1:] += exc_energies
+                results["all_energies"] = all_ens
 
+        return results
+
+    def parse_force(self, path):
+        results = self.parse_energy(path)
+        keys = ("Cartesian Gradient",)
+        fchk_path = Path(path) / f"{self.fn_base}.fchk"
+        fchk_dict = self.parse_fchk(fchk_path, keys)
+        results["forces"] = -fchk_dict["Cartesian Gradient"]
         return results
 
     def parse_hessian(self, path):
