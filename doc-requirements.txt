@@ -109,7 +109,7 @@ packaging==23.1
     #   distributed
     #   matplotlib
     #   sphinx
-paramiko==3.2.0
+paramiko==3.4.0
     # via fabric
 partd==1.4.0
     # via dask
