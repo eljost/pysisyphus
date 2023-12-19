@@ -57,6 +57,13 @@ from pysisyphus.testing import using
             },
             marks=using("PySCF"),
         ),
+        pytest.param(
+            Gaussian16,
+            {
+                "route": "hf def2svp td(nstates=3)",
+            },
+            marks=using("gaussian16"),
+        ),
     ),
 )
 def test_h2o_all_energies(mult, ref_energies, calc_cls, calc_kwargs, this_dir):
@@ -72,3 +79,11 @@ def test_h2o_all_energies(mult, ref_energies, calc_cls, calc_kwargs, this_dir):
     # PySCF and Turbomole agree extermely well, at least in the restricted calculation.
     # ORCA deviates up to 5e-5 Eh.
     np.testing.assert_allclose(all_energies, ref_energies, atol=5e-5)
+
+    # As we did not set any root the geometries energy should correspond to the GS energy
+    energy = geom.energy
+    assert energy == pytest.approx(ref_energies[0])
+
+    for root in range(4):
+        root_en = geom.get_root_energy(root)
+        assert root_en == pytest.approx(ref_energies[root])

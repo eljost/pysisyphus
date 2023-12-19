@@ -23,6 +23,7 @@ class PySCF(OverlapCalculator):
     multisteps = {
         "scf": ("scf",),
         "tdhf": ("scf", "tddft"),
+        "tdahf": ("scf", "tda"),
         "dft": ("dft",),
         "mp2": ("scf", "mp2"),
         "tddft": ("dft", "tddft"),
@@ -53,12 +54,13 @@ class PySCF(OverlapCalculator):
         self.basis = basis
         self.xc = xc
         self.method = method.lower()
-        if self.method in ("tda", "tddft") and self.xc is None:
-            self.multisteps[self.method] = ("scf", self.method)
-        if self.xc and self.method != "tddft":
+        self.do_es = self.method in ("tda", "tddft", "tdhf", "tdahf")
+        # Set method to DFT when an XC-functional was selected, but DFT wasn't explicitly
+        # enabled. When an ES method was chosen it is kept.
+        if self.xc and self.method not in ("tddft", "tda"):
             self.method = "dft"
-        if self.method == "tddft":
-            assert self.nroots, "nroots must be set with method='tddft'!"
+        if self.do_es:
+            assert self.nroots, f"nroots must be set with method='{self.method}'!"
         self.auxbasis = auxbasis
         self.keep_chk = keep_chk
         self.verbose = int(verbose)
@@ -164,12 +166,11 @@ class PySCF(OverlapCalculator):
 
         mol = self.prepare_input(atoms, coords)
         mf = self.run(mol, point_charges=point_charges)
-        energy = mf.e_tot
-        root = 0 if self.root is None else self.root
-        try:
-            energy = energy[root]
-        except (IndexError, TypeError):
-            pass
+        all_energies = self.parse_all_energies()
+        if self.root is not None:
+            energy = all_energies[self.root]
+        else:
+            energy = all_energies[0]
 
         results = {
             "energy": energy,
@@ -191,7 +192,7 @@ class PySCF(OverlapCalculator):
         mol = self.prepare_input(atoms, coords)
         mf = self.run(mol, point_charges=point_charges)
         grad_driver = mf.Gradients()
-        if self.root:
+        if self.root is not None:
             grad_driver.state = self.root
         gradient = grad_driver.kernel()
         self.log("Completed gradient step")

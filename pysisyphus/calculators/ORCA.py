@@ -616,6 +616,7 @@ class ORCA(OverlapCalculator):
 
         self.do_tddft = bool(es_block_header_set & td_blocks)
         self.do_ice = bool(es_block_header_set & ice_blocks)
+        self.do_es = any((self.do_tddft, self.do_ice))
         # There can be at most on ES block at a time
         assert not (self.do_tddft and self.do_ice)
         if self.es_block_header:
@@ -948,7 +949,15 @@ class ORCA(OverlapCalculator):
         log_fn = log_fn[0]
         with open(log_fn) as handle:
             text = handle.read()
-        mobj = re.search(r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)", text)
+        # By default reports the total energy of the first ES, when ES were calculated.
+        # But we are interested in the GS energy, when self.root is None ...
+        if not self.do_es or self.root is not None:
+            en_re = r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)"
+        # ... so we look at the energy that was reported after the SCF.
+        else:
+            en_re = "Total Energy\s+:\s+([\d\-\.]+) Eh"
+        en_re = re.compile(en_re)
+        mobj = en_re.search(text)
         energy = float(mobj[1])
         return {"energy": energy}
 
