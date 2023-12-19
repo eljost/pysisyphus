@@ -87,3 +87,33 @@ def test_h2o_all_energies(mult, ref_energies, calc_cls, calc_kwargs, this_dir):
     for root in range(4):
         root_en = geom.get_root_energy(root)
         assert root_en == pytest.approx(ref_energies[root])
+
+
+@using("dftbp")
+def test_dftbp_h2o_all_energies():
+    geom = geom_loader("lib:h2o.xyz")
+    nroots = 4
+    calc_kwargs = {
+        "mult": 1,
+        "parameter": "mio-ext",
+        "nroots": nroots,
+    }
+    calc = DFTBp(**calc_kwargs)
+    geom.set_calculator(calc)
+    all_energies = geom.all_energies
+    ref_energies = (
+        -4.07775075,
+        -3.39575683,
+        -3.33313599,
+        -3.24453337,
+        -3.21035650,
+    )
+    np.testing.assert_allclose(all_energies, ref_energies)
+
+    # As we did not set any root the geometries energy should correspond to the GS energy
+    energy = geom.energy
+    assert energy == pytest.approx(ref_energies[0])
+
+    for root in range(nroots + 1):
+        root_en = geom.get_root_energy(root)
+        assert root_en == pytest.approx(ref_energies[root])
