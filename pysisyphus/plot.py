@@ -254,7 +254,10 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt", last=15):
     results = load_h5(
         h5_fn,
         h5_group,
-        datasets=("energies", "forces",),
+        datasets=(
+            "energies",
+            "forces",
+        ),
         attrs=("is_cos", "coord_type", "max_force_thresh", "rms_force_thresh"),
     )
     cycles = len(results["energies"])
@@ -267,7 +270,7 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt", last=15):
 
     last_axis = forces.ndim - 1
     max_ = np.nanmax(np.abs(forces), axis=last_axis)
-    rms = np.sqrt(np.mean(forces ** 2, axis=last_axis))
+    rms = np.sqrt(np.mean(forces**2, axis=last_axis))
     hei_indices = energies.argmax(axis=1)
     force_unit = get_force_unit(coord_type)
 
@@ -277,7 +280,9 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt", last=15):
         cycle = last_cycles[i]
         hei_max = max_[i, hei_index]
         hei_rms = rms[i, hei_index]
-        print(f"\tCycle {cycle:03d}: max(forces)={hei_max:{fmt}}, rms(forces)={hei_rms:{fmt}}")
+        print(
+            f"\tCycle {cycle:03d}: max(forces)={hei_max:{fmt}}, rms(forces)={hei_rms:{fmt}}"
+        )
 
     fig, (ax0, ax1) = plt.subplots(sharex=True, nrows=2)
 
@@ -285,7 +290,7 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt", last=15):
         num = data.shape[0]
         alphas = np.linspace(0.125, 1, num=num)
         colors = matplotlib.cm.Greys(np.linspace(0, 1, num=num))
-        colors[-1] = (1., 0., 0., 1.)  # use red for latest cycle
+        colors[-1] = (1.0, 0.0, 0.0, 1.0)  # use red for latest cycle
         for row, color, alpha in zip(data, colors, alphas):
             ax.plot(row, "o-", color=color, alpha=alpha)
             ax.set_ylabel(force_unit)
@@ -525,8 +530,8 @@ def plot_overlaps(h5, thresh=0.1):
         o = np.abs(overlaps[i])
         ax.imshow(o, vmin=0, vmax=1)
         ax.grid(color="#CCCCCC", linestyle="--", linewidth=1)
-        ax.set_xticks(np.arange(n_states, dtype=np.int))
-        ax.set_yticks(np.arange(n_states, dtype=np.int))
+        ax.set_xticks(np.arange(n_states, dtype=int))
+        ax.set_yticks(np.arange(n_states, dtype=int))
         # set_ylim is needed, otherwise set_yticks drastically shrinks the plot
         ax.set_ylim(n_states - 0.5, -0.5)
         ax.set_xlabel("new roots")
@@ -546,7 +551,7 @@ def plot_overlaps(h5, thresh=0.1):
         ref_overlaps = o[ref_ind]
         argmax = np.nanargmax(ref_overlaps)
         xy = (argmax - 0.5, ref_ind - 0.5)
-        highlight = Rectangle(xy, 1, 1, fill=False, color="red", lw="4")
+        highlight = Rectangle(xy, 1, 1, fill=False, color="red", lw=4)
         ax.add_artist(highlight)
         if ax1:
             ax1.imshow(cdd_imgs[i])
@@ -638,7 +643,6 @@ def render_cdds(h5):
 
 
 def plot_afir(h5_fn="afir.h5", h5_group="afir"):
-
     h5_fns = (h5_fn, Path(OUT_DIR_DEFAULT) / h5_fn)
     for h5_fn in h5_fns:
         print(f"Trying to open '{h5_fn}' ... ", end="")
@@ -655,7 +659,6 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
         except FileNotFoundError:
             print("file not found.")
             continue
-
 
     en_conv, en_unit = get_en_conv()
     afir_ens *= en_conv
@@ -876,7 +879,7 @@ def plot_irc_h5(h5, title=None):
     energies *= en_conv
 
     cds = np.linalg.norm(mw_coords - mw_coords[0], axis=1)
-    rms_grads = np.sqrt(np.mean(gradients ** 2, axis=1))
+    rms_grads = np.sqrt(np.mean(gradients**2, axis=1))
     max_grads = np.abs(gradients).max(axis=1)
 
     fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
