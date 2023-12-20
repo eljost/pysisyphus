@@ -2,6 +2,9 @@
 #     Plasser, 2016
 # [2] https://doi.org/10.1002/jcc.25800
 #     Garcia, Campetella, 2019
+# [3] https://doi.org/10.1021/acs.jctc.0c00295
+#     First Principles Nonadiabatic Excited-State Molecular Dynamics in NWChem
+#     Song, Fischer, Zhang, Cramer, Mukamel, Govind, Tretiak, 2020
 
 from collections import namedtuple
 from pathlib import Path, PosixPath
@@ -10,6 +13,7 @@ import tempfile
 
 import h5py
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 from pysisyphus import logger
 from pysisyphus.calculators.Calculator import Calculator
@@ -123,7 +127,8 @@ class OverlapCalculator(Calculator):
         conf_thresh=1e-3,
         # dyn_roots=0,
         mos_ref="cur",
-        mos_renorm=True,
+        mos_renorm: bool = True,
+        min_cost: bool = False,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -187,6 +192,7 @@ class OverlapCalculator(Calculator):
         self.mos_ref = mos_ref
         assert self.mos_ref in ("cur", "ref")
         self.mos_renorm = bool(mos_renorm)
+        self.min_cost = bool(min_cost)
 
         # assert self.ncore >= 0, "ncore must be a >= 0!"
 
@@ -764,7 +770,7 @@ class OverlapCalculator(Calculator):
             overlaps = self.get_nto_overlaps(S_AO=S_AO, org=True)
         elif ovlp_type == "top":
             top_rs = self.get_top_differences(S_AO=S_AO)
-            overlaps = 1 - top_rs
+            overlaps = 1.0 - top_rs
         else:
             raise Exception(
                 "Invalid overlap type key! Use one of " + ", ".join(self.VALID_KEYS)
@@ -790,13 +796,28 @@ class OverlapCalculator(Calculator):
             row_ind += 1
         self.row_inds.append(row_ind)
         self.ref_cycles.append(self.ref_cycle)
-        self.log(
-            f"Reference is cycle {self.ref_cycle}, root {ref_root}. "
-            f"Analyzing row {row_ind} of the overlap matrix."
-        )
+        self.log(f"Reference is cycle {self.ref_cycle}, root {ref_root}.")
 
-        ref_root_row = overlaps[row_ind]
-        new_root = ref_root_row.argmax()
+        # As described in [3].
+        # Code contributed by PT.
+        if self.min_cost:
+            # Match all excited state of the current and the reference step to make the
+            # assignment more reasonable and avoid any double assignments.
+            self.log("Assigned roots using Kuhn-Munkres algorithm.")
+            _, col_inds = linear_sum_assignment(-overlaps)
+            ref_root_row = overlaps[row_ind]
+            new_root = col_inds[row_ind]
+            if ref_root_row.argmax() != new_root:
+                self.log(
+                    "The newly assigned root is not root of highest overlap because "
+                    "another row mapping to the same state had a higher overlap!"
+                )
+        else:
+            # Match the best root row wise/just pick the root w/ the highest overlap.
+            self.log(f"Analyzing row {row_ind} of the overlap matrix.")
+            ref_root_row = overlaps[row_ind]
+            new_root = ref_root_row.argmax()
+
         max_overlap = ref_root_row[new_root]
         if self.ovlp_type == "wf":
             new_root -= 1
