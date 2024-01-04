@@ -21,7 +21,8 @@ from pysisyphus.wavefunction.density_numba import eval_density
 def test_molint(fn, N_ref):
     wf = Wavefunction.from_file(fn)
     # Get molecular grid
-    xyz, weights = get_mol_grid(wf.atoms, wf.coords3d)
+    mol_grid = get_mol_grid(wf.atoms, wf.coords3d)
+    xyz = mol_grid.xyz
 
     # Evaluate density at grid points
     rho = np.zeros(len(xyz))
@@ -31,6 +32,6 @@ def test_molint(fn, N_ref):
     eval_density(shellstructs, xyz, wf.P_tot, precontr, rho)
     dens_dur = time.time() - start
 
-    N = (rho * weights).sum()
+    N = (rho * mol_grid.weights).sum()
     print(f"{xyz.shape=}, N_integrated={N:.6f}, {dens_dur=:.4f} s")
     assert N == pytest.approx(N_ref, abs=3e-4)
