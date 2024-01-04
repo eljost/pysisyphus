@@ -4,6 +4,9 @@
 #     Stratmann, Scuseria, Frisch, 1996
 
 
+from dataclasses import dataclass
+from typing import Optional
+
 import numba
 import numpy as np
 
@@ -112,10 +115,36 @@ def stratmann_partitioning(
             part_weights[start_index + g] = atomic_weight[p] / atomic_weight.sum()
 
 
+@dataclass
+class MolGrid:
+    xyz: np.ndarray
+    weights: np.ndarray
+    start_inds: np.ndarray
+    centers: np.ndarray
+
+    def __post_init__(self):
+        self.grid_ends = np.empty_like(self.start_inds, dtype=int)
+        self.grid_ends[:-1] = self.start_inds[1:]
+        self.grid_ends[-1] = len(self.xyz)
+
+        self.slices = [slice(gs, ge) for gs, ge in zip(self.start_inds, self.grid_ends)]
+
+    def grid_iter(self):
+        for grid_center, grid_slice in zip(self.centers, self.slices):
+            yield grid_center, self.xyz[grid_slice], self.weights[grid_slice]
+
+
 def get_mol_grid(
-    atoms, coords3d, part_func=stratmann_partitioning, weight_thresh=1e-15
+    atoms,
+    coords3d,
+    part_func=stratmann_partitioning,
+    weight_thresh=1e-15,
+    atom_grid_kwargs: Optional[dict] = None,
 ):
     """Get molecular grid for given atoms, centered at given Cartesian coordinates.
+
+    TODO: allow arguments for get_atomic_grid; keep grid host association after
+    compression, as some points are deleted.
 
     Parameters
     ----------
@@ -129,6 +158,8 @@ def get_mol_grid(
     weight_thresh
         Positive floating point number used for grid compression. Quadrature points
         with values below this threshold will be ignored.
+    atom_grid_kwargs
+        Additional kwarg for the atom grids.
 
     Returns
     -------
@@ -137,10 +168,17 @@ def get_mol_grid(
     weights
         1d array containing integration weights of shape (npoints, ).
     """
+    if atom_grid_kwargs is None:
+        atom_grid_kwargs = dict()
+
+    _atom_grid_kwargs = {
+        "kind": "g3",
+    }
+    _atom_grid_kwargs.update(atom_grid_kwargs)
     atomic_grids = list()
     weights = list()
     for atom, origin in zip(atoms, coords3d):
-        xyz, ww = get_atomic_grid(atom, origin, kind="g3")
+        xyz, ww = get_atomic_grid(atom, origin, **_atom_grid_kwargs)
         atomic_grids.append(xyz)
         weights.append(ww)
     part_weights = np.empty(sum([len(ag) for ag in atomic_grids]))
@@ -149,14 +187,33 @@ def get_mol_grid(
     for xyz in atomic_grids:
         numba_atomic_grids.append(xyz)
 
+    # Becke/Stratmann weighting
     part_func(coords3d, numba_atomic_grids, part_weights)
 
-    xyz = np.concatenate(atomic_grids, axis=0)
-    weights = np.concatenate(weights, axis=0)
-    weights *= part_weights
+    # Compress grid by dropping points below threshold. Keep track of
+    # the grid sizes.
+    xyz_compressed = np.empty((len(part_weights), 3))
+    weights_compressed = np.empty_like(part_weights)
+    start_inds = np.empty(len(atomic_grids), dtype=int)
+    index = 0
+    compr_index = 0
+    for i, (ww, xyz) in enumerate(zip(weights, atomic_grids)):
+        start_inds[i] = compr_index
+        npoints = len(ww)
+        ww *= part_weights[index : index + npoints]
+        above_thresh = ww > weight_thresh
+        nabove = above_thresh.sum()
+        xyz_compressed[compr_index : compr_index + nabove] = xyz[above_thresh]
+        weights_compressed[compr_index : compr_index + nabove] = ww[above_thresh]
+        compr_index += nabove
+        index += npoints
+    xyz_compressed.resize((compr_index, 3))
+    weights_compressed.resize((compr_index,))
 
-    # Compress grid by dropping points below threshold.
-    mask = ~(weights <= weight_thresh)
-    xyz = xyz[mask]
-    weights = weights[mask]
-    return xyz, weights
+    mol_grid = MolGrid(
+        xyz=xyz_compressed,
+        weights=weights_compressed,
+        start_inds=start_inds,
+        centers=coords3d.copy(),
+    )
+    return mol_grid
