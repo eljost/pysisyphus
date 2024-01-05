@@ -179,6 +179,9 @@ class Shell:
         # See [1], p. 152, just above Eq. (2).
         self.coeffs *= (self.exps / np.pi) ** 1.5
 
+    def __len__(self):
+        return len(self.exps)
+
     def __str__(self):
         try:
             center_str = f", at atom {self.center_ind}"
@@ -279,6 +282,10 @@ class Shells:
             self.get_1el_ints_sph = self.memory.cache(self.get_1el_ints_sph)
 
         self._numba_shells = None
+
+    @property
+    def nprims(self):
+        return sum(map(len, self))
 
     def __len__(self):
         return len(self.shells)
