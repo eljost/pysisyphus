@@ -9,6 +9,7 @@ import numba
 import numpy as np
 
 
+CUTOFF = -36
 NORM2 = 0.5773502691896258
 NORM3 = 0.2581988897471611
 NORM4 = 0.09759000729485332
@@ -20,7 +21,7 @@ NORM22 = 0.3333333333333333
     cache=True,
     nogil=True,
 )
-def cart_gto3d_rel(La, axs, das, RA, RA2, result, cutoff=-40.0):
+def cart_gto3d_rel(La, axs, das, RA, RA2, result, cutoff=CUTOFF):
     result[:] = 0.0
     dx, dy, dz = RA
     dx2, dy2, dz2 = RA2
@@ -91,12 +92,22 @@ def cart_gto3d_rel(La, axs, das, RA, RA2, result, cutoff=-40.0):
 
 @numba.jit(nopython=True, cache=True, parallel=True)
 def eval_density(
-    shells, coords3d, P, precontr, rho, blk_size: int = 100, thresh: float = 1e-8
+    shells,
+    coords3d,
+    P,
+    precontr,
+    rho,
+    blk_size: int = 100,
+    thresh: float = 1e-8,
+    accumulate: bool = False,
 ):
     """Density evaluation on a grid using numba.
 
     As (briefly) outlined in Section III C in [1]."""
-    rho[:] = 0.0
+
+    # Skip zeroing the density array when we accumulate.
+    if not accumulate:
+        rho[:] = 0.0
     # The grid will be split into blocks of a certain size
     nblks = int(np.ceil(len(coords3d) / blk_size))
     cart_size = sum([shell.cart_size() for shell in shells])
@@ -147,3 +158,157 @@ def eval_density(
         nus_contribed = sorted(set(nus_contribed))
         for nu in nus_contribed:
             rho[blk_start : blk_start + cur_blk_size] += scratch[:, nu] * chis[:, nu]
+
+
+@numba.jit(
+    nopython=True,
+    cache=True,
+    nogil=True,
+)
+def prefacts(La, RA, result):
+    dx, dy, dz = RA
+    if La > 1:
+        dx2 = dx * dx
+        dy2 = dy * dy
+        dz2 = dz * dz
+    if La > 2:
+        dx3 = dx2 * dx
+        dy3 = dy2 * dy
+        dz3 = dz2 * dz
+    if La > 3:
+        dx4 = dx2 * dx2
+        dy4 = dy2 * dy2
+        dz4 = dz2 * dz2
+
+    if La == 0:
+        result[0] = 1.0
+    # p-Orbital
+    elif La == 1:
+        result[0] = dx
+        result[1] = dy
+        result[2] = dz
+    # d-Orbital
+    elif La == 2:
+        result[0] = NORM2 * dx2
+        result[1] = dx * dy
+        result[2] = dx * dz
+        result[3] = NORM2 * dy2
+        result[4] = dy * dz
+        result[5] = NORM2 * dz2
+    # f-Orbital
+    elif La == 3:
+        result[0] = NORM3 * dx3
+        result[1] = NORM2 * dx2 * dy
+        result[2] = NORM2 * dx2 * dz
+        result[3] = NORM2 * dx * dy2
+        result[4] = dx * dy * dz
+        result[5] = NORM2 * dx * dz2
+        result[6] = NORM3 * dy3
+        result[7] = NORM2 * dy2 * dz
+        result[8] = NORM2 * dy * dz2
+        result[9] = NORM3 * dz3
+    # g-Orbital
+    elif La == 4:
+        result[0] = NORM4 * dx4
+        result[1] = NORM3 * dx3 * dy
+        result[2] = NORM3 * dx3 * dz
+        result[3] = NORM22 * dx2 * dy2
+        result[4] = NORM2 * dx2 * dy * dz
+        result[5] = NORM22 * dx2 * dz2
+        result[6] = NORM3 * dx * dy3
+        result[7] = NORM2 * dx * dy2 * dz
+        result[8] = NORM2 * dx * dy * dz2
+        result[9] = NORM3 * dx * dz3
+        result[10] = NORM4 * dy4
+        result[11] = NORM3 * dy3 * dz
+        result[12] = NORM22 * dy2 * dz2
+        result[13] = NORM3 * dy * dz3
+        result[14] = NORM4 * dz4
+    else:
+        # Could be changed to the explicit formula with a loop over a whole shell.
+        result[:] = np.nan
+
+
+@numba.jit(nopython=True, cache=True)
+def cart_size(L):
+    return (L + 2) * (L + 1) // 2
+
+
+@numba.jit(nopython=True, cache=True)
+def eval_prim_density(Ls_inds, primdata, coords3d, P, switch, rho, cutoff=CUTOFF):
+    # Initialize density array
+    rho[:] = 0.0
+
+    # Allocate prefactor arrays once using the maximum L values
+    Lmax = np.max(Ls_inds[:, 0])
+    prefacts_a = np.empty(cart_size(Lmax))
+    prefacts_b = np.empty(cart_size(Lmax))
+
+    nprims = len(primdata)
+    # Loop over primitive pairs/first primitive
+    for ai in range(nprims):
+        da = primdata[ai, 0]
+        ax = primdata[ai, 1]
+        A = primdata[ai, 2:5]
+        La, cart_index_a = Ls_inds[ai]
+        cart_size_a = cart_size(La)
+
+        # Loop over second primitive
+        for bi in range(ai, nprims):
+            db = primdata[bi, 0]
+            bx = primdata[bi, 1]
+
+            # Only carry out numerical integration for diffuse total exponents,
+            # i.e, small total exponents px below the 'switch'-threshold.
+            if ax + bx >= switch:
+                continue
+
+            B = primdata[bi, 2:5]
+            Lb, cart_index_b = Ls_inds[bi]
+            cart_size_b = cart_size(Lb)
+
+            # Total exponent
+            px = ax + bx
+            # Reduced exponent
+            mux = ax * bx / px
+            # Skip primitive pair when exp-argument for pre-exponential factor
+            # is too small.
+            if -mux * np.sum((A - B) ** 2) <= cutoff:
+                continue
+
+            # Take symmetry into account, as we only loop over unique primitive
+            # combinations.
+            factor = 2.0
+            if ai == bi:
+                factor = 1.0
+
+            # Pre-exponential factor w/ contraction coefficients and symmetry factor
+            K = da * db * factor * np.exp(-mux * np.sum((A - B) ** 2))
+            # Center-of-charge coordinate
+            Povlp = (ax * A + bx * B) / px
+
+            # Loop over grid points
+            for i, R in enumerate(coords3d):
+                RP = R - Povlp
+                RP2 = RP**2
+                # Check if exp-argument is below the threshold, if so we skip
+                # this grid point.
+                if -px * np.sum(RP2) <= cutoff:
+                    continue
+                Pexp = np.exp(-px * np.sum(RP2))
+
+                # Determine angular momentum dependent prefactors of Gaussian
+                # overlap distribution for both (primitive) shells.
+                prefacts(La, R - A, prefacts_a)
+                prefacts(Lb, R - B, prefacts_b)
+
+                # Contract everything with the appropriate density matrix entries.
+                for nu in range(cart_size_a):
+                    for mu in range(cart_size_b):
+                        rho[i] += (
+                            K
+                            * Pexp
+                            * P[cart_index_a + nu, cart_index_b + mu]
+                            * prefacts_a[nu]
+                            * prefacts_b[mu]
+                        )
