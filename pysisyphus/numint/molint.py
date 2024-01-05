@@ -5,12 +5,14 @@
 
 
 from dataclasses import dataclass
-from typing import Optional
+import functools
+from typing import Optional, Tuple
 
 import numba
 import numpy as np
 
 from pysisyphus.numint.atomint import get_atomic_grid
+from pysisyphus.wavefunction import Wavefunction
 
 
 @numba.jit(nopython=True, cache=True)
@@ -134,8 +136,9 @@ class MolGrid:
             yield grid_center, self.xyz[grid_slice], self.weights[grid_slice]
 
 
+@functools.singledispatch
 def get_mol_grid(
-    atoms,
+    atoms: Tuple[str],
     coords3d,
     part_func=stratmann_partitioning,
     weight_thresh=1e-15,
@@ -217,3 +220,8 @@ def get_mol_grid(
         centers=coords3d.copy(),
     )
     return mol_grid
+
+
+@get_mol_grid.register
+def _(wf: Wavefunction, **kwargs):
+    return get_mol_grid(wf.atoms, wf.coords3d, **kwargs)
