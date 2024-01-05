@@ -21,7 +21,7 @@ from pysisyphus.wavefunction.density_numba import eval_density
 def test_molint(fn, N_ref):
     wf = Wavefunction.from_file(fn)
     # Get molecular grid
-    mol_grid = get_mol_grid(wf.atoms, wf.coords3d)
+    mol_grid = get_mol_grid(wf)
     xyz = mol_grid.xyz
 
     # Evaluate density at grid points
