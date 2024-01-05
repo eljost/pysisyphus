@@ -24,6 +24,8 @@ from scipy.special import binom
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import nuc_charges_for_atoms
+from pysisyphus.numint import get_mol_grid
+from pysisyphus.wavefunction import gdma_int
 from pysisyphus.wavefunction import Wavefunction
 from pysisyphus.wavefunction.ints.multipole3d_sph import multipole3d_sph
 from pysisyphus.wavefunction.helpers import lm_iter
@@ -34,6 +36,7 @@ _LE_MAX = 2  # Up to quadrupoles
 _TWO_LE_MAX = 2 * _LE_MAX
 _SQRT2 = 1 / np.sqrt(2.0)
 _DIST_THRESH = 1e-6
+_SQRT3 = np.sqrt(3.0)
 
 
 def get_index_maps(L_max: int = _LE_MAX) -> dict[(int, int), int]:
@@ -229,52 +232,87 @@ def closest_sites_and_weights(
     return neighbours, weights
 
 
-def dma(
-    wavefunction: Wavefunction,
-    sites: np.ndarray,
-    site_radii: np.ndarray,
-    exp_thresh: float = 37,
-    dens_thresh: float = 1e-9,
-):
-    assert len(sites) == len(site_radii)
-    nmultipoles = (2 * np.arange(_LE_MAX + 1) + 1).sum()
-    nsites = len(sites)
-    # Array that will hold the final distributed multipoles
-    distributed_multipoles = np.zeros((nsites, nmultipoles))
+def accumulate_multipoles(dx, dy, dz, prefact, multipoles):
+    dx2 = dx**2
+    dy2 = dy**2
+    dz2 = dz**2
+    # Charges
+    multipoles[0] += prefact
+    # Dipole moments
+    multipoles[1] += prefact * dy
+    multipoles[2] += prefact * dz
+    multipoles[3] += prefact * dx
+    # Quadrupole moments
+    multipoles[4] += prefact * _SQRT3 * dx * dy
+    multipoles[5] += prefact * _SQRT3 * dy * dz
+    multipoles[6] += prefact * (2 * dz2 - dy2 - dx2) / 2.0
+    multipoles[7] += prefact * _SQRT3 * dx * dz
+    multipoles[8] += prefact * _SQRT3 * (-dy2 + dx2) / 2.0
 
-    coords3d = wavefunction.coords.reshape(-1, 3)
-    # Sum density matrices into a total density
-    P = np.sum(wavefunction.P, axis=0)
 
-    shells = wavefunction.shells
+def get_redistribution_func(sites, site_radii, distributed_multipoles):
     # Prefactors required for redistributing multipoles
     lmkq = get_binom_lmkq()
 
-    reorder_c2s_coeffs = shells.reorder_c2s_coeffs
-
-    # Distribute nuclear charges on to expansion sites
-    nuc_charges = nuc_charges_for_atoms(wavefunction.atoms)
-    for i, nuc_charge in enumerate(nuc_charges):
-        nuc_multipoles = np.zeros(nmultipoles)
-        nuc_multipoles[0] = nuc_charge
-
-        nuc_coords = coords3d[i]
-        neighbours, weights = closest_sites_and_weights(nuc_coords, sites, site_radii)
+    def redistribute_multipoles(nat_coords, multipoles):
+        neighbours, weights = closest_sites_and_weights(nat_coords, sites, site_radii)
         for neigh_index, weight in zip(neighbours, weights):
             S = sites[neigh_index]
             # Don't move if natural- and expansion-center coincide
-            if np.linalg.norm(S - nuc_coords) <= _DIST_THRESH:
-                moved_multipoles = nuc_multipoles
+            if np.linalg.norm(S - nat_coords) <= _DIST_THRESH:
+                moved_multipoles = multipoles
             else:
                 moved_multipoles = move_multipoles_gen(
                     _LE_MAX,
                     lmkq,  # Binomial coefficient prefactors
-                    weight * nuc_multipoles,
-                    nuc_coords,  # Original/natural center
+                    weight * multipoles,
+                    nat_coords,  # Original/natural center
                     S,  # Target center/DMA site
                 )
             # Sum contributions of the different basis function pairs
             distributed_multipoles[neigh_index] += moved_multipoles
+
+    return redistribute_multipoles
+
+
+def dma(
+    wavefunction: Wavefunction,
+    sites: np.ndarray,
+    site_radii: np.ndarray,
+    exp_cutoff: float = -36.0,
+    dens_thresh: float = 1e-9,
+    switch: float = 4.0,
+):
+    assert len(sites) == len(site_radii)
+    assert switch >= 0.0, f"Switch must be a float >= 0.0 but got '{switch}'!"
+
+    # Number of multipoles that will be calculated
+    nmultipoles = (2 * np.arange(_LE_MAX + 1) + 1).sum()
+    # Number of expansion sites
+    nsites = len(sites)
+    # Array that will hold the final distributed multipoles
+    distributed_multipoles = np.zeros((nsites, nmultipoles))
+
+    # Nuclear coordinates
+    coords3d = wavefunction.coords.reshape(-1, 3)
+    # Sum alpha and beta densities into total density
+    P = np.sum(wavefunction.P, axis=0)
+
+    shells = wavefunction.shells
+    reorder_c2s_coeffs = shells.reorder_c2s_coeffs
+
+    # Get function that redistributes multipoles onto the expansion sites
+    redistribute_multipoles = get_redistribution_func(
+        sites, site_radii, distributed_multipoles
+    )
+
+    # Take nuclear charges into account and distribute them onto expansion sites
+    nuc_charges = nuc_charges_for_atoms(wavefunction.atoms)
+    for i, nuc_charge in enumerate(nuc_charges):
+        nuc_multipoles = np.zeros(nmultipoles)
+        nuc_multipoles[0] = nuc_charge
+        nuc_coords = coords3d[i]
+        redistribute_multipoles(nuc_coords, nuc_multipoles)
 
     # Loop over unique shell pairs
     for i, shell_a in enumerate(shells):
@@ -284,14 +322,7 @@ def dma(
         a_c2s = reorder_c2s_coeffs[a_slice_sph, a_slice_cart]
         for j, shell_b in enumerate(shells[i:], i):
             Lb, B, dbs, bxs, b_ind, b_size = shell_b.as_tuple()
-            AB = A - B
-            AB_dist2 = AB.dot(AB)
-            b_slice_cart = slice(b_ind, b_ind + b_size)
             b_slice_sph = shell_b.sph_slice
-            b_c2s = reorder_c2s_coeffs[b_slice_sph, b_slice_cart]
-            # Pick appropriate integral function
-            func = multipole3d_sph[(La, Lb)]
-
             # Slice of the density matrix
             P_slice = P[a_slice_sph, b_slice_sph]
             # Every off-diagonal element of the density matrix contributes two times.
@@ -308,19 +339,30 @@ def dma(
             if dens_abs <= dens_thresh:
                 continue
 
+            AB = A - B
+            AB_dist2 = AB.dot(AB)
+            b_slice_cart = slice(b_ind, b_ind + b_size)
+            b_c2s = reorder_c2s_coeffs[b_slice_sph, b_slice_cart]
+            # Pick appropriate integral function
+            func = multipole3d_sph[(La, Lb)]
+
             # Loop over primitive pairs.
             for da, ax in zip(das, axs):
                 ax_AB_dist = ax * AB_dist2
                 for db, bx in zip(dbs, bxs):
                     px = ax + bx
+
+                    # Do numerical integration otherwise
+                    if px <= switch:
+                        continue
+
                     # exp-argument of gaussian overlap
                     exp_arg = (bx * ax_AB_dist) / px
-                    # When exp-arg is big then 'exp(-exp_arg)' will be very small
-                    # and we can skip this primitive pair. The default thresh is 37:
-                    # exp(-37) = 8.533e-17, so the screening is very conservative.
-                    # Using 'exp_thresh = 10' results in errors up to 1e-6 in the test
-                    # cases.
-                    if exp_arg >= exp_thresh:
+                    # When exp_arg in 'exp(-exp_arg)' is very small we can skip this
+                    # pair of primitives. The default thresh is -36 (exp(-36) = 2.32e-16),
+                    # so the screening is very conservative. Using 'exp_cutoff = 10' results
+                    # in errors up to 1e-6 in the test cases.
+                    if -exp_arg <= exp_cutoff:
                         continue
 
                     # Natural center of Gaussian primitive pair
@@ -342,25 +384,30 @@ def dma(
                     # Contract integrals with density matrix elements.
                     contr_multipoles = prim_multipoles * P_slice[None, :, :]
                     contr_multipoles = contr_multipoles.sum(axis=(1, 2))
-                    neighbours, weights = closest_sites_and_weights(
-                        P_prim, sites, site_radii
-                    )
-                    for neigh_index, weight in zip(neighbours, weights):
-                        S = sites[neigh_index]
-                        # Don't move if natural- and expansion-center coincide
-                        if np.linalg.norm(S - P_prim) <= _DIST_THRESH:
-                            moved_multipoles = contr_multipoles
-                        else:
-                            moved_multipoles = move_multipoles_gen(
-                                _LE_MAX,
-                                lmkq,  # Binomial coefficient prefactors
-                                weight * contr_multipoles,
-                                P_prim,  # Original/natural center
-                                S,  # Target center/DMA site
-                            )
-                        # Add to final distributed multipoles at sites
-                        distributed_multipoles[neigh_index] += moved_multipoles
+                    # Redistribute onto expansion sites
+                    redistribute_multipoles(P_prim, contr_multipoles)
             # End Loop over primitive pairs
+
+    # Handle numerical integration/do GDMA
+    if switch > 0.0:
+        # TODO: make atom_grid_kwargs adjustable
+        # Set up molecular grid for numerical integration ...
+        mol_grid = get_mol_grid(wavefunction, atom_grid_kwargs={"kind": "g5"})
+        # ... and accumulate the density on the grid
+        rho = gdma_int.get_diffuse_density_numba(wavefunction, mol_grid, switch)
+        # rho = gdma_int.get_diffuse_density_fortran(wavefunction, mol_grid, switch)
+
+        for i, (grid_center, xyz, ww) in enumerate(mol_grid.grid_iter()):
+            np.testing.assert_allclose(grid_center, sites[i])
+            slice_ = mol_grid.slices[i]
+            multipoles = np.zeros(nmultipoles)
+            # Take minus sign into account here
+            ww_rho = -ww * rho[slice_]
+            for xyz_, wrho_ in zip(xyz[::-1], ww_rho[::-1]):
+                dist = xyz_ - grid_center
+                accumulate_multipoles(*dist, wrho_, multipoles)
+
+            redistribute_multipoles(grid_center, multipoles)
     return distributed_multipoles
 
 
@@ -371,7 +418,7 @@ def get_radii(atoms: Tuple[str]) -> np.ndarray:
     return radii
 
 
-def run_dma(wf, sites=None):
+def run_dma(wf, sites=None, **kwargs):
     if sites is None:
         dma_sites = wf.coords.reshape(-1, 3).copy()
     else:
@@ -384,7 +431,7 @@ def run_dma(wf, sites=None):
     assert len(site_radii) == len(dma_sites)
 
     start = time.time()
-    distributed_multipoles = dma(wf, dma_sites, site_radii)
+    distributed_multipoles = dma(wf, dma_sites, site_radii, **kwargs)
     dur = time.time() - start
     print(f"Distributed multipole analysis took {dur:.4f} s")
     cfmt = " >12.6f"

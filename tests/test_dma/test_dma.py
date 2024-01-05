@@ -43,7 +43,7 @@ def test_dma(wf_fn, ref_multis, sites, this_dir):
     wf = Wavefunction.from_file(data_dir / wf_fn)
     print(wf_fn, "\n", wf)
 
-    distributed_multipoles = run_dma(wf, sites)
+    distributed_multipoles = run_dma(wf, sites, switch=0.0)
     if ref_multis is not None:
         ref_multis = data_dir / ref_multis
         if not ref_multis.exists():
@@ -54,3 +54,23 @@ def test_dma(wf_fn, ref_multis, sites, this_dir):
         print("Multipoles match!")
     else:
         print("Skipped check!")
+
+
+@pytest.mark.parametrize(
+    "wf_fn, ref_multis",
+    (("24_oh_minus_tzvp.fchk", "24_oh_minus_tzvp_switch40_ref.npy"),),
+)
+def test_gdma(wf_fn, ref_multis, this_dir):
+    data_dir = this_dir / "data"
+    wf = Wavefunction.from_file(data_dir / wf_fn)
+    print(wf_fn, "\n", wf)
+
+    distributed_multipoles = run_dma(wf, switch=4.0)
+    if ref_multis is not None:
+        ref_multis = data_dir / ref_multis
+        if not ref_multis.exists():
+            np.save(ref_multis, distributed_multipoles)
+            print(f"Dumped multipoles to '{ref_multis}'")
+        multis_ref = np.load(ref_multis)
+        np.testing.assert_allclose(distributed_multipoles, multis_ref, atol=1e-14)
+        print("Multipoles match!")
