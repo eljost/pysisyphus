@@ -2,6 +2,9 @@
 #     An improved molecular partitioning scheme for numerical
 #     quadratures in density functional theory
 #     Laqua, Kussmann, Ochsenfeld, 2018
+# [2] https://doi.org/10.1021/ct050190+
+#     Distributed Multipole Analysis: Stability for Large Basis Sets
+#     Stone, 2005
 
 
 import collections
@@ -227,6 +230,50 @@ def get_fermion_atomic_grid(
     outer_grid = combine_grids(origin, rad_grid[outer_mask], outer_ang_grid)
 
     grid = np.concatenate((inner_grid, medium_grid, outer_grid), axis=0)
+    return grid[:, :3], grid[:, 3]
+
+
+def get_gdma_atomic_grid(origin: np.ndarray, atom: str = "c", n_rad=80, n_ang=590):
+    """Get atomic grid, similar to the original GDMA grid.
+
+    In the original paper [2] Stone proposed 80 radial points w/ Euler-Maclaurin-
+    integration and a 590-point Lebedev grid. Here, we keep the number of radial
+    and angular points, but the radial integration is done as described by Ahlrichs
+    and Treutler in [1].
+
+    In GDMA the number of expansion sites may/can be different from the atomic sites.
+    In such cases we default to the atomic radius of carbon, but the user may choose
+    a different atom.
+
+    Parameters
+    ----------
+    origin
+        Coordinates of the grid's center/origin. Usually the coordiantes
+        of the host atom.
+    atom
+        Optional, defaults to carbon.
+    n_rad
+        Number of radial points, defaults to 80.
+    n_ang
+        Number of angular points, defaults to 590.
+
+    Returns
+    -------
+    xyz
+        2d array containing Cartesian gridpoints of shape (npoints, 3).
+    weights
+        1d array containing integration weights of shape (npoints, ).
+    """
+    atom = atom.lower()
+    atomic_radius = ATOMIC_RADII[atom.lower()]
+
+    rad_grid = radint.chebyshev_2nd_kind(n_rad, atomic_radius=atomic_radius)
+    # Integration in spherical coordinates implies multiplying the integrand by r²
+    rad_grid[:, 1] *= rad_grid[:, 0] ** 2
+
+    ang_grid = angint.get_lebedev_grid(n_ang)
+
+    grid = combine_grids(origin, rad_grid, ang_grid)
     return grid[:, :3], grid[:, 3]
 
 
