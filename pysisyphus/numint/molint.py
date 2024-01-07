@@ -6,7 +6,7 @@
 
 from dataclasses import dataclass
 import functools
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import numba
 import numpy as np
@@ -135,6 +135,10 @@ class MolGrid:
         for grid_center, grid_slice in zip(self.centers, self.slices):
             yield grid_center, self.xyz[grid_slice], self.weights[grid_slice]
 
+    @property
+    def npoints(self):
+        return len(self.weights)
+
 
 @functools.singledispatch
 def get_mol_grid(
@@ -143,6 +147,7 @@ def get_mol_grid(
     part_func=stratmann_partitioning,
     weight_thresh=1e-15,
     atom_grid_kwargs: Optional[dict] = None,
+    grid_func: Callable = get_atomic_grid,
 ):
     """Get molecular grid for given atoms, centered at given Cartesian coordinates.
 
@@ -174,18 +179,17 @@ def get_mol_grid(
     if atom_grid_kwargs is None:
         atom_grid_kwargs = dict()
 
-    _atom_grid_kwargs = {
-        "kind": "g3",
-    }
+    _atom_grid_kwargs = {}
     _atom_grid_kwargs.update(atom_grid_kwargs)
     atomic_grids = list()
     weights = list()
     for atom, origin in zip(atoms, coords3d):
-        xyz, ww = get_atomic_grid(atom, origin, **_atom_grid_kwargs)
+        xyz, ww = grid_func(atom=atom, origin=origin, **_atom_grid_kwargs)
         atomic_grids.append(xyz)
         weights.append(ww)
     part_weights = np.empty(sum([len(ag) for ag in atomic_grids]))
 
+    # Becke weighting is done using numba
     numba_atomic_grids = numba.typed.List()
     for xyz in atomic_grids:
         numba_atomic_grids.append(xyz)
@@ -210,8 +214,8 @@ def get_mol_grid(
         weights_compressed[compr_index : compr_index + nabove] = ww[above_thresh]
         compr_index += nabove
         index += npoints
-    xyz_compressed.resize((compr_index, 3))
-    weights_compressed.resize((compr_index,))
+    xyz_compressed = xyz_compressed[:compr_index]
+    weights_compressed = weights_compressed[:compr_index]
 
     mol_grid = MolGrid(
         xyz=xyz_compressed,

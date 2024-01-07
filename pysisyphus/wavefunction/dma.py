@@ -16,20 +16,24 @@
 
 
 import itertools as it
+import textwrap
 import time
 from typing import Tuple
 
+from jinja2 import Template
 import numpy as np
 from scipy.special import binom
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import nuc_charges_for_atoms
-from pysisyphus.numint import get_mol_grid
+from pysisyphus.helpers_pure import highlight_text
+from pysisyphus.numint import get_mol_grid, get_gdma_atomic_grid
 from pysisyphus.wavefunction import gdma_int
 from pysisyphus.wavefunction import Wavefunction
 from pysisyphus.wavefunction.ints.multipole3d_sph import multipole3d_sph
 from pysisyphus.wavefunction.helpers import lm_iter
 from pysisyphus.wavefunction.solid_harmonics import Rlm
+from pysisyphus.xyzloader import make_xyz_str
 
 
 _LE_MAX = 2  # Up to quadrupoles
@@ -306,6 +310,28 @@ def dma(
         sites, site_radii, distributed_multipoles
     )
 
+    header_tpl = Template(
+        textwrap.dedent(
+            """
+    {{ title }}
+
+    {{ wavefunction }}
+    Expansion Sites:
+    {{ sites }}
+    Switch at Exponent-Sum: {{ switch }}
+
+    """
+        )
+    )
+    header_rendered = header_tpl.render(
+        title=highlight_text("Distributed Multipole Analysis"),
+        wavefunction=wavefunction,
+        sites=make_xyz_str([""] * nsites, sites * BOHR2ANG),
+        switch=switch,
+    )
+    print(header_rendered)
+
+    dma_dur = time.time()
     # Take nuclear charges into account and distribute them onto expansion sites
     nuc_charges = nuc_charges_for_atoms(wavefunction.atoms)
     for i, nuc_charge in enumerate(nuc_charges):
@@ -387,15 +413,25 @@ def dma(
                     # Redistribute onto expansion sites
                     redistribute_multipoles(P_prim, contr_multipoles)
             # End Loop over primitive pairs
+    dma_dur = time.time() - dma_dur
+    print(f"DMA part took {dma_dur:.4f} s")
 
     # Handle numerical integration/do GDMA
     if switch > 0.0:
         # TODO: make atom_grid_kwargs adjustable
         # Set up molecular grid for numerical integration ...
+        grid_dur = time.time()
         mol_grid = get_mol_grid(wavefunction, atom_grid_kwargs={"kind": "g5"})
+        grid_dur = time.time() - grid_dur
+        print(f"There are {mol_grid.npoints} grid points")
+        print(f"Grid generation took {grid_dur:.4f} s")
+        # mol_grid = get_mol_grid(wavefunction, grid_func=get_gdma_atomic_grid)
         # ... and accumulate the density on the grid
+        numint_dur = time.time()
         rho = gdma_int.get_diffuse_density_numba(wavefunction, mol_grid, switch)
         # rho = gdma_int.get_diffuse_density_fortran(wavefunction, mol_grid, switch)
+        numint_dur = time.time() - numint_dur
+        print(f"Numerical integration took {numint_dur:.4f} s")
 
         for i, (grid_center, xyz, ww) in enumerate(mol_grid.grid_iter()):
             np.testing.assert_allclose(grid_center, sites[i])
@@ -418,11 +454,15 @@ def get_radii(atoms: Tuple[str]) -> np.ndarray:
     return radii
 
 
-def run_dma(wf, sites=None, **kwargs):
+def run_dma(wf, sites=None, site_labels=None, **kwargs):
     if sites is None:
         dma_sites = wf.coords.reshape(-1, 3).copy()
+        site_labels = wf.atoms
     else:
         dma_sites = np.array(sites).reshape(-1, 3)
+    if site_labels is None:
+        site_labels = ()
+
     site_radii = get_radii(wf.atoms)
     if sites is not None:
         assert len(sites) == 3
@@ -433,17 +473,16 @@ def run_dma(wf, sites=None, **kwargs):
     start = time.time()
     distributed_multipoles = dma(wf, dma_sites, site_radii, **kwargs)
     dur = time.time() - start
-    print(f"Distributed multipole analysis took {dur:.4f} s")
-    cfmt = " >12.6f"
-    mfmt = " >12.6f"
+    print(f"Total analysis took {dur:.4f} s\n")
 
-    for i, dma_site in enumerate(dma_sites):
+    cfmt = " >10.6f"
+    mfmt = " >10.6f"
+    for i, (lbl, dma_site) in enumerate(zip(site_labels, dma_sites)):
         x, y, z = dma_site
         radius = site_radii[i]
-        # charge = dma_charges[i]
-        charge = -999
         print(
-            f"(Z={charge}, center: {x=:{cfmt}},  {y=:{cfmt}}, {z=:{cfmt}}, {radius=:{cfmt}}) au"
+            f"{lbl.capitalize()}: "
+            f"({x=:{cfmt}},  {y=:{cfmt}}, {z=:{cfmt}}, {radius=:{cfmt}}) au"
         )
         site_multipoles = distributed_multipoles[i]
         index = 0
