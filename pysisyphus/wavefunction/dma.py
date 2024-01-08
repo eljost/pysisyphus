@@ -286,6 +286,7 @@ def dma(
     exp_cutoff: float = -36.0,
     dens_thresh: float = 1e-9,
     switch: float = 4.0,
+    addons: bool = True,
 ):
     assert len(sites) == len(site_radii)
     assert switch >= 0.0, f"Switch must be a float >= 0.0 but got '{switch}'!"
@@ -418,18 +419,31 @@ def dma(
 
     # Handle numerical integration/do GDMA
     if switch > 0.0:
-        # TODO: make atom_grid_kwargs adjustable
+        # Defaul to the numba implementation
+        diffuse_density_func = gdma_int.get_diffuse_density_numba
+
+        # Try to import fater Fortran routines, if enabled & available
+        if addons:
+            try:
+                from pysisyphus_addons.wavefunction.gdma_int import (
+                    # Overwrite previously assigned numba function
+                    get_diffuse_density as diffuse_density_func,
+                )
+            except ModuleNotFoundError:
+                pass
+
         # Set up molecular grid for numerical integration ...
         grid_dur = time.time()
+        # TODO: make atom_grid_kwargs adjustable
         mol_grid = get_mol_grid(wavefunction, atom_grid_kwargs={"kind": "g5"})
-        grid_dur = time.time() - grid_dur
-        print(f"There are {mol_grid.npoints} grid points")
-        print(f"Grid generation took {grid_dur:.4f} s")
         # mol_grid = get_mol_grid(wavefunction, grid_func=get_gdma_atomic_grid)
+        grid_dur = time.time() - grid_dur
+        print(f"Grid generation took {grid_dur:.4f} s")
+        print(f"There are {mol_grid.npoints} grid points")
+
         # ... and accumulate the density on the grid
         numint_dur = time.time()
-        rho = gdma_int.get_diffuse_density_numba(wavefunction, mol_grid, switch)
-        # rho = gdma_int.get_diffuse_density_fortran(wavefunction, mol_grid, switch)
+        rho = diffuse_density_func(wavefunction, mol_grid, switch)
         numint_dur = time.time() - numint_dur
         print(f"Numerical integration took {numint_dur:.4f} s")
 
