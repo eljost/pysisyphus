@@ -121,11 +121,11 @@ def test_dftbp_h2o_all_energies():
 
 
 @pytest.mark.parametrize(
-    "mult, ref_charges",
+    "mult, ref_energy, ref_charges",
     (
         # Ref charges from ORCA calculation
-        (1, (-0.372544, 0.186272, 0.186272)),
-        (3, (0.043753, -0.021876, -0.021876)),
+        (1, -74.960702, (-0.372544, 0.186272, 0.186272)),
+        (3, -74.590125, (0.043753, -0.021876, -0.021876)),
     ),
 )
 @pytest.mark.parametrize(
@@ -151,12 +151,23 @@ def test_dftbp_h2o_all_energies():
             },
             marks=using("PySCF"),
         ),
+        #
         # DFTB+ seems to use Slater-type-orbitals and does not
         # seeom to support a wavefunction export in a known/supported
         # format. So there is no DFTB+ test here.
+        #
+        pytest.param(
+            Gaussian16,
+            {
+                "route": "hf sto-3g",
+            },
+            marks=using("gaussian16"),
+        ),
     ),
 )
-def test_get_wavefunction(mult, ref_charges, calc_cls, calc_kwargs, this_dir):
+def test_get_wavefunction(
+    mult, ref_energy, ref_charges, calc_cls, calc_kwargs, this_dir
+):
     geom = geom_loader("lib:h2o.xyz")
     if calc_cls == Turbomole:
         calc_kwargs["control_path"] = this_dir / f"control_path_h2o_mult_{mult}"
@@ -167,3 +178,4 @@ def test_get_wavefunction(mult, ref_charges, calc_cls, calc_kwargs, this_dir):
     wf = geom.get_wavefunction()["wavefunction"]
     pop_ana = mulliken_charges(wf)
     np.testing.assert_allclose(pop_ana.charges, ref_charges, atol=4e-6)
+    assert geom.energy == pytest.approx(ref_energy)

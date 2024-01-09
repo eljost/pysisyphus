@@ -10,7 +10,7 @@ import warnings
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
+from pysisyphus.calculators.OverlapCalculator import GroundStateContext, OverlapCalculator
 from pysisyphus.constants import AU2EV, BOHR2ANG
 from pysisyphus.helpers_pure import file_or_str
 
@@ -30,6 +30,7 @@ class Gaussian16(OverlapCalculator):
         gbs="",
         gen="",
         keep_chk=False,
+        wavefunction_dump=True,
         stable="",
         fchk=None,
         **kwargs,
@@ -46,6 +47,12 @@ class Gaussian16(OverlapCalculator):
         assert "@" not in gbs, "Give only the path to the .gbs file, " "without the @!"
         self.gen = gen
         self.keep_chk = keep_chk
+        if not wavefunction_dump:
+            warnings.warn(
+            "The 'wavefunction_dump' argument is ignored by the Gaussian calculator. "
+            "The wavefunction is always dumped."
+            )
+        self.wavefunction_dump = True
         self.stable = stable
         self.fchk = fchk
 
@@ -234,8 +241,10 @@ class Gaussian16(OverlapCalculator):
         if not chk_path.exists():
             self.log("No .chk file found.")
             return
+
         # Create the .fchk file so we can keep it and parse it later on.
         self.make_fchk(path)
+
         if self.track:
             self.run_rwfdump(path, "635r")
             self.nmos, self.roots = self.parse_log(path / self.out_fn)
@@ -426,6 +435,12 @@ class Gaussian16(OverlapCalculator):
                 "This track_root() call is a bit superfluous as the "
                 "as the result is ignored :)"
             )
+        return results
+
+    def get_wavefunction(self, atoms, coords, **prepare_kwargs):
+        with GroundStateContext(self):
+            results = self.get_energy(atoms, coords, **prepare_kwargs)
+            results["wavefunction"] = self.load_wavefunction_from_file(self.fchk)
         return results
 
     def run_double_mol_calculation(self, atoms, coords1, coords2):
