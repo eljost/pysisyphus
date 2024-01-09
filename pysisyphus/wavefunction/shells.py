@@ -503,21 +503,9 @@ class Shells:
 
     @staticmethod
     def from_pyscf_mol(mol):
-        shells = list()
-        for bas_id in range(mol.nbas):
-            L = mol.bas_angular(bas_id)
-            center = mol.bas_coord(bas_id)
-            coeffs = mol.bas_ctr_coeff(bas_id).flatten()
-            exps = mol.bas_exp(bas_id)
-            assert (
-                coeffs.size == exps.size
-            ), "General contractions are not yet supported."
-            center_ind = mol.bas_atom(bas_id)
-            atom_symbol = mol.atom_symbol(center_ind)
-            atomic_num = ATOMIC_NUMBERS[atom_symbol.lower()]
-            shell = Shell(L, center, coeffs, exps, center_ind, atomic_num)
-            shells.append(shell)
-        return PySCFShells(shells)
+        from pysisyphus.calculators.PySCF import from_pyscf_mol
+
+        return from_pyscf_mol(mol)
 
     def to_pyscf_mol(self):
         # TODO: this would be better suited as a method of Wavefunction,

@@ -3,6 +3,7 @@ import pytest
 
 from pysisyphus.calculators import ORCA, Gaussian16, Turbomole, DFTBp
 from pysisyphus.calculators.PySCF import PySCF
+from pysisyphus.wavefunction.pop_analysis import mulliken_charges
 from pysisyphus.helpers import geom_loader
 from pysisyphus.testing import using
 
@@ -117,3 +118,52 @@ def test_dftbp_h2o_all_energies():
     for root in range(nroots + 1):
         root_en = geom.get_root_energy(root)
         assert root_en == pytest.approx(ref_energies[root])
+
+
+@pytest.mark.parametrize(
+    "mult, ref_charges",
+    (
+        # Ref charges from ORCA calculation
+        (1, (-0.372544, 0.186272, 0.186272)),
+        (3, (0.043753, -0.021876, -0.021876)),
+    ),
+)
+@pytest.mark.parametrize(
+    "calc_cls, calc_kwargs",
+    (
+        pytest.param(
+            ORCA,
+            {
+                "keywords": "hf sto-3g",
+            },
+            marks=using("orca"),
+        ),
+        pytest.param(
+            Turbomole,
+            {},
+            marks=using("turbomole"),
+        ),
+        pytest.param(
+            PySCF,
+            {
+                "method": "scf",
+                "basis": "sto3g",
+            },
+            marks=using("PySCF"),
+        ),
+        # DFTB+ seems to use Slater-type-orbitals and does not
+        # seeom to support a wavefunction export in a known/supported
+        # format. So there is no DFTB+ test here.
+    ),
+)
+def test_get_wavefunction(mult, ref_charges, calc_cls, calc_kwargs, this_dir):
+    geom = geom_loader("lib:h2o.xyz")
+    if calc_cls == Turbomole:
+        calc_kwargs["control_path"] = this_dir / f"control_path_h2o_mult_{mult}"
+    calc_kwargs["mult"] = mult
+    calc_kwargs["base_name"] = f"calc_mult_{mult}"
+    calc = calc_cls(**calc_kwargs)
+    geom.set_calculator(calc)
+    wf = geom.get_wavefunction()["wavefunction"]
+    pop_ana = mulliken_charges(wf)
+    np.testing.assert_allclose(pop_ana.charges, ref_charges, atol=4e-6)

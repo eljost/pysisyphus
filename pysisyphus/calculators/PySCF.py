@@ -1,12 +1,49 @@
 import os
 import shutil
+from typing import Optional
 
 import numpy as np
 import pyscf
 from pyscf import grad, gto, lib, hessian, qmmm, tddft
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
+from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.helpers import geom_loader
+from pysisyphus.wavefunction import PySCFShells, Shell, Wavefunction
+from pysisyphus.wavefunction.helpers import BFType
+
+
+def from_pyscf_mol(mol):
+    shells = list()
+    for bas_id in range(mol.nbas):
+        L = mol.bas_angular(bas_id)
+        center = mol.bas_coord(bas_id)
+        coeffs = mol.bas_ctr_coeff(bas_id).flatten()
+        exps = mol.bas_exp(bas_id)
+        assert coeffs.size == exps.size, "General contractions are not yet supported."
+        center_ind = mol.bas_atom(bas_id)
+        atom_symbol = mol.atom_symbol(center_ind)
+        atomic_num = ATOMIC_NUMBERS[atom_symbol.lower()]
+        shell = Shell(L, center, coeffs, exps, center_ind, atomic_num)
+        shells.append(shell)
+    return PySCFShells(shells)
+
+
+def kernel_to_wavefunction(mf):
+    mol = mf.mol
+    shells = from_pyscf_mol(mol)
+    wf = Wavefunction(
+        atoms=tuple(shells.atoms),
+        coords=shells.coords3d,
+        charge=mol.charge,
+        mult=mol.multiplicity,
+        unrestricted=mf.mo_occ.ndim == 2,
+        occ=mol.nelec,
+        C=mf.mo_coeff,
+        bf_type=BFType.CARTESIAN if mol.cart else BFType.PURE_SPHERICAL,
+        shells=shells,
+    )
+    return wf
 
 
 class PySCF(OverlapCalculator):
@@ -43,9 +80,9 @@ class PySCF(OverlapCalculator):
         method="scf",
         auxbasis=None,
         keep_chk=True,
-        verbose=0,
-        unrestricted=None,
-        grid_level=3,
+        verbose: int = 0,
+        unrestricted: Optional[bool] = None,
+        grid_level: int = 3,
         pruning="nwchem",
         use_gpu=False,
         **kwargs,
@@ -239,9 +276,25 @@ class PySCF(OverlapCalculator):
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         return self.get_energy(atoms, coords, **prepare_kwargs)
 
-    def run(self, mol, point_charges=None):
-        steps = self.multisteps[self.method]
-        self.log(f"Running steps '{steps}' for method {self.method}")
+    def get_wavefunction(self, atoms, coords, **prepare_kwargs):
+        point_charges = prepare_kwargs.get("point_charges", None)
+
+        method = self.multisteps[self.method][0]
+        mol = self.prepare_input(atoms, coords)
+        mf = self.run(mol, point_charges=point_charges, method=method)
+        all_energies = self.parse_all_energies()
+        energy = all_energies[0]
+        results = {
+            "energy": energy,
+            "wavefunction": kernel_to_wavefunction(mf),
+        }
+        return results
+
+    def run(self, mol, point_charges=None, method=None):
+        if method is None:
+            method = self.method
+        steps = self.multisteps[method]
+        self.log(f"Running steps '{steps}' for method {method}")
         for i, step in enumerate(steps):
             if i == 0:
                 mf = self.get_driver(step, mol=mol)

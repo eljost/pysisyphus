@@ -245,6 +245,10 @@ class Calculator:
         self.get_hessian = self._org_get_hessian
         self.hessian_kind = HessKind["ORG"]
 
+    def get_wavefunction(self, atoms, coords, **prepare_kwargs):
+        """Meant to be extended."""
+        raise Exception("Not implemented!")
+
     def load_wavefunction_from_file(self, fn, **kwargs):
         return Wavefunction.from_file(fn, **kwargs)
 

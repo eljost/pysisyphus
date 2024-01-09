@@ -12,7 +12,10 @@ import numpy as np
 import pyparsing as pp
 
 from pysisyphus.calculators.MOCoeffs import MOCoeffs
-from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
+from pysisyphus.calculators.OverlapCalculator import (
+    GroundStateContext,
+    OverlapCalculator,
+)
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
@@ -527,6 +530,17 @@ def geom_from_orca_hess(fn):
     return geom
 
 
+class ORCAGroundStateContext(GroundStateContext):
+    def __enter__(self):
+        super().__enter__()
+        self.do_es_bak = self.calc.do_es
+        self.calc.do_es = False
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        super().__exit__(exc_type, exc_value, exc_traceback)
+        self.calc.do_es = self.do_es_bak
+
+
 class ORCA(OverlapCalculator):
     conf_key = "orca"
     _set_plans = (
@@ -834,6 +848,12 @@ class ORCA(OverlapCalculator):
 
     def get_stored_wavefunction(self, **kwargs):
         return self.load_wavefunction_from_file(self.bson, **kwargs)
+
+    def get_wavefunction(self, atoms, coords, **prepare_kwargs):
+        with ORCAGroundStateContext(self):
+            results = self.get_energy(atoms, coords, **prepare_kwargs)
+            results["wavefunction"] = self.get_stored_wavefunction()
+        return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         """Basically some kind of dummy method that can be called
