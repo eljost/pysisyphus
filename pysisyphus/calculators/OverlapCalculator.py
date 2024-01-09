@@ -78,6 +78,33 @@ def get_data_model(
     return data_model
 
 
+class GroundStateContext:
+    def __init__(self, calc):
+        self.calc = calc
+
+    def __enter__(self):
+        try:
+            self.track_bak = self.calc.track
+            self.calc.track = False
+        except AttributeError:
+            pass
+        try:
+            self.wavefunction_dump_bak = self.calc.wavefunction_dump
+            self.calc.wavefunction_dump = True
+        except AttributeError:
+            pass
+
+    def __exit__(self, exc_type, exc_value, exc_trackback):
+        try:
+            self.calc.track = self.track_bak
+        except AttributeError:
+            pass
+        try:
+            self.calc.wavefunction_dump = self.wavefunction_dump_bak
+        except AttributeError:
+            pass
+
+
 class OverlapCalculator(Calculator):
     OVLP_TYPE_VERBOSE = {
         "wf": "wavefunction overlap",

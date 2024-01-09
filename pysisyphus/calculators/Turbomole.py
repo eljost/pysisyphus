@@ -12,7 +12,10 @@ import numpy as np
 import pyparsing as pp
 
 # from pysisyphus.calculators.cosmo_data import COSMO_RADII
-from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
+from pysisyphus.calculators.OverlapCalculator import (
+    GroundStateContext,
+    OverlapCalculator,
+)
 from pysisyphus.calculators.parser import (
     parse_turbo_gradient,
     parse_turbo_ccre0_ascii,
@@ -190,6 +193,17 @@ def control_from_simple_input(simple_inp, charge, mult, cosmo_kwargs=None):
         data_groups=data_groups,
     )
     return rendered
+
+
+class TurbomoleGroundStateContext(GroundStateContext):
+    def __enter__(self):
+        super().__enter__()
+        self.energy_cmd_bak = self.calc.energy_cmd
+        self.calc.energy_cmd = self.calc.scf_cmd
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        super().__exit__(exc_type, exc_value, exc_traceback)
+        self.calc.energy_cmd = self.energy_cmd_bak
 
 
 class Turbomole(OverlapCalculator):
@@ -648,6 +662,12 @@ class Turbomole(OverlapCalculator):
 
     def get_stored_wavefunction(self, **kwargs):
         return self.load_wavefunction_from_file(self.mwfn_wf, **kwargs)
+
+    def get_wavefunction(self, atoms, coords, **prepare_kwargs):
+        with TurbomoleGroundStateContext(self):
+            results = self.get_energy(atoms, coords, **prepare_kwargs)
+            results["wavefunction"] = self.get_stored_wavefunction()
+        return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         return self.get_energy(atoms, coords, **prepare_kwargs)
