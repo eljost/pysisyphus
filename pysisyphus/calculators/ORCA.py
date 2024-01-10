@@ -443,7 +443,21 @@ def get_name(text: bytes):
 
 
 @file_or_str(".densities", mode="rb")
-def parse_orca_densities(text: bytes):
+def parse_orca_densities(text: bytes) -> dict[str, np.ndarray]:
+    """Parse ORCA *.densities file and return densities in dict.
+
+    Some examples of densities found in the file(s):
+
+        scfp : HF/DFT total electronic density
+        scfr : HF/DFT spin density
+        cisp : TDA/TD-DFT/CIS total electronic density
+        cisr : TDA/TD-DFT/CIS spin density
+        pmp2ur: MP2 total unrelaxed density
+        rmp2ur: MP2 unrelaxed spin density
+        pmp2re: MP2 total relaxed density
+        rmp2re: MP2 relaxed spin density
+    """
+
     handle = io.BytesIO(text)
 
     # Determine file size
@@ -490,14 +504,6 @@ def parse_orca_densities(text: bytes):
     densities = np.array(densities).reshape(ndens, *dens_shape)
 
     dens_dict = {dens_ext: dens for dens_ext, dens in zip(dens_exts, densities)}
-    # This check could be removed but I'll keep if for now, so I only deal with
-    # known densities.
-    # scfp : HF/DFT electronic density
-    # scfr : HF/DFT spin density
-    # cisp : TDA/TD-DFT/CIS electronic density
-    # cisr : TDA/TD-DFT/CIS spin density
-    assert set(dens_dict) <= {"scfp", "scfr", "cisp", "cisr"}
-
     return dens_dict
 
 
