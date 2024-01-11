@@ -1,0 +1,11 @@
+$title
+$symmetry c1
+$tensor space dimension        8
+$scfinstab polly
+$current subspace dimension        1
+$current iteration converged
+$eigenpairs
+        1   eigenvalue =  0.0000000000000000D+00
+-.11922061720428D-180.19595152067945D-030.19653867396276D-160.24261774497654D-01
+0.18234994307811D-16-.23576365033346D-020.19544420671147D-150.64905789737538D-16
+$end
