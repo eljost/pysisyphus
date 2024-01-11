@@ -157,6 +157,84 @@ def ct_numbers_for_states(
     return omegas
 
 
+def make_mo_density_matrix_for_root(
+    X: np.ndarray, Y: np.ndarray, restricted: bool, ov_corr: Optional[np.ndarray] = None
+):
+    """Construct (relaxed) density matrix from X, Y (and occ-virt. correction).
+
+    Parameters
+    ----------
+    X
+        2d-array containing excitation CI-coefficients w/ shape (nocc, nvirt).
+    Y
+        2d-array containing deexcitation CI-coefficients w/ shape (nocc, nvirt).
+    restricted
+        Whether the X and Y vectors were produced from a restricted calculation.
+    ov_corr
+        occ-virt/virt-occ correction, as obtained from ES gradient calculations.
+
+    Returns
+    -------
+    P
+        (Relaxed) density matrix in MO basis.
+    """
+    nocc, nvir = X.shape
+    nmos = nocc + nvir
+    occupations = np.zeros(nmos)
+    # Ground-state occupation. Unrestricted character is taken into account later.
+    occupations[:nocc] = 2.0
+    P = np.diag(occupations)
+
+    XpY = X + Y
+    XmY = X - Y
+    #     +-------------+
+    #     |  oo  |  ov  |
+    # P = |-------------|
+    #     |  vo  |  vv  |
+    #     +-------------+
+    dP_oo = np.einsum("ia,ja->ij", XpY, XpY) + np.einsum("ia,ja->ij", XmY, XmY)
+    dP_vv = np.einsum("ia,ic->ac", XpY, XpY) + np.einsum("ia,ic->ac", XmY, XmY)
+    # Eq. (42b) in [1]
+    P[:nocc, :nocc] -= dP_oo
+    # Eq. (42a) in [1]
+    P[nocc:, nocc:] += dP_vv
+    if not restricted:
+        P /= 2.0
+    # Add contribuation to occ-virt/virt-occ blocks, producing a relaxed
+    # density. At least for Turbomole calculation we have to add it after
+    # dividing by 2.0 in unrestricted calculations.
+    if ov_corr is not None:
+        P[:nocc, nocc:] -= ov_corr
+        P[nocc:, :nocc] -= ov_corr.T
+    return P
+
+
+def make_mo_density_matrices_for_root(
+    # wf, root, Xa, Ya, Xb, Yb, restricted, ov_corr_a=None, ov_corr_b=None
+    root,
+    Xa,
+    Ya,
+    Xb,
+    Yb,
+    restricted,
+    ov_corr_a=None,
+    ov_corr_b=None,
+) -> np.ndarray:
+    # Ca, Cb = wf.C
+    assert Xa.shape == Ya.shape
+    assert Xb.shape == Yb.shape
+    if restricted:
+        Xa, Ya = norm_ci_coeffs(Xa, Ya)
+        Pexc_a = make_mo_density_matrix_for_root(Xa[root], Ya[root], True, ov_corr_a)
+        Pexc_a /= 2.0
+        Pexc_b = Pexc_a.copy()
+    else:
+        Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+        Pexc_a = make_mo_density_matrix_for_root(Xa[root], Ya[root], False, ov_corr_a)
+        Pexc_b = make_mo_density_matrix_for_root(Xb[root], Yb[root], False, ov_corr_b)
+    return Pexc_a, Pexc_b
+
+
 def mo_inds_from_tden(
     T: NDArray[float], ci_thresh: float
 ) -> Tuple[NDArray[int], NDArray[int], NDArray[float]]:

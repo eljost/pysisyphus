@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+from typing import Optional
 import warnings
 
 from jinja2 import Template
@@ -24,6 +25,7 @@ from pysisyphus.calculators.parser import (
     parse_turbo_exstates_re as parse_turbo_exstates,
 )
 from pysisyphus.helpers_pure import file_or_str, get_random_path
+from pysisyphus.wavefunction.excited_states import make_mo_density_matrices_for_root
 
 
 @dataclass
@@ -193,6 +195,109 @@ def control_from_simple_input(simple_inp, charge, mult, cosmo_kwargs=None):
         data_groups=data_groups,
     )
     return rendered
+
+
+def parse_frozen_nmos(text: str) -> tuple[list[tuple[int, int], tuple[int, int]], bool]:
+    """Determine number of occ. & and virt. orbitals used in ES calculations."""
+
+    frozen_re = re.compile(
+        r"number of non-frozen orbitals\s+:\s+(?P<nmos>\d+)"
+        r"\s+number of non-frozen occupied orbitals :\s+(?P<nocc>\d+)"
+    )
+    matches = frozen_re.findall(text)
+    mo_nums = list()
+    for nmos, nocc in matches:
+        nmos = int(nmos)
+        nocc = int(nocc)
+        nvirt = nmos - nocc
+        mo_nums.append((nocc, nvirt))
+
+    restricted = len(mo_nums) == 1
+    if restricted:
+        mo_nums.append((0, 0))
+    return mo_nums, restricted
+
+
+@file_or_str("ciss_a", "ucis_a", "sing_a", "unrs_a", "dipl_a", exact=True)
+def parse_ci_coeffs(text: str, nocc_a: int, nvirt_a: int, nocc_b: int, nvirt_b: int):
+    """Parse CI coefficients from escf/egrad calculations."""
+
+    states_data = Turbomole.parse_td_vectors(text)
+    expect_a = nocc_a * nvirt_a
+    expect_b = nocc_b * nvirt_b
+    shape_a = (nocc_a, nvirt_a)
+    shape_b = (nocc_b, nvirt_b)
+
+    Xa = np.zeros((len(states_data), *shape_a))
+    Ya = np.zeros((len(states_data), *shape_a))
+    Xb = np.zeros((len(states_data), *shape_b))
+    Yb = np.zeros((len(states_data), *shape_b))
+
+    # Whether a Y vector is present
+    with_deexc = len(states_data[0]["vector"]) == 2 * (expect_a + expect_b)
+    if with_deexc:
+        XpYa = np.empty(shape_a)
+        XmYa = np.empty(shape_a)
+        XpYb = np.empty(shape_b)
+        XmYb = np.empty(shape_b)
+
+    for i, state_data in enumerate(states_data):
+        coeffs = np.array(state_data["vector"])
+        # TD-DFT/TD-HF
+        if with_deexc:
+            start = 0
+            # X + Y
+            XpYa[:] = coeffs[start : start + expect_a].reshape(shape_a)
+            start += expect_a
+            XpYb = coeffs[start : start + expect_b].reshape(shape_b)
+            start += expect_b
+            # X - Y
+            XmYa[:] = coeffs[start : start + expect_a].reshape(shape_a)
+            start += expect_a
+            XmYb = coeffs[start : start + expect_b].reshape(shape_b)
+            start += expect_b
+            # Recover X and Y vectors from X + Y and X - Y
+            Xa[i] = (XpYa + XmYa) / 2.0
+            Ya[i] = XpYa - Xa[i]
+            Xb[i] = (XpYb + XmYb) / 2.0
+            Yb[i] = XpYb - Xb[i]
+        # TDA/CIS
+        else:
+            Xa[i] = coeffs[:expect_a].reshape(shape_a)
+            Xb[i] = coeffs[expect_a:].reshape(shape_b)
+    return Xa, Ya, Xb, Yb
+
+
+def get_density_matrices_for_root(wf, log_fn, vec_fn, root, rlx_vec_fn=None):
+    with open(log_fn) as handle:
+        text = handle.read()
+
+    # Number of non-frozen/active molecular orbitals
+    ((nfocc_a, nfvirt_a), (nfocc_b, nfvirt_b)), restricted = parse_frozen_nmos(text)
+
+    # Transition density
+    Xa, Ya, Xb, Yb = parse_ci_coeffs(vec_fn, nfocc_a, nfvirt_a, nfocc_b, nfvirt_b)
+    # Relaxed density correction; there is never a deexciation part
+    if rlx_vec_fn:
+        ov_corr_a, _, ov_corr_b, _ = parse_ci_coeffs(
+            rlx_vec_fn, nfocc_a, nfvirt_a, nfocc_b, nfvirt_b
+        )
+        # We expect only one root in dipl_a
+        assert ov_corr_a.shape[0] == 1
+        ov_corr_a = ov_corr_a[0]
+        assert ov_corr_b.shape[0] == 1
+        ov_corr_b = ov_corr_b[0]
+    else:
+        ov_corr_a = None
+        ov_corr_b = None
+
+    Pexc_mo_a, Pexc_mo_b = make_mo_density_matrices_for_root(
+        root, Xa, Ya, Xb, Yb, restricted, ov_corr_a, ov_corr_b
+    )
+    Ca, Cb = wf.C
+    Pexc_a = Ca @ Pexc_mo_a @ Ca.T
+    Pexc_b = Cb @ Pexc_mo_b @ Cb.T
+    return Pexc_a, Pexc_b
 
 
 class TurbomoleGroundStateContext(GroundStateContext):
@@ -669,6 +774,14 @@ class Turbomole(OverlapCalculator):
             results["wavefunction"] = self.get_stored_wavefunction()
         return results
 
+    def get_relaxed_density(self, atoms, coords, root, **prepare_kwargs):
+        root_bak = self.root
+        self.root = root
+        results = self.get_forces(atoms, coords, **prepare_kwargs)
+        self.root = root_bak
+
+        breakpoint()
+
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         return self.get_energy(atoms, coords, **prepare_kwargs)
 
@@ -748,7 +861,7 @@ class Turbomole(OverlapCalculator):
     def parse_all_energies(self):
         # Parse eigenvectors from escf/egrad calculation
         gs_energy = self.parse_gs_energy()
-        if self.second_cmd in ("escf", "egrad"):
+        if self.root and self.second_cmd in ("escf", "egrad"):
             # I don't know why, but sometimes sing_a contains wrong excitation energies...
             # exc_energies = Turbomole.parse_tddft_tden(self.td_vec_fn)
             roots = parse_exspectrum(self.exspectrum)
@@ -840,7 +953,8 @@ class Turbomole(OverlapCalculator):
         }
         return results
 
-    def parse_td_vectors(self, text):
+    @staticmethod
+    def parse_td_vectors(text):
         """For TDA calculations only the X vector is present in the
         ciss_a/etc. file. In TDDFT calculations there are twise as
         much items compared with TDA. The first half corresponds to
