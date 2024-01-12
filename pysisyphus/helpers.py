@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import time
-from typing import List
+from typing import List, Union
 
 import numpy as np
 import scipy as sp
@@ -79,7 +79,9 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
     return geoms
 
 
-def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
+def geom_loader(
+    fn, coord_type="cart", iterable=False, **coord_kwargs
+) -> Union[Geometry, tuple[Geometry]]:
     """After introducing the pubchem functionality I don't like this
     function anymore :) Too complicated."""
     fn = str(fn)

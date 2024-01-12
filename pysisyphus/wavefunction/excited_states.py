@@ -209,29 +209,51 @@ def make_mo_density_matrix_for_root(
     return P
 
 
-def make_mo_density_matrices_for_root(
-    # wf, root, Xa, Ya, Xb, Yb, restricted, ov_corr_a=None, ov_corr_b=None
-    root,
-    Xa,
-    Ya,
-    Xb,
-    Yb,
-    restricted,
-    ov_corr_a=None,
-    ov_corr_b=None,
-) -> np.ndarray:
-    # Ca, Cb = wf.C
+def make_density_matrices_for_root(
+    rootm1: int,
+    restricted: bool,
+    Xa: np.ndarray,
+    Ya: np.ndarray,
+    Xb: np.ndarray,
+    Yb: np.ndarray,
+    ov_corr_a: Optional[np.ndarray] = None,
+    ov_corr_b: Optional[np.ndarray] = None,
+    Ca: Optional[np.ndarray] = None,
+    Cb: Optional[np.ndarray] = None,
+    renorm: bool = True,
+):
+    """Create relaxed/unrelaxed alpha and beta density matrices for an ES."""
     assert Xa.shape == Ya.shape
     assert Xb.shape == Yb.shape
+
+    if ov_corr_a is not None:
+        assert ov_corr_a.ndim == 2
+    if ov_corr_b is not None:
+        assert ov_corr_b.ndim == 2
+
+    # Density matrices are in MO basis
     if restricted:
-        Xa, Ya = norm_ci_coeffs(Xa, Ya)
-        Pexc_a = make_mo_density_matrix_for_root(Xa[root], Ya[root], True, ov_corr_a)
+        if renorm:
+            Xa, Ya = norm_ci_coeffs(Xa, Ya)
+        Pexc_a = make_mo_density_matrix_for_root(
+            Xa[rootm1], Ya[rootm1], True, ov_corr_a
+        )
         Pexc_a /= 2.0
         Pexc_b = Pexc_a.copy()
     else:
-        Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
-        Pexc_a = make_mo_density_matrix_for_root(Xa[root], Ya[root], False, ov_corr_a)
-        Pexc_b = make_mo_density_matrix_for_root(Xb[root], Yb[root], False, ov_corr_b)
+        if renorm:
+            Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+        Pexc_a = make_mo_density_matrix_for_root(
+            Xa[rootm1], Ya[rootm1], False, ov_corr_a
+        )
+        Pexc_b = make_mo_density_matrix_for_root(
+            Xb[rootm1], Yb[rootm1], False, ov_corr_b
+        )
+
+    # Transform to AO basis when MO coefficients were supplied
+    if Ca is not None and Cb is not None:
+        Pexc_a = Ca @ Pexc_a @ Ca.T
+        Pexc_b = Cb @ Pexc_b @ Cb.T
     return Pexc_a, Pexc_b
 
 

@@ -2,6 +2,8 @@
 #     Toward a Systematic Molecular Orbital Theory for Excited States
 #     Foresman, Head-Gordon, Pople, Frisch, 1991
 
+import contextlib
+from enum import Enum
 import operator
 from pathlib import Path
 from typing import Dict, Literal, List, Optional, Tuple
@@ -23,6 +25,7 @@ from pysisyphus.wavefunction.shells import Shells
 
 
 Center = Literal["coc", "com"]
+DensityType = Enum("DensityType", ["UNRELAXED", "RELAXED"])
 
 
 class Wavefunction:
@@ -79,7 +82,13 @@ class Wavefunction:
             )
 
         self._masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
-        self._densities = dict()
+
+        # Wavefunction must be initialized with the GS density
+        self._current_density_key = (0, DensityType.RELAXED)
+        self._densities = {
+            # self._current_density_key: self.P_tot,
+            self._current_density_key: self.P,
+        }
 
         if strict:
             self.check_sanity()
@@ -244,7 +253,7 @@ class Wavefunction:
 
     @property
     def P(self):
-        return [C_occ @ C_occ.T for C_occ in self.C_occ]
+        return np.array([C_occ @ C_occ.T for C_occ in self.C_occ])
 
     @property
     def P_tot(self):
@@ -272,6 +281,7 @@ class Wavefunction:
         # it to the AO basis and return.
         return C @ P @ C.T
 
+    """
     def store_density(self, P, name, ao_or_mo="ao"):
         assert P.ndim == 2, "Handling of alpha/beta densities is not yet implemented!"
         if ao_or_mo == "mo":
@@ -283,6 +293,40 @@ class Wavefunction:
 
     def get_density(self, name):
         return self._densities[name]
+    """
+
+    @property
+    def densities(self):
+        return self._densities
+
+    def set_current_density(self, key):
+        self._current_density_key = key
+
+    def get_current_density(self):
+        return self._densities[self._current_density_key]
+
+    @contextlib.contextmanager
+    def current_density(self, key):
+        key_bak = self._current_density_key
+        self.set_current_density(key)
+        try:
+            yield self
+        finally:
+            self.set_current_density(key_bak)
+
+    def get_current_total_density(self):
+        return self._densities[self._current_density_key].sum(axis=0)
+
+    def get_relaxed_density(self, root: int):
+        return self._densities[(root, DensityType.RELAXED)]
+
+    def get_total_relaxed_density(self, root: int):
+        return self.get_relaxed_density(root).sum(axis=0)
+
+    def set_relaxed_density(self, root: int, density: np.ndarray):
+        key = (root, DensityType.RELAXED)
+        self._densities[key] = density
+        return key
 
     def eval_density(self, coords3d, P=None):
         if P is None:
@@ -423,7 +467,7 @@ class Wavefunction:
         if origin is None:
             origin = self.get_origin(kind=kind)
         if P is None:
-            P = self.P_tot
+            P = self.get_current_total_density()
         dipole_ints = self.dipole_ints(origin)
         return get_multipole_moment(
             1, self.coords3d, origin, dipole_ints, self.nuc_charges, P
@@ -442,7 +486,7 @@ class Wavefunction:
         if origin is None:
             origin = self.get_origin(kind=kind)
         if P is None:
-            P = self.P_tot
+            P = self.get_current_total_density()
         quadrupole_ints = self.quadrupole_ints(origin)
         return get_multipole_moment(
             2, self.coords3d, origin, quadrupole_ints, self.nuc_charges, P

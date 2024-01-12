@@ -175,7 +175,71 @@ def test_get_wavefunction(
     calc_kwargs["base_name"] = f"calc_mult_{mult}"
     calc = calc_cls(**calc_kwargs)
     geom.set_calculator(calc)
-    wf = geom.get_wavefunction()["wavefunction"]
+    wf = geom.calc_wavefunction()["wavefunction"]
     pop_ana = mulliken_charges(wf)
     np.testing.assert_allclose(pop_ana.charges, ref_charges, atol=4e-6)
-    assert geom.energy == pytest.approx(ref_energy)
+    # Access geom._energy to ensure that energy is actually set
+    assert geom._energy == pytest.approx(ref_energy)
+
+
+@pytest.mark.parametrize(
+    "root, ref_energy, ref_dpm",
+    (
+        # Ref dipole moment from ORCA calculation
+        (0, -98.572847, (0.0, 0.0, -0.49257)),
+        (2, -98.107181, (0.0, 0.0, 0.44944)),
+    ),
+)
+@pytest.mark.parametrize(
+    "calc_cls, calc_kwargs",
+    (
+        pytest.param(
+            ORCA,
+            {
+                "keywords": "hf sto-3g tightscf",
+                "blocks": "%tddft tda true nroots 2 end",
+                "root": 1,
+            },
+            marks=using("orca"),
+        ),
+        pytest.param(
+            Turbomole,
+            {},
+            marks=using("turbomole"),
+        ),
+        # PySCF does not seem to support relaxed TDA/TD-DFT densities.
+        # DFTB+ does not support wavefunction support, so there i
+    ),
+)
+def test_relaxed_density(root, ref_energy, ref_dpm, calc_cls, calc_kwargs, this_dir):
+    geom = geom_loader("lib:hf_hf_sto3g_opt.xyz")
+    calc_kwargs.update(
+        {
+            "base_name": f"root_{root}",
+        }
+    )
+    if calc_cls == Turbomole:
+        calc_kwargs["control_path"] = this_dir / f"control_path_hf"
+    calc = calc_cls(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    result = geom.calc_relaxed_density(root)
+    dens = result["density"]
+    wf = geom.wavefunction
+    dens_key = wf.set_relaxed_density(root, dens)
+    P_tot = dens.sum(axis=0)
+    dpm = wf.get_dipole_moment(P_tot)
+
+    # Also test context manager and shortcut
+    with wf.current_density(dens_key):
+        # wf.get_dipole_moment() and wf.dipole_moment will use the currently selected density.
+        context_dpm = wf.get_dipole_moment()
+        context_dpm2 = wf.dipole_moment
+
+    energy = result["energy"]
+    assert energy == pytest.approx(ref_energy)
+
+    atol = 1e-5
+    np.testing.assert_allclose(dpm, ref_dpm, atol=atol)
+    np.testing.assert_allclose(context_dpm, ref_dpm, atol=atol)
+    np.testing.assert_allclose(context_dpm2, ref_dpm, atol=atol)

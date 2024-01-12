@@ -11,10 +11,10 @@ from pysisyphus.calculators.Turbomole import get_density_matrices_for_root
 @pytest.mark.parametrize(
     "path, vec_fn, root, ref_dpm",
     (
-        ("rtda", "ciss_a", 1, (0.0, 0.0, 0.449441)),
-        ("utda", "ucis_a", 1, (0.0, 0.0, 0.271004)),
-        ("rtd", "sing_a", 1, (0.0, 0.0, 0.45343)),
-        ("utd", "unrs_a", 1, (-0.101564, 0.911588, -0.000159)),
+        ("rtda", "ciss_a", 2, (0.0, 0.0, 0.449441)),
+        ("utda", "ucis_a", 2, (0.0, 0.0, 0.271004)),
+        ("rtd", "sing_a", 2, (0.0, 0.0, 0.45343)),
+        ("utd", "unrs_a", 2, (-0.101564, 0.911588, -0.000159)),
     ),
 )
 def test(path, vec_fn, root, ref_dpm, this_dir):
@@ -25,9 +25,8 @@ def test(path, vec_fn, root, ref_dpm, this_dir):
     log_fn = path / "turbomole.out"
     vec_fn = path / vec_fn
     rlx_vec_fn = path / "dipl_a"
-    Pa, Pb = get_density_matrices_for_root(
-        wf, log_fn, vec_fn, root, rlx_vec_fn=rlx_vec_fn
-    )
+    Ca, Cb = wf.C
+    Pa, Pb = get_density_matrices_for_root(log_fn, vec_fn, root, rlx_vec_fn, Ca, Cb)
     P_tot = Pa + Pb
     dpm = wf.get_dipole_moment(P_tot)
     np.testing.assert_allclose(dpm, ref_dpm, atol=3e-5)
