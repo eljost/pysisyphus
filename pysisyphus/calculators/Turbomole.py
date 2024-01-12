@@ -336,7 +336,7 @@ class Turbomole(OverlapCalculator):
         simple_input=None,
         double_mol_path=None,
         cosmo_kwargs=None,
-        wavefunction_dump=False,
+        wavefunction_dump=True,
         **kwargs,
     ):
         super().__init__(**kwargs)
