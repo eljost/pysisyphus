@@ -1,10 +1,14 @@
+import functools
+from pathlib import Path
 import re
+from typing import Union
 
 import numpy as np
 
 from pysisyphus.elem_data import INV_ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.linalg import sym_mat_from_tril
 from pysisyphus.wavefunction.shells import Shell, FCHKShells
 from pysisyphus.wavefunction import Wavefunction
 from pysisyphus.wavefunction.helpers import BFType
@@ -216,3 +220,37 @@ def geom_with_hessian_from_fchk(text, **geom_kwargs):
     geom.cart_hessian = H
 
     return geom
+
+
+@functools.singledispatch
+def get_relaxed_density(fchk_data: dict, key="CI"):
+    nbas = fchk_data["Number of basis functions"]
+    tot_dens = np.empty((nbas, nbas))
+
+    # alpha + beta
+    sym_mat_from_tril(tot_dens, fchk_data[f"Total {key} Density"])
+    # Unrestricted case; potentially different alpha and beta parts
+    try:
+        spin_dens = np.empty((nbas, nbas))
+        # alpha - beta
+        sym_mat_from_tril(spin_dens, fchk_data[f"Spin {key} Density"])
+        # (alpha + beta + alpha - beta) / 2.0
+        dens_a = (tot_dens + spin_dens) / 2.0
+        # alpha + beta - alpha
+        dens_b = tot_dens - dens_a
+    # Restricted case, just replicate alpha part for beta. The density already
+    # seems to include a factor of 2.0 in the restriced case. We remove it, so
+    # (identical) alpha and beta parts add up to the total density.
+    except KeyError:
+        dens_a = tot_dens / 2.0
+        dens_b = dens_a
+
+    relaxed_dens = np.stack((dens_a, dens_b))
+    return relaxed_dens
+
+
+@get_relaxed_density.register(str)
+@get_relaxed_density.register(Path)
+def _(fn: Union[str, Path], **kwargs):
+    data = parse_fchk(fn)
+    return get_relaxed_density(data, **kwargs)

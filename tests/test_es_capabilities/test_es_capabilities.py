@@ -207,11 +207,29 @@ def test_get_wavefunction(
             {},
             marks=using("turbomole"),
         ),
-        # PySCF does not seem to support relaxed TDA/TD-DFT densities.
-        # DFTB+ does not support wavefunction support, so there i
+        pytest.param(
+            Gaussian16,
+            {
+                "route": "hf sto-3g cis(nstates=2)",
+                "root": 1,
+            },
+            marks=using("gaussian16"),
+        ),
     ),
 )
 def test_relaxed_density(root, ref_energy, ref_dpm, calc_cls, calc_kwargs, this_dir):
+    """
+    PySCF buries the calculation of relaxed densities in the
+    respective gred_elec() functions in the pyscf.grad.{tdrhf,tduhf} modules.
+    I'm not in the mood to extract the respective parts into separate functions.
+
+    Even though Turbomole keeps relaxed densities to itself, it still dumps
+    the OV-correction to the density matrix to a file, so we can reconstruct
+    the relaxed density matrix.
+
+    DFTB+ does not seem to allow wavefunction export, so there is no point in
+    trying to get the relaxed density.
+    """
     geom = geom_loader("lib:hf_hf_sto3g_opt.xyz")
     calc_kwargs.update(
         {
