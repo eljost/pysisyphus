@@ -5,7 +5,6 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
-from typing import Optional
 import warnings
 
 from jinja2 import Template
