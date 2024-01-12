@@ -1233,6 +1233,17 @@ class Geometry:
         self._wavefunction = wavefunction
 
     def calc_relaxed_density(self, root, **prepare_kwargs):
+        """Calculate a relaxed excited state density via an ES gradient calculation.
+
+        The question is, if this method should set the wavefunction property
+        at the current Geometry. On one hand, staying in pure python w/o numba
+        the wavefunction sanity-check can become costly, even though it shouldn't
+        be.
+        On the other hand, setting the wavefunction would ensure consistency
+        between the levels of theory used for density and wavefunction.
+
+        For now, calculating an ES density does not set a wavefunction on the
+        Geometry, whereas requesting the relaxed density for the GS does."""
         if root == 0:
             results = self.calc_wavefunction(**prepare_kwargs)
             wf = results["wavefunction"]
@@ -1245,6 +1256,8 @@ class Geometry:
             density = results.pop("density")
             self.set_results(results)
         results["density"] = density
+        if self.internal:
+            results["forces"] = self.internal.transform_forces(results["forces"])
         return results
 
     def clear(self):
