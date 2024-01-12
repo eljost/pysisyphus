@@ -13,6 +13,7 @@ import pyparsing as pp
 from pysisyphus.calculators.OverlapCalculator import GroundStateContext, OverlapCalculator
 from pysisyphus.constants import AU2EV, BOHR2ANG
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.io import fchk as io_fchk
 
 
 class Gaussian16(OverlapCalculator):
@@ -441,6 +442,17 @@ class Gaussian16(OverlapCalculator):
         with GroundStateContext(self):
             results = self.get_energy(atoms, coords, **prepare_kwargs)
             results["wavefunction"] = self.load_wavefunction_from_file(self.fchk)
+        return results
+
+    def get_relaxed_density(self, atoms, coords, root, **prepare_kwargs):
+        # Do excited state gradient calculation for requested root and restore
+        # original root afterwards
+        root_bak = self.root
+        self.root = root
+        results = self.get_forces(atoms, coords, **prepare_kwargs)
+        self.root = root_bak
+
+        results["density"] = io_fchk.get_relaxed_density(self.fchk, key="CI")
         return results
 
     def run_double_mol_calculation(self, atoms, coords1, coords2):
