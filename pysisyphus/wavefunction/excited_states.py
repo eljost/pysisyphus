@@ -2,6 +2,9 @@
 #     Quantitative wave function analysis for excited states
 #     of transition metal complexes
 #     Mai et al., 2018
+# [2] https://arxiv.org/pdf/2204.10135.pdf
+#     Density Functional Theory for Electronic Excited States
+#     Herbert, 2022
 
 import itertools as it
 from functools import partial
@@ -194,9 +197,9 @@ def make_mo_density_matrix_for_root(
     #     +-------------+
     dP_oo = np.einsum("ia,ja->ij", XpY, XpY) + np.einsum("ia,ja->ij", XmY, XmY)
     dP_vv = np.einsum("ia,ic->ac", XpY, XpY) + np.einsum("ia,ic->ac", XmY, XmY)
-    # Eq. (42b) in [1]
+    # Eq. (42b) in [2]
     P[:nocc, :nocc] -= dP_oo
-    # Eq. (42a) in [1]
+    # Eq. (42a) in [2]
     P[nocc:, nocc:] += dP_vv
     if not restricted:
         P /= 2.0
