@@ -190,8 +190,11 @@ def full_expand(to_expand):
     return expanded
 
 
-def file_or_str(*args, method=False, mode="r", exact=False):
+def file_or_str(*args, method=False, mode="r", exact=False, add_exts=False):
     exts = args
+
+    if add_exts:
+        exts = exts + tuple([f".{ext}" for ext in exts if not ext.startswith(".")])
 
     def inner_func(func):
         def wrapped(inp, *args, **kwargs):

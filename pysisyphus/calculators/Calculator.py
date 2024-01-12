@@ -249,6 +249,10 @@ class Calculator:
         """Meant to be extended."""
         raise Exception("Not implemented!")
 
+    def get_relaxed_density(self, atoms, coords, root, **prepare_kwargs):
+        """Meant to be extended."""
+        raise Exception("Not implemented!")
+
     def load_wavefunction_from_file(self, fn, **kwargs):
         return Wavefunction.from_file(fn, **kwargs)
 

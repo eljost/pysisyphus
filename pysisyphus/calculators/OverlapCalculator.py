@@ -84,6 +84,8 @@ class GroundStateContext:
 
     def __enter__(self):
         try:
+            self.root_bak = self.calc.root
+            self.calc.root = None
             self.track_bak = self.calc.track
             self.calc.track = False
         except AttributeError:
@@ -96,6 +98,7 @@ class GroundStateContext:
 
     def __exit__(self, exc_type, exc_value, exc_trackback):
         try:
+            self.calc.root = self.root_bak
             self.calc.track = self.track_bak
         except AttributeError:
             pass

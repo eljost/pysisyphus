@@ -1214,20 +1214,38 @@ class Geometry:
     def zero_frozen_forces(self, cart_forces):
         cart_forces.reshape(-1, 3)[self.freeze_atoms] = 0.0
 
-    def get_wavefunction(self, **prepare_kwargs):
-        results = self.calculator.get_wavefunction(self.atoms, self.cart_coords, **prepare_kwargs)
+    def calc_wavefunction(self, **prepare_kwargs):
+        # TODO: support wf (kw)-args?
+        results = self.calculator.get_wavefunction(
+            self.atoms, self.cart_coords, **prepare_kwargs
+        )
         self.set_results(results)
         return results
 
     @property
     def wavefunction(self):
         if self._wavefunction is None:
-            self.get_wavefunction()
+            self.calc_wavefunction()
         return self._wavefunction
 
     @wavefunction.setter
     def wavefunction(self, wavefunction):
         self._wavefunction = wavefunction
+
+    def calc_relaxed_density(self, root, **prepare_kwargs):
+        if root == 0:
+            results = self.calc_wavefunction(**prepare_kwargs)
+            wf = results["wavefunction"]
+            density = wf.get_relaxed_density(0)
+        else:
+            results = self.calculator.get_relaxed_density(
+                self.atoms, self.cart_coords, root, **prepare_kwargs
+            )
+            # Don't set density on Geometry
+            density = results.pop("density")
+            self.set_results(results)
+        results["density"] = density
+        return results
 
     def clear(self):
         """Reset the object state."""
