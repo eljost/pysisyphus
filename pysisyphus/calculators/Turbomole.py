@@ -25,7 +25,7 @@ from pysisyphus.calculators.parser import (
     parse_turbo_exstates_re as parse_turbo_exstates,
 )
 from pysisyphus.helpers_pure import file_or_str, get_random_path
-from pysisyphus.wavefunction.excited_states import make_mo_density_matrices_for_root
+from pysisyphus.wavefunction.excited_states import make_density_matrices_for_root
 
 
 @dataclass
@@ -218,7 +218,9 @@ def parse_frozen_nmos(text: str) -> tuple[list[tuple[int, int], tuple[int, int]]
     return mo_nums, restricted
 
 
-@file_or_str("ciss_a", "ucis_a", "sing_a", "unrs_a", "dipl_a", exact=True)
+@file_or_str(
+    "ciss_a", "ucis_a", "sing_a", "unrs_a", "dipl_a", exact=True, add_exts=True
+)
 def parse_ci_coeffs(text: str, nocc_a: int, nvirt_a: int, nocc_b: int, nvirt_b: int):
     """Parse CI coefficients from escf/egrad calculations."""
 
@@ -268,7 +270,9 @@ def parse_ci_coeffs(text: str, nocc_a: int, nvirt_a: int, nocc_b: int, nvirt_b: 
     return Xa, Ya, Xb, Yb
 
 
-def get_density_matrices_for_root(wf, log_fn, vec_fn, root, rlx_vec_fn=None):
+def get_density_matrices_for_root(
+    log_fn, vec_fn, root, rlx_vec_fn=None, Ca=None, Cb=None
+):
     with open(log_fn) as handle:
         text = handle.read()
 
@@ -291,13 +295,9 @@ def get_density_matrices_for_root(wf, log_fn, vec_fn, root, rlx_vec_fn=None):
         ov_corr_a = None
         ov_corr_b = None
 
-    Pexc_mo_a, Pexc_mo_b = make_mo_density_matrices_for_root(
-        root, Xa, Ya, Xb, Yb, restricted, ov_corr_a, ov_corr_b
+    return make_density_matrices_for_root(
+        root - 1, restricted, Xa, Ya, Xb, Yb, ov_corr_a, ov_corr_b, Ca, Cb
     )
-    Ca, Cb = wf.C
-    Pexc_a = Ca @ Pexc_mo_a @ Ca.T
-    Pexc_b = Cb @ Pexc_mo_b @ Cb.T
-    return Pexc_a, Pexc_b
 
 
 class TurbomoleGroundStateContext(GroundStateContext):
@@ -327,6 +327,7 @@ class Turbomole(OverlapCalculator):
         ("sing_a", "td_vec_fn"),
         ("ucis_a", "td_vec_fn"),
         ("unrs_a", "td_vec_fn"),
+        ("dipl_a", "rlx_vec_fn"),
     )
 
     def __init__(
@@ -394,9 +395,10 @@ class Turbomole(OverlapCalculator):
             "out",
             "ciss_a",
             "ucis_a",
-            "gradient",
             "sing_a",
             "unrs_a",
+            "dipl_a",
+            "gradient",
             "__ccre*",
             "exstates",
             "coord",
@@ -779,8 +781,24 @@ class Turbomole(OverlapCalculator):
         self.root = root
         results = self.get_forces(atoms, coords, **prepare_kwargs)
         self.root = root_bak
-
-        breakpoint()
+        if self.uhf:
+            with open(self.alpha) as handle:
+                text = handle.read()
+            Ca = parse_turbo_mos(text)
+            with open(self.beta) as handle:
+                text = handle.read()
+            Cb = parse_turbo_mos(text)
+        else:
+            with open(self.mos) as handle:
+                text = handle.read()
+            Ca = parse_turbo_mos(text)
+            Cb = Ca.copy()
+        Pa, Pb = get_density_matrices_for_root(
+            self.out, self.td_vec_fn, root, rlx_vec_fn=self.rlx_vec_fn, Ca=Ca, Cb=Cb
+        )
+        density = np.stack((Pa, Pb), axis=0)
+        results["density"] = density
+        return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         return self.get_energy(atoms, coords, **prepare_kwargs)
@@ -850,7 +868,7 @@ class Turbomole(OverlapCalculator):
         }
 
     @staticmethod
-    @file_or_str(".sing_a", ".ciss_a")  # , exact=True)
+    @file_or_str(".sing_a", ".ciss_a")
     def parse_tddft_tden(text):
         eigval_re = re.compile(r"(\d+)\s+eigenvalue\s+=\s+([\d\.\-D\+]+)")
         eigvals = eigval_re.findall(text)
@@ -861,7 +879,8 @@ class Turbomole(OverlapCalculator):
     def parse_all_energies(self):
         # Parse eigenvectors from escf/egrad calculation
         gs_energy = self.parse_gs_energy()
-        if self.root and self.second_cmd in ("escf", "egrad"):
+        # if self.root and self.second_cmd in ("escf", "egrad"):
+        if self.second_cmd in ("escf", "egrad") and hasattr(self, "exspectrum"):
             # I don't know why, but sometimes sing_a contains wrong excitation energies...
             # exc_energies = Turbomole.parse_tddft_tden(self.td_vec_fn)
             roots = parse_exspectrum(self.exspectrum)

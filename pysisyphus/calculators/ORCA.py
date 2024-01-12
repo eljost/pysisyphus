@@ -747,8 +747,8 @@ class ORCA(OverlapCalculator):
 
     def get_block_str(self):
         block_str = self.blocks
-        # Use the correct root if we track and a root is supplied
-        if self.track and (self.root is not None):
+        # Use the correct iroot if 'root' attribute is set.
+        if self.root is not None:
             if "iroot" in self.blocks:
                 block_str = re.sub(r"iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
             # Insert appropriate iroot keyword if not already present
@@ -859,6 +859,31 @@ class ORCA(OverlapCalculator):
         with ORCAGroundStateContext(self):
             results = self.get_energy(atoms, coords, **prepare_kwargs)
             results["wavefunction"] = self.get_stored_wavefunction()
+        return results
+
+    def get_relaxed_density(self, atoms, coords, root, **prepare_kwargs):
+        # Do excited state gradient calculation for requested root and restore
+        # original root afterwards
+        root_bak = self.root
+        self.root = root
+        results = self.get_forces(atoms, coords, **prepare_kwargs)
+        self.root = root_bak
+
+        # Read density from .densities file
+        dens = parse_orca_densities(self.densities)
+        cisp = dens["cisp"]  # Total density; sum of alpha and beta density
+
+        # Construct alpha and beta densities in unrestricted calculations
+        try:
+            # Spin-density; not present in restricted calculations; will raise KeyError
+            cisr = dens["cisr"]
+            dens_a = (cisp + cisr) / 2.0
+            dens_b = cisp - dens_a
+        except KeyError:
+            dens_a = cisp / 2.0
+            dens_b = dens_a
+        density = np.stack((dens_a, dens_b), axis=0)
+        results["density"] = density
         return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
@@ -977,7 +1002,7 @@ class ORCA(OverlapCalculator):
             text = handle.read()
         # By default reports the total energy of the first ES, when ES were calculated.
         # But we are interested in the GS energy, when self.root is None ...
-        if not self.do_es or self.root is not None:
+        if not self.do_es and self.root is not None:
             en_re = r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)"
         # ... so we look at the energy that was reported after the SCF.
         else:
