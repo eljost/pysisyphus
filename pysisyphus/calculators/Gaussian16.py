@@ -16,6 +16,99 @@ from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.io import fchk as io_fchk
 
 
+NMO_RE = re.compile("NBasis=\s+(?P<nbfs>\d+)\s+NAE=\s+(?P<nalpha>\d+)\s+NBE=\s+(?P<nbeta>\d+)")
+RESTRICTED_RE = re.compile("RHF ground state")
+TRANS_PATTERN = (
+    r"(?:\d+(?:A|B){0,1})\s+"
+    r"(?:\->|\<\-)\s+"
+    r"(?:\d+(?:A|B){0,1})\s+"
+    r"(?:[\d\-\.]+)\s+"
+)
+# Excited State   2:  2.009-?Sym    7.2325 eV  171.43 nm  f=0.0000  <S**2>=0.759
+EXC_STATE_RE = re.compile(
+    r"Excited State\s+(?P<root>\d+):\s+"
+    r"(?P<label>(?:Singlet|[\d.]+)-\?Sym)\s+"
+    r"(?P<exc_ev>[\d\-\.]+) eV\s+"
+    r"(?P<exc_nm>[\d\.\-]+) nm\s+"
+    r"f=(?P<fosc>[\d\.]+)\s+"
+    r"<S\*\*2>=(?P<S2>[\d\.]+)\s+"
+    rf"((?:(?!Excited State){TRANS_PATTERN}\s+)+)"
+    , re.DOTALL
+)
+
+
+def get_nmos(text):
+    mobj = NMO_RE.search(text)
+    nbfs = int(mobj.group("nbfs"))
+    nalpha = int(mobj.group("nalpha"))
+    nbeta = int(mobj.group("nbeta"))
+    nocc_a = nalpha
+    nvirt_a = nbfs - nocc_a
+    nocc_b = nbeta
+    nvirt_b = nbfs - nocc_b
+    restricted = bool(RESTRICTED_RE.search(text))
+    return nocc_a, nvirt_a, nocc_b, nvirt_b, restricted
+
+
+def to_ind_and_spin(lbl):
+    try:
+        mo_ind = int(lbl)
+        spin = "A"
+    except ValueError:
+        mo_ind, spin = int(lbl[:-1]), lbl[-1]
+    mo_ind -= 1
+    return mo_ind, spin
+
+
+@file_or_str(".log")
+def parse_ci_coeffs(text, restricted_same_ab=False):
+    nocc_a, nvirt_a, nocc_b, nvirt_b, restricted = get_nmos(text)
+    shape_a = (nocc_a, nvirt_a)
+    shape_b = (nocc_b, nvirt_b)
+
+    exc_states = EXC_STATE_RE.findall(text)
+    nstates = len(exc_states)
+
+    Xa = np.zeros((nstates, *shape_a))
+    Ya = np.zeros_like(Xa)
+    Xb = np.zeros((nstates, *shape_b))
+    Yb = np.zeros_like(Xb)
+
+    for state, exc_state in enumerate(exc_states):
+        root, label, exc_ev, exc_nm, fosc, s2, trans = exc_state
+        root = int(root)
+        exc_ev = float(exc_ev)
+        trans = trans.strip().split()
+        assert len(trans) % 4 == 0, len(trans)
+        ntrans = len(trans) // 4
+        for j in range(ntrans):
+            trans_slice = slice(j*4, (j+1)*4)
+            from_, kind, to_, coeff = trans[trans_slice]
+            coeff = float(coeff)
+            from_ind, from_spin = to_ind_and_spin(from_)
+            to_ind, to_spin = to_ind_and_spin(to_)
+            # alpha-alpha
+            if from_spin == "A" and to_spin == "A":
+                # excitation
+                if kind == "->":
+                    Xa[state, from_ind, to_ind-nocc_a] = coeff
+                # deexcitation
+                else:
+                    Ya[state, from_ind, to_ind-nocc_a] = coeff
+            # beta-beta excitation
+            elif from_spin == "B" and to_spin == "B":
+                # excitation
+                if kind == "->":
+                    Xb[state, from_ind, to_ind-nocc_b] = coeff
+                # deexcitation
+                else:
+                    Yb[state, from_ind, to_ind-nocc_b] = coeff
+    if restricted and restricted_same_ab:
+        Xb = Xa.copy()
+        Yb = Ya.copy()
+    return Xa, Ya, Xb, Yb
+
+
 class Gaussian16(OverlapCalculator):
     conf_key = "gaussian16"
     _set_plans = (
@@ -23,6 +116,7 @@ class Gaussian16(OverlapCalculator):
         "fchk",
         ("fchk", "mwfn_wf"),
         "dump_635r",
+        ("log", "out"),
     )
 
     def __init__(
@@ -34,6 +128,7 @@ class Gaussian16(OverlapCalculator):
         wavefunction_dump=True,
         stable="",
         fchk=None,
+        iop9_40=3,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -56,6 +151,7 @@ class Gaussian16(OverlapCalculator):
         self.wavefunction_dump = True
         self.stable = stable
         self.fchk = fchk
+        self.iop9_40 = iop9_40
 
         keywords = {
             kw: option
@@ -135,7 +231,7 @@ class Gaussian16(OverlapCalculator):
         nstates = f"nstates={self.nstates}"
         pair2str = lambda k, v: f"{k}" + (f"={v}" if v else "")
         arg_str = ",".join([pair2str(k, v) for k, v in self.exc_args.items()])
-        exc_str = f"{self.exc_key}=({root_str},{nstates},{arg_str})"
+        exc_str = f"{self.exc_key}=({root_str},{nstates},{arg_str}) iop(9/40={self.iop9_40})"
         return exc_str
 
     def reuse_data(self, path):
@@ -370,7 +466,9 @@ class Gaussian16(OverlapCalculator):
         return results
 
     def get_all_energies(self, atoms, coords, **prepare_kwargs):
-        return self.get_energy(atoms, coords, **prepare_kwargs)
+        results = self.get_energy(atoms, coords, **prepare_kwargs)
+        results["td_1tdms"] = parse_ci_coeffs(self.out, restricted_same_ab=True)
+        return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
         did_stable = False
@@ -438,10 +536,13 @@ class Gaussian16(OverlapCalculator):
             )
         return results
 
+    def get_stored_wavefunction(self, **kwargs):
+        return self.load_wavefunction_from_file(self.fchk, **kwargs)
+
     def get_wavefunction(self, atoms, coords, **prepare_kwargs):
         with GroundStateContext(self):
             results = self.get_energy(atoms, coords, **prepare_kwargs)
-            results["wavefunction"] = self.load_wavefunction_from_file(self.fchk)
+            results["wavefunction"] = self.get_stored_wavefunction()
         return results
 
     def get_relaxed_density(self, atoms, coords, root, **prepare_kwargs):

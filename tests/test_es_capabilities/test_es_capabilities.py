@@ -279,6 +279,7 @@ def test_relaxed_density(root, ref_energy, ref_dpm, calc_cls, calc_kwargs, this_
             Gaussian16,
             {
                 "route": "hf def2svp td(nstates=3)",
+                "iop9_40": 4,
             },
             marks=using("gaussian16"),
         ),
@@ -310,4 +311,5 @@ def test_td_1tdms(calc_cls, calc_kwargs, this_dir):
             (0.0, -0.567422, 0.0),
         )
     )
-    np.testing.assert_allclose(tdms, ref_tdms, atol=2e-3)
+    # Compare squares of TDMs, as the sign of each state's TDM is undetermined
+    np.testing.assert_allclose(tdms**2, ref_tdms**2, atol=6e-5)
