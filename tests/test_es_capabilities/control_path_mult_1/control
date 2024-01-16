@@ -1,5 +1,4 @@
 $title
-a
 $symmetry c1
 $user-defined bonds    file=coord
 $coord    file=coord

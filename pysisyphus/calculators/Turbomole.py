@@ -220,7 +220,14 @@ def parse_frozen_nmos(text: str) -> tuple[list[tuple[int, int], tuple[int, int]]
 @file_or_str(
     "ciss_a", "ucis_a", "sing_a", "unrs_a", "dipl_a", exact=True, add_exts=True
 )
-def parse_ci_coeffs(text: str, nocc_a: int, nvirt_a: int, nocc_b: int, nvirt_b: int):
+def parse_ci_coeffs(
+    text: str,
+    nocc_a: int,
+    nvirt_a: int,
+    nocc_b: int,
+    nvirt_b: int,
+    restricted_same_ab=False,
+):
     """Parse CI coefficients from escf/egrad calculations."""
 
     states_data = Turbomole.parse_td_vectors(text)
@@ -266,6 +273,9 @@ def parse_ci_coeffs(text: str, nocc_a: int, nvirt_a: int, nocc_b: int, nvirt_b: 
         else:
             Xa[i] = coeffs[:expect_a].reshape(shape_a)
             Xb[i] = coeffs[expect_a:].reshape(shape_b)
+    if restricted_same_ab and Xb.size == 0:
+        Xb = Xa.copy()
+        Yb = Ya.copy()
     return Xa, Ya, Xb, Yb
 
 
@@ -725,7 +735,22 @@ class Turbomole(OverlapCalculator):
         return results
 
     def get_all_energies(self, atoms, coords, **prepare_kwargs):
-        return self.get_energy(atoms, coords, **prepare_kwargs)
+        results = self.get_energy(atoms, coords, **prepare_kwargs)
+
+        with open(self.out) as handle:
+            text = handle.read()
+
+        ((nfocc_a, nfvirt_a), (nfocc_b, nfvirt_b)), restricted = parse_frozen_nmos(text)
+
+        results["td_1tdms"] = parse_ci_coeffs(
+            self.td_vec_fn,
+            nfocc_a,
+            nfvirt_a,
+            nfocc_b,
+            nfvirt_b,
+            restricted_same_ab=True,
+        )
+        return results
 
     def get_forces(self, atoms, coords, cmd=None, **prepare_kwargs):
         self.prepare_input(atoms, coords, "force", **prepare_kwargs)
@@ -991,7 +1016,10 @@ class Turbomole(OverlapCalculator):
         float_chrs = pp.nums + "D.+-"
         float_20 = pp.Word(float_chrs, exact=20).setParseAction(to_float)
 
-        title = pp.Literal("$title")
+        word = pp.Word(pp.alphanums)
+        line_word = word().setWhitespaceChars(" ")
+        line = pp.Group(pp.Optional(word) + line_word[...])("title")
+        title = pp.Literal("$title") + pp.Optional(line)
         symmetry = pp.Literal("$symmetry") + pp.Word(pp.alphanums).setResultsName(
             "symmetry"
         )

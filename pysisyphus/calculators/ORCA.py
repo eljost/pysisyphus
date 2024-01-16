@@ -236,12 +236,17 @@ def update_gbw(
         handle.write(mod_gbw_bytes)
 
 
-def parse_orca_cis(cis_fn):
+def parse_orca_cis(cis_fn, restricted_same_ab: bool = False):
     """
     Read binary CI vector file from ORCA.
         Loosly based on TheoDORE 1.7.1, Authors: S. Mai, F. Plasser
         https://sourceforge.net/p/theodore-qc
+
+    With restricted_same_ab the alpha part will be copied over to the beta-part
+    in restricted calculations. Otherwise the beta-part (Xb, Yb) will just be zeros
+    in restricted calculations.
     """
+
     cis_handle = open(cis_fn, "rb")
     # self.log(f"Parsing CI vectors from {cis_handle}")
 
@@ -399,8 +404,12 @@ def parse_orca_cis(cis_fn):
     if not unrestricted:
         assert len(Xs_b) == 0
         assert len(Ys_b) == 0
-        Xs_b = np.zeros_like(Xs_a)
-        Ys_b = np.zeros_like(Xs_b)
+        if restricted_same_ab:
+            Xs_b = Xs_a.copy()
+            Ys_b = Ys_a.copy()
+        else:
+            Xs_b = np.zeros_like(Xs_a)
+            Ys_b = np.zeros_like(Xs_b)
 
     return Xs_a, Ys_a, Xs_b, Ys_b
 
@@ -824,6 +833,7 @@ class ORCA(OverlapCalculator):
         results = self.store_and_track(
             results, self.get_all_energies, atoms, coords, **prepare_kwargs
         )
+        results["td_1tdms"] = parse_orca_cis(self.cis, restricted_same_ab=True)
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):

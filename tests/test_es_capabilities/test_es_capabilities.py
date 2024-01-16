@@ -261,3 +261,53 @@ def test_relaxed_density(root, ref_energy, ref_dpm, calc_cls, calc_kwargs, this_
     np.testing.assert_allclose(dpm, ref_dpm, atol=atol)
     np.testing.assert_allclose(context_dpm, ref_dpm, atol=atol)
     np.testing.assert_allclose(context_dpm2, ref_dpm, atol=atol)
+
+
+@pytest.mark.parametrize(
+    "calc_cls, calc_kwargs",
+    (
+        pytest.param(Turbomole, {}, marks=using("turbomole")),
+        pytest.param(
+            ORCA,
+            {
+                "keywords": "hf def2-svp",
+                "blocks": "%tddft tda false nroots 3 end",
+            },
+            marks=using("orca"),
+        ),
+        pytest.param(
+            Gaussian16,
+            {
+                "route": "hf def2svp td(nstates=3)",
+            },
+            marks=using("gaussian16"),
+        ),
+    ),
+)
+def test_td_1tdms(calc_cls, calc_kwargs, this_dir):
+    mult = 1
+    geom = geom_loader("lib:h2o.xyz")
+    # Fix control path for Turbomole
+    if calc_cls == Turbomole:
+        calc_kwargs["control_path"] = this_dir / f"control_path_mult_{mult}"
+    calc_kwargs["mult"] = mult
+    calc_kwargs["base_name"] = f"calc_mult_{mult}"
+    calc = calc_cls(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    Xa, Ya, Xb, Yb = geom.td_1tdms
+    XpYa = Xa + Ya
+    XpYb = Xb + Yb
+
+    wf = calc.get_stored_wavefunction()
+
+    tdms = wf.get_transition_dipole_moment(XpYa, XpYb)
+    # From Turbomole
+    ref_tdms = np.array(
+        (
+            (0.0, 0.0, 0.319042),
+            (0.0, 0.0, 0.0),
+            (0.0, -0.567422, 0.0),
+        )
+    )
+    np.testing.assert_allclose(tdms, ref_tdms, atol=2e-3)

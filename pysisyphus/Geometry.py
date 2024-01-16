@@ -21,6 +21,8 @@ except ModuleNotFoundError:
 
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import BOHR2ANG
+
+from pysisyphus.wavefunction.excited_states import norm_ci_coeffs
 from pysisyphus.hessian_proj import get_hessian_projector, inertia_tensor
 from pysisyphus.linalg import are_collinear
 from pysisyphus.elem_data import (
@@ -1232,6 +1234,19 @@ class Geometry:
     def wavefunction(self, wavefunction):
         self._wavefunction = wavefunction
 
+    @property
+    def td_1tdms(self):
+        """1-particle transition density matrices from TD-DFT/TDA.
+
+        Returns list of Xa, Ya, Xb and Yb in MO basis."""
+        if self._td_1tdms is None:
+            self.all_energies
+        return self._td_1tdms
+
+    @td_1tdms.setter
+    def td_1tdms(self, td_1tdms):
+        self._td_1tdms = td_1tdms
+
     def calc_relaxed_density(self, root, **prepare_kwargs):
         """Calculate a relaxed excited state density via an ES gradient calculation.
 
@@ -1243,7 +1258,10 @@ class Geometry:
         between the levels of theory used for density and wavefunction.
 
         For now, calculating an ES density does not set a wavefunction on the
-        Geometry, whereas requesting the relaxed density for the GS does."""
+        Geometry, whereas requesting the relaxed density for the GS does.
+
+        TODO: add flag that allows setting the wavefunction (WF). Then,
+        calculators should also include the WF in their results."""
         if root == 0:
             results = self.calc_wavefunction(**prepare_kwargs)
             wf = results["wavefunction"]
@@ -1271,6 +1289,7 @@ class Geometry:
         self.true_hessian = None
         self._all_energies = None
         self._wavefunction = None
+        self._td_1tdms = None
 
     def set_results(self, results):
         """Save the results from a dictionary.
@@ -1292,16 +1311,20 @@ class Geometry:
             "true_hessian": "true_hessian",
             # Overlap calculator; includes excited states
             "all_energies": "all_energies",
+            "td_1tdms": "td_1tdms",
             # Wavefunction related
             "wavefunction": "wavefunction",
         }
 
-        for key in results:
+        for key, value in results.items():
             # Zero forces of frozen atoms
             if key == "forces":
-                self.zero_frozen_forces(results[key])
+                self.zero_frozen_forces(value)
+            elif key == "td_1tdms":
+                value = norm_ci_coeffs(*value)
+                results[key] = value
 
-            setattr(self, trans[key], results[key])
+            setattr(self, trans[key], value)
         self.results = results
 
     def as_xyz(self, comment="", atoms=None, cart_coords=None):

@@ -14,7 +14,6 @@ from numpy.typing import NDArray
 
 from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.elem_data import nuc_charges_for_atoms, MASS_DICT
-from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.helpers import BFType
 from pysisyphus.wavefunction.multipole import (
@@ -375,9 +374,6 @@ class Wavefunction:
         for i, aoc in enumerate(self.ao_centers):
             ao_center_map.setdefault(aoc, list()).append(i)
         return ao_center_map
-
-    def as_geom(self, **kwargs):
-        return Geometry(self.atoms, self.coords, **kwargs)
 
     @property
     def is_cartesian(self) -> bool:
