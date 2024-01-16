@@ -8,12 +8,13 @@
 
 import itertools as it
 from functools import partial
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
 
-from pysisyphus.wavefunction.wavefunction import Wavefunction
+if TYPE_CHECKING:
+    from pysisyphus.wavefunction.wavefunction import Wavefunction
 
 
 def norm_ci_coeffs(
@@ -117,7 +118,7 @@ def ct_numbers(
 
 
 def ct_numbers_for_states(
-    wf: Wavefunction,
+    wf: "Wavefunction",
     frags: List[List[int]],
     Ta: NDArray[float],
     Tb: Optional[NDArray[float]] = None,
