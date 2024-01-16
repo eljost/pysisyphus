@@ -42,7 +42,7 @@ exceptiongroup==1.1.1
     # via pytest
 fabric==3.1.0
     # via pysisyphus (setup.cfg)
-fonttools==4.39.4
+fonttools==4.43.0
     # via matplotlib
 fsspec==2023.5.0
     # via dask
