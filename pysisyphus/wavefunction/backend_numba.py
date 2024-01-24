@@ -42,13 +42,11 @@ class NumbaShell(object):
 
 
 _NUMBA_MODULES = {
-    "int1e_ovlp": ("ovlp3d_numba", 0),
-    "int1e_r": ("dipole3d_numba", 3),
-    "int1e_rr": ("quadrupole3d_numba", 6),
-    "int1e_drr": ("diag_quadrupole3d_numba", 3),
-    "int1e_kin": ("kinetic3d_numba", 0),
-    # TODO: requires numba Boys function which is not yet implemented
-    # "int1e_nuc": ("coulomb3d_numba" 1),
+    "int1e_ovlp": ("ovlp3d", 0),
+    "int1e_r": ("dipole3d", 3),
+    "int1e_rr": ("quadrupole3d", 6),
+    "int1e_drr": ("diag_quadrupole3d", 3),
+    "int1e_kin": ("kinetic3d", 0),
 }
 
 # This dict will be populated as needed, as one import costs about ~2s
@@ -96,19 +94,20 @@ def get_2c_ints_cart(
     nshells_a = len(shells_a)
     nshells_b = len(shells_b)
 
-    # Start loop over contracted gaussians
+    # Start loop over contracted gaussians in shells_a
     for i in numba.prange(nshells_a):
         shell_a = shells_a[i]
         La, A, das, axs, indexa, sizea = shell_a.as_tuple()
         na = len(das)
         slicea = slice(indexa, indexa + sizea)
+        # Start loop over contracted gaussians in shells_b
         for j in range(i, nshells_b):
             shell_b = shells_b[j]
             Lb, B, dbs, bxs, indexb, sizeb = shell_b.as_tuple()
             nb = len(dbs)
             sliceb = slice(indexb, indexb + sizeb)
-            cur_slice = integrals[:, slicea, sliceb]
-            # Pick correct function
+            result = np.zeros(max(components, 1) * sizea * sizeb)
+            # Pick correct function depending on La and Lb
             func = func_dict[(La, Lb)]
 
             # Start loop over primitives
@@ -118,15 +117,16 @@ def get_2c_ints_cart(
                 for l in range(nb):
                     bx = bxs[l]
                     db = dbs[l]
-                    func(ax, da, A, bx, db, B, R, cur_slice)
-            integrals[:, slicea, sliceb] = cur_slice
+                    func(ax, da, A, bx, db, B, R, result)
+            integrals[:, slicea, sliceb] = result.reshape(components, sizea, sizeb)
             # End loop over primitives gaussians
 
             if symmetric and (i != j):
                 for k in range(indexa, indexa + sizea):
                     for l in range(indexb, indexb + sizeb):
                         integrals[:, l, k] = integrals[:, k, l]
-    # End loop over contracted gaussians
+        # End loop over contracted gaussians in shells_b
+    # End loop over contracted gaussians in shells_a
     return integrals
 
 
