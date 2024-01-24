@@ -1,8 +1,13 @@
 import argparse
+import warnings
 import sys
 
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
-from pysisyphus.thermo import get_thermoanalysis_from_hess_h5, print_thermoanalysis
+from pysisyphus.thermo import (
+    can_thermoanalysis,
+    get_thermoanalysis_from_hess_h5,
+    print_thermoanalysis,
+)
 
 
 def parse_args(args):
@@ -21,6 +26,15 @@ def parse_args(args):
 
 
 def run_thermo():
+    if not can_thermoanalysis:
+        warnings.warn(
+            "'thermoanalysis' package not found!\nPlease install it from "
+            "https://github.com/eljost/thermoanalysis, e.g. via\n\n\t"
+            "python -m pip install git+https://github.com/eljost/thermoanalysis\n\n"
+            "Exiting!"
+        )
+        return
+
     args = parse_args(sys.argv[1:])
     hess_h5 = args.hess_h5
     T = args.T
