@@ -1,6 +1,9 @@
 # [1] https://doi.org/10.1063/1.469408
 #     Efficient molecular numerical integration schemes
 #     Treutler, Ahlrichs, 1995
+# [2] https://doi.org/10.1080/00268979300100651
+#     Quadrature schemes for integrals of density functional theory
+#     Murray, Handy, Laming, 1992
 
 
 import math
@@ -13,7 +16,7 @@ import scipy as sp
 LOG2 = math.log(2.0)
 
 
-def treutler_m4(x: np.ndarray, a=1.0, alpha=0.6, atomic_radius=1.0):
+def treutler_m4_map(x: np.ndarray, a=1.0, alpha=0.6, atomic_radius=1.0):
     """Map finite inteval -1 <= x <= 1 to 0 <= r <= oo.
 
     For -1 <= x <= 1 a must be 1.0; for 0 <= x <= 1 a must be 0.0.
@@ -75,8 +78,44 @@ def chebyshev_2nd_kind(n: int, atomic_radius: float = 1.0):
     """
     x, w = sp.special.roots_chebyu(n=n)
     inv_weight_func = 1 / np.sqrt(1 - x**2)
-    r, drdx = treutler_m4(x, atomic_radius=atomic_radius)
+    r, drdx = treutler_m4_map(x, atomic_radius=atomic_radius)
     w *= drdx * inv_weight_func
+    return np.stack((r, w), axis=1)
+
+
+def euler_maclaurin_dma(n: int, m_r=2, atomic_radius: float = 1.0):
+    """Roots and weights as utilized in Stone's GDMA.
+
+    Adapated from the 'radial_grid(alpha)' subroutine found in'atomic_grids.f90'
+    of Stone's GDMA code. Acutally a grid with one point less is returned to
+    avoid division by 0.0.
+
+    NOTE: In contrast to chebyshev_2nd_kind() above, the weights in the equation
+    below already seem to include a factor of r**2. We remove it, so the function
+    behaves similar to the other radial integration approaches.
+
+    Parameters
+    ----------
+    n
+        Positive integer > 1; number of points + 1.
+    m_r
+        Exponent, m_r = 2 was found to be sufficient. See Section 5.1 of [2]
+        for a discussion.
+    atomic_radius
+        Positive float; corresponds to alpha in Stone's GDMA.
+
+    Returns
+    -------
+    roots_weight
+        2d array of shape (n, 2) with the first column containing
+        the radii and the second column containing the integration weights.
+    """
+    tmp = np.arange(n - 1) + 1
+    r = atomic_radius * (tmp / (n - tmp)) ** m_r
+    prefact = m_r * n * atomic_radius**3
+    w = prefact * tmp ** (3 * m_r - 1) / ((n - tmp) ** (3 * m_r + 1))
+    # Remove r² factor to make this function consistent w/ the other approaches.
+    w /= r**2
     return np.stack((r, w), axis=1)
 
 
