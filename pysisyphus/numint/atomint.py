@@ -5,6 +5,9 @@
 # [2] https://doi.org/10.1021/ct050190+
 #     Distributed Multipole Analysis: Stability for Large Basis Sets
 #     Stone, 2005
+# [3] https://doi.org/10.1063/1.1725697
+#     Atomic Radii in Crystals
+#     Slater, 1964
 
 
 import collections
@@ -14,11 +17,12 @@ from typing import Tuple
 
 import numpy as np
 
+from pysisyphus.constants import ANG2BOHR
 from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.numint import angint, radint
 
 
-# Table II in [1]
+# Atomic radii in Bohr as found Table II in [1]
 _RADII = {
     "h": 0.8,
     "he": 0.9,
@@ -57,8 +61,74 @@ _RADII = {
     "cu": 1.1,
     "zn": 1.1,
 }
-# Return R = 1.0 for all elements heavier than Zn
+# Return 1.0 Bohr for all elements heavier than Zn
 ATOMIC_RADII = collections.defaultdict(lambda: 1.0, **_RADII)
+
+# Slater-Bragg atomic radii in Bohr as utilized in Stone's GDMA code.
+# H uses 0.65 Angstrom. The number below are in Angstrom though but are
+# converted to Bohr. Disregarding the value for Hydrogen which was
+# originally is 0.25 Angstrom all values are from [3].
+_GDMA_RADII = {
+    elem: radius * ANG2BOHR
+    for elem, radius in {
+        "h": 0.65,
+        "he": 0.5,
+        "li": 1.45,
+        "be": 1.05,
+        "b": 0.85,
+        "c": 0.7,
+        "n": 0.65,
+        "o": 0.6,
+        "f": 0.5,
+        "ne": 0.5,
+        "na": 1.8,
+        "mg": 1.5,
+        "al": 1.25,
+        "si": 1.1,
+        "p": 1.0,
+        "s": 1.0,
+        "cl": 1.0,
+        "ar": 1.0,
+        "k": 2.2,
+        "ca": 1.8,
+        "sc": 1.6,
+        "ti": 1.4,
+        "v": 1.35,
+        "cr": 1.4,
+        "mn": 1.4,
+        "fe": 1.4,
+        "co": 1.35,
+        "ni": 1.35,
+        "cu": 1.35,
+        "zn": 1.35,
+        "ga": 1.3,
+        "ge": 1.25,
+        "as": 1.15,
+        "se": 1.15,
+        "br": 1.15,
+        "kr": 1.15,
+        "rb": 2.35,
+        "sr": 2.0,
+        "y": 1.8,
+        "zr": 1.55,
+        "nb": 1.45,
+        "mo": 1.45,
+        "tc": 1.35,
+        "ru": 1.3,
+        "rh": 1.35,
+        "pd": 1.4,
+        "ag": 1.6,
+        "cd": 1.55,
+        "in": 1.55,
+        "sn": 1.45,
+        "sb": 1.45,
+        "te": 1.4,
+        "i": 1.4,
+        "xe": 1.4,
+    }.items()
+}
+# Return 2.5 Bohr for all elements beyond Xe
+GDMA_ATOMIC_RADII = collections.defaultdict(lambda: 2.5, **_GDMA_RADII)
 
 
 def get_grids_for_fermion_kind(kind: str) -> Tuple[int, int, int, int]:
@@ -233,13 +303,13 @@ def get_fermion_atomic_grid(
     return grid[:, :3], grid[:, 3]
 
 
-def get_gdma_atomic_grid(origin: np.ndarray, atom: str = "c", n_rad=80, n_ang=590):
+def get_gdma_atomic_grid(
+    origin: np.ndarray, atom: str = "c", n_rad=80, n_ang=590, r_scale=2.0
+):
     """Get atomic grid, similar to the original GDMA grid.
 
     In the original paper [2] Stone proposed 80 radial points w/ Euler-Maclaurin-
-    integration and a 590-point Lebedev grid. Here, we keep the number of radial
-    and angular points, but the radial integration is done as described by Ahlrichs
-    and Treutler in [1].
+    integration and a 590-point Lebedev grid.
 
     In GDMA the number of expansion sites may/can be different from the atomic sites.
     In such cases we default to the atomic radius of carbon, but the user may choose
@@ -256,6 +326,8 @@ def get_gdma_atomic_grid(origin: np.ndarray, atom: str = "c", n_rad=80, n_ang=59
         Number of radial points, defaults to 80.
     n_ang
         Number of angular points, defaults to 590.
+    r_scale
+        Scaling factor for the atomic radii.
 
     Returns
     -------
@@ -265,9 +337,10 @@ def get_gdma_atomic_grid(origin: np.ndarray, atom: str = "c", n_rad=80, n_ang=59
         1d array containing integration weights of shape (npoints, ).
     """
     atom = atom.lower()
-    atomic_radius = ATOMIC_RADII[atom.lower()]
+    atomic_radius = r_scale * GDMA_ATOMIC_RADII[atom.lower()]
 
-    rad_grid = radint.chebyshev_2nd_kind(n_rad, atomic_radius=atomic_radius)
+    # rad_grid = radint.chebyshev_2nd_kind(n_rad, atomic_radius=atomic_radius)
+    rad_grid = radint.euler_maclaurin_dma(n_rad, m_r=2, atomic_radius=atomic_radius)
     # Integration in spherical coordinates implies multiplying the integrand by r²
     rad_grid[:, 1] *= rad_grid[:, 0] ** 2
 
