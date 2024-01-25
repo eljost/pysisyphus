@@ -232,9 +232,15 @@ def merge_opt(union, bond_diff, ff="mmff94"):
     funion.freeze_atoms = freeze
     funion.set_calculator(calc)
 
-    opt = LBFGS(funion, max_cycles=1000, max_step=0.5, dump=False, print_every=25)
-    opt.run()
-
+    try:
+        calc.setup(funion.atoms, funion.cart_coords)
+        opt = LBFGS(funion, max_cycles=1000, max_step=0.5, dump=False, print_every=25)
+        opt.run()
+    except AssertionError:
+        warnings.warn(
+            f"Could not set up '{ff}' force field for the geometry! "
+            "Skipping optimization."
+        )
     return funion
 
 
