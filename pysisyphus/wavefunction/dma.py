@@ -20,12 +20,12 @@ import textwrap
 import time
 from typing import Optional, Tuple
 
-from jinja2 import Template
+import jinja2
 import numpy as np
 from scipy.special import binom
 
-from pysisyphus.constants import BOHR2ANG
-from pysisyphus.elem_data import nuc_charges_for_atoms
+from pysisyphus.constants import ANG2BOHR, BOHR2ANG
+from pysisyphus.elem_data import ATOMIC_NUMBERS, nuc_charges_for_atoms
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.numint import get_mol_grid, get_gdma_atomic_grid
 from pysisyphus.wavefunction import gdma_int
@@ -313,7 +313,7 @@ def dma(
         sites, site_radii, distributed_multipoles
     )
 
-    header_tpl = Template(
+    header_tpl = jinja2.Template(
         textwrap.dedent(
             """
     {{ title }}
@@ -523,3 +523,104 @@ def run_dma(
             index += size
         print()
     return distributed_multipoles
+
+
+ORIENT_TPL = jinja2.Template(
+    """
+title {{ title }}
+default rank {{ rank }}
+
+units bohr
+
+types
+{% for atom, charge in atoms_charges -%}
+{{ atom }} Z {{ charge }}
+{% endfor -%}
+end
+
+molecule {{ molecule_name }} at 0.0 0.0 0.0
+{%- for atom, (x, y, z), atom_type, bonds, multipoles in molecule %}
+{{ atom }} {{ ffmt(x) }} {{ ffmt(y) }} {{ ffmt(z) }} type {{ atom_type }} rank {{ rank }}
+{% for rank in range(rank+1) -%}
+    {% for rmp in multipoles[rank**2:(rank+1)**2] %}{{ ffmt(rmp) }} {% endfor %}
+{% endfor -%}
+{% endfor -%}
+end
+
+edit {{ molecule_name }}
+bonds auto
+end
+
+Display potential
+  Tracing off
+  Grid
+    name {{ molecule_name }}-vdw2
+    Molecule {{ molecule_name }}
+    Radii scale 2
+    Step 0.25 B
+  End
+  Map vdw2
+    Molecule {{ molecule_name }}
+    Potential
+  End
+
+  Background RGBX e8e8e8
+  Colour-map
+    0    210  0.25  1
+    6    240  0.75 1
+    12   300  1.0  0
+    18   360  0.75 1
+    24   390  0.25  1
+  End
+
+  Show vdw2
+    contour eV -{{ eV_lim}} 0.0 {{ eV_lim }}
+    Colour-scale min -{{ eV_lim }} max {{ eV_lim }} eV
+    ticks -{{ eV_lim }} 0.0 {{ eV_lim }}
+    Ball-and-stick
+  End
+End
+
+Comment "Display closed"
+
+Finish"""
+)
+
+
+def to_orient(
+    atoms,
+    coords3d,
+    multipoles,
+    rank=2,
+    molecule_name="Molecule1",
+    title="Orient input from pysisyphus",
+    eV_lim=0.5,
+):
+    atoms = [atom.lower() for atom in atoms]
+    charges = [ATOMIC_NUMBERS[atom] for atom in atoms]
+    atoms_charges = zip(atoms, charges)
+
+    molecule = list()
+    assert rank == 2
+    order = [0, 2, 3, 1, 6, 7, 5, 8, 4]
+    for i, atom in enumerate(atoms):
+        atom_coords = coords3d[i]
+        bonds = ()  # Currently unused
+        atom_multipoles = multipoles[i][order]
+        # Resort multipoles!
+        atom_type = atom
+        molecule.append((atom, atom_coords, atom_type, bonds, atom_multipoles))
+
+    def ffmt(num):
+        return f"{num: >14.8f}"
+
+    rendered = ORIENT_TPL.render(
+        title=title,
+        rank=rank,
+        atoms_charges=atoms_charges,
+        molecule_name=molecule_name,
+        molecule=molecule,
+        eV_lim=eV_lim,
+        ffmt=ffmt,
+    )
+    return rendered
