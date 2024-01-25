@@ -18,7 +18,7 @@
 import itertools as it
 import textwrap
 import time
-from typing import Tuple
+from typing import Optional, Tuple
 
 from jinja2 import Template
 import numpy as np
@@ -43,7 +43,7 @@ _DIST_THRESH = 1e-6
 _SQRT3 = np.sqrt(3.0)
 
 
-def get_index_maps(L_max: int = _LE_MAX) -> dict[(int, int), int]:
+def get_index_maps(L_max: int = _LE_MAX) -> dict[tuple[int, int], int]:
     """Map between (l, m) keys and 1d indices in the multipole arrays.
 
     The ordering here must match the ordering in the integral functions.
@@ -63,7 +63,7 @@ def get_index_maps(L_max: int = _LE_MAX) -> dict[(int, int), int]:
 _INDEX_MAP = get_index_maps()
 
 
-def get_C(lmax: int = _TWO_LE_MAX) -> dict[(int, int), complex]:
+def get_C(lmax: int = _TWO_LE_MAX) -> dict[tuple[int, int], complex]:
     """Factors for complex->real transformation of multipoles.
 
     Defined below A9 in [3].
@@ -288,6 +288,8 @@ def dma(
     switch: float = 4.0,
     addons: bool = True,
 ):
+    assert sites.ndim == 2
+    assert site_radii.ndim == 1
     assert len(sites) == len(site_radii)
     assert switch >= 0.0, f"Switch must be a float >= 0.0 but got '{switch}'!"
 
@@ -468,7 +470,18 @@ def get_radii(atoms: Tuple[str]) -> np.ndarray:
     return radii
 
 
-def run_dma(wf, sites=None, site_labels=None, **kwargs):
+def run_dma(
+    wf: Wavefunction,
+    sites: Optional[np.ndarray] = None,
+    site_labels: list[str] = None,
+    site_radii: Optional[np.ndarray] = None,
+    **kwargs,
+):
+    if sites is not None:
+        assert (
+            site_radii is not None
+        ), "When sites are given their radii must also be provided!"
+
     if sites is None:
         dma_sites = wf.coords.reshape(-1, 3).copy()
         site_labels = wf.atoms
@@ -477,11 +490,10 @@ def run_dma(wf, sites=None, site_labels=None, **kwargs):
     if site_labels is None:
         site_labels = ()
 
-    site_radii = get_radii(wf.atoms)
-    if sites is not None:
-        assert len(sites) == 3
-        site_radii = np.array((1.0,))
     # TODO: handling radius assignment when sites are given ...
+    if site_radii is None:
+        site_radii = get_radii(wf.atoms)
+
     assert len(site_radii) == len(dma_sites)
 
     start = time.time()

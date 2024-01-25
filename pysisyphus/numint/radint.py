@@ -113,6 +113,7 @@ def euler_maclaurin_dma(n: int, m_r=2, atomic_radius: float = 1.0):
     tmp = np.arange(n - 1) + 1
     r = atomic_radius * (tmp / (n - tmp)) ** m_r
     prefact = m_r * n * atomic_radius**3
+    # I don't know where the formula for the weight comes from ...
     w = prefact * tmp ** (3 * m_r - 1) / ((n - tmp) ** (3 * m_r + 1))
     # Remove r² factor to make this function consistent w/ the other approaches.
     w /= r**2
