@@ -43,7 +43,12 @@ def test_dma(wf_fn, ref_multis, sites, this_dir):
     wf = Wavefunction.from_file(data_dir / wf_fn)
     print(wf_fn, "\n", wf)
 
-    distributed_multipoles = run_dma(wf, sites, switch=0.0)
+    site_radii = None
+    if sites is not None:
+        sites = np.atleast_2d(sites)
+        site_radii = np.full(len(sites), 1.0)
+
+    distributed_multipoles = run_dma(wf, sites, switch=0.0, site_radii=site_radii)
     if ref_multis is not None:
         ref_multis = data_dir / ref_multis
         if not ref_multis.exists():
