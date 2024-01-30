@@ -87,7 +87,6 @@ def shells_from_fchk(text, **kwargs):
         zip(centers, ang_moms, prims_per_shell)
     ):
         # 0: s, 1: p, -1: sp, 2: 6d, -2: 5d, 3: 10f, -3: 7f, etc...
-        assert L <= 1, "Only spherical basis functions are supported."
         # Convert SP-shell with L = -1 to a s-shell with L = 0.
         # The p-shell is also created later.
         L, is_sp = (0, True) if (L == -1) else (L, False)
@@ -160,6 +159,13 @@ def wavefunction_from_fchk(text, **kwargs):
         occ_b = occ_a
     C = np.stack((C_a, C_b))
     shells = shells_from_fchk(text, **shell_kwargs)
+    _, nao, _ = C.shape
+
+    bf_type = {
+        shells.cart_size: BFType.CARTESIAN,
+        shells.sph_size: BFType.PURE_SPHERICAL,
+    }[nao]
+
     return Wavefunction(
         atoms=atoms,
         coords=coords,
@@ -168,7 +174,7 @@ def wavefunction_from_fchk(text, **kwargs):
         unrestricted=unrestricted,
         occ=(occ_a, occ_b),
         C=C,
-        bf_type=BFType.PURE_SPHERICAL,
+        bf_type=bf_type,
         shells=shells,
         **kwargs,
     )
