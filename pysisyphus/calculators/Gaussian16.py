@@ -10,13 +10,18 @@ import warnings
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.calculators.OverlapCalculator import GroundStateContext, OverlapCalculator
+from pysisyphus.calculators.OverlapCalculator import (
+    GroundStateContext,
+    OverlapCalculator,
+)
 from pysisyphus.constants import AU2EV, BOHR2ANG
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.io import fchk as io_fchk
 
 
-NMO_RE = re.compile("NBasis=\s+(?P<nbfs>\d+)\s+NAE=\s+(?P<nalpha>\d+)\s+NBE=\s+(?P<nbeta>\d+)")
+NMO_RE = re.compile(
+    "NBasis=\s+(?P<nbfs>\d+)\s+NAE=\s+(?P<nalpha>\d+)\s+NBE=\s+(?P<nbeta>\d+)"
+)
 RESTRICTED_RE = re.compile("RHF ground state")
 TRANS_PATTERN = (
     r"(?:\d+(?:A|B){0,1})\s+"
@@ -27,13 +32,13 @@ TRANS_PATTERN = (
 # Excited State   2:  2.009-?Sym    7.2325 eV  171.43 nm  f=0.0000  <S**2>=0.759
 EXC_STATE_RE = re.compile(
     r"Excited State\s+(?P<root>\d+):\s+"
-    r"(?P<label>(?:Singlet|[\d.]+)-\?Sym)\s+"
+    r"(?P<label>(?:Singlet|Triplet|[\d.]+)-\?Sym)\s+"
     r"(?P<exc_ev>[\d\-\.]+) eV\s+"
     r"(?P<exc_nm>[\d\.\-]+) nm\s+"
     r"f=(?P<fosc>[\d\.]+)\s+"
     r"<S\*\*2>=(?P<S2>[\d\.]+)\s+"
-    rf"((?:(?!Excited State){TRANS_PATTERN}\s+)+)"
-    , re.DOTALL
+    rf"((?:(?!Excited State){TRANS_PATTERN}\s+)+)",
+    re.DOTALL,
 )
 
 
@@ -82,7 +87,7 @@ def parse_ci_coeffs(text, restricted_same_ab=False):
         assert len(trans) % 4 == 0, len(trans)
         ntrans = len(trans) // 4
         for j in range(ntrans):
-            trans_slice = slice(j*4, (j+1)*4)
+            trans_slice = slice(j * 4, (j + 1) * 4)
             from_, kind, to_, coeff = trans[trans_slice]
             coeff = float(coeff)
             from_ind, from_spin = to_ind_and_spin(from_)
@@ -91,18 +96,18 @@ def parse_ci_coeffs(text, restricted_same_ab=False):
             if from_spin == "A" and to_spin == "A":
                 # excitation
                 if kind == "->":
-                    Xa[state, from_ind, to_ind-nocc_a] = coeff
+                    Xa[state, from_ind, to_ind - nocc_a] = coeff
                 # deexcitation
                 else:
-                    Ya[state, from_ind, to_ind-nocc_a] = coeff
+                    Ya[state, from_ind, to_ind - nocc_a] = coeff
             # beta-beta excitation
             elif from_spin == "B" and to_spin == "B":
                 # excitation
                 if kind == "->":
-                    Xb[state, from_ind, to_ind-nocc_b] = coeff
+                    Xb[state, from_ind, to_ind - nocc_b] = coeff
                 # deexcitation
                 else:
-                    Yb[state, from_ind, to_ind-nocc_b] = coeff
+                    Yb[state, from_ind, to_ind - nocc_b] = coeff
     if restricted and restricted_same_ab:
         Xb = Xa.copy()
         Yb = Ya.copy()
@@ -145,8 +150,8 @@ class Gaussian16(OverlapCalculator):
         self.keep_chk = keep_chk
         if not wavefunction_dump:
             warnings.warn(
-            "The 'wavefunction_dump' argument is ignored by the Gaussian calculator. "
-            "The wavefunction is always dumped."
+                "The 'wavefunction_dump' argument is ignored by the Gaussian calculator. "
+                "The wavefunction is always dumped."
             )
         self.wavefunction_dump = True
         self.stable = stable
@@ -231,7 +236,9 @@ class Gaussian16(OverlapCalculator):
         nstates = f"nstates={self.nstates}"
         pair2str = lambda k, v: f"{k}" + (f"={v}" if v else "")
         arg_str = ",".join([pair2str(k, v) for k, v in self.exc_args.items()])
-        exc_str = f"{self.exc_key}=({root_str},{nstates},{arg_str}) iop(9/40={self.iop9_40})"
+        exc_str = (
+            f"{self.exc_key}=({root_str},{nstates},{arg_str}) iop(9/40={self.iop9_40})"
+        )
         return exc_str
 
     def reuse_data(self, path):
