@@ -203,6 +203,7 @@ version.py
 !tests/test_overlap_calculator/benzene/*
 !tests/test_local_force_constants/bf3_ccsd_t_ccpvdz.h5
 !tests/test_wavefunction/bases/*
+!tests/test_so_coupling/data/*
 !tests/test_turbomole/make_dens/*
 !pysisyphus/wf_library/*
 !pysisyphus/numint/lebedev_grids_4pi.npz

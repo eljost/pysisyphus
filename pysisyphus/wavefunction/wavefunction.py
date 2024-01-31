@@ -120,6 +120,15 @@ class Wavefunction:
             "'ecp_electrons' and/or the correct 'charge'?"
         )
 
+    def get_permut_matrix(self):
+        bf_type = self.bf_type
+        if bf_type == BFType.CARTESIAN:
+            return self.shells.P_cart
+        elif bf_type == BFType.PURE_SPHERICAL:
+            return self.shells.P_sph
+        else:
+            raise Exception(f"Unknown {bf_type=}!")
+
     @property
     def atom_num(self):
         return len(self.atoms)
