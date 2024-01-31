@@ -159,7 +159,7 @@ class Shell:
         ]
         lines += [
             f"{exp_:> 18.10f}    {coeff:>18.10f}"
-            for exp_, coeff in zip(self.exps, self.coeffs)
+            for exp_, coeff in zip(self.exps, self.coeffs_org)
         ]
         return "\n".join(lines)
 
@@ -515,6 +515,7 @@ class Shells:
         try:
             from pyscf import gto
         except ModuleNotFoundError:
+            warnings.warn("PySCF could not be found. Is it installed?")
             return None
 
         unique_atoms = set()
