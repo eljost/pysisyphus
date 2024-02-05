@@ -19,6 +19,14 @@ Ls = Literal["s", "p", "d", "f", "g", "h"]
 L_Inp = Union[int, Ls]
 
 
+def cart_size(L: int) -> int:
+    return (L + 2) * (L + 1) // 2
+
+
+def sph_size(L: int) -> int:
+    return 2 * L + 1
+
+
 def get_l(l_inp: L_Inp) -> int:
     """Convert shell label to angular moment quantum number l."""
     try:
