@@ -236,7 +236,9 @@ def update_gbw(
         handle.write(mod_gbw_bytes)
 
 
-def parse_orca_cis(cis_fn, restricted_same_ab: bool = False):
+def parse_orca_cis(
+    cis_fn, restricted_same_ab: bool = False, triplets_only: bool = True
+):
     """
     Read binary CI vector file from ORCA.
         Loosly based on TheoDORE 1.7.1, Authors: S. Mai, F. Plasser
@@ -250,8 +252,9 @@ def parse_orca_cis(cis_fn, restricted_same_ab: bool = False):
     cis_handle = open(cis_fn, "rb")
     # self.log(f"Parsing CI vectors from {cis_handle}")
 
-    # The header consists of 9 4-byte integers, the first 5 of which give useful info.
     nvec = struct.unpack("i", cis_handle.read(4))[0]
+
+    # The header consists of 9 4-byte integers, the first 5 of which give useful info.
     # [0] index of first alpha occ,  is equal to number of frozen alphas
     # [1] index of last  alpha occ
     # [2] index of first alpha virt
@@ -395,7 +398,7 @@ def parse_orca_cis(cis_fn, restricted_same_ab: bool = False):
         return Xs, Ys
 
     # Only return triplet states if present
-    if triplets:
+    if triplets_only and triplets:
         Xs_a, Ys_a = handle_triplets(Xs_a, Ys_a)
         assert len(Xs_b) == 0
         assert len(Ys_b) == 0

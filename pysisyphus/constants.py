@@ -32,6 +32,8 @@ AU2EV = spc.value("Hartree energy in eV")
 JOULE2EV = AU2EV / AU2J
 # Wavenumber to Hartree
 NU2AU = spc.h * C * 1e2 / AU2J
+# Hartree to Wavenumber
+AU2NU = 1 / NU2AU
 # eV/Å -> Hartree/Bohr
 EVANG2AUBOHR = 1 / AU2EV / ANG2BOHR
 # fs -> Bohr * sqrt(amu/Hartree)
