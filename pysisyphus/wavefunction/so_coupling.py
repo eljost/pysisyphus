@@ -126,6 +126,10 @@ def get_effective_charge(atomic_num: int) -> float:
         return float("nan")
 
 
+def get_original_charge(atomic_num: int) -> float:
+    return float(atomic_num)
+
+
 def Q(l: int) -> int:
     """Maximum number of accumulated electrons for given angular momentum.
 
@@ -134,7 +138,7 @@ def Q(l: int) -> int:
 
 
 @functools.singledispatch
-def boettger_factors(
+def boettger_factors2d(
     Ls: Sequence[int], Zs: Sequence[int], bf_type: BFType
 ) -> np.ndarray:
     """Boettger-factors to scale 1-electron SOC-integrals.
@@ -155,7 +159,7 @@ def boettger_factors(
     return factors2d
 
 
-@boettger_factors.register
+@boettger_factors2d.register
 def _(wf: Wavefunction) -> np.ndarray:
     Ls = list()
     Zs = list()
@@ -167,7 +171,7 @@ def _(wf: Wavefunction) -> np.ndarray:
             "that is not centered on an atom!"
         )
         Zs.append(Z)
-    return boettger_factors(Ls, Zs, wf.bf_type)
+    return boettger_factors2d(Ls, Zs, wf.bf_type)
 
 
 @functools.singledispatch
@@ -256,7 +260,9 @@ def singlet_triplet_so_couplings(
 
 
 @singlet_triplet_so_couplings.register
-def _(wf: Wavefunction, XpYs: np.ndarray, XpYt: np.ndarray) -> np.ndarray:
+def _(
+    wf: Wavefunction, XpYs: np.ndarray, XpYt: np.ndarray, boettger=False
+) -> np.ndarray:
     """Wrapper that prepares all required quantites from pysisyphus WF and PySCF."""
 
     assert wf.restricted, "Unrestricted calculations are currently not supported!"
@@ -281,14 +287,19 @@ def _(wf: Wavefunction, XpYs: np.ndarray, XpYt: np.ndarray) -> np.ndarray:
     mol = shells.to_pyscf_mol()
 
     # Calculate spin-orbit integrals w/ PySCF
+    charge_func = get_original_charge if boettger else get_effective_charge
     ints_ao = np.zeros((3, nbfs, nbfs))
     # Loop over all atoms, calculate the spin-orbit integrals and accumulate them
     # with the appropriate effective charge into ints_ao
     for i in range(mol.natm):
         mol.set_rinv_origin(mol.atom_coord(i))
         # charge = mol.atom_charge(i)  # Plain charge
-        charge = get_effective_charge(mol.atom_charge(i))
+        charge = charge_func(mol.atom_charge(i))
         ints_ao += charge * mol.intor(intor_key)
+
+    if boettger:
+        bfactors = boettger_factors2d(wf)
+        ints_ao *= bfactors
 
     # Normalize Cartesian bfs with L >= 2, as they don't have unit self-overlaps in PySCF.
     if cartesian:
@@ -550,7 +561,7 @@ def report_so_trans_moms(w, soc_oscs, soc_tdms):
         )
 
 
-def run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens):
+def run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens, **kwargs):
     # Singlet-singlet excitations
     nsings, *_ = Xas.shape
     Xas, Yas = norm_ci_coeffs(Xas, Yas)
@@ -569,7 +580,7 @@ def run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens):
     # SO-couplings #
     ################
 
-    socs = singlet_triplet_so_couplings(wf, XpYs, XpYt)
+    socs = singlet_triplet_so_couplings(wf, XpYs, XpYt, **kwargs)
     report_so_couplings(socs)
     print()
 
@@ -606,4 +617,4 @@ def run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens):
     report_so_trans_moms(w, soc_oscs, soc_tdms)
     print()
 
-    return socs
+    return socs, w, v
