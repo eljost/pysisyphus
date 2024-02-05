@@ -38,7 +38,36 @@ def test_socs(base_name, this_dir):
     # SO-couplings #
     ################
 
-    socs = run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens)
+    socs, w, v = run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens)
+
+    if not ref_fn.exists():
+        np.save(ref_fn, socs)
+    ref_socs = np.load(ref_fn)
+    np.testing.assert_allclose(socs, ref_socs.reshape(*socs.shape))
+
+
+def test_boettger(this_dir):
+    base_name = "00_methanal"
+    data_dir = this_dir / "data"
+    wf_fn = (data_dir / base_name).with_suffix(".fchk")
+    log_fn = wf_fn.with_suffix(".log")
+    ref_fn = wf_fn.with_suffix(".npy")
+
+    wf = Wavefunction.from_file(wf_fn)
+    Xa, Ya, Xb, Yb = parse_ci_coeffs(log_fn)
+
+    # Singlets and triplets are mixed in one calculation
+    singlets = [1, 5, 6, 8, 9]
+    triplets = [0, 2, 3, 4, 7]
+    Xas = Xa[singlets]
+    Yas = Ya[singlets]
+    Xat = Xa[triplets]
+    Yat = Ya[triplets]
+
+    sing_ens = np.array((0.0, 4.0289, 8.4763, 9.2796, 9.6160, 9.7041)) / AU2EV
+    trip_ens = np.array((3.3528, 5.6706, 8.0765, 8.1323, 9.3569)) / AU2EV
+
+    socs, w, v = run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens, boettger=True)
 
     if not ref_fn.exists():
         np.save(ref_fn, socs)
