@@ -18,6 +18,16 @@
 #     Density Functional Theory with Perturbative Spin−Orbit Coupling:
 #     Benchmark and Perspectives
 #     Liao, Kasper, Jenkins, Yang, Batista, Frisch, Li, 2023
+# [6] https://doi.org/10.1063/1.5020079
+#     Electron paramagnetic resonance g-tensors from
+#     state interaction spin-orbit coupling density matrix
+#     renormalization group
+#     Sayfutyarova, Chan, 2018
+# [7] https://doi.org/10.1063/5.0130868
+#     Spin–orbit couplings within spin-conserving and spin-flipping
+#     time-dependent density functional theory:
+#     Implementation and benchmark calculations
+#     Kotaru, Pokhilko, Krylov, 2022
 
 
 import functools
@@ -322,6 +332,7 @@ def _(
 
 def report_so_couplings(socs):
     nsings, ntrips, _ = socs.shape
+    # See for example eq. (15) in [7]
     socs2 = np.abs(socs) ** 2
     tot_socs = np.sqrt(socs2.sum(axis=2))
 
@@ -582,6 +593,12 @@ def run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens, **kwargs):
 
     socs = singlet_triplet_so_couplings(wf, XpYs, XpYt, **kwargs)
     report_so_couplings(socs)
+    # The spherical triplet operators can be converted to Cartesian ones via
+    #
+    # Tx = (socs[..., 0] - socs[..., 2]) / 2.0
+    # Ty = (socs[..., 0] + socs[..., 2]) / 2.0j
+    # Tz = 1 / np.sqrt(2.0) * socs[..., 1]
+    # See eq. (14) to (16) in [6].
     print()
 
     ##############
