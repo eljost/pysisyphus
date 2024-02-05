@@ -71,26 +71,11 @@ def create_marcus_coefficient_plot(nqs, coeffs, batch=None, ncalcs=None):
 
 
 def report_marcus_coefficients(coeffs, nus, drop_first, nhighest=10):
-    highest_bs = np.abs(coeffs).argsort()[-nhighest:][::-1]
-    coeff_table = TablePrinter(
-        header=("internal", "0-based", "1-based", "coeff. b", "ṽ / cm⁻¹"),
-        col_fmts=("int", "int", "int", "float", "float_short"),
-    )
-    print("10 highest (absolute) Normal mode expansion coefficients:")
-    coeff_table.print_header()
-    # for i, hb in enumerate(highest_bs):
-    for hb in highest_bs:
-        coeff_table.print_row(
-            (hb, hb + drop_first, hb + drop_first + 1, coeffs[hb], nus[hb])
-        )
-
-
-def report_marcus_coefficients(coeffs, nus, drop_first, nhighest=10):
     sort_inds = np.abs(coeffs).argsort()
     highest_inds = sort_inds[-nhighest:][::-1]
     coeff_table = TablePrinter(
         header=("internal", "0-based", "1-based", "coeff. b", "ṽ / cm⁻¹"),
-        col_fmts=("int", "int", "int", "float", "float_short"),
+        col_fmts=("int_short", "int_short", "int_short", "float", "float_short"),
     )
     print("10 highest (absolute) Normal mode expansion coefficients:")
     coeff_table.print_header()
@@ -151,7 +136,7 @@ def report_correlations(nus, corrs, drop_first, corr_thresh=_CORR_THRESH):
 
     corr_table = TablePrinter(
         header=("internal", "0-based", "1-based", "corr. ρ", "ṽ / cm⁻¹"),
-        col_fmts=("int", "int", "int", "float", "float_short"),
+        col_fmts=("int_short", "int_short", "int_short", "float", "float_short"),
     )
     corr_table.print_header()
     for cas in corrs_above_sorted:

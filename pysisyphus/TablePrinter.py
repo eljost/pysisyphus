@@ -1,6 +1,62 @@
 import logging
 import textwrap
 
+import pyparsing as pp
+
+
+lit = pp.Literal
+start = lit("{:")
+end = lit("}")
+alignment = lit(">") | lit("<") | lit("^")
+sign = lit("+") | lit("-") | lit(" ")
+int_num = pp.Word(pp.nums).set_parse_action(lambda s, l, t: int(t[0]))
+width = int_num("width")
+precision = pp.Suppress(lit(".")) + int_num("precision")
+type_ = (
+    lit("s")
+    | lit("b")
+    | lit("c")
+    | lit("d")
+    | lit("o")
+    | lit("x")
+    | lit("X")
+    | lit("e")
+    | lit("E")
+    | lit("f")
+    | lit("F")
+    | lit("g")
+    | lit("G")
+    | lit("n")
+    | lit("%")
+)
+
+fparser = (
+    start
+    + pp.Optional(alignment)("alignment")
+    + pp.Optional(sign)
+    + pp.Optional(width)
+    + pp.Optional(precision)
+    + pp.Optional(type_)
+    + end
+)
+
+
+def parse_fstring(fstr):
+    result = fparser.parse_string(fstr)
+    return result.as_dict()
+
+
+def center(string, width):
+    length = len(string)
+    whitespace = width - length
+    if whitespace >= 2:
+        before = " " * (whitespace // 2)
+        after = before
+        centered = f"{before}{string}{after}"
+    else:
+        centered = string
+    return centered
+
 
 class TablePrinter:
     def __init__(
@@ -9,9 +65,8 @@ class TablePrinter:
         col_fmts,
         width=12,
         sub_underline=True,
-        shift_left=0,
-        fmts_update=None,
         mark="*",
+        offset=8,
         logger=None,
         level=logging.INFO,
     ):
@@ -19,38 +74,79 @@ class TablePrinter:
         self.col_fmts = col_fmts
         self.width = width
         self.sub_underline = sub_underline
-        self.shift_left = shift_left
-        if fmts_update is None:
-            fmts_update = {}
-        self.fmts_update = fmts_update
         self.mark = mark
         self.logger = logger
         self.level = level
 
-        w = str(self.width - 1)
+        assert len(header) == len(col_fmts), (
+            f"Number of {len(header)} fields does not match the number of "
+            f"column formats {len(col_fmts)}"
+        )
 
+        w = str(self.width)  # Shortcut
+        whalf = str(self.width // 2)
         self.fmts = {
-            "int": "{:>" + w + "d}",
-            "float": "{: >" + w + ".6f}",
-            "float_short": "{: >" + w + ".2f}",
             "str": "{:>" + w + "s}",
             "mark": "{:>1s}",
+            #
+            "int": "{:>" + w + "d}",
+            "int_short": "{:>" + whalf + "d}",
+            "int3": "{: >3d}",
+            #
+            "float": "{: >" + w + ".6f}",
+            "float_short": "{: >" + whalf + ".3f}",
+            #
+            "complex_tdm": "{: >" + w + ".4f}",
+            "complex_short": "{: >" + w + ".2f}",
         }
-        self.fmts.update(fmts_update)
         if self.sub_underline:
             self.header = [h.replace("_", " ") for h in self.header]
 
-        self.header_str = " ".join([h.rjust(self.width) for h in self.header])
+        # Determine alignments and widths from given formats
+        fmts = list()
+        alignments = list()
+        widths = list()
+        for col_fmt in self.col_fmts:
+            # Frist, try to look up the format in our prepopulated
+            # dictionary.
+            try:
+                fmt = self.fmts[col_fmt]
+            # Second, if not found in the dict, we assume that the
+            # string is a valid f-string.
+            except KeyError:
+                fmt = col_fmt
+            # In any case, we parse the given string to determine
+            # alignment and width.
+            res = parse_fstring(fmt)
+            alignment = res.get("alignment", "<")
+            alignments.append(alignment)
+            width = res.get("width", self.width)
+            widths.append(width)
+            fmts.append(fmt)
+
+        # TODO: Check if header fields are longer than the given width.
+        # If so, update the widths in the formats.
+
         mark_fmt = self.fmts["mark"]
-        self.conv_str = " ".join([self.fmts[fmt] + mark_fmt for fmt in self.col_fmts])
-        h0_len = len(self.header[0])
-        self.offset = self.width - h0_len
-        self.prefix = " " * (self.offset - self.shift_left)
-        self.sep = (
-            self.prefix
-            + "-" * (len(self.header_str) - self.width + h0_len)
-            + "-" * abs(self.shift_left)
-        )
+        # self.conv_str will be used to render the given fields in a row
+        self.conv_str = " ".join([fmt + mark_fmt for fmt in fmts])
+
+        # Distance from the line start
+        self.offset = offset
+        # Whitespace that is prepended on every row
+        self.prefix = " " * self.offset
+        # Length of a given line w/o offset/prefix
+        self.line_length = sum(widths) + len(widths) + len(widths) - 1
+        # Separator string
+        self.sep = self.prefix + "-" * self.line_length
+
+        header_fmts = list()
+        for alignment, width in zip(alignments, widths):
+            hfmt = "{:" + alignment + str(width) + "}"
+            header_fmts.append(hfmt)
+        # Join with 2 spaces as we also have the mark field
+        header_fmt = "  ".join(header_fmts)
+        self.header_str = self.prefix + header_fmt.format(*self.header)
 
     def _print(self, msg, level=None):
         if level is None:
@@ -75,7 +171,8 @@ class TablePrinter:
         for arg, to_mark in zip(args, marks):
             marked_args.append(arg)
             marked_args.append(self.mark if to_mark else " ")
-        self._print(self.conv_str.format(*marked_args))
+        row = self.prefix + self.conv_str.format(*marked_args)
+        self._print(row)
 
     def print(self, *args, **kwargs):
         text = " ".join([str(a) for a in args])

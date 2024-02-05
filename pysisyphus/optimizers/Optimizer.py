@@ -888,7 +888,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.report_conv_thresholds()
             self.print(f"Spent {prep_time:.1f} s preparing the first cycle.")
 
-        self.table.print_header(with_sep=False)
+        self.table.print_header()
         self.stopped = False
         # Actual optimization loop
         for self.cur_cycle in range(self.last_cycle, self.max_cycles):
