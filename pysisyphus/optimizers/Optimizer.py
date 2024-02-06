@@ -788,7 +788,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             except AttributeError:
                 atoms = self.geometry.atoms
                 coord_size = self.geometry.coords.size
-            h5_group.attrs["atoms"] = np.string_(atoms)
+            h5_group.attrs["atoms"] = np.bytes_(atoms)
             h5_group.attrs["coord_type"] = self.geometry.coord_type
             h5_group.attrs["coord_size"] = coord_size
             h5_group.attrs["overachieve_factor"] = self.overachieve_factor

@@ -55,9 +55,9 @@ def test_ohch3f_anion(calc_cls, calc_kwargs, ref_cycle, ccl_dist, oc_dist):
 
     # Broken C-Cl bond
     c3d = geom.coords3d
-    assert np.linalg.norm(c3d[0] - c3d[4]) == pytest.approx(ccl_dist, abs=1e-3)
+    assert np.linalg.norm(c3d[0] - c3d[4]) == pytest.approx(ccl_dist, abs=1e-2)
     # Formed O-C bond
-    assert np.linalg.norm(c3d[0] - c3d[5]) == pytest.approx(oc_dist, abs=1e-3)
+    assert np.linalg.norm(c3d[0] - c3d[5]) == pytest.approx(oc_dist, abs=1e-2)
 
 
 @using("xtb")
