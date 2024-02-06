@@ -30,7 +30,7 @@ cloudpickle==2.2.1
     #   distributed
 contourpy==1.0.7
     # via matplotlib
-cryptography==41.0.6
+cryptography==42.0.0
     # via paramiko
 cycler==0.11.0
     # via matplotlib
