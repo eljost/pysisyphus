@@ -9,12 +9,13 @@ from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.interpolate.Interpolator import Interpolator
-from pysisyphus.optimizers.LBFGS import LBFGS
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
-from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.FIRE import FIRE
-from pysisyphus.optimizers.SteepestDescent import SteepestDescent
+from pysisyphus.optimizers.guess_hessians import ts_hessian_from_cos
+from pysisyphus.optimizers.LBFGS import LBFGS
+from pysisyphus.optimizers.QuickMin import QuickMin
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
+from pysisyphus.optimizers.SteepestDescent import SteepestDescent
 from pysisyphus.plotters.AnimPlot import AnimPlot
 from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
@@ -32,7 +33,7 @@ def run_cos_opt(geoms, between, calc_cls, cos_cls, cos_kwargs, opt_cls, opt_kwar
     images = interpol.interpolate_all()
 
     for image in images:
-        image.set_calculator(AnaPot())
+        image.set_calculator(calc_cls())
 
     cos = cos_cls(images, **cos_kwargs)
 
@@ -53,33 +54,9 @@ def assert_cos_opt(opt, ref_cycle):
         (SteepestDescent, {}, {}, 30, 5),
         (SteepestDescent, {}, {}, 32, 10),
         (ConjugateGradient, {}, {}, 44, 5),
-        (
-            QuickMin,
-            {
-                "dt": 0.1,
-            },
-            {},
-            27,
-            5,
-        ),
-        (
-            FIRE,
-            {
-                "dt_max": 0.2,
-            },
-            {},
-            42,
-            5,
-        ),
-        (
-            LBFGS,
-            {
-                "gamma_mult": True,
-            },
-            {},
-            12,
-            5,
-        ),
+        (QuickMin, {"dt": 0.1}, {}, 27, 5),
+        (FIRE, {"dt_max": 0.2}, {}, 42, 5),
+        (LBFGS, {"gamma_mult": True}, {}, 12, 5),
     ],
 )
 def test_anapot_neb(opt_cls, opt_kwargs_, neb_kwargs_, ref_cycle, between):
@@ -127,12 +104,12 @@ def test_anapot_szts(between, param, ref_cycle):
     assert_cos_opt(opt, ref_cycle)
 
 
-def animate(opt):
+def animate(opt, show=False):
     xlim = (-2, 2.5)
     ylim = (0, 5)
     levels = (-3, 4, 80)
     ap = AnimPlot(AnaPot(), opt, xlim=xlim, ylim=ylim, levels=levels)
-    ap.animate()
+    ap.animate(show=show)
     return ap
 
 
@@ -258,3 +235,71 @@ def test_stiff_neb_nfk():
     # ap = AnimPlot(nfk, opt, xlim=nfk.xlim, ylim=nfk.ylim)
     # ap.animate()
     # plt.show()
+
+
+@pytest.mark.parametrize("climb, ref_cycles", ((True, 217), ("one", 101), (False, 120)))
+def test_neb_climb(climb, ref_cycles):
+    geoms = get_geoms()
+
+    neb_kwargs = {
+        "variable_springs": True,
+        "climb": climb,
+    }
+
+    between = 3
+    opt_kwargs = {
+        "max_cycles": 500,
+        "thresh": "gau",
+        "max_step": 0.05,
+    }
+    opt_cls = ConjugateGradient
+    opt = run_cos_opt(geoms, between, AnaPot, NEB, neb_kwargs, opt_cls, opt_kwargs)
+    # ap = animate(opt)
+    # plt.show()
+    assert opt.is_converged
+    assert opt.cur_cycle == ref_cycles
+
+
+def test_cos_image_ts_opt():
+    initial = AnaPot.get_geom((-1.05274, 1.02776, 0))
+    final = AnaPot.get_geom((1.94101, 3.85427, 0))
+    images = (initial, final)
+    interpol = Interpolator(images, between=5)
+    images = interpol.interpolate_all()
+
+    for image in images:
+        image.set_calculator(AnaPot())
+
+    cos_kwargs = {
+        "k_min": 0.01,
+        "climb": "one",
+        "climb_rms": 0.5,
+        "ts_opt": True,
+        "ts_opt_rms": 0.005,
+    }
+    cos = NEB(images, **cos_kwargs)
+
+    opt_kwargs = {
+        "dump": True,
+        "image_opt_kwargs": {
+            "type": "rsprfo",
+            "thresh": "gau_vtight",
+            "dump": True,
+        },
+        # Level 10 equals logging.DEBUG and is the default for child optimizers
+        # "logging_level": 10,
+    }
+    opt = SteepestDescent(cos, **opt_kwargs)
+    opt.run()
+
+    hei_coords = cos.images[cos.get_hei_index()].coords
+    ref_ts_coords = (0.6117310435507957, 1.4929729492717998, 0.0)
+
+    H = ts_hessian_from_cos(cos, cos.get_hei_index())
+    w, _ = np.linalg.eigh(H)
+    w_min = w[0]
+    assert w_min == pytest.approx(-9.45998968)
+
+    # animate(opt, show=True)
+
+    np.testing.assert_allclose(hei_coords, ref_ts_coords, atol=2e-6)

@@ -194,6 +194,9 @@ Absolute diabatic couplings
 class DiabatizationResult:
     U: NDArray[float]
     adia_ens: NDArray[float]
+    # U and adia_ens should be enough ... the rest should be optional.
+    # dia_ens can be calculated by rotationg the adiabatic energy matrix,
+    # which is just a diagonal matrix containing the adiabatic energies.
     dia_ens: NDArray[float]
     adia_mat: NDArray[float]
     dia_mat: NDArray[float]
@@ -227,7 +230,7 @@ class DiabatizationResult:
     def render_report(self, adia_labels=None, unit="eV"):
         U = self.U
         nstates = self.nstates
-        U2 = U ** 2
+        U2 = U**2
         det = np.linalg.det(U)
 
         subscripts = [to_subscript_num(i) for i in range(nstates)]

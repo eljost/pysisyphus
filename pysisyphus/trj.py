@@ -12,15 +12,15 @@ import rmsd as rmsd
 from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
-from pysisyphus.intcoords.setup import get_fragments
-from pysisyphus.intcoords.PrimTypes import prim_for_human
 from pysisyphus.drivers.merge import hardsphere_merge as hardsphere_merge_driver
 from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
 from pysisyphus.helpers_pure import highlight_text
-from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
-from pysisyphus.intcoords.PrimTypes import normalize_prim_input, PrimMap
+from pysisyphus.intcoords.PrimTypes import prim_for_human, normalize_prim_input, PrimMap
+from pysisyphus.intcoords.setup import get_fragments
+from pysisyphus.interpolate import *
 from pysisyphus.io.pdb import geom_to_pdb_str
+import pysisyphus.linalg_affine3 as aff3
 from pysisyphus.stocastic.align import match_geom_atoms
 
 
@@ -76,6 +76,11 @@ def parse_args(args):
         "Always includes the first and last point.",
     )
     action_group.add_argument(
+        "--sample",
+        type=int,
+        help="Sample N evenly equally spaced geometries from .trj.",
+    )
+    action_group.add_argument(
         "--center",
         action="store_true",
         help="Move the molecules centroid into the origin.",
@@ -100,7 +105,7 @@ def parse_args(args):
         "--hsmerge",
         action="store_true",
         help="Merge two input geometries into one, while avoiding overlapping atoms "
-        "via hardsphere-optimization."
+        "via hardsphere-optimization.",
     )
     action_group.add_argument(
         "--join",
@@ -463,6 +468,31 @@ def every(geoms, every_nth):
     return every_nth_geom
 
 
+def sample(geoms, samplen):
+    ngeoms = len(geoms)
+    max_ind = ngeoms - 1
+    assert (
+        0 < samplen <= ngeoms
+    ), f"Can't sample more geometries as there are in the given path.!"
+    float_indices = np.linspace(0, 1, num=samplen) * max_ind
+    indices = np.empty_like(float_indices, dtype=int)
+    prev_ind = None
+    for i, fi in enumerate(float_indices):
+        ind = round(fi)
+        if prev_ind is not None and ind == prev_ind:
+            ind += 1
+            # Is this condition ever hit?!
+            if ind > max_ind:
+                raise Exception(
+                    "Can't sample {samplen} distinct geometries! "
+                    "Please reduce the number."
+                )
+        indices[i] = ind
+    print(f"Sampling geometries with {indices=}.")
+    sampled_geoms = [geoms[i] for i in indices]
+    return sampled_geoms
+
+
 def center(geoms):
     for geom in geoms:
         geom.coords3d = geom.coords3d - geom.centroid
@@ -492,7 +522,9 @@ def append(geoms):
 def hardsphere_merge(geoms):
     assert len(geoms) == 2
     union = hardsphere_merge_driver(*geoms)
-    return [union, ]
+    return [
+        union,
+    ]
 
 
 def match(ref_geom, geom_to_match):
@@ -684,6 +716,24 @@ def frag_sort(geoms):
     return sorted_geoms
 
 
+def align_coords3d_onto_vec(
+    coords3d: np.ndarray, ind1: int, ind2: int, ref_vec: np.ndarray
+) -> np.ndarray:
+    """Get rotated coords, so vec between ind1 and in2 is parallel to ref_vec.
+
+    Can be used to rotate given coordinates in a way, to make a selected
+    bond (distance) vector parallel to a selected axis."""
+    assert ind1 != ind2, "Indices must be different!"
+    coords3d = coords3d.copy()
+    coords1 = coords3d[ind1]
+    coords2 = coords3d[ind2]
+    vec1 = coords2 - coords1
+    vec1 = vec1 / np.linalg.norm(vec1)
+    R = aff3.rotation_matrix_for_vec_align(vec1, ref_vec)
+    coords3d_rot = coords3d @ R.T
+    return coords3d_rot
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -743,6 +793,10 @@ def run():
         to_dump = every(geoms, args.every)
         fn_base = "every"
         trj_infix = f"_{args.every}th"
+    elif args.sample:
+        to_dump = sample(geoms, args.sample)
+        fn_base = "sampled"
+        trj_infix = f"_{args.sample}"
     elif args.center:
         to_dump = center(geoms)
         fn_base = "centered"

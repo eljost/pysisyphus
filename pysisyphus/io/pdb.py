@@ -212,7 +212,7 @@ def atoms_coords_to_pdb_str(atoms, coords, fragments=None, resname="", conect=Tr
     serial = 1
     for resSeq, fragment in enumerate(fragments, 1):
         for id_ in fragment:
-            name = atoms[id_]
+            name = atoms[id_].capitalize()
             xyz = coords3d_ang[id_]
             line = hetatm_fmt.format(
                 serial,

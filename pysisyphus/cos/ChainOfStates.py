@@ -1,17 +1,28 @@
+# [1]   http://dx.doi.org/10.1063/1.1323224
+#       Improved tangent estimate in the nudged elastic band method
+#       for finding minimum energy paths and saddle points
+#       Henkelman, Jonsson, 2000
+
 from copy import copy
 import logging
 import sys
 
-from distributed import Client
+from distributed import Client, LocalCluster
 import numpy as np
+import psutil
 from scipy.interpolate import interp1d, splprep, splev
 
 from pysisyphus.helpers import align_coords, get_coords_diffs
-from pysisyphus.helpers_pure import hash_arr
+from pysisyphus.helpers_pure import hash_arr, rms
 from pysisyphus.modefollow import geom_lanczos
 
+# from pysisyphus.calculators.parallel import distributed_calculations
+from pysisyphus.cos.distributed import distributed_calculations
 
-# [1] http://dx.doi.org/10.1063/1.1323224
+
+class ClusterDummy:
+    def close(self):
+        pass
 
 
 class ChainOfStates:
@@ -28,9 +39,13 @@ class ChainOfStates:
         climb_rms=5e-3,
         climb_lanczos=False,
         climb_lanczos_rms=5e-3,
-        climb_fixed=True,
+        climb_fixed=False,
+        ts_opt=False,
+        ts_opt_rms=2.5e-3,
         energy_min_mix=False,
         scheduler=None,
+        cluster=False,
+        cluster_kwargs=None,
         progress=False,
     ):
         assert len(images) >= 2, "Need at least 2 images!"
@@ -41,25 +56,73 @@ class ChainOfStates:
         self.climb = climb
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
+        self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
+        self.ts_opt = ts_opt
+        self.ts_opt_rms = ts_opt_rms
+        # I really wonder what made me pick 'climb_fixed = True' in e9f039a0 ...
+        # ... now i know! Sometimes it hampers the convergence, when the CI index
+        # flips between multiple images.
         self.climb_fixed = climb_fixed
         self.energy_min_mix = energy_min_mix
         # Must not be lower than climb_rms
-        self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
         self.scheduler = scheduler
+        # Providing only cluster_kwargs also enables dask
+        self._cluster = bool(cluster) or (cluster_kwargs is not None)
+        if cluster_kwargs is None:
+            cluster_kwargs = dict()
+        # _cluster_kwargs = {
+        # # Only one calculation / worker
+        # "threads_per_worker": 1,
+        # "n_workers": psutil.cpu_count(logical=False),
+        # }
+        ncores = psutil.cpu_count(logical=False)
+        _cluster_kwargs = {
+            # One worker per cluster with multiple threads
+            "threads_per_worker": ncores,
+            "n_workers": 1,
+            # Register available cores as resource
+            "resources": {
+                "CPU": ncores,
+            },
+        }
+        _cluster_kwargs.update(cluster_kwargs)
+        self.cluster_kwargs = _cluster_kwargs
         self.progress = progress
 
+        # Can't call self.log before counter is initialized ...
+        self._external_scheduler = scheduler is not None
+        self.counter = 0
         self._coords = None
         self._forces = None
         self._energy = None
-        self.counter = 0
         self.coords_length = self.images[0].coords.size
         self.cart_coords_length = self.images[0].cart_coords.size
         self.zero_vec = np.zeros(self.coords_length)
 
+        """
+        It was a rather unfortunate choice to fill/grow self.coords_list and
+        self.all_true_forces in different methods. self.prepare_opt_cycle()
+        appends to self.coords_list, while self.calculate_forces() appends to
+        self.all_true_forces().
+
+        After a succsessful COS optimization both lists differ in length;
+        self.all_true_forces has 1 additional item, compared to self.coords_list,
+        as self.calculate_forces() is called in Optimizer.prepare_opt() once.
+        Afterwards, self.coords_list and self.all_true_forces grow in a consistent
+        manner.
+
+        Two choices can be made: keep this discrepancy in mind and omit/neglect
+        the first item in self.coords_list, or grow another list in
+        self.calculate_forces(). For now, we will go with the latter option.
+        """
+        # coords_list & force_list are updated in prepare_opt_cycle
         self.coords_list = list()
         self.forces_list = list()
+        # all_energies & all_true_forces are updated in calculate_forces()
         self.all_energies = list()
         self.all_true_forces = list()
+        # See the multiline comment above
+        self.all_cart_coords = list()
         self.lanczos_tangents = dict()
         self.prev_lanczos_hash = None
 
@@ -67,8 +130,14 @@ class ChainOfStates:
         self.started_climbing = self.climb_rms == -1
         if self.started_climbing:
             self.log("Will start climbing immediately.")
-        self.started_climbing_lanczos = False
+        self.started_climbing_lanczos = self.climb_lanczos_rms == -1
+        if self.started_climbing_lanczos:
+            self.log("Will use Lanczos algorithm immediately.")
+        self.started_ts_opt = self.ts_opt_rms == -1
+        if self.started_ts_opt:
+            self.log("Will use TS image(s) immediately.")
         self.fixed_climb_indices = None
+        self.fixed_ts_indices = None
         # Use original forces for these images
         self.org_forces_indices = list()
 
@@ -87,12 +156,24 @@ class ChainOfStates:
             self.typed_prims = None
 
     @property
+    def nimages(self) -> int:
+        return len(self.images)
+
+    @property
     def calculator(self):
         try:
             calc = self.images[0].calculator
         except IndexError:
             calc = None
         return calc
+
+    @property
+    def is_analytical_2d(self):
+        try:
+            ia2d = self.images[0].calculator.analytical_2d
+        except AttributeError:
+            ia2d = False
+        return ia2d
 
     def log(self, message):
         self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
@@ -104,6 +185,39 @@ class ChainOfStates:
         if self.fix_last:
             fixed.append(len(self.images) - 1)
         return fixed
+
+    def get_dask_local_cluster(self):
+        cluster = LocalCluster(**self.cluster_kwargs)
+        link = cluster.dashboard_link
+        self.log(f"Created {cluster}. Dashboard is available at {link}")
+        return cluster
+
+    @property
+    def use_dask(self):
+        return self.scheduler is not None
+
+    def init_dask(self):
+        # Return dummy when scheduler address is already present or dask is disabled.
+        if self._external_scheduler or not self._cluster:
+            # cluster = ClusterDummy(self.scheduler)
+            cluster = ClusterDummy()  # self.scheduler)
+        # Create LocalCluster and return it if dask is enabled but no scheduler address
+        # is set.
+        # It seems like we can't save the LocalCluster object in the ChainOfStates object,
+        # because this leads to strange errors while object pickling.
+        elif self.scheduler is None:
+            cluster = self.get_dask_local_cluster()
+            self.scheduler = cluster.scheduler_address
+        else:
+            raise Exception("How did I end up here?")
+        return cluster
+
+    def exit_dask(self, cluster):
+        # Don't do anything is cluster/scheduler is externally managed
+        if not self._external_scheduler:
+            cluster.close()
+            self.scheduler = None
+            self._external_scheduler = False
 
     @property
     def moving_indices(self):
@@ -230,47 +344,19 @@ class ChainOfStates:
         image.calc_energy_and_forces()
         return image
 
-    def set_images(self, indices, images):
-        for ind, image in zip(indices, images):
-            self.images[ind] = image
-
     def concurrent_force_calcs(self, images_to_calculate, image_indices):
         client = self.get_dask_client()
-        self.log(client)
-
-        # save original pals to restore them later
-        orig_pal = images_to_calculate[0].calculator.pal
-
-        # divide pal of each image by the number of workers available or available images
-        # number of workers available
-        n_workers = len(client.scheduler_info()["workers"])
-        # number of images to calculate
-        n_images = len(images_to_calculate)
-        # divide pal by the number of workers (or 1 if more workers)
-        new_pal = max(1, orig_pal // n_workers)
-
-        # split images to calculate into batches of n_workers and set pal of each image
-        n_batches = n_images // n_workers
-        for i in range(0, n_batches):
-            for j in range(i * n_workers, (i + 1) * n_workers):
-                images_to_calculate[j].calculator.pal = new_pal
-
-        # distribute the pals among the remaining images
-        n_last_batch = n_images % n_workers
-        if n_last_batch > 0:
-            # divide pal by the remainder
-            new_pal = max(1, orig_pal // n_last_batch)
-            for i in range(n_batches * n_workers, n_images):
-                images_to_calculate[i].calculator.pal = new_pal
-
-        # map images to workers
-        image_futures = client.map(self.par_image_calc, images_to_calculate)
-        # set images to the results of the calculations
-        self.set_images(image_indices, client.gather(image_futures))
-
-        # Restore original pals
-        for i in range(0, n_images):
-            self.images[i].calculator.pal = orig_pal
+        self.log(f"Doing concurrent force calculations using {client}")
+        calculated_images = distributed_calculations(
+            client,
+            images_to_calculate,
+            self.par_image_calc,
+            logger=self.logger,
+        )
+        # Set calculated images
+        for ind, image in zip(image_indices, calculated_images):
+            self.images[ind] = image
+        client.close()
 
     def calculate_forces(self):
         # Determine the number of images for which we have to do calculations.
@@ -287,7 +373,7 @@ class ChainOfStates:
         assert len(images_to_calculate) <= len(self.images)
 
         # Parallel calculation with dask
-        if self.scheduler:
+        if self.use_dask:
             self.concurrent_force_calcs(images_to_calculate, image_indices)
         # Serial calculation
         else:
@@ -302,6 +388,9 @@ class ChainOfStates:
         self.set_zero_forces_for_fixed_images()
         self.counter += 1
 
+        # EnergyMin calculator carries out multiple calculations at the same
+        # geometry, e.g., in different spin states or different electronic states
+        # and picks the one with the lowest energy.
         if self.energy_min_mix:
             # Will be None for calculators that already mix
             all_energies = np.array([image.all_energies for image in self.images])
@@ -331,7 +420,8 @@ class ChainOfStates:
         energies = [image.energy for image in self.images]
         forces = np.array([image.forces for image in self.images])
         self.all_energies.append(energies)
-        self.all_true_forces.append(forces)
+        self.all_true_forces.append(forces.copy())
+        self.all_cart_coords.append(self.cart_coords.copy())
 
         return {
             "energies": energies,
@@ -500,7 +590,7 @@ class ChainOfStates:
                         f"Using tangent with hash={self.prev_lanczos_hash} "
                         "as initial guess for Lanczos algorithm."
                     )
-                w_min, tangent = geom_lanczos(
+                w_min, tangent, _ = geom_lanczos(
                     ith_image, guess=guess, logger=self.logger
                 )
                 self.lanczos_tangents[cur_hash] = tangent
@@ -525,6 +615,32 @@ class ChainOfStates:
             energies = [image.energy for image in self.images]
         return np.argmax(energies)
 
+    def get_full_cycles(self) -> np.ndarray:
+        """Return array of integers that indexes self.all_true_forces/self.all_cart_coords.
+
+        When the ChainOfStates is not yet fully grown this list will be empty.
+        The items of this list can be used to index self.all_true_forces and
+        related lists, to extract image coordinate & forces data for all
+        cycles when the COS was already fully grown.
+
+        This data can then be used to, e.g., construct a (TS)-Hessian for an
+        selected image."""
+
+        try:
+            fully_grown = self.fully_grown
+        except AttributeError:
+            fully_grown = True
+
+        if not fully_grown:
+            return np.empty(0)
+
+        full_size = self.cart_coords_length * self.nimages
+        all_sizes = np.array([true_forces.size for true_forces in self.all_true_forces])
+        mask = all_sizes == full_size
+        indices = np.arange(len(all_sizes))
+        full_cycles = indices[mask]
+        return full_cycles
+
     def prepare_opt_cycle(self, last_coords, last_energies, last_forces):
         """Implements additional logic in preparation of the next
         optimization cycle.
@@ -536,57 +652,60 @@ class ChainOfStates:
         self.coords_list.append(last_coords)
         self.forces_list.append(last_forces)
 
-        # Return False if we don't want to climb or are already
-        # climbing.
+        messages = list()
+        # Check if we can start climbing.
         already_climbing = self.started_climbing
         if self.climb and not already_climbing:
-            self.started_climbing = self.check_for_climbing_start(self.climb_rms)
+            self.started_climbing = self.compare_image_rms_forces(self.climb_rms)
             if self.started_climbing:
                 msg = "Will use climbing image(s) in next cycle."
                 self.log(msg)
-                print(msg)
-        # Determine climbing index/indices if not set, but requested.
+                messages.append(msg)
+
+        # Fix climbing index/indices if not already set, but requested.
         if already_climbing and self.climb_fixed and (self.fixed_climb_indices is None):
             self.fixed_climb_indices = self.get_climbing_indices()
 
+        # Check if we can start to converge the HEI tangent using the Lanczos algorithm.
         already_climbing_lanczos = self.started_climbing_lanczos
         if (
             self.climb_lanczos
             and self.started_climbing
             and not already_climbing_lanczos
         ):
-            self.started_climbing_lanczos = self.check_for_climbing_start(
+            self.started_climbing_lanczos = self.compare_image_rms_forces(
                 self.climb_lanczos_rms
             )
             if self.started_climbing_lanczos:
                 msg = "Will use Lanczos algorithm for HEI tangent in next cycle."
                 self.log(msg)
-                print(msg)
+                messages.append(msg)
 
-        return not already_climbing and self.started_climbing
+        # Starting TS optimization does not influence the return value. Expand on this?!
+        if self.ts_opt and not self.started_ts_opt:
+            self.started_ts_opt = self.compare_image_rms_forces(self.ts_opt_rms)
+            if self.started_ts_opt:
+                msg = "Will use TS image(s) in next cycle. Disabled any climbing/Lanczos image."
+                self.climb_lanczos = False
+                self.climb = False
+                self.log(msg)
+                messages.append(msg)
 
-    def rms(self, arr):
-        """Root mean square
+        reset_flag = not already_climbing and self.started_climbing
+        return reset_flag, messages
 
-        Returns the root mean square of the given array.
+    def compare_image_rms_forces(self, ref_rms):
+        """Compare rms(forces) value of an image against a reference value.
 
-        Parameters
-        ----------
-        arr : iterable of numbers
+        Used to decide if we designate an image as climbing image or a
+        TS node.
 
-        Returns
-        -------
-        rms : float
-            Root mean square of the given array.
+        Only initiate climbing on a sufficiently converged MEP.
+        This can be determined from a supplied threshold for the
+        RMS force (rms_force) or from a multiple of the
+        RMS force convergence threshold (rms_multiple, default).
         """
-        return np.sqrt(np.mean(np.square(arr)))
-
-    def check_for_climbing_start(self, ref_rms):
-        # Only initiate climbing on a sufficiently converged MEP.
-        # This can be determined from a supplied threshold for the
-        # RMS force (rms_force) or from a multiple of the
-        # RMS force convergence threshold (rms_multiple, default).
-        rms_forces = self.rms(self.forces_list[-1])
+        rms_forces = rms(self.perpendicular_forces)
         # Only start climbing when the COS is fully grown. This
         # attribute may not be defined in all subclasses, so it
         # defaults to True here.
@@ -618,9 +737,7 @@ class ChainOfStates:
         # elif self.climb != "one" and hei_index in move_inds[1:-1]:
         elif hei_index in move_inds[1:-1]:
             climb_indices = (hei_index - 1, hei_index + 1)
-            # climb_indices = (hei_index,)
-        # Don't climb when the HEI is the first or last image of the whole
-        # NEB.
+        # Don't climb when the HEI is the first or last image of the whole NEB.
         else:
             climb_indices = tuple()
             self.log("Want to climb but can't. HEI is first or last image!")
@@ -637,7 +754,7 @@ class ChainOfStates:
 
     def set_climbing_forces(self, forces):
         # Avoids calling the other methods with their logging output etc.
-        if not self.started_climbing:
+        if not (self.climb and self.started_climbing):
             return forces
 
         for i in self.get_climbing_indices():
@@ -650,10 +767,23 @@ class ChainOfStates:
             )
         return forces
 
+    def get_ts_image_indices(self):
+        if not self.started_ts_opt:
+            ts_images = tuple()
+        else:
+            if self.fixed_ts_indices is None:
+                hei_index = self.get_hei_index()
+                self.fixed_ts_indices = (hei_index,)
+                self.log(f"Fixed TS image to index {hei_index}.")
+            ts_images = self.fixed_ts_indices
+        return ts_images
+
     def get_splined_hei(self):
         self.log("Splining HEI")
         # Interpolate energies
-        cart_coords = align_coords([image.cart_coords for image in self.images])
+        cart_coords = np.array([image.cart_coords for image in self.images])
+        if not self.is_analytical_2d:
+            cart_coords = align_coords(cart_coords)
         coord_diffs = get_coords_diffs(cart_coords)
         self.log(f"\tCoordinate differences: {coord_diffs}")
         energies = np.array(self.energy)
@@ -722,4 +852,6 @@ class ChainOfStates:
         return f"ChainOfStates, {len(imgs)} images, ({img.sum_formula}, {len(img.atoms)} atoms) per image"
 
     def __str__(self):
-        return self.__class__.__name__
+        name = self.__class__.__name__
+        nimages = len(self.images)
+        return f"{name}({nimages} images)"

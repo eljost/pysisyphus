@@ -1,6 +1,5 @@
 import abc
 from dataclasses import dataclass
-import functools
 import logging
 import os
 from pathlib import Path
@@ -26,6 +25,37 @@ from pysisyphus.intcoords.helpers import interfragment_distance
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
 from pysisyphus.optimizers.exceptions import ZeroStepLength
 from pysisyphus.TablePrinter import TablePrinter
+
+
+def get_optimizer(geom, index, opt_kwargs, prefix):
+    # Import here, to avoid cyclic import error
+    from pysisyphus.optimizers.cls_map import get_opt_cls
+
+    opt_kwargs = opt_kwargs.copy()
+    opt_type = opt_kwargs.pop("type")
+
+    prefix = f"{prefix}_img_{index:02d}"
+    _opt_kwargs = {
+        "prefix": prefix,
+        "h5_group_name": f"{prefix}_opt",
+        # Child optimizers don't print to STDOUT/pysisyphus.log by default,
+        # only to their respective log files.
+        "logging_level": logging.DEBUG,
+    }
+    opt_kwargs.update(_opt_kwargs)
+
+    opt = get_opt_cls(opt_type)(geom, **opt_kwargs)
+    return opt
+
+
+def configure_opt_logger(logger, prefix):
+    logger.setLevel(logging.DEBUG)
+    handler = logging.FileHandler(f"{prefix}optimizer.log", mode="w", delay=True)
+    fmt_str = "%(message)s"
+    formatter = logging.Formatter(fmt_str)
+    handler.setFormatter(formatter)
+    handler.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
 
 
 def get_data_model(geometry, is_cos, max_cycles):
@@ -133,6 +163,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         dump: bool = False,
         dump_restart: bool = False,
         print_every: int = 1,
+        dump_ascii: bool = False,
         prefix: str = "",
         reparam_thresh: float = 1e-3,
         reparam_check_rms: bool = True,
@@ -147,6 +178,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         out_dir: str = ".",
         h5_fn: str = "optimization.h5",
         h5_group_name: str = "opt",
+        image_opt_kwargs: Optional[dict] = None,
+        logging_level: int = logging.INFO,
     ) -> None:
         """Optimizer baseclass. Meant to be subclassed.
 
@@ -197,6 +230,9 @@ class Optimizer(metaclass=abc.ABCMeta):
             filesystem.
         print_every
             Report optimization progress every nth cycle.
+        dump_ascii
+            Dump an ASCII representation of the optimized geometry to the
+            filesystem. Has no effect for COS optimizations.
         prefix
             Short string that is prepended to several files created by
             the optimizer. Allows distinguishing several optimizations carried
@@ -239,6 +275,15 @@ class Optimizer(metaclass=abc.ABCMeta):
             Basename of the HDF5 file used for dumping.
         h5_group_name
             Groupname used for dumping of this optimization.
+        image_opt_kwargs
+            Optimizer kwargs that are used to construct child-optimizers. Currently
+            only used to obtain TS-optimizers in COS-optimizations to converge an
+            image to an actual TS.
+        logging_level
+            Controls logging level of TablePrinter. Setting it to logging.DEBUG will
+            suppress printing to STDOUT and writing to pysisyphus.log. Messages will
+            be recorded into a respective f'{prefix}optimizers.log' file, regardless
+            of this argument.
         """
         assert thresh in CONV_THRESHS.keys()
 
@@ -258,6 +303,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         print_every = int(print_every)
         assert print_every >= 1
         self.print_every = print_every
+        self.dump_ascii = dump_ascii
         self.prefix = f"{prefix}_" if prefix else prefix
         self.reparam_thresh = reparam_thresh
         self.reparam_check_rms = reparam_check_rms
@@ -267,8 +313,13 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.check_eigval_structure = check_eigval_structure
         self.check_coord_diffs = check_coord_diffs
         self.coord_diff_thresh = float(coord_diff_thresh)
+        if image_opt_kwargs is None:
+            image_opt_kwargs = dict()
+        self.image_opt_kwargs = image_opt_kwargs
+        self.logging_level = logging_level
 
-        self.logger = logging.getLogger("optimizer")
+        self.logger = logging.getLogger(f"pysis.{self.prefix}opt")
+        configure_opt_logger(self.logger, self.prefix)
         self.is_cos = issubclass(type(self.geometry), ChainOfStates)
 
         # Set up convergence thresholds
@@ -315,11 +366,12 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         if self.is_cos:
             moving_image_num = len(self.geometry.moving_indices)
-            print(f"Path with {moving_image_num} moving images.")
+            self.print(f"Path with {moving_image_num} moving images.")
 
         # Don't use prefix for this fn, as different optimizations
         # can be distinguished according to their group in the HDF5 file.
         self.h5_fn = self.get_path_for_fn(h5_fn, with_prefix=False)
+        # TODO: make this also depend on 'prefix'?!
         self.h5_group_name = h5_group_name
 
         current_fn = "current_geometries.trj" if self.is_cos else "current_geometry.xyz"
@@ -361,10 +413,13 @@ class Optimizer(metaclass=abc.ABCMeta):
                 restart_info = yaml.load(restart_info, Loader=yaml.SafeLoader)
             self.set_restart_info(restart_info)
             self.restarted = True
+        self.image_opts = dict()
 
         header = "cycle Δ(energy) max(|force|) rms(force) max(|step|) rms(step) s/cycle".split()
         col_fmts = "int float float float float float float_short".split()
-        self.table = TablePrinter(header, col_fmts, width=12)
+        self.table = TablePrinter(
+            header, col_fmts, width=12, logger=self.logger, level=self.logging_level
+        )
         self.is_converged = False
 
     def get_path_for_fn(self, fn, with_prefix=True):
@@ -377,7 +432,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         if not rms_force:
             threshs = CONV_THRESHS[key]
         else:
-            print(
+            self.print(
                 "Deriving convergence threshold from supplied "
                 f"rms_force={rms_force}."
             )
@@ -451,7 +506,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 f"\t max(|step|) <= {self.max_step_thresh:.6f} {su}",
                 f"\t   rms(step) <= {self.rms_step_thresh:.6f} {su}",
             )
-        print(
+        self.print(
             "Convergence thresholds"
             + (", (overachieved when)" if oaf > 0.0 else "")
             + ":\n"
@@ -460,8 +515,25 @@ class Optimizer(metaclass=abc.ABCMeta):
             + "\n"
         )
 
-    def log(self, message, level=50):
+    def log(self, message, level=logging.DEBUG):
+        """Log to optimizer-specific logfile.
+
+        By default, messages passed to Optimizer.log will only appear in the
+        optimizer-specific logfile 'f{self.prefix}optimizer.log'."""
         self.logger.log(level, message)
+
+    def print(self, message):
+        """Print/write to STDOUT, pysisyphus.log and {prefix}optimizer.log.
+
+        Whether this method actually prints/writes depends on self.logging_level.
+        If the level is below logging.INFO (20) 'msg' will not appear in STDOUT and
+        pysisyphus.log. Until logging.DEBUG (10) it will appear in the optimizer-
+        specific log file.
+
+        This method should only be used in the Optimizer baseclass (this module).
+        Optimizers inheriting from this class should use Optimizer.log() instead.
+        """
+        self.logger.log(self.logging_level, message)
 
     def check_convergence(self, step=None, multiple=1.0, overachieve_factor=None):
         """Check if the current convergence of the optimization
@@ -474,8 +546,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         if overachieve_factor is None:
             overachieve_factor = self.overachieve_factor
 
-        # When using a ChainOfStates method we are only interested
-        # in optimizing the forces perpendicular to the MEP.
+        # When using a ChainOfStates method convergence depends on the
+        # perpendicular component of the force along the MEP.
         if self.is_cos:
             forces = self.geometry.perpendicular_forces
         elif len(self.modified_forces) == len(self.forces):
@@ -669,6 +741,36 @@ class Optimizer(metaclass=abc.ABCMeta):
     def optimize(self):
         pass
 
+    def update_image_step(self, image_index, prefix=""):
+        """Calculate a new step for an image in a COS using another Optimizer.
+
+        This method is useful to update an image step, e.g, by a TS optimizer.
+        """
+        if prefix != "":
+            prefix = f"{prefix}-"
+        geom = self.geometry.images[image_index]
+        # Try to look up the Optimizer ...
+        try:
+            opt = self.image_opts[image_index]
+        # ... if it is not already present we create it and store it.
+        except KeyError:
+            opt = get_optimizer(
+                geom, image_index, opt_kwargs=self.image_opt_kwargs, prefix="ts"
+            )
+            self.image_opts[image_index] = opt
+            self.print(f"Created new {prefix}optimizer for image {image_index}")
+
+        try:
+            # Advance the generator one cycle and fetch the new step
+            next(opt.run_generator)
+            updated_step = opt.steps[-1]
+        except StopIteration:
+            # When the optimzation already converged the generator is exhausted
+            # and we return a zero-step.
+            updated_step = np.zeros_like(self.geometry.images[0].coords)
+
+        return updated_step
+
     def write_to_out_dir(self, out_fn, content, mode="w"):
         out_path = self.out_dir / out_fn
         with open(out_path, mode) as handle:
@@ -773,24 +875,25 @@ class Optimizer(metaclass=abc.ABCMeta):
         """
         return textwrap.dedent(final_summary.strip())
 
-    def run(self):
-        print("If not specified otherwise, all quantities are given in au.\n")
+    def get_run_generator(self):
+        self.print("If not specified otherwise, all quantities are given in au.\n")
 
         if not self.restarted:
             prep_start_time = time.time()
+            # Set up the optimizer in prepare_opt, e.g., prepare initial Hessiane etc.
             self.prepare_opt()
             self.log(f"{self.geometry.coords.size} degrees of freedom.")
             prep_end_time = time.time()
             prep_time = prep_end_time - prep_start_time
             self.report_conv_thresholds()
-            print(f"Spent {prep_time:.1f} s preparing the first cycle.")
+            self.print(f"Spent {prep_time:.1f} s preparing the first cycle.")
 
-        self.table.print_header(with_sep=False)
+        self.table.print_header()
         self.stopped = False
         # Actual optimization loop
         for self.cur_cycle in range(self.last_cycle, self.max_cycles):
             start_time = time.time()
-            self.log(highlight_text(f"Cycle {self.cur_cycle:03d}"))
+            self.log("\n" + highlight_text(f"Cycle {self.cur_cycle:03d}"))
 
             if self.is_cos and self.check_coord_diffs:
                 image_coords = [image.cart_coords for image in self.geometry.images]
@@ -806,23 +909,24 @@ class Optimizer(metaclass=abc.ABCMeta):
                         "too similar. Stopping optimization!"
                     )
                     # I should improve my logging :)
-                    print(msg)
+                    self.print(msg)
                     self.log(msg)
                     sim_fn = "too_similar.trj"
                     with open(sim_fn, "w") as handle:
                         handle.write(self.geometry.as_xyz())
-                    print(f"Dumped latest coordinates to '{sim_fn}'.")
+                    self.print(f"Dumped latest coordinates to '{sim_fn}'.")
                     break
 
-            # Check if something considerably changed in the optimization,
-            # e.g. new images were added/interpolated. Then the optimizer
-            # should be reset.
+            # Check if something considerably changed in the optimization, e.g.,
+            # new images were added/interpolated. Then the optimizer should be reset.
             reset_flag = False
             if self.cur_cycle > 0 and self.is_cos:
-                reset_flag = self.geometry.prepare_opt_cycle(
+                reset_flag, messages = self.geometry.prepare_opt_cycle(
                     self.coords[-1], self.energies[-1], self.forces[-1]
                 )
-            # Reset when number of coordinates changed
+                if messages:
+                    self.print("\n".join(messages))
+            # Reset when number of coordinates changed, compared to the previous cycle.
             elif self.cur_cycle > 0:
                 reset_flag = reset_flag or (
                     self.geometry.coords.size != self.coords[-1].size
@@ -841,7 +945,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.coords.append(self.geometry.coords.copy())
             self.cart_coords.append(self.geometry.cart_coords.copy())
 
-            # Determine and store number of currenctly actively optimized images
+            # Determine and store number of currenctly actively optimized images.
+            # In non-COS optimizations we store some dummy values [0, ] and 1.
             try:
                 image_inds = self.geometry.image_inds
                 image_num = len(image_inds)
@@ -853,8 +958,24 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.image_inds.append(image_inds)
             self.image_nums.append(image_num)
 
-            # Here the actual step is obtained from the actual optimizer class.
+            #####################################################################
+            #  Actual step calculation in the Optimizer subclass is done here!  #
+            #  The step is not yet taken in the underlying Geometry/COS object. #
+            #####################################################################
             step = self.optimize()
+
+            try:
+                ts_image_indices = self.geometry.get_ts_image_indices()
+                # Create view on step with per image steps
+                image_steps = step.reshape(self.geometry.nimages, -1)
+            except AttributeError:
+                ts_image_indices = list()
+            for ts_image_index in ts_image_indices:
+                # Update view and underlying step array
+                image_steps[ts_image_index] = self.update_image_step(
+                    ts_image_index, prefix="TS"
+                )
+
             step_norm = np.linalg.norm(step)
             self.log(f"norm(step)={step_norm:.6f} au (rad)")
             for source, target in (
@@ -899,6 +1020,14 @@ class Optimizer(metaclass=abc.ABCMeta):
 
             if (self.cur_cycle % self.print_every) == 0 or self.is_converged:
                 self.print_opt_progress(conv_info)
+
+            if self.dump_ascii and not self.is_cos:
+                asciiart = self.geometry.as_ascii_art()
+                if asciiart != "":
+                    ascii_fn = self.get_path_for_fn("geom_ascii")
+                    with open(ascii_fn, "w") as handle:
+                        handle.write(asciiart)
+
             if self.is_converged:
                 self.table.print("Converged!")
                 break
@@ -906,7 +1035,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             elif self.assert_min_step and (step_norm <= self.min_step_norm):
                 raise ZeroStepLength
 
-            # Update coordinates
+            # Now actually apply the step to the stored Geometry/ChainOfStates object.
             new_coords = self.geometry.coords.copy() + step
             try:
                 self.geometry.coords = new_coords
@@ -915,7 +1044,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 # transformation is done iteratively.
                 self.steps[-1] = self.geometry.coords - self.coords[-1]
             except RebuiltInternalsException as exception:
-                print("Rebuilt internal coordinates!")
+                self.print("Rebuilt internal coordinates!")
                 rebuilt_fn = self.get_path_for_fn("rebuilt_primitives.xyz")
                 with open(rebuilt_fn, "w") as handle:
                     handle.write(self.geometry.as_xyz())
@@ -974,7 +1103,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 try:
                     prev_interfrag_dist = self.interfrag_dists[-1]
                     if interfrag_dist > prev_interfrag_dist:
-                        print("Interfragment distances increased!")
+                        self.print("Interfragment distances increased!")
                         self.stopped = True  # Can't use := in if clause
                         break
                 except IndexError:
@@ -993,16 +1122,20 @@ class Optimizer(metaclass=abc.ABCMeta):
                 break
 
             self.log("")
+            yield self.cur_cycle
         else:
             self.table.print("Number of cycles exceeded!")
 
-        # Outside loop
-        print()
+        #############################################
+        # Outside big loop driving the optimization #
+        #############################################
+
+        self.print("")
         if self.dump:
             self.out_trj_handle.close()
 
         if (not self.is_cos) and (not self.stopped):
-            print(self.final_summary())
+            self.print(self.final_summary())
             # Remove 'current_geometry.xyz' file
             try:
                 os.remove(self.current_fn)
@@ -1015,6 +1148,21 @@ class Optimizer(metaclass=abc.ABCMeta):
         )
         self.postprocess_opt()
         sys.stdout.flush()
+
+    @property
+    def run_generator(self):
+        try:
+            self._run_generator
+        except AttributeError:
+            self._run_generator = self.get_run_generator()
+        return self._run_generator
+
+    def run(self):
+        while True:
+            try:
+                next(self.run_generator)
+            except StopIteration:
+                return
 
     def _get_opt_restart_info(self):
         """To be re-implemented in the derived classes."""

@@ -4,6 +4,8 @@
 #     Zimmerman, 2013, Growing string with interpolation and optimization
 #                      in internal coordiantes
 
+import warnings
+
 import numpy as np
 
 from pysisyphus.optimizers.hessian_updates import double_damp
@@ -36,7 +38,10 @@ class StringOptimizer(Optimizer):
         assert self.keep_last >= 0
         self.lbfgs_when_full = lbfgs_when_full
         if self.lbfgs_when_full and (self.keep_last == 0):
-            print("lbfgs_when_full is True, but keep_last is 0!")
+            self.lbfgs_when_full = False
+            warnings.warn(
+                "lbfgs_when_full is True, but keep_last is 0! Disabled LBFGS!"
+            )
         self.gamma_mult = bool(gamma_mult)
         self.double_damp = bool(double_damp)
         self.scale_step = scale_step

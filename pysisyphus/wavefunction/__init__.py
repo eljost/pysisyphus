@@ -1,9 +1,8 @@
 import logging
 
-from pysisyphus import logger as pysis_logger
-
-logger = pysis_logger.getChild("wavefunction")
+logger = logging.getLogger("pysis.wavefunction")
 logger.setLevel(logging.DEBUG)
+
 
 from pysisyphus.wavefunction.shells import (
     get_l,
@@ -11,6 +10,7 @@ from pysisyphus.wavefunction.shells import (
     MoldenShells,
     ORCAShells,
     ORCAMoldenShells,
+    PySCFShells,
     Shell,
     Shells,
 )

@@ -168,8 +168,6 @@ class NEB(ChainOfStates):
         )
         total_forces = self.set_climbing_forces(total_forces)
         if self.bandwidth is not None:
-            # kappa = self.k
-            # breakpoint()
             stiff_stress = get_stiff_stress(
                 bandwidth=self.bandwidth,
                 kappa=self.k,

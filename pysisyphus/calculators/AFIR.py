@@ -13,11 +13,11 @@ import numpy.typing as npt
 
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.elem_data import COVALENT_RADII
+from pysisyphus.finite_diffs import finite_difference_hessian
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import complete_fragments
 from pysisyphus.helpers_pure import log
 from pysisyphus.io.hdf5 import get_h5_group, resize_h5_group
-from pysisyphus.linalg import finite_difference_hessian
 
 
 def get_data_model(atoms, max_cycles):

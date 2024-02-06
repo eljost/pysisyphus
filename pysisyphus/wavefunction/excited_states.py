@@ -2,15 +2,19 @@
 #     Quantitative wave function analysis for excited states
 #     of transition metal complexes
 #     Mai et al., 2018
+# [2] https://arxiv.org/pdf/2204.10135.pdf
+#     Density Functional Theory for Electronic Excited States
+#     Herbert, 2022
 
 import itertools as it
 from functools import partial
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
 
-from pysisyphus.wavefunction.wavefunction import Wavefunction
+if TYPE_CHECKING:
+    from pysisyphus.wavefunction.wavefunction import Wavefunction
 
 
 def norm_ci_coeffs(
@@ -114,7 +118,7 @@ def ct_numbers(
 
 
 def ct_numbers_for_states(
-    wf: Wavefunction,
+    wf: "Wavefunction",
     frags: List[List[int]],
     Ta: NDArray[float],
     Tb: Optional[NDArray[float]] = None,
@@ -155,6 +159,106 @@ def ct_numbers_for_states(
         om_b = ctn(Cb, occ_b, Tb)
     omegas = om_a + om_b
     return omegas
+
+
+def make_mo_density_matrix_for_root(
+    X: np.ndarray, Y: np.ndarray, restricted: bool, ov_corr: Optional[np.ndarray] = None
+):
+    """Construct (relaxed) density matrix from X, Y (and occ-virt. correction).
+
+    Parameters
+    ----------
+    X
+        2d-array containing excitation CI-coefficients w/ shape (nocc, nvirt).
+    Y
+        2d-array containing deexcitation CI-coefficients w/ shape (nocc, nvirt).
+    restricted
+        Whether the X and Y vectors were produced from a restricted calculation.
+    ov_corr
+        occ-virt/virt-occ correction, as obtained from ES gradient calculations.
+
+    Returns
+    -------
+    P
+        (Relaxed) density matrix in MO basis.
+    """
+    nocc, nvir = X.shape
+    nmos = nocc + nvir
+    occupations = np.zeros(nmos)
+    # Ground-state occupation. Unrestricted character is taken into account later.
+    occupations[:nocc] = 2.0
+    P = np.diag(occupations)
+
+    XpY = X + Y
+    XmY = X - Y
+    #     +-------------+
+    #     |  oo  |  ov  |
+    # P = |-------------|
+    #     |  vo  |  vv  |
+    #     +-------------+
+    dP_oo = np.einsum("ia,ja->ij", XpY, XpY) + np.einsum("ia,ja->ij", XmY, XmY)
+    dP_vv = np.einsum("ia,ic->ac", XpY, XpY) + np.einsum("ia,ic->ac", XmY, XmY)
+    # Eq. (42b) in [2]
+    P[:nocc, :nocc] -= dP_oo
+    # Eq. (42a) in [2]
+    P[nocc:, nocc:] += dP_vv
+    if not restricted:
+        P /= 2.0
+    # Add contribuation to occ-virt/virt-occ blocks, producing a relaxed
+    # density. At least for Turbomole calculation we have to add it after
+    # dividing by 2.0 in unrestricted calculations.
+    if ov_corr is not None:
+        P[:nocc, nocc:] -= ov_corr
+        P[nocc:, :nocc] -= ov_corr.T
+    return P
+
+
+def make_density_matrices_for_root(
+    rootm1: int,
+    restricted: bool,
+    Xa: np.ndarray,
+    Ya: np.ndarray,
+    Xb: np.ndarray,
+    Yb: np.ndarray,
+    ov_corr_a: Optional[np.ndarray] = None,
+    ov_corr_b: Optional[np.ndarray] = None,
+    Ca: Optional[np.ndarray] = None,
+    Cb: Optional[np.ndarray] = None,
+    renorm: bool = True,
+):
+    """Create relaxed/unrelaxed alpha and beta density matrices for an ES."""
+    assert Xa.shape == Ya.shape
+    assert Xb.shape == Yb.shape
+
+    if ov_corr_a is not None:
+        assert ov_corr_a.ndim == 2
+    if ov_corr_b is not None:
+        assert ov_corr_b.ndim == 2
+
+    # Density matrices are in MO basis
+    if restricted:
+        if renorm:
+            Xa, Ya = norm_ci_coeffs(Xa, Ya)
+        Pexc_a = make_mo_density_matrix_for_root(
+            Xa[rootm1], Ya[rootm1], True, ov_corr_a
+        )
+        Pexc_a /= 2.0
+        Pexc_b = Pexc_a.copy()
+    else:
+        if renorm:
+            Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+        Pexc_a = make_mo_density_matrix_for_root(
+            Xa[rootm1], Ya[rootm1], False, ov_corr_a
+        )
+        Pexc_b = make_mo_density_matrix_for_root(
+            Xb[rootm1], Yb[rootm1], False, ov_corr_b
+        )
+
+    # Transform to AO basis when MO coefficients were supplied
+    if Ca is not None and Cb is not None:
+        Pexc_a = Ca @ Pexc_a @ Ca.T
+        Pexc_b = Cb @ Pexc_b @ Cb.T
+    return Pexc_a, Pexc_b
 
 
 def mo_inds_from_tden(

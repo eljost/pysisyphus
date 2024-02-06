@@ -2,6 +2,9 @@
 #     Plasser, 2016
 # [2] https://doi.org/10.1002/jcc.25800
 #     Garcia, Campetella, 2019
+# [3] https://doi.org/10.1021/acs.jctc.0c00295
+#     First Principles Nonadiabatic Excited-State Molecular Dynamics in NWChem
+#     Song, Fischer, Zhang, Cramer, Mukamel, Govind, Tretiak, 2020
 
 from collections import namedtuple
 from pathlib import Path, PosixPath
@@ -10,6 +13,7 @@ import tempfile
 
 import h5py
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 from pysisyphus import logger
 from pysisyphus.calculators.Calculator import Calculator
@@ -74,6 +78,36 @@ def get_data_model(
     return data_model
 
 
+class GroundStateContext:
+    def __init__(self, calc):
+        self.calc = calc
+
+    def __enter__(self):
+        try:
+            self.root_bak = self.calc.root
+            self.calc.root = None
+            self.track_bak = self.calc.track
+            self.calc.track = False
+        except AttributeError:
+            pass
+        try:
+            self.wavefunction_dump_bak = self.calc.wavefunction_dump
+            self.calc.wavefunction_dump = True
+        except AttributeError:
+            pass
+
+    def __exit__(self, exc_type, exc_value, exc_trackback):
+        try:
+            self.calc.root = self.root_bak
+            self.calc.track = self.track_bak
+        except AttributeError:
+            pass
+        try:
+            self.calc.wavefunction_dump = self.wavefunction_dump_bak
+        except AttributeError:
+            pass
+
+
 class OverlapCalculator(Calculator):
     OVLP_TYPE_VERBOSE = {
         "wf": "wavefunction overlap",
@@ -104,6 +138,8 @@ class OverlapCalculator(Calculator):
     def __init__(
         self,
         *args,
+        root=None,
+        nroots=None,
         track=False,
         ovlp_type="tden",
         double_mol=False,
@@ -121,12 +157,19 @@ class OverlapCalculator(Calculator):
         conf_thresh=1e-3,
         # dyn_roots=0,
         mos_ref="cur",
-        mos_renorm=True,
+        mos_renorm: bool = True,
+        min_cost: bool = False,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
+        self.root = root
+        self.nroots = nroots
         self.track = track
+
+        # TODO: enable this, when all calculators implement self.root & self.nroots
+        # if self.track:
+        # assert self.root <= self.nroots, "'root' must be smaller " "than 'nroots'!"
         self.ovlp_type = ovlp_type
         assert (
             self.ovlp_type in self.OVLP_TYPE_VERBOSE.keys()
@@ -158,10 +201,10 @@ class OverlapCalculator(Calculator):
         jmol_cmd = get_cmd("jmol")
         mwfn_cmd = get_cmd("mwfn")
         if (self.cdds == "render") and not jmol_cmd:
-            logger.debug(msg.format(self.cdds, "Jmol", "calc"))
+            logger.warning(msg.format(self.cdds, "Jmol", "calc"))
             self.cdds = "calc"
         if (self.cdds in ("calc", "render")) and not mwfn_cmd:
-            logger.debug(msg.format(self.cdds, "Multiwfn", None))
+            logger.warning(msg.format(self.cdds, "Multiwfn", None))
             self.cdds = None
         self.log(f"cdds: {self.cdds}, jmol={jmol_cmd}, mwfn={mwfn_cmd}")
         assert self.cdds in self.VALID_CDDS
@@ -179,6 +222,7 @@ class OverlapCalculator(Calculator):
         self.mos_ref = mos_ref
         assert self.mos_ref in ("cur", "ref")
         self.mos_renorm = bool(mos_renorm)
+        self.min_cost = bool(min_cost)
 
         # assert self.ncore >= 0, "ncore must be a >= 0!"
 
@@ -219,7 +263,6 @@ class OverlapCalculator(Calculator):
         self.ref_cycle = 0
         self.ref_cycles = list()
         self.atoms = None
-        self.root = None
 
         if track:
             self.log(
@@ -718,9 +761,10 @@ class OverlapCalculator(Calculator):
         if ovlp_type is None:
             ovlp_type = self.ovlp_type
 
-        # Nothing to compare to if only one calculation was done yet.
+        # Nothing to compare to if only one calculation was done yet OR self.root
+        # is set to None, e.g., there is nothing to compare to.
         # Nonetheless, dump the first cycle to HDF5.
-        if self.stored_calculations < 2:
+        if (self.root is None) or (self.stored_calculations < 2):
             self.dump_overlap_data()
             self.log(
                 "Skipping overlap calculation in the first cycle "
@@ -740,6 +784,7 @@ class OverlapCalculator(Calculator):
             S_AO = self.get_sao_from_mo_coeffs(self.Ca_list[-1])
             self.log("Created S_AO to avoid its creation in WFOverlap.")
 
+        self.log(f"Calculating '{self.ovlp_type}' overlaps.")
         if ovlp_type == "wf":
             raise Exception("wf-overlaps are not yet implemented!")
             overlap_mats = self.get_wf_overlaps(S_AO=S_AO)
@@ -755,7 +800,7 @@ class OverlapCalculator(Calculator):
             overlaps = self.get_nto_overlaps(S_AO=S_AO, org=True)
         elif ovlp_type == "top":
             top_rs = self.get_top_differences(S_AO=S_AO)
-            overlaps = 1 - top_rs
+            overlaps = 1.0 - top_rs
         else:
             raise Exception(
                 "Invalid overlap type key! Use one of " + ", ".join(self.VALID_KEYS)
@@ -781,13 +826,28 @@ class OverlapCalculator(Calculator):
             row_ind += 1
         self.row_inds.append(row_ind)
         self.ref_cycles.append(self.ref_cycle)
-        self.log(
-            f"Reference is cycle {self.ref_cycle}, root {ref_root}. "
-            f"Analyzing row {row_ind} of the overlap matrix."
-        )
+        self.log(f"Reference is cycle {self.ref_cycle}, root {ref_root}.")
 
-        ref_root_row = overlaps[row_ind]
-        new_root = ref_root_row.argmax()
+        # As described in [3].
+        # Code contributed by PT.
+        if self.min_cost:
+            # Match all excited state of the current and the reference step to make the
+            # assignment more reasonable and avoid any double assignments.
+            self.log("Assigned roots using Kuhn-Munkres algorithm.")
+            _, col_inds = linear_sum_assignment(-overlaps)
+            ref_root_row = overlaps[row_ind]
+            new_root = col_inds[row_ind]
+            if ref_root_row.argmax() != new_root:
+                self.log(
+                    "The newly assigned root is not root of highest overlap because "
+                    "another row mapping to the same state had a higher overlap!"
+                )
+        else:
+            # Match the best root row wise/just pick the root w/ the highest overlap.
+            self.log(f"Analyzing row {row_ind} of the overlap matrix.")
+            ref_root_row = overlaps[row_ind]
+            new_root = ref_root_row.argmax()
+
         max_overlap = ref_root_row[new_root]
         if self.ovlp_type == "wf":
             new_root -= 1

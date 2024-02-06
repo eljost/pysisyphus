@@ -15,8 +15,13 @@ from pysisyphus import logger
 from pysisyphus import helpers_pure
 from pysisyphus.config import get_cmd, OUT_DIR_DEFAULT
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.exceptions import (
+    CalculationFailedException,
+    RunAfterCalculationFailedException,
+)
+from pysisyphus.finite_diffs import finite_difference_hessian_mp
 from pysisyphus.helpers import geom_loader
-from pysisyphus.linalg import finite_difference_hessian
+from pysisyphus.wavefunction import Wavefunction
 
 
 KeepKind = Enum("KeepKind", ["ALL", "LATEST", "NONE"])
@@ -37,7 +42,6 @@ class SetPlan:
 
 
 class Calculator:
-
     conf_key = None
     _set_plans = []
 
@@ -156,7 +160,9 @@ class Calculator:
         try:
             return get_cmd(section=self.conf_key, key=key, use_defaults=True)
         except KeyError:
-            logger.debug(f"Failed to load key '{key}' from section '{self.conf_key}'!")
+            logger.warning(
+                f"Failed to load key '{key}' from section '{self.conf_key}'!"
+            )
 
     @classmethod
     def geom_from_fn(cls, fn, **kwargs):
@@ -206,20 +212,21 @@ class Calculator:
             gradient = -results["forces"]
             return gradient
 
-        def callback(i, j):
-            self.log(f"Displacement {j} of coordinate  {i}")
+        def callback(i):
+            self.log(f"Displacement {i}")
 
         _num_hess_kwargs = {
             "step_size": 0.005,
-            # Central difference by default
+            # Central difference with two displacements by default
             "acc": 2,
         }
         _num_hess_kwargs.update(self.num_hess_kwargs)
 
-        fd_hessian = finite_difference_hessian(
+        fd_hessian = finite_difference_hessian_mp(
+            atoms,
             coords,
-            grad_func,
-            callback=callback,
+            self,
+            prepare_kwargs=prepare_kwargs,
             **_num_hess_kwargs,
         )
         results["hessian"] = fd_hessian
@@ -237,6 +244,20 @@ class Calculator:
         self.log("Restored original 'get_hessian' method.")
         self.get_hessian = self._org_get_hessian
         self.hessian_kind = HessKind["ORG"]
+
+    def get_wavefunction(self, atoms, coords, **prepare_kwargs):
+        """Meant to be extended."""
+        raise Exception("Not implemented!")
+
+    def get_relaxed_density(self, atoms, coords, root, **prepare_kwargs):
+        """Meant to be extended."""
+        raise Exception("Not implemented!")
+
+    def load_wavefunction_from_file(self, fn, **kwargs):
+        return Wavefunction.from_file(fn, **kwargs)
+
+    def get_stored_wavefunction(self, **kwargs):
+        raise Exception("Not implemented!")
 
     def make_fn(self, name, counter=None, return_str=False):
         """Make a full filename.
@@ -514,11 +535,15 @@ class Calculator:
                     shell=shell,
                 )
                 result.communicate()
+                returncode = result.returncode
+                nonzero_return = returncode != 0
                 try:
                     normal_termination = False
                     # Calling check_termination may result in an exception and
                     # normal_termination will stay at False
-                    normal_termination = self.check_termination(tmp_out_fn)
+                    normal_termination = (
+                        self.retry_calc == 0
+                    ) or self.check_termination(tmp_out_fn)
                 # Method check_termination may not be implemented, so we will always
                 # do only one try.
                 except AttributeError:
@@ -552,6 +577,14 @@ class Calculator:
 
         # Parse results for desired quantities
         try:
+            # Don't try to parse calculation results when the calculated already
+            # returned an nonzero error code.
+            if nonzero_return:
+                raise CalculationFailedException(
+                    msg=f"Calculation in '{path}' returned with code {returncode}!",
+                    path=path,
+                )
+
             if run_after:
                 self.run_after(path)
             parser_kwargs = {} if parser_kwargs is None else parser_kwargs
@@ -571,7 +604,9 @@ class Calculator:
                 f"Copied contents of\n\t'{path}'\nto\n\t'{backup_dir}'.\n"
                 "Consider checking the log files there.\n"
             )
-            raise err
+            raise RunAfterCalculationFailedException(
+                "Postprocessing calculation failed!", err
+            )
         finally:
             if (not hold) and self.clean_after:
                 self.clean(path)

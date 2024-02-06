@@ -2,6 +2,8 @@
 #     Toward a Systematic Molecular Orbital Theory for Excited States
 #     Foresman, Head-Gordon, Pople, Frisch, 1991
 
+import contextlib
+from enum import Enum
 import operator
 from pathlib import Path
 from typing import Dict, Literal, List, Optional, Tuple
@@ -10,8 +12,8 @@ import warnings
 import numpy as np
 from numpy.typing import NDArray
 
+from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.elem_data import nuc_charges_for_atoms, MASS_DICT
-from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.helpers import BFType
 from pysisyphus.wavefunction.multipole import (
@@ -22,6 +24,7 @@ from pysisyphus.wavefunction.shells import Shells
 
 
 Center = Literal["coc", "com"]
+DensityType = Enum("DensityType", ["UNRELAXED", "RELAXED"])
 
 
 class Wavefunction:
@@ -48,6 +51,7 @@ class Wavefunction:
         if self.mult != 1:
             unrestricted = True
         self.unrestricted = unrestricted
+        self.restricted = not self.unrestricted
         self.occ = occ
         if not self.unrestricted:
             assert self.occ[0] == self.occ[1]
@@ -77,7 +81,13 @@ class Wavefunction:
             )
 
         self._masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
-        self._densities = dict()
+
+        # Wavefunction must be initialized with the GS density
+        self._current_density_key = (0, DensityType.RELAXED)
+        self._densities = {
+            # self._current_density_key: self.P_tot,
+            self._current_density_key: self.P,
+        }
 
         if strict:
             self.check_sanity()
@@ -92,7 +102,7 @@ class Wavefunction:
         ]  # Density matrices in MO basis
         calc_occ_a = np.trace(Pa_mo)
         calc_occ_b = np.trace(Pb_mo)
-        assert np.isclose((calc_occ_a, calc_occ_b), self.occ).all()
+        np.testing.assert_allclose((calc_occ_a, calc_occ_b), self.occ)
 
         assert (
             self.ecp_electrons >= 0
@@ -109,6 +119,15 @@ class Wavefunction:
             f"{electrons_missing} electrons are missing! Did you forget to specify "
             "'ecp_electrons' and/or the correct 'charge'?"
         )
+
+    def get_permut_matrix(self):
+        bf_type = self.bf_type
+        if bf_type == BFType.CARTESIAN:
+            return self.shells.P_cart
+        elif bf_type == BFType.PURE_SPHERICAL:
+            return self.shells.P_sph
+        else:
+            raise Exception(f"Unknown {bf_type=}!")
 
     @property
     def atom_num(self):
@@ -132,32 +151,39 @@ class Wavefunction:
 
     @staticmethod
     def from_file(fn, **kwargs):
+        if str(fn).startswith("lib:"):
+            fn = WF_LIB_DIR / fn[4:]
         path = Path(fn)
 
+        if not path.exists():
+            raise FileNotFoundError(path)
+
         from_funcs = {
-            ".json": Wavefunction.from_orca_json,
+            ".bson": Wavefunction.from_orca_bson,
             ".fchk": Wavefunction.from_fchk,
+            ".json": Wavefunction.from_orca_json,
+            ".molden": Wavefunction.from_molden,
         }
-        from_funcs_for_str = (
-            # ORCA
-            ("Molden file created by orca_2mkl", Wavefunction.from_orca_molden),
+        from_funcs_for_line = (
+            # Molden format
+            ("[Molden Format]", Wavefunction.from_molden),
+            # AOMix, e.g. from Turbomole
             ("[AOMix Format", Wavefunction.from_aomix),
-            # OpenMolcas
-            # ("[N_Atoms]", Wavefunction.from_molden),  # seems buggy right now
         )
+        # If possible I would advise to stay away from .molden files :)
         try:
-            from_func = from_funcs[path.suffix.lower()]
+            from_func = from_funcs[path.suffix.lower().strip()]
         except KeyError:
-            # Search for certain strings in the file
+            # Try to guess wavefunction kind from first line
             with open(fn) as handle:
-                text = handle.read()
-            for key, func in from_funcs_for_str:
-                if key in text:
+                first_line = handle.readline().strip()
+            for key, func in from_funcs_for_line:
+                if first_line.startswith(key):
                     from_func = func
                     break
             else:
                 raise Exception("Could not determine file format!")
-        return from_func(fn, **kwargs)
+        return from_func(path, **kwargs)
 
     @staticmethod
     @file_or_str(".molden", ".molden.input")
@@ -169,7 +195,7 @@ class Wavefunction:
 
     @staticmethod
     @file_or_str(".json")
-    def from_orca_json(text):
+    def from_orca_json(text, **kwargs):
         """Create wavefunction from ORCA JSON.
 
         As of version 5.0.3 ORCA does not create JSON files for systems
@@ -177,8 +203,18 @@ class Wavefunction:
         args or kwargs in contrast to from_orca_molden."""
         from pysisyphus.io.orca import wavefunction_from_json
 
-        wf = wavefunction_from_json(text)
+        wf = wavefunction_from_json(text, **kwargs)
         return wf
+
+    @staticmethod
+    @file_or_str(".bson", mode="rb")
+    def from_orca_bson(text, **kwargs):
+        """Create wavefunction from ORCA BSON.
+
+        See from_orca_json for further comments."""
+        from pysisyphus.io.orca import wavefunction_from_bson
+
+        return wavefunction_from_bson(text, **kwargs)
 
     @staticmethod
     @file_or_str(".molden", ".molden.input")
@@ -193,26 +229,23 @@ class Wavefunction:
         wavefunction_from_molden will come up with an absurdly high charge.
         """
 
-        from pysisyphus.io.orca import wavefunction_from_molden
+        from pysisyphus.io.orca import wavefunction_from_orca_molden
 
-        wf = wavefunction_from_molden(text, **kwargs)
-        return wf
+        return wavefunction_from_orca_molden(text, **kwargs)
 
     @staticmethod
     @file_or_str(".molden", ".molden.input")
     def from_fchk(text, **kwargs):
         from pysisyphus.io.fchk import wavefunction_from_fchk
 
-        wf = wavefunction_from_fchk(text, **kwargs)
-        return wf
+        return wavefunction_from_fchk(text, **kwargs)
 
     @staticmethod
     @file_or_str(".in")
     def from_aomix(text, **kwargs):
         from pysisyphus.io.aomix import wavefunction_from_aomix
 
-        wf = wavefunction_from_aomix(text, **kwargs)
-        return wf
+        return wavefunction_from_aomix(text, **kwargs)
 
     @property
     def C_occ(self):
@@ -228,7 +261,7 @@ class Wavefunction:
 
     @property
     def P(self):
-        return [C_occ @ C_occ.T for C_occ in self.C_occ]
+        return np.array([C_occ @ C_occ.T for C_occ in self.C_occ])
 
     @property
     def P_tot(self):
@@ -256,6 +289,7 @@ class Wavefunction:
         # it to the AO basis and return.
         return C @ P @ C.T
 
+    """
     def store_density(self, P, name, ao_or_mo="ao"):
         assert P.ndim == 2, "Handling of alpha/beta densities is not yet implemented!"
         if ao_or_mo == "mo":
@@ -267,6 +301,40 @@ class Wavefunction:
 
     def get_density(self, name):
         return self._densities[name]
+    """
+
+    @property
+    def densities(self):
+        return self._densities
+
+    def set_current_density(self, key):
+        self._current_density_key = key
+
+    def get_current_density(self):
+        return self._densities[self._current_density_key]
+
+    @contextlib.contextmanager
+    def current_density(self, key):
+        key_bak = self._current_density_key
+        self.set_current_density(key)
+        try:
+            yield self
+        finally:
+            self.set_current_density(key_bak)
+
+    def get_current_total_density(self):
+        return self._densities[self._current_density_key].sum(axis=0)
+
+    def get_relaxed_density(self, root: int):
+        return self._densities[(root, DensityType.RELAXED)]
+
+    def get_total_relaxed_density(self, root: int):
+        return self.get_relaxed_density(root).sum(axis=0)
+
+    def set_relaxed_density(self, root: int, density: np.ndarray):
+        key = (root, DensityType.RELAXED)
+        self._densities[key] = density
+        return key
 
     def eval_density(self, coords3d, P=None):
         if P is None:
@@ -315,9 +383,6 @@ class Wavefunction:
         for i, aoc in enumerate(self.ao_centers):
             ao_center_map.setdefault(aoc, list()).append(i)
         return ao_center_map
-
-    def as_geom(self, **kwargs):
-        return Geometry(self.atoms, self.coords, **kwargs)
 
     @property
     def is_cartesian(self) -> bool:
@@ -407,7 +472,7 @@ class Wavefunction:
         if origin is None:
             origin = self.get_origin(kind=kind)
         if P is None:
-            P = self.P_tot
+            P = self.get_current_total_density()
         dipole_ints = self.dipole_ints(origin)
         return get_multipole_moment(
             1, self.coords3d, origin, dipole_ints, self.nuc_charges, P
@@ -426,7 +491,7 @@ class Wavefunction:
         if origin is None:
             origin = self.get_origin(kind=kind)
         if P is None:
-            P = self.P_tot
+            P = self.get_current_total_density()
         quadrupole_ints = self.quadrupole_ints(origin)
         return get_multipole_moment(
             2, self.coords3d, origin, quadrupole_ints, self.nuc_charges, P

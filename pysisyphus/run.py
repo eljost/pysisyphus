@@ -1,5 +1,6 @@
 import argparse
 from collections import namedtuple
+from collections.abc import Callable
 import copy
 import datetime
 import itertools as it
@@ -13,8 +14,9 @@ import shutil
 import sys
 import textwrap
 import time
+from typing import Union
 
-from distributed import Client
+import distributed
 import numpy as np
 import scipy as sp
 import yaml
@@ -53,6 +55,7 @@ from pysisyphus.helpers import (
 from pysisyphus.helpers_pure import (
     find_closest_sequence,
     merge_sets,
+    recursive_extract,
     recursive_update,
     highlight_text,
     approx_float,
@@ -353,9 +356,9 @@ def run_tsopt_from_cos(
 
     # Convert tangent from whatever coordinates to redundant internals.
     # When the HEI was splined the tangent will be in Cartesians.
-    if ts_coord_type == "cart":
+    if ts_coord_type in ("cart", "cartesian"):
         ref_tangent = cart_hei_tangent
-    elif ts_coord_type in ("redund", "dlc"):
+    elif ts_coord_type in ("redund", "dlc", "tric"):
         ref_tangent = ts_geom.internal.B @ cart_hei_tangent
     else:
         raise Exception(f"Invalid coord_type='{ts_coord_type}'!")
@@ -514,12 +517,51 @@ def run_tsopt_from_cos(
 
 
 def run_calculations(
-    geoms,
-    calc_getter,
-    scheduler=None,
-    assert_track=False,
-    run_func=None,
-):
+    geoms: list[Geometry],
+    calc_getter: Callable,
+    scheduler: Union[str, distributed.LocalCluster] = None,
+    assert_track: bool = False,
+    run_func: str = None,
+    one_calculator: bool = False,
+) -> tuple[list[Geometry], list[dict]]:
+    """Run calculations for all given geometries.
+
+    Sometimes one just wants to run a series of calculations for list of geometries,
+    w/o any optimization or IRC integration etc. This function will be executed when
+    the YAML inputs lacks any opt/tsopt/irc/... section.
+
+    Parameters
+    ----------
+    geoms
+        List of geometries. Depending on the values of the other arguments all
+        geometries must be/don't have to be compatible (same atom order). When
+        only one calculator is utilized all geometries must be compatible.
+    calc_getter
+        Function that returns a new calculator.
+    scheduler
+        Optional; address or distributed.LocalCluster that is utilized to carry out
+        all calculations in parallel.
+    assert_track
+        Whether it is asserted that ES tracking is enabled for all calculators.
+        I seem to have addes this flag > 5 years ago and today I can't tell you why
+        I did this.
+    run_func
+        By default 'run_calculation()' will be called for the calculator, but with
+        run_func another method name can be specified, e.g., 'get_hessian'.
+    one_calculator
+        Defaults to false. When enabled all calculations will be carried out using
+        the same calculator object. All geometries must be compatible (same atoms
+        and same atom order) and parallel calculations are not possible. This is a useful
+        option for excited state calculations along a path, e.g., from a COS calculation,
+        as all ES data will be dumped in one 'overlap_data.h5' file.
+
+    Returns
+    -------
+    geoms
+        List of geometries that were used for the calculations.
+    all_resuls
+        List of calculation results from the different calculations.
+    """
     print(highlight_text("Running calculations"))
 
     func_name = "run_calculation" if run_func is None else run_func
@@ -527,6 +569,20 @@ def run_calculations(
     def par_calc(geom):
         return getattr(geom.calculator, func_name)(geom.atoms, geom.coords)
 
+    if one_calculator:
+        geom0 = geoms[0]
+        for other_geom in geoms[1:]:
+            geom0.assert_compatibility(other_geom)
+        print("Doing all calculations with the same calculator.")
+        calc = calc_getter()
+        # Overwrite calc_getter to always return the same calculator
+        calc_getter = lambda: calc
+        if scheduler:
+            print(
+                "Parallel calculations are not possible with only one calculator. "
+                "Switching to serial mode."
+            )
+            scheduler = None
     for geom in geoms:
         geom.set_calculator(calc_getter())
 
@@ -536,7 +592,7 @@ def run_calculations(
         ), "'track: True' must be present in calc section."
 
     if scheduler:
-        client = Client(scheduler, pure=False, silence_logs=False)
+        client = distributed.Client(scheduler, pure=False, silence_logs=False)
         results_futures = client.map(par_calc, geoms)
         all_results = client.gather(results_futures)
     else:
@@ -548,7 +604,7 @@ def run_calculations(
             start = time.time()
             print(geom)
             results = getattr(geom.calculator, func_name)(geom.atoms, geom.cart_coords)
-            # results dict of MultiCalc will contain keys that can be dumped yet. So
+            # results dict of MultiCalc will contain keys that can't be dumped yet. So
             # we skip the JSON dumping when KeyError is raised.
             try:
                 as_json = results_to_json(results)
@@ -558,24 +614,25 @@ def run_calculations(
                 json_fn = calc.make_fn("results", counter=calc.calc_counter - 1)
                 with open(json_fn, "w") as handle:
                     handle.write(as_json)
+                msg = f"Dumped JSON results to '{json_fn}'."
             except KeyError:
-                print("Skipped JSON dump of calculation results!")
+                msg = "Skipped JSON dump of calculation results!"
+            print(msg)
 
-            hess_keys = [
-                key
-                for key, val in results.items()
-                if isinstance(val, dict) and "hessian" in val
-            ]
-            for hkey in hess_keys:
-                hres = results[hkey]
-                hfn = f"{hkey}_hessian.h5"
+            hessian_results = recursive_extract(results, "hessian")
+            energy_results = recursive_extract(results, "energy")
+            for (*rest, _), hessian in hessian_results.items():
+                energy_key = (*rest, "energy")
+                energy = energy_results[energy_key]
+                prefix = ("_".join(rest) if rest else calc.name) + "_"
+                h5_fn = f"{prefix}hessian.h5"
                 save_hessian(
-                    hfn,
+                    h5_fn,
                     geom,
-                    cart_hessian=hres["hessian"],
-                    energy=hres["energy"],
+                    cart_hessian=hessian,
+                    energy=energy,
                 )
-                print(f"Dumped hessian to '{hfn}'.")
+                print(f"Dumped hessian to '{h5_fn}'.")
 
             all_results.append(results)
             if i < (len(geoms) - 1):
@@ -1320,7 +1377,6 @@ RunResult = namedtuple(
 
 
 def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
-
     # Dump run_dict
     run_dict_copy = run_dict.copy()
     run_dict_copy["version"] = __version__
@@ -1372,6 +1428,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_run_func = calc_kwargs.pop("run_func", None)
+    calc_one_calc = calc_kwargs.pop("one_calculator", False)
     calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir / OUT_DIR_DEFAULT)
     calc_base_name = calc_kwargs.get("base_name", "calculator")
     if calc_key in ("oniom", "ext"):
@@ -1483,7 +1540,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         print_perf_results(perf_results)
     elif run_dict["afir"]:
         ts_guesses, afir_paths = run_afir_paths(
-            afir_key, geoms, calc_getter, **afir_kwargs,
+            afir_key,
+            geoms,
+            calc_getter,
+            **afir_kwargs,
         )
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
@@ -1502,7 +1562,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     elif any(
         [run_dict[key] is not None for key in ("opt", "tsopt", "irc", "mdp", "endopt")]
     ):
-
         #######
         # OPT #
         #######
@@ -1583,7 +1642,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         # if ran_irc and run_dict["endopt"]:
         if run_dict["endopt"]:
             if not ran_irc:
-
                 _, irc_geom, _ = geoms  # IRC geom should correspond to the TS
 
                 class DummyIRC:
@@ -1664,7 +1722,11 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Fallback when no specific job type was specified
     else:
         calced_geoms, calced_results = run_calculations(
-            geoms, calc_getter, scheduler, run_func=calc_run_func
+            geoms,
+            calc_getter,
+            scheduler,
+            run_func=calc_run_func,
+            one_calculator=calc_one_calc,
         )
 
     # We can't use locals() in the dict comprehension, as it runs in its own

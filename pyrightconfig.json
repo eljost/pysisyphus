@@ -4,6 +4,7 @@
   ],
   "exclude": [
     "pysisyphus/wavefunction/ints",
+    "pysisyphus/wavefunction/ints_numba",
     "pysisyphus/intcoords/derivatives.py",
     "pysisyphus/intcoords/mp_derivatives.py"
   ],

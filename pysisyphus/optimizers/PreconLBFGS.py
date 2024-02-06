@@ -231,14 +231,9 @@ class PreconLBFGS(Optimizer):
 
         # Determine step length
         if self.line_search_cls is not None:
-            kwargs = {
-                "geometry": self.geometry,
-                "p": step,
-                "f0": energy,
-                "g0": -forces,
-                "alpha_init": self.alpha_init,
-            }
-            line_search = self.line_search_cls(**kwargs)
+            line_search = self.line_search_cls(
+                self.geometry, step, alpha_init=self.alpha_init
+            )
             line_search_result = line_search.run()
             try:
                 alpha = line_search_result.alpha

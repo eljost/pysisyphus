@@ -108,13 +108,16 @@ class RFOptimizer(HessianOptimizer):
                 self.forces,
                 ref_step,
                 test_direction=self.gdiis_test_direction,
+                logger=self.logger,
             )
             self.successful_gdiis += 1 if diis_result else 0
         # Don't try GEDIIS if GDIIS failed. If GEDIIS should be tried after GDIIS failed
         # comment the line below and uncomment the line following it.
         elif self.gediis and can_gediis:
             # if self.gediis and can_gediis and (diis_result == None):
-            diis_result = gediis(self.coords, self.energies, self.forces, hessian=H)
+            diis_result = gediis(
+                self.coords, self.energies, self.forces, hessian=H, logger=self.logger
+            )
             self.successful_gediis += 1 if diis_result else 0
 
         try:

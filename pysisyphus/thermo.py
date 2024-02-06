@@ -61,12 +61,12 @@ Linear            : {{ thermo.linear }}
 +
 | Normal Mode Wavenumbers
 {{ sep }}
-{% for nu in used_nus -%}
- {{ "\t%04d" % loop.index }}: {{ nu }}
+{% for nu in org_nus -%}
+ {{ "\t%04d" % loop.index }}: {{ fmt_nu(nu) }}
 {% endfor -%}
 {{ sep }}
 {% if is_ts %}This should be a TS.{% endif %}
-Expected {{ expected }} normal modes, got {{ used_nus|length}}.
+Expected {{ expected }} real wavenumbers, got {{ used_nus|length}}.
 
 +
 | Inner energy U = U_el + U_vib + U_rot + U_trans
@@ -133,18 +133,19 @@ def print_thermoanalysis(
     sub_modes += 1 if is_ts else 0
     expected = 3 * thermo.atom_num - sub_modes
 
-    def fmt_nus(nus):
-        return [f"{nu: >8.2f} cm⁻¹" + (", excluded" if nu < 0.0 else "") for nu in nus]
+    def fmt_nu(nu):
+        return f"{nu: >8.2f} cm⁻¹" + (", excluded" if nu < 0.0 else "")
 
     rendered = THERMO_TPL.render(
         geom=geom,
         thermo=thermo,
         org_nus=thermo.org_wavenumbers,
-        used_nus=fmt_nus(thermo.wavenumbers),
+        used_nus=thermo.wavenumbers,
         expected=expected,
         is_ts=is_ts,
         sep=sep,
         fmt=fmt,
+        fmt_nu=fmt_nu,
     )
 
     if title is None:

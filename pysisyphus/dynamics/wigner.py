@@ -25,6 +25,7 @@ import argparse
 import functools
 from math import exp, pi
 from typing import Callable, Optional
+import secrets
 import sys
 
 import matplotlib.pyplot as plt
@@ -34,8 +35,9 @@ from numpy.polynomial.laguerre import Laguerre
 
 from pysisyphus.constants import AMU2AU, AU2EV, AU2SEC, C, KB, PLANCK
 from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.hessian_proj import get_hessian_projector
 from pysisyphus.io import geom_from_hessian
-from pysisyphus.Geometry import Geometry, get_trans_rot_projector
+from pysisyphus.Geometry import Geometry
 
 
 # From cm⁻¹ to angular frequency in atomic units
@@ -44,8 +46,14 @@ from pysisyphus.Geometry import Geometry, get_trans_rot_projector
 NU2ANGFREQAU = 2 * pi * 100 * C * AU2SEC
 
 
-def get_vib_state(wavenumber: float, temperature: Optional[float] = None) -> int:
+def get_vib_state(
+    wavenumber: float,
+    rng: Optional[np.random.Generator] = None,
+    temperature: Optional[float] = None,
+) -> int:
     """Return random vibrational state n for given wavenumber and temperature."""
+    if rng is None:
+        rng = np.random.default_rng()
     if temperature is None:
         return 0  # Ground state
 
@@ -89,7 +97,8 @@ def get_vib_state(wavenumber: float, temperature: Optional[float] = None) -> int
     # Generate random number that is smaller than the current sum.
     while True:
         # Sample from the possible interval
-        random_state = np.random.random() * thresh
+        random_state = rng.random() * thresh
+        random_state = rng.random() * thresh
         if random_state < probability_sum:
             break
 
@@ -112,12 +121,17 @@ def get_wigner_sampler(
     temperature: Optional[float] = None,
     nu_thresh: float = 20.0,
     stddevs: float = 6.0,
-) -> Callable:
+    seed: Optional[int] = None,
+) -> tuple[Callable, int]:
     assert coords3d.shape == (len(masses), 3)
     assert hessian.shape == (coords3d.size, coords3d.size)
 
+    if seed is None:
+        seed = secrets.randbits(128)
+    rng = np.random.default_rng(seed)
+
     # Projector to remove translation & rotation
-    Proj = get_trans_rot_projector(coords3d, masses, full=True)
+    Proj = get_hessian_projector(coords3d, masses, full=True)
     masses_rep = np.repeat(masses, 3)
     PM = Proj @ np.diag(1 / np.sqrt(masses_rep))
 
@@ -162,7 +176,7 @@ def get_wigner_sampler(
         Qs = np.zeros(nnus)
         Ps = np.zeros(nnus)
         for i in range(nnus):
-            n = get_vib_state(nus[i], temperature)
+            n = get_vib_state(nus[i], rng, temperature=temperature)
             try:
                 lag = laguerres[n]
             except KeyError:
@@ -175,7 +189,7 @@ def get_wigner_sampler(
             # to map 'ref' from [0, 1) to [0, 1/π)].
             prefact = (-1) ** n
             while True:
-                q, p, ref = np.random.random_sample(3)
+                q, p, ref = rng.random(3)
                 # Map q and p from [0, 1) onto chosen interval [-stddevs, stddevs)
                 q = q * span - stddevs
                 p = p * span - stddevs
@@ -205,11 +219,11 @@ def get_wigner_sampler(
         displ_coords3d = coords3d.copy() + displ.reshape(-1, 3)
 
         # Remove rotation & translation from velocities at new coordinates.
-        P = get_trans_rot_projector(displ_coords3d, masses, full=True)
+        P = get_hessian_projector(displ_coords3d, masses, full=True)
         velocities = P.dot(velocities)
         return displ_coords3d, velocities.reshape(-1, 3)
 
-    return sampler
+    return sampler, seed
 
 
 @get_wigner_sampler.register
@@ -218,9 +232,42 @@ def _(geom: Geometry, **kwargs):
 
 
 @get_wigner_sampler.register
-def _(h5_fn: str, **kwargs):
+def _(h5_fn: str):
     geom = geom_from_hessian(h5_fn)
     return get_wigner_sampler(geom)
+
+
+def plot_normal_coords(normal_coords):
+    ncoords, nnormal_coords = normal_coords.shape
+    fig, ax = plt.subplots()
+    ax.set_title(
+        f"Normal coordinate distribution from Wigner sampling ({ncoords} samples)"
+    )
+    ax.axhline(0.0, c="k", ls="--", zorder=0)
+    ax.violinplot(normal_coords)
+    ax.set_xlabel("Normal mode")
+    ax.set_ylabel("Normal coordinate")
+    ax.set_xlim(0, nnormal_coords + 1)
+    fig.tight_layout()
+    return fig, ax
+
+
+def to_normal_coords_getter(geom):
+    coords_eq = geom.coords
+    sqrt_masses = np.repeat(np.sqrt(geom.masses), 3)
+    M_sqrt = np.diag(sqrt_masses)
+    _, eigvecs = np.linalg.eigh(geom.eckart_projection(geom.mw_hessian, full=True))
+    drop_first = 5 if geom.is_linear else 6
+    eigvecs = eigvecs[:, drop_first:]
+
+    def to_normal_coords(coords):
+        displ = coords - coords_eq
+        displ_mw = M_sqrt @ displ
+        # Transform mass-weighted displacements to normal coordinates
+        norm_coords = eigvecs.T @ displ_mw
+        return norm_coords
+
+    return to_normal_coords
 
 
 def parse_args(args):
@@ -228,7 +275,13 @@ def parse_args(args):
     parser.add_argument("h5_fn", type=str, help="Filename of pysisyphus HDF5 Hessian.")
     parser.add_argument("-n", type=int, default=100, help="Number of samples.")
     parser.add_argument("-T", type=float, default=None, help="Temperature in K.")
+    parser.add_argument("--seed", type=int)
     parser.add_argument("--plotekin", action="store_true", help="Plot kinetic energy.")
+    parser.add_argument(
+        "--plotnormalcoords",
+        action="store_true",
+        help="Plot distribution of normal coordinates",
+    )
     return parser.parse_args(args)
 
 
@@ -238,16 +291,20 @@ def run():
     h5_fn = args.h5_fn
     n = args.n
     temperature = args.T
+    seed = args.seed
     plotekin = args.plotekin
+    plotnormalcoords = args.plotnormalcoords
 
     geom = geom_from_hessian(h5_fn)
 
-    sampler = get_wigner_sampler(geom, temperature=temperature)
+    sampler, seed = get_wigner_sampler(geom, temperature=temperature, seed=seed)
+    print(f"Seed: {seed}")
     xyzs = list()
-    velocities = np.zeros((n, len(geom.atoms), 3))
+    coords3d = np.empty((n, len(geom.atoms), 3))
+    velocities = np.empty_like(coords3d)
     for i in range(n):
-        c3d, velocities[i] = sampler()
-        xyzs.append(geom.as_xyz(cart_coords=c3d))
+        coords3d[i], velocities[i] = sampler()
+        xyzs.append(geom.as_xyz(cart_coords=coords3d[i]))
 
     trj_fn = f"samples_{n}.trj"
     with open(trj_fn, "w") as handle:
@@ -264,3 +321,9 @@ def run():
         _, ax = plt.subplots()
         ax.hist(E_kins_eV, bins=100)
         plt.show()
+    if plotnormalcoords:
+        to_normal_coords = to_normal_coords_getter(geom)
+        normal_coords = np.array([to_normal_coords(c3d.flatten()) for c3d in coords3d])
+        fig, ax = plot_normal_coords(normal_coords)
+        fig.tight_layout()
+        fig.savefig("normal_coords.pdf")

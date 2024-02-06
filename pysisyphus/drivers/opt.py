@@ -54,8 +54,8 @@ def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
     H = geom.eckart_projection(geom.mass_weigh_hessian(H))
     w, v = np.linalg.eigh(H)
     inds = [0, 1] if tsopt else [6]
-    # Converge the lowest two modes for TS optimizations; for minimizations the lowest
-    # mode would is enough.
+    # Converge the lowest two modes for TS optimizations, as only one must have a
+    # negative eigenvalue. For minimizations the lowest mode is enough.
     lowest = 2 if tsopt else 1
     guess_modes = [NormalMode(l, masses_rep) for l in v[:, inds].T]
 
@@ -105,6 +105,8 @@ def run_opt(
         for image in geom.images:
             image.set_calculator(calc_getter())
             title = str(geom)
+        # Initialize dask cluster, if required
+        cluster = geom.init_dask()
     else:
         geom.set_calculator(calc_getter())
         geom.cart_hessian = cart_hessian
@@ -138,6 +140,7 @@ def run_opt(
             print("Propagating chkfiles along COS")
             for j, image in enumerate(geom.images):
                 image.energy
+                print("\tcalculated wavefunction for image {j:03d}")
                 cur_calc = image.calculator
                 try:
                     next_calc = geom.images[j + 1].calculator
@@ -145,8 +148,10 @@ def run_opt(
                     pass
                 try:
                     next_calc.set_chkfiles(cur_calc.get_chkfiles())
+                    print("\tset wavefunction of image {j:03d} on image {j+1:03d}")
                 except AttributeError:
                     break
+                sys.stdout.flush()
 
         opt.run()
 
@@ -230,6 +235,10 @@ def run_opt(
         )
     print()
 
+    if is_cos:
+        # Shutdown dask cluster, if required
+        geom.exit_dask(cluster)
+
     opt_result = OptResult(opt, opt.geometry, opt.final_fn)
     return opt_result
 
@@ -247,7 +256,8 @@ def get_optimal_bias(
     k_thresh: float = 1e-3,
     strict=True,
 ) -> Tuple[OptResult, float, bool]:
-    """Driver to determine optimal bias value k for RMSD restraint.
+    """Driver to determine optimal bias value k for RMSD restraint,
+    as required in single point hessian (SPH) calculations.
 
     Parameters
     ----------
