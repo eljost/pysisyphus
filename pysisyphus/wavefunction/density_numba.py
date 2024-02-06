@@ -123,14 +123,19 @@ def eval_density(
         cur_blk_size = len(blk_coords3d)
 
         chis_cart = np.zeros((cur_blk_size, cart_size))
+        # The update to numba 0.59 made the declarations of RA and RA2 necessary.
+        # The actual values of RA and RA2 will always be computed in the first
+        # cycle of the loop over all shells, as 'cur_center_ind' will be NaN.
+        RA = np.empty(3)
+        RA2 = np.empty(3)
         for i, R in enumerate(blk_coords3d):
-            cur_center_ind = -1
+            cur_center_ind = np.nan
             for shell in shells:
                 La, A, center_ind, da, ax, a_ind, a_size = shell.as_tuple()
                 # Only recompute distance to grid point when we are at a new center
                 if center_ind != cur_center_ind:
-                    RA = R - A
-                    RA2 = RA**2
+                    RA[:] = R - A
+                    RA2[:] = RA**2
                     cur_center_ind = center_ind
                 cart_gto3d_rel(
                     La, ax, da, RA, RA2, chis_cart[i, a_ind : a_ind + a_size]
