@@ -584,7 +584,7 @@ class OverlapCalculator(Calculator):
             h5_group.attrs["ovlp_type"] = self.ovlp_type
             h5_group.attrs["ovlp_with"] = self.ovlp_with
             h5_group.attrs["orient"] = self.orient
-            h5_group.attrs["atoms"] = np.string_(self.atoms)
+            h5_group.attrs["atoms"] = np.bytes_(self.atoms)
 
             for key, shape in self.data_model.items():
                 try:
