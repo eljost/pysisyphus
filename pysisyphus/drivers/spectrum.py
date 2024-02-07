@@ -33,7 +33,9 @@ class Spectrum:
     epsilon: NDArray[float]
 
     def plot(self, **kwargs):
-        plot_spectrum(self.nm, self.epsilon, self.exc_ens_nm, self.fosc, **kwargs)
+        return plot_spectrum(
+            self.nm, self.epsilon, self.exc_ens_nm, self.fosc, **kwargs
+        )
 
     def save(self, fn):
         act_fn = Path(fn).with_suffix(".npz")
