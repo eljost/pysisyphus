@@ -400,6 +400,15 @@ class Wavefunction:
             BFType.PURE_SPHERICAL: lambda: self.shells.S_sph,
         }[self.bf_type]()
 
+    @property
+    def S_from_C(self):
+        """Reconstructed overlap-matrix from 1 = C.T @ S @ C.
+
+        It will have the same BFType as the underlying orbitals!"""
+        C, _ = self.C
+        C_inv = np.linalg.pinv(C, rcond=1e-8)
+        return C_inv.T @ C_inv
+
     def S_with_shells(self, other_shells):
         return {
             BFType.CARTESIAN: lambda: self.shells.get_S_cart(other_shells),

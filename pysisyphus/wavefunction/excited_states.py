@@ -5,6 +5,11 @@
 # [2] https://arxiv.org/pdf/2204.10135.pdf
 #     Density Functional Theory for Electronic Excited States
 #     Herbert, 2022
+# [3] https://doi.org/10.1021/acs.jpclett.1c00094
+#     Elucidating the Electronic Structure of a Delayed Fluorescence Emitter
+#     via Orbital Interactions, Excitation Energy Components,
+#     Charge-Transfer Numbers, and Vibrational Reorganization Energies
+#     Pei, Ou, Mao, Yang, Lande, Plasser, Liang, Shuai, Shao, 2021
 
 import itertools as it
 from functools import partial
@@ -95,6 +100,10 @@ def get_state_to_state_transition_density(
 def ct_numbers(
     C: NDArray[float], occ: int, Ts: NDArray[float], nfrags: int, frag_ao_map: Dict
 ) -> NDArray[float]:
+    """Charge-transfer numbers.
+
+    This function is based on [1]; a different implementation is described in the SI
+    of [3]."""
     frag_inds = list(range(nfrags))
     T_full = np.zeros_like(C)
     u, _, vh = np.linalg.svd(C)
