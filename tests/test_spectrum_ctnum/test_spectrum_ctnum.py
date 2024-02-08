@@ -27,4 +27,5 @@ def test_spectrum_ctnum(this_dir):
     foscs = states[:, 3]  # Oscillator strengths
     fig = ct_number_plot(geom.atoms, geom.cart_coords, exc_ens, foscs, ct_numbers)
     # import matplotlib.pyplot as plt
+
     # plt.show()

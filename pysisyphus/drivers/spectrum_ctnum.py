@@ -7,9 +7,13 @@ import matplotlib.patheffects
 import networkx as nx
 import numpy as np
 
+from pysisyphus.constants import AU2EV, _1OVER_AU2NM
 from pysisyphus.elem_data import COVALENT_RADII, CPK_RGB, get_tm_indices
 from pysisyphus.drivers.spectrum import spectrum_from_ens_fosc
 from pysisyphus.intcoords.setup import get_fragments, get_bond_sets
+
+
+_ALPHA = 0.75
 
 
 def get_frags_noh(atoms, coords, bond_inds):
@@ -30,12 +34,17 @@ def plot_geometry_graph(ax, atoms, coords3d, frags, bond_inds, scale=12.5):
     node_size = list()
     pos0 = dict()
     G = nx.Graph()
+    # Determine dimension w/ lowest variance
+    pos_variances = np.var(coords3d, axis=0)
+    drop_ind = pos_variances.argmin()
+    keep_dims = [i for i in range(3) if i != drop_ind]
     for i, atom in enumerate(atoms):
+        atom = atom.lower()
         node_color.append(CPK_RGB[atom])
         node_size.append(COVALENT_RADII[atom])
         if atom == "h":
             continue
-        pos0[i] = coords3d[i, :2]  # Drop dimension w/ lowest variance?
+        pos0[i] = coords3d[i, keep_dims]
         G.add_node(i, atom=atom)
     node_color = np.array(node_color)
     node_size = np.array(node_size)
@@ -102,6 +111,7 @@ def circle_arrow(ax, radius, cent_x, cent_y, start_deg, fill_deg, color="black")
         lw=3.5,
         color=color,
         zorder=10,
+        alpha=_ALPHA,
     )
     ax.add_patch(arc)
 
@@ -116,13 +126,16 @@ def circle_arrow(ax, radius, cent_x, cent_y, start_deg, fill_deg, color="black")
         orientation=np.radians(start_deg + fill_deg),
         color=color,
         zorder=10,
+        alpha=_ALPHA,
     )
     ax.add_patch(head)
     return [arc, head]
 
 
-def get_render_exc(ax, exc_ens_nm, foscs, ct_numbers, frag_pos):
+def get_render_exc(ax, exc_ens, foscs, ct_numbers, frag_pos):
     nfrags = len(frag_pos)
+    exc_ens_nm = _1OVER_AU2NM / exc_ens
+    exc_ens_eV = exc_ens * AU2EV
 
     def render_exc(ind, thresh=0.1):
         cts = ct_numbers[ind]
@@ -134,7 +147,7 @@ def get_render_exc(ax, exc_ens_nm, foscs, ct_numbers, frag_pos):
             from_pos = frag_pos[from_]
             fx, fy = from_pos
             # Loop over all fragments
-            for to_ in range(from_, nfrags):
+            for to_ in range(nfrags):
                 to_pos = frag_pos[to_]
                 ct = cts[from_, to_]
                 # Don't draw anything for small contributions
@@ -156,6 +169,7 @@ def get_render_exc(ax, exc_ens_nm, foscs, ct_numbers, frag_pos):
                         width=width,
                         length_includes_head=True,
                         zorder=10,
+                        alpha=_ALPHA,
                     )
                     patches.append(arrow)
                 # Draw a circular arrow for LE
@@ -187,11 +201,15 @@ def get_render_exc(ax, exc_ens_nm, foscs, ct_numbers, frag_pos):
     return render_exc
 
 
-def get_annotate_state(ax, exc_ens_nm, foscs):
+def get_annotate_state(ax, exc_ens, foscs):
+    exc_ens_nm = _1OVER_AU2NM / exc_ens
+    exc_ens_eV = exc_ens * AU2EV
+
     def annotate_state(ind):
         exc_en_nm = exc_ens_nm[ind]
+        exc_en_eV = exc_ens_eV[ind]
         fosc = foscs[ind]
-        text = f"{exc_en_nm:.2f} nm\nf={fosc:.5f}"
+        text = f"{exc_en_nm:.2f} nm, {exc_en_eV:.2f} eV\nf={fosc:.5f}"
         xy = (exc_en_nm, fosc)
         xytext = (exc_en_nm + 15.0, fosc + 0.125)
         annot = ax.annotate(
@@ -211,18 +229,22 @@ def get_annotate_state(ax, exc_ens_nm, foscs):
     return annotate_state
 
 
-def ct_number_plot(atoms, coords, exc_ens, foscs, ct_numbers, bond_inds=None):
+def ct_number_plot(
+    atoms, coords, exc_ens, foscs, ct_numbers, bond_inds=None, frags=None
+):
     if bond_inds is None:
         # Bond indices without interfragment bonds and/or hydrogen bonds
         bond_inds = get_bond_sets(atoms, coords.reshape(-1, 3))
 
-    frags = get_frags_noh(atoms, coords, bond_inds)
+    if frags is None:
+        frags = get_frags_noh(atoms, coords, bond_inds)
 
     nfrags = len(frags)
     nexcs = len(exc_ens)
     assert ct_numbers.shape == (nexcs, nfrags, nfrags)
     spectrum = spectrum_from_ens_fosc(exc_ens, foscs)
 
+    exc_ens = spectrum.exc_ens
     exc_ens_nm = spectrum.exc_ens_nm
     foscs = spectrum.fosc
     fosc_max = max(foscs.max() * 1.1, 0.1)
@@ -244,14 +266,16 @@ def ct_number_plot(atoms, coords, exc_ens, foscs, ct_numbers, bond_inds=None):
     ax0.plot(spectrum.nm, epsilon_fosc)
     # Use bar-plot for oscillator strengths, as stems from stem-plot are not pickable
     ax0.bar(exc_ens_nm, foscs, width=1.2, picker=True)
+    ax0.set_xlabel("ΔE / nm")
+    ax0.set_ylabel(r"f$_\mathrm{osc}$")
 
     exc_ind_max = nexcs - 1
 
     # Keep track of applied patches in this list so we can later delete them when
     # we cycle through the states.
     cur_patches = list()
-    annotate_state = get_annotate_state(ax0, exc_ens_nm, foscs)
-    render_exc = get_render_exc(ax1, exc_ens_nm, foscs, ct_numbers, frag_pos)
+    annotate_state = get_annotate_state(ax0, exc_ens, foscs)
+    render_exc = get_render_exc(ax1, exc_ens, foscs, ct_numbers, frag_pos)
 
     def update_plot(ind):
         # Delete patches (arrows, annotations, ...) that are already present

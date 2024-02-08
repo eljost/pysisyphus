@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
-from pysisyphus.constants import AU2J, C, M_E, NA, PLANCK, AU2EV
+from pysisyphus.constants import AU2J, _1OVER_AU2NM, C, M_E, NA, PLANCK, AU2EV
 
 
 # Computation of prefactor from Gaussian whitepaper
@@ -20,8 +20,6 @@ PREFACTOR = (  # Prefactor in eq. (5) of [1]
     np.sqrt(np.pi) * NA * Q_E_ESU**2 / (1e3 * np.log(10) * C_CM**2 * M_E_G)
 ) / NM2CM
 _04EV = 0.4 / AU2EV  # in Hartree
-# Factor used in converting energy in Hartree to wavelength
-_AU2NM = PLANCK * C * 1e9 / AU2J
 
 
 @dataclasses.dataclass
@@ -57,10 +55,6 @@ class Spectrum:
         return spectrum_from_ens_fosc(exc_ens, fosc, **kwargs)
 
 
-def au2nm(au):
-    return _AU2NM / au
-
-
 def get_grid(resolution, exc_ens, padding, min_, max_):
     from_ = max(min_, int(exc_ens.min() - padding))
     to_ = min(max_, int(exc_ens.max() + padding))
@@ -79,11 +73,11 @@ def homogeneous_broadening(
 
     σ = 0.0147 au corresponds to about 0.4 eV. The function yields molar
     extinction coefficients in l mol cm⁻¹."""
-    exc_ens_nm = au2nm(exc_ens)
+    exc_ens_nm = _1OVER_AU2NM / exc_ens
     if from_to is None:
         from_to = np.array((exc_ens_nm[0], exc_ens_nm[-1]))
     nm = get_grid(resolution, from_to, padding=100, min_=100, max_=900)
-    stddev_nm = au2nm(stddev)
+    stddev_nm = _1OVER_AU2NM / stddev
 
     quot = stddev_nm * (1 / nm[None, :] - (1 / exc_ens_nm[:, None]))
     exp_ = np.exp(-(quot**2))
@@ -93,7 +87,7 @@ def homogeneous_broadening(
 
 
 def spectrum_from_ens_fosc(exc_ens, fosc, **kwargs):
-    exc_ens_nm = au2nm(exc_ens)
+    exc_ens_nm = _1OVER_AU2NM / exc_ens
     nm, epsilon = homogeneous_broadening(exc_ens, fosc, **kwargs)
     spectrum = Spectrum(
         exc_ens=exc_ens,
