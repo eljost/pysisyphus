@@ -156,6 +156,7 @@ def ct_numbers_for_states(
     shells = wf.shells
     frag_ao_map = shells.fragment_ao_map(frags)
     nfrags = len(frags)
+    nstates = len(Ta)
 
     occ_a, occ_b = wf.occ
     Ca, Cb = wf.C
@@ -165,8 +166,10 @@ def ct_numbers_for_states(
     if Tb is None:
         om_b = om_a
     else:
+        assert Ta.shape == Tb.shape
         om_b = ctn(Cb, occ_b, Tb)
     omegas = om_a + om_b
+    omegas = omegas.reshape(nstates, nfrags, nfrags)
     return omegas
 
 

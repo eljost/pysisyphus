@@ -28,6 +28,11 @@ AU2KJPERMOL = AU2J / 1000 * spc.Avogadro
 AU2KCALPERMOL = AU2KJPERMOL / spc.calorie
 # Hartree to eV
 AU2EV = spc.value("Hartree energy in eV")
+# Hartree to wavelength in nm
+# ! This is not a multiplicative constant but it must be divided
+# ! by the energy in Hartree to yield an excitation energy in nm
+_1OVER_AU2NM = PLANCK * C * 1e9 / AU2J
+# !
 # Joule to eV
 JOULE2EV = AU2EV / AU2J
 # Wavenumber to Hartree
