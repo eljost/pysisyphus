@@ -89,7 +89,7 @@ class Wavefunction:
             self._current_density_key: self.P,
         }
 
-        if strict:
+        if strict and self.shells is not None:
             self.check_sanity()
 
     def check_sanity(self):
