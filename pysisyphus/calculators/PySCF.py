@@ -13,7 +13,7 @@ from pysisyphus.wavefunction import PySCFShells, Shell, Wavefunction
 from pysisyphus.wavefunction.helpers import BFType
 
 
-def from_pyscf_mol(mol):
+def from_pyscf_mol(mol, **kwargs):
     shells = list()
     for bas_id in range(mol.nbas):
         L = mol.bas_angular(bas_id)
@@ -26,7 +26,7 @@ def from_pyscf_mol(mol):
         atomic_num = ATOMIC_NUMBERS[atom_symbol.lower()]
         shell = Shell(L, center, coeffs, exps, center_ind, atomic_num)
         shells.append(shell)
-    return PySCFShells(shells)
+    return PySCFShells(shells, **kwargs)
 
 
 def kernel_to_wavefunction(mf):
