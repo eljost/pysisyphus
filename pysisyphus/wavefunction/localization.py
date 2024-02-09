@@ -1,29 +1,28 @@
-# [1] https://doi.org/10.1002/jcc.540140615
-#     Comparison of the Boys and Pipek–Mezey localizations in the local
-#     correlation approach and automatic virtual basis selection
-#     Boughton, Pulay, 1993
-# [2] https://doi.org/10.1063/1.2360264
-#     Fast noniterative orbital localization for large molecules
-#     Aquilante, Pedersen, 2006
-# [3] https://doi.org/10.1063/1.3042233
-#     Constructing diabatic states from adiabatic states: Extending
-#     generalized Mulliken–Hush to multiple charge centers with Boys localization
-#     Subotnik, Yeganeh, Cave, Ratner, 2008
-# [4] https://doi.org/10.1063/1.1681683
-#     Localized molecular orbitals for polyatomic molecules.
-#     I. A comparison of the Edmiston‐Ruedenberg and Boys localization methods
-#     Kleier, Halgren, Hall Jr., Lipscomb, 1974
-# [5] https://doi.org/10.1063/1.4894472
-#     Diabatization based on the dipole and quadrupole: The DQ method
-#     Hoyer, Xu, Ma, Gagliardi, Truhlar, 2014
-# [6] https://pubs.acs.org/doi/pdf/10.1021/acs.jctc.2c00261
-#     Implementation of Occupied and Virtual Edmiston−Ruedenberg
-#     Orbitals Using Cholesky Decomposed Integrals
-# [7] https://doi.org/10.1063/1.1790971
-#     An efficient method for calculating maxima of homogeneous
-#     functions of orthogonal matrices: Applications to localized
-#     occupied orbitals
-
+# [1]  https://doi.org/10.1002/jcc.540140615
+#      Comparison of the Boys and Pipek–Mezey localizations in the local
+#      correlation approach and automatic virtual basis selection
+#      Boughton, Pulay, 1993
+# [2]  https://doi.org/10.1063/1.2360264
+#      Fast noniterative orbital localization for large molecules
+#      Aquilante, Pedersen, 2006
+# [3]  https://doi.org/10.1063/1.3042233
+#      Constructing diabatic states from adiabatic states: Extending
+#      generalized Mulliken–Hush to multiple charge centers with Boys localization
+#      Subotnik, Yeganeh, Cave, Ratner, 2008
+# [4]  https://doi.org/10.1063/1.1681683
+#      Localized molecular orbitals for polyatomic molecules.
+#      I. A comparison of the Edmiston‐Ruedenberg and Boys localization methods
+#      Kleier, Halgren, Hall Jr., Lipscomb, 1974
+# [5]  https://doi.org/10.1063/1.4894472
+#      Diabatization based on the dipole and quadrupole: The DQ method
+#      Hoyer, Xu, Ma, Gagliardi, Truhlar, 2014
+# [6]  https://pubs.acs.org/doi/pdf/10.1021/acs.jctc.2c00261
+#      Implementation of Occupied and Virtual Edmiston−Ruedenberg
+#      Orbitals Using Cholesky Decomposed Integrals
+# [7]  https://doi.org/10.1063/1.1790971
+#      An efficient method for calculating maxima of homogeneous
+#      functions of orthogonal matrices: Applications to localized
+#      occupied orbitals
 
 from dataclasses import dataclass
 from functools import singledispatch
@@ -138,7 +137,7 @@ def jacobi_sweeps(
     if callback is None:
         callback = lambda *args: None
 
-    P_prev = 0.0
+    P_prev = np.nan
 
     logger.info(f"Starting Jacobi sweeps.")
     for i in range(max_cycles):
@@ -160,7 +159,7 @@ def jacobi_sweeps(
         P = cost_func(C)
         dP = P - P_prev
         logger.info(f"{i:03d}: {P=: >12.8f} {dP=: >12.8f}")
-        if is_converged := (dP <= dP_thresh):
+        if is_converged := (abs(dP) <= dP_thresh):
             logger.info(f"Jacobi sweeps converged in {i+1} cycles.")
             break
         P_prev = P
