@@ -502,10 +502,10 @@ class Shells:
         )
 
     @staticmethod
-    def from_pyscf_mol(mol):
+    def from_pyscf_mol(mol, **kwargs):
         from pysisyphus.calculators.PySCF import from_pyscf_mol
 
-        return from_pyscf_mol(mol)
+        return from_pyscf_mol(mol, **kwargs)
 
     def to_pyscf_mol(self):
         # TODO: this would be better suited as a method of Wavefunction,
