@@ -9,6 +9,16 @@
 #     Constructing diabatic states from adiabatic states: Extending
 #     generalized Mulliken–Hush to multiple charge centers with Boys localization
 #     Subotnik, Yeganeh, Cave, Ratner, 2008
+# [4]  https://doi.org/10.1007/BF01113521
+#      Efficient use of Jacobi rotations for orbital optimization and localization
+#      Raffenetti, Ruedenberg, Janssen, Schaefer, 1993
+# [5]  https://doi.org/10.1103/RevModPhys.35.457
+#      Localized Atomic and Molecular Orbitals
+#      Edmiston, Ruedenberg, 1963
+# [6] https://doi.org/10.1063/1.3148777
+#      The initial and final states of electron and energy transfer processes:
+#      Diabatization as motivated by system-solvent interactions
+#      Subotnik, Cave, Steele, Shenvi, 2009
 
 from dataclasses import dataclass
 from typing import Optional
@@ -16,6 +26,7 @@ from typing import Optional
 from jinja2 import Template
 import numpy as np
 from numpy.typing import NDArray
+from scipy.stats import special_ortho_group
 
 from pysisyphus.helpers_pure import highlight_text, to_subscript_num
 from pysisyphus.wavefunction import logger
@@ -25,6 +36,12 @@ from pysisyphus.wavefunction.localization import (
     get_fb_ab_func,
     get_fb_cost_func,
 )
+
+
+def get_random_U(N):
+    """Get random rotation matrix."""
+    return special_ortho_group.rvs(N)
+
 
 DQTemplate = Template(
     """{{ name }}
@@ -55,6 +72,8 @@ def dq_jacobi_sweeps(
     epots: Optional[NDArray[float]] = None,
     alpha: Optional[float] = 10.0,
     beta: Optional[float] = 1.0,
+    random: bool = False,
+    jc_kwargs: Optional[dict] = None,
 ) -> JacobiSweepResult:
     """Rotation matrix from DQ-diabatization as outlined in [1], [2] and [3].
 
@@ -85,6 +104,10 @@ def dq_jacobi_sweeps(
         Scaling factor for quadrupole moment contribution.
     beta
         Scaling factor for electrostatic potential contribution.
+    random
+        Boolean that controls if we start from the original adiabatic states (rotation
+        matrix U is the identity matrix) or if we start from randomly mixed states. In
+        high symmetry systems it may be beneficial to start from a random state.
 
     Returns
     -------
@@ -92,8 +115,15 @@ def dq_jacobi_sweeps(
         Diabatization result.
     """
 
+    if jc_kwargs is None:
+        jc_kwargs = {}
+
     _, nstates, _ = dip_moms.shape
-    U = np.eye(nstates)
+
+    if random:
+        U = get_random_U(nstates)
+    else:
+        U = np.eye(nstates)
 
     assert dip_moms.shape == (3, *U.shape)
     assert U.ndim == 2
@@ -145,7 +175,94 @@ def dq_jacobi_sweeps(
         beta=beta,
     )
     logger.info(msg)
-    return jacobi_sweeps(U, cost_func, ab_func)
+
+    return jacobi_sweeps(U, cost_func, ab_func, **jc_kwargs)
+
+
+ERTemplate = Template(
+    """{{ name }}
+
+Coulomb-Tensor R
+--------------
+{{ R }}
+
+"""
+)
+
+
+def edmiston_ruedenberg_jacobi_sweeps(
+    R: np.ndarray, random: bool = False, jc_kwargs: Optional[dict] = None
+) -> JacobiSweepResult:
+    """Edmiston-Ruedenberg localization using Jacobi sweeps.
+
+    By any means, this is not intended to be used to localize (many) orbitals,
+    but to diabatize adiabatic electronic states. The tensor R contains the
+    expectation values of the 2-electron Coulomb operator for the different
+    adiabatic states and the transition densities between them.
+
+    The rotated tensor R_rot is a quartic function of the 2d rotation matrix U and
+    the current implementation using einsum scales as N⁵, with N being the number
+    of states. As the this function is intended to be used for diabatization, N
+    should be a small number, so the N⁵ shouldn't matter.
+
+    Parameters
+    ----------
+    R
+        4d-tensor of shape (nstates, nstates, nstates, nstates), containing
+        2-electron integrals contracted with the relaxed
+        densities of the different states and the transition densities between
+        them. See eqs. (A8) and (A10) in [6] on how to calculate it.
+    random
+        Boolean that controls if we start from the original adiabatic states (rotation
+        matrix U is the identity matrix) or if we start from randomly mixed states. In
+        high symmetry systems it may be beneficial to start from a random state.
+    jc_kwargs
+        Optinal kwargs for the Jacobi-Sweeps function.
+
+    Returns
+    -------
+    JacobiSweepResult
+        Dataclass containing all relevant parameters & results of the Jacobi-Sweeps
+        run.
+    """
+    if jc_kwargs is None:
+        jc_kwargs = {}
+
+    nstates = len(R)
+    assert R.shape == (nstates, nstates, nstates, nstates)
+
+    if random:
+        U = get_random_U(nstates)
+    else:
+        U = np.eye(nstates)
+
+    def ab_func(j, k, U):
+        # See eq. (2.2) in [4]
+        R_rot = np.einsum("jJ,kK,lL,mM,JKLM->jklm", U, U, U, U, R, optimize="greedy")
+        # The attentive reader may notice, that the implementation of A below is not
+        # eq. (17) from [5] but it is the negative of it. Depending on how the angle α
+        # is calculated (three variants are given in eq. (19) in [5]), different arguments
+        # are used for the trigonometric functions. Our Jacobi-sweeps implementation
+        # uses arccos, to recover the angle from, so we have to return -A, instead of A.
+        # The sign of B doesn't matter, as it only appears squared in the denominator of
+        # eq. (19) in [5].
+        A = -R_rot[j, k, j, k] + 0.25 * (
+            R_rot[j, j, j, j] - 2 * R_rot[j, j, k, k] + R_rot[k, k, k, k]
+        )
+        B = R_rot[j, j, j, k] - R_rot[k, k, j, k]
+        return A, B
+
+    def cost_func(U):
+        # Eq. (A9) in [6]
+        return np.einsum("JI,KI,LI,MI,JKLM->", U, U, U, U, R)
+
+    msg = ERTemplate.render(
+        name=highlight_text("Edmiston-Ruedenberg-diabatization"),
+        R=R,
+    )
+    logger.info(msg)
+
+    return jacobi_sweeps(U, cost_func, ab_func, **jc_kwargs)
 
 
 DiaResultTemplate = Template(
@@ -192,20 +309,22 @@ Absolute diabatic couplings
 
 @dataclass
 class DiabatizationResult:
-    U: NDArray[float]
-    adia_ens: NDArray[float]
+    U: np.ndarray
+    adia_ens: np.ndarray
     # U and adia_ens should be enough ... the rest should be optional.
     # dia_ens can be calculated by rotationg the adiabatic energy matrix,
     # which is just a diagonal matrix containing the adiabatic energies.
-    dia_ens: NDArray[float]
-    adia_mat: NDArray[float]
-    dia_mat: NDArray[float]
+    dia_ens: np.ndarray
+    adia_mat: np.ndarray
+    dia_mat: np.ndarray
     is_converged: bool
     cur_cycle: int
     P: float
-    dip_moms: Optional[NDArray] = None
-    quad_moms: Optional[NDArray] = None
-    epots: Optional[NDArray] = None
+    # TODO: store rotated/mixed properties instead of original ones?
+    dip_moms: Optional[np.ndarray] = None
+    quad_moms: Optional[np.ndarray] = None
+    epots: Optional[np.ndarray] = None
+    R: Optional[np.ndarray] = None
 
     @property
     def nstates(self):
@@ -303,5 +422,24 @@ def dq_diabatization(adia_ens, dip_moms, quad_moms=None, epots=None, **kwargs):
         dip_moms=dip_moms,
         quad_moms=quad_moms,
         epots=epots,
+    )
+    return dia_result
+
+
+def edmiston_ruedenberg_diabatization(adia_ens, R, **kwargs):
+    jac_res = edmiston_ruedenberg_jacobi_sweeps(R, **kwargs)
+    U = jac_res.C
+    adia_mat = np.diag(adia_ens)
+    dia_mat = U.T @ adia_mat @ U
+    dia_ens = np.diag(dia_mat)
+    dia_result = DiabatizationResult(
+        U=U,
+        adia_ens=adia_ens,
+        dia_ens=dia_ens,
+        adia_mat=adia_mat,
+        dia_mat=dia_mat,
+        is_converged=jac_res.is_converged,
+        cur_cycle=jac_res.cur_cycle,
+        P=jac_res.P,
     )
     return dia_result
