@@ -132,6 +132,7 @@ class CFOUR(Calculator):
         pysis_centroid = self.calc_centroid(pysis_coords_3d)
 
         rot_matrix = self.calc_rot_matrix(cfour_coords_3d, pysis_coords_3d, cfour_centroid, pysis_centroid)
+
         t = self.calc_translation(rot_matrix, cfour_centroid, pysis_centroid)
 
         return (gradient @ rot_matrix.T) + t
