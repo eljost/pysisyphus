@@ -101,7 +101,9 @@ class CFOUR(Calculator):
         mobj = re.search(regex, text, re.DOTALL)
         energy = float(mobj.groups()[0])
 
-        return energy
+        return {
+            "energy": energy
+        }
 
     def parse_gradient(self, path):
         ## Adapted from OpenMolcas calculator
@@ -115,7 +117,7 @@ class CFOUR(Calculator):
 
         gradient_rotated = self.rotate_gradient(text, gradient).flatten()
 
-        energy = self.parse_energy(path)
+        energy = self.parse_energy(path)["energy"]
         results["energy"] = energy
         results["forces"] = -gradient_rotated
 
