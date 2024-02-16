@@ -23,6 +23,7 @@ class CFOUR(Calculator):
 
         self.inp_fn = 'ZMAT'
         self.out_fn = 'out.log'
+        self.gradient_fn = 'GRD'
         self.to_keep = ("out.log", "density:__den.dat")
         self.initden = None
         if keep_molden:
@@ -91,24 +92,13 @@ class CFOUR(Calculator):
     def parse_gradient(self, path):
         ## Adapted from OpenMolcas calculator
         results = {}
-        gradient_fn = path / self.out_fn
-        with open(gradient_fn) as handle:
+        gradient_fn = path / self.gradient_fn
+        gradient = np.loadtxt(gradient_fn, skiprows=1)
+        natoms = int(gradient.shape[0] / 2)
+        gradient = gradient[natoms:, 1:]
+        with open(path / self.out_fn) as handle:
             text = handle.read()
 
-        # Search for the block containing the gradient table
-        regex = "gradient from JOBARC(.+)--executable xjoda finished"
-        floats = [self.float_regex for i in range(3)]
-        line_regex = r"^\s*" + r"\s*".join(floats) + r"\s*$"  ## Nothing but floats on the gradient lines
-
-        mobj = re.search(regex, text, re.DOTALL)
-        gradient = list()
-        for line in mobj.groups()[0].split("\n"):
-            # Now look for the lines containing the gradient
-            mobj = re.match(line_regex, line.strip())
-            if not mobj:
-                continue
-            gradient.append(mobj.groups())
-        gradient = np.array(gradient, dtype=float)
         gradient_rotated = self.rotate_gradient(text, gradient).flatten()
 
         energy = self.parse_energy(path)
