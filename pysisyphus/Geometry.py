@@ -258,12 +258,12 @@ class Geometry:
         ), f"'freeze_atoms' must all be >= 0 and < {len(self.atoms)}!"
 
         # Disallow any coord_kwargs with coord_type == 'cart'
-        # if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
-        #     print(
-        #         "coord_type is set to 'cart' but coord_kwargs were given. "
-        #         "This is probably not intended. Exiting!"
-        #     )
-        #     sys.exit()
+        if (coord_type == "cart") and not (coord_kwargs is None or coord_kwargs == {}):
+            print(
+                "coord_type is set to 'cart' but coord_kwargs were given. "
+                "This is probably not intended. Exiting!"
+            )
+            sys.exit()
 
         # Coordinate systems are handled below
         coord_class = self.coord_types[self.coord_type]
