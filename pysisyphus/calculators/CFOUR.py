@@ -17,6 +17,20 @@ class CFOUR(Calculator):
             initden_file=None,
             **kwargs,
     ):
+        """CFOUR calculator.
+
+        Wrapper handling CFOUR ground state energy and gradient calculations.
+        Memory must be specified as a CFOUR keyword (not checked).
+
+        Parameters
+        ----------
+        cfour_input : dict
+            CFOUR keywords and values. Note: "on" must be encapsulated in quotes to avoid being translated to True by YAML.
+        keep_molden : bool, optional
+            Whether or not to keep ground state SCF orbitals for each geometry step.
+        initden_file: str, optional
+            Path to an input initden file for use as a guess SCF density.
+        """
         super().__init__(**kwargs)
 
         self.cfour_input = cfour_input
