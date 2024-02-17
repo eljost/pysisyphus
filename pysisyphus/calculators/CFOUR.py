@@ -129,15 +129,12 @@ class CFOUR(Calculator):
 
         cfour_coords_3d = self.read_geom(text)
         pysis_coords_3d = np.reshape(self.input_coords, (-1,3))
-
         cfour_centroid = self.calc_centroid(cfour_coords_3d)
         pysis_centroid = self.calc_centroid(pysis_coords_3d)
 
         rot_matrix = self.calc_rot_matrix(cfour_coords_3d, pysis_coords_3d, cfour_centroid, pysis_centroid)
 
-        t = self.calc_translation(rot_matrix, cfour_centroid, pysis_centroid)
-
-        return (gradient @ rot_matrix.T) + t
+        return (gradient @ rot_matrix.T)
 
     def read_geom(self, text):
         regex = r"Coordinates used in calculation \(QCOMP\)(.+)Interatomic distance matrix"
@@ -172,9 +169,6 @@ class CFOUR(Calculator):
             R = V @ U.T
 
         return R
-
-    def calc_translation(self, rotation_matrix, cfour_centroid, pysis_centroid):
-        return pysis_centroid - rotation_matrix @ cfour_centroid
 
     def run_calculation(self, atoms, coords, calc_type):
         self.input_coords = coords  ## For use later to rotate CFOUR gradient to the pysisyphus frame
