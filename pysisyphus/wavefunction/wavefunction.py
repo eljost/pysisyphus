@@ -271,7 +271,7 @@ class Wavefunction:
         """
         Eqs. (2.25) and (2.26) in [1].
         """
-        trans_dens *= 2**0.5 / 2
+        trans_dens = trans_dens * 2**0.5 / 2
         occ_a, occ_b = self.occ
         assert occ_a == occ_b
         occ = occ_a
@@ -574,5 +574,5 @@ class Wavefunction:
         is_restricted = "unrestricted" if self.unrestricted else "restricted"
         return (
             f"Wavefunction({self.atom_num} atoms, charge={self.charge}, {is_restricted}, "
-            f"mult={self.mult})"
+            f"mult={self.mult}, {self.bf_type.name})"
         )
