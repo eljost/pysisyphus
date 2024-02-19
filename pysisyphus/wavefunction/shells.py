@@ -364,8 +364,9 @@ class Shells:
             L, _, _, exponents, _, _ = shell.as_tuple()
             contr_coeffs = shell.coeffs_org
             nprim = len(contr_coeffs)
-            # ncontr is hardcoded to 1 for now, as there are no special functions
-            # to handle general contractions.
+            # ncontr is hardcoded to 1 for now, as pysisyphus (currently and in
+            # the forseeable future) does not distinguish between segmented and
+            # general contractions.
             ncontr = 1
             bas_spec.append((shell_ind, L, nprim, ncontr, pointer))
             bas_data.extend(contr_coeffs)
@@ -373,8 +374,8 @@ class Shells:
             bas_data.extend(exponents)
             pointer += nprim
 
-        bas_centers = np.array(bas_centers, dtype=int)
-        bas_spec = np.array(bas_spec, dtype=int)
+        bas_centers = np.array(bas_centers, dtype=np.int32)
+        bas_spec = np.array(bas_spec, dtype=np.int32)
         bas_data = np.array(bas_data, dtype=float)
         return bas_centers, bas_spec, bas_data
 
