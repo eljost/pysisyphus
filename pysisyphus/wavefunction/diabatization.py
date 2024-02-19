@@ -22,6 +22,7 @@
 
 from dataclasses import dataclass
 from typing import Optional
+import warnings
 
 from jinja2 import Template
 import numpy as np
@@ -35,6 +36,7 @@ from pysisyphus.wavefunction.localization import (
     jacobi_sweeps,
     get_fb_ab_func,
     get_fb_cost_func,
+    edmiston_ruedenberg,
 )
 
 
@@ -73,7 +75,6 @@ def dq_jacobi_sweeps(
     alpha: Optional[float] = 10.0,
     beta: Optional[float] = 1.0,
     random: bool = False,
-    jc_kwargs: Optional[dict] = None,
 ) -> JacobiSweepResult:
     """Rotation matrix from DQ-diabatization as outlined in [1], [2] and [3].
 
@@ -114,9 +115,6 @@ def dq_jacobi_sweeps(
     JacobiSweepResult
         Diabatization result.
     """
-
-    if jc_kwargs is None:
-        jc_kwargs = {}
 
     _, nstates, _ = dip_moms.shape
 
@@ -176,7 +174,7 @@ def dq_jacobi_sweeps(
     )
     logger.info(msg)
 
-    return jacobi_sweeps(U, cost_func, ab_func, **jc_kwargs)
+    return jacobi_sweeps(U, cost_func, ab_func)
 
 
 ERTemplate = Template(
@@ -191,7 +189,9 @@ Coulomb-Tensor R
 
 
 def edmiston_ruedenberg_jacobi_sweeps(
-    R: np.ndarray, random: bool = False, jc_kwargs: Optional[dict] = None
+    R: np.ndarray,
+    random: bool = False,
+    U=None,
 ) -> JacobiSweepResult:
     """Edmiston-Ruedenberg localization using Jacobi sweeps.
 
@@ -216,8 +216,6 @@ def edmiston_ruedenberg_jacobi_sweeps(
         Boolean that controls if we start from the original adiabatic states (rotation
         matrix U is the identity matrix) or if we start from randomly mixed states. In
         high symmetry systems it may be beneficial to start from a random state.
-    jc_kwargs
-        Optinal kwargs for the Jacobi-Sweeps function.
 
     Returns
     -------
@@ -225,36 +223,39 @@ def edmiston_ruedenberg_jacobi_sweeps(
         Dataclass containing all relevant parameters & results of the Jacobi-Sweeps
         run.
     """
-    if jc_kwargs is None:
-        jc_kwargs = {}
 
     nstates = len(R)
     assert R.shape == (nstates, nstates, nstates, nstates)
 
-    if random:
-        U = get_random_U(nstates)
-    else:
-        U = np.eye(nstates)
+    if U is None:
+        if random:
+            U = get_random_U(nstates)
+        else:
+            U = np.eye(nstates)
 
     def ab_func(j, k, U):
-        # See eq. (2.2) in [4]
+        # Implementation is based on my own derivation.
+        # See '../../resources/derivs/edmiston_ruedenberg.ipynb'
+
+        # Rotate the Coulomb-tensor ... this scales as N⁵, but this shouldn't
+        # be a problem when this function is used for diabatization of electronic
+        # states, where N will be small.
         R_rot = np.einsum("jJ,kK,lL,mM,JKLM->jklm", U, U, U, U, R, optimize="greedy")
-        # The attentive reader may notice, that the implementation of A below is not
-        # eq. (17) from [5] but it is the negative of it. Depending on how the angle α
-        # is calculated (three variants are given in eq. (19) in [5]), different arguments
-        # are used for the trigonometric functions. Our Jacobi-sweeps implementation
-        # uses arccos, to recover the angle from, so we have to return -A, instead of A.
-        # The sign of B doesn't matter, as it only appears squared in the denominator of
-        # eq. (19) in [5].
-        A = -R_rot[j, k, j, k] + 0.25 * (
-            R_rot[j, j, j, j] - 2 * R_rot[j, j, k, k] + R_rot[k, k, k, k]
+        A = 4.0 * (R_rot[j, k, j, j] - R_rot[j, k, k, k])
+        B = (
+            -R_rot[j, j, j, j]
+            + 2.0 * R_rot[j, j, k, k]
+            + 4.0 * R_rot[j, k, j, k]
+            - R_rot[k, k, k, k]
         )
-        B = R_rot[j, j, j, k] - R_rot[k, k, j, k]
         return A, B
+
+    def gamma_func(A, B):
+        return 0.5 * np.arctan2(A, B - np.sqrt(A**2 + B**2))
 
     def cost_func(U):
         # Eq. (A9) in [6]
-        return np.einsum("JI,KI,LI,MI,JKLM->", U, U, U, U, R)
+        return np.einsum("IJ,IK,IL,IM,JKLM->", U, U, U, U, R)
 
     msg = ERTemplate.render(
         name=highlight_text("Edmiston-Ruedenberg-diabatization"),
@@ -262,7 +263,7 @@ def edmiston_ruedenberg_jacobi_sweeps(
     )
     logger.info(msg)
 
-    return jacobi_sweeps(U, cost_func, ab_func, **jc_kwargs)
+    return jacobi_sweeps(U, cost_func, ab_func, gamma_func=gamma_func)
 
 
 DiaResultTemplate = Template(
@@ -321,10 +322,16 @@ class DiabatizationResult:
     cur_cycle: int
     P: float
     # TODO: store rotated/mixed properties instead of original ones?
+    # Dipole moments
     dip_moms: Optional[np.ndarray] = None
+    # Quadrupole moments
     quad_moms: Optional[np.ndarray] = None
+    # Electrostatic potentials
     epots: Optional[np.ndarray] = None
-    R: Optional[np.ndarray] = None
+    # 4d Coulomb tensor  of shape (nstates, nstates, nstates, nstates)
+    R_tensor: Optional[np.ndarray] = None  # Coulomb tensor
+    # 3d density fitting tensor of shape (naux, nstates, nstates)
+    L_tensor: Optional[np.ndarray] = None
 
     @property
     def nstates(self):
@@ -404,42 +411,88 @@ class DiabatizationResult:
         return rendered
 
 
+def dia_result_from_jac_result(adia_ens, jac_res, **property_tensors):
+    U = jac_res.C
+    adia_mat = np.diag(adia_ens)
+    dia_mat = U.T @ adia_mat @ U
+    dia_ens = np.diag(dia_mat)
+    dia_result = DiabatizationResult(
+        U=U,
+        adia_ens=adia_ens,
+        dia_ens=dia_ens,
+        adia_mat=adia_mat,
+        dia_mat=dia_mat,
+        is_converged=jac_res.is_converged,
+        cur_cycle=jac_res.cur_cycle,
+        P=jac_res.P,
+        **property_tensors,
+    )
+    return dia_result
+
+
 def dq_diabatization(adia_ens, dip_moms, quad_moms=None, epots=None, **kwargs):
     jac_res = dq_jacobi_sweeps(dip_moms, quad_moms=quad_moms, epots=epots, **kwargs)
-    U = jac_res.C
-    adia_mat = np.diag(adia_ens)
-    dia_mat = U.T @ adia_mat @ U
-    dia_ens = np.diag(dia_mat)
-    dia_result = DiabatizationResult(
-        U=U,
-        adia_ens=adia_ens,
-        dia_ens=dia_ens,
-        adia_mat=adia_mat,
-        dia_mat=dia_mat,
-        is_converged=jac_res.is_converged,
-        cur_cycle=jac_res.cur_cycle,
-        P=jac_res.P,
-        dip_moms=dip_moms,
-        quad_moms=quad_moms,
-        epots=epots,
+    return dia_result_from_jac_result(
+        adia_ens, jac_res, dip_moms=dip_moms, quad_moms=quad_moms, epots=epots
     )
-    return dia_result
 
 
-def edmiston_ruedenberg_diabatization(adia_ens, R, **kwargs):
+def edmiston_ruedenberg_diabatization_jacobi(adia_ens, R, **kwargs):
     jac_res = edmiston_ruedenberg_jacobi_sweeps(R, **kwargs)
-    U = jac_res.C
-    adia_mat = np.diag(adia_ens)
-    dia_mat = U.T @ adia_mat @ U
-    dia_ens = np.diag(dia_mat)
-    dia_result = DiabatizationResult(
-        U=U,
-        adia_ens=adia_ens,
-        dia_ens=dia_ens,
-        adia_mat=adia_mat,
-        dia_mat=dia_mat,
-        is_converged=jac_res.is_converged,
-        cur_cycle=jac_res.cur_cycle,
-        P=jac_res.P,
+    return dia_result_from_jac_result(
+        adia_ens,
+        jac_res,
+        R_tensor=R,
     )
-    return dia_result
+
+
+def edmiston_ruedenberg_diabatization_df(
+    adia_ens,
+    df_tensor,
+    overlap_matrix=None,
+    nruns=10,
+    max_cycles=10_000,
+):
+    assert df_tensor.ndim == 3
+    nstates = df_tensor.shape[1]
+
+    # Initial rotation matrices
+    U0s = np.zeros((nruns, nstates, nstates))
+    # Final, hopefully diabatized rotation matrices
+    Us = np.zeros((nruns, nstates, nstates))
+    jac_results = list()
+
+    # Assume orthgonal states when no overlap matrix is given
+    if overlap_matrix is None:
+        overlap_matrix = np.eye(nstates)
+    cost_funcs = np.zeros(nruns)
+    diis_cycles = min(5, nstates)
+    for i in range(nruns):
+        # Generate random rotation matrix
+        U0s[i] = get_random_U(nstates)
+        # Use a copy of the rotation matrix as it is updated inplace
+        jac_result = edmiston_ruedenberg(
+            U0s[i].copy(),
+            df_tensor,
+            overlap_matrix,
+            diis_cycles=diis_cycles,
+            max_cycles=max_cycles,
+        )
+        jac_results.append(jac_result)
+        if jac_result.is_converged:
+            cost_funcs[i] = jac_result.P
+            Us[i] = jac_result.C
+
+    # Report result w/ highest value of cost_function
+    max_ind = cost_funcs.argmax()
+    best_jac_res = jac_results[max_ind]
+    if not best_jac_res.is_converged:
+        warnings.warn(
+            f"Run {max_ind} has the maximum cost function value, but the optimization "
+            f"did not converge after {max_cycles} cycles!"
+        )
+    return dia_result_from_jac_result(
+        adia_ens,
+        best_jac_res,
+        L_tensor=df_tensor,
+    )
