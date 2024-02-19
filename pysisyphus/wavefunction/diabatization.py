@@ -411,7 +411,9 @@ class DiabatizationResult:
         return rendered
 
 
-def dia_result_from_jac_result(adia_ens, jac_res, **property_tensors):
+def dia_result_from_jac_result(
+    adia_ens: np.ndarray, jac_res: JacobiSweepResult, **property_tensors
+) -> DiabatizationResult:
     U = jac_res.C
     adia_mat = np.diag(adia_ens)
     dia_mat = U.T @ adia_mat @ U
@@ -430,29 +432,115 @@ def dia_result_from_jac_result(adia_ens, jac_res, **property_tensors):
     return dia_result
 
 
-def dq_diabatization(adia_ens, dip_moms, quad_moms=None, epots=None, **kwargs):
+def dq_diabatization(
+    adia_ens: np.ndarray,
+    dip_moms: np.ndarray,
+    quad_moms: Optional[np.ndarray] = None,
+    epots: Optional[np.ndarray] = None,
+    **kwargs,
+) -> DiabatizationResult:
+    """Property-based diabatization using multipole moments.
+
+    Similar to Foster-Boys-localization, but w/ electronic states.
+
+    Parameters
+    ----------
+    adia_ens
+        1d array of shape (nstates, ) containing adiabatic excitation energies
+        in atomic units/Hartree.
+    dip_moms
+        3d array of shape (3, nstates, nstates) containing (transition) dipole moments
+        (x, y, z).
+    quad_moms
+        Optional 3d array of shape (3, nstates, nstates) containing the diagonal of
+        the (transition) quadrupole moment tensor (xx, yy, zz)
+    epots
+        Optional 3d array of shape (3, nstates, nstates) containing electronic part
+        of electrostatic potential.
+
+    Returns
+    -------
+    dia_result
+        Result of diabatization containing various quantities, e.g., the adiabatic-
+        diabatic-transformation matrix.
+    """
     jac_res = dq_jacobi_sweeps(dip_moms, quad_moms=quad_moms, epots=epots, **kwargs)
     return dia_result_from_jac_result(
         adia_ens, jac_res, dip_moms=dip_moms, quad_moms=quad_moms, epots=epots
     )
 
 
-def edmiston_ruedenberg_diabatization_jacobi(adia_ens, R, **kwargs):
-    jac_res = edmiston_ruedenberg_jacobi_sweeps(R, **kwargs)
+def edmiston_ruedenberg_diabatization_jacobi(
+    adia_ens: np.ndarray, R_tensor: np.ndarray, **kwargs
+) -> DiabatizationResult:
+    """Property-based diabatization using the Coulomb tensor and Jacobi sweeps.
+
+    Similar to Edmiston-Ruedenberg-localization, but w/ electronic states.
+
+    Parameters
+    ----------
+    adia_ens
+        1d array of shape (nstates, ) containing adiabatic excitation energies
+        in atomic units/Hartree.
+    R_tensor
+        4d array of shape (nstates, nstates, nstates, nstates). Coulomb tensor
+        in the basis of the adiabatic electronic states.
+
+    Returns
+    -------
+    dia_result
+        Result of diabatization containing various quantities, e.g., the adiabatic-
+        diabatic-transformation matrix.
+    """
+    jac_res = edmiston_ruedenberg_jacobi_sweeps(R_tensor, **kwargs)
     return dia_result_from_jac_result(
         adia_ens,
         jac_res,
-        R_tensor=R,
+        R_tensor=R_tensor,
     )
 
 
+# Shortcut
+edmiston_ruedenberg_diabatization = edmiston_ruedenberg_diabatization_jacobi
+
+
 def edmiston_ruedenberg_diabatization_df(
-    adia_ens,
-    df_tensor,
-    overlap_matrix=None,
-    nruns=10,
-    max_cycles=10_000,
-):
+    adia_ens: np.ndarray,
+    df_tensor: np.ndarray,
+    overlap_matrix: Optional[np.ndarray] = None,
+    nruns: int = 25,
+    max_cycles: int = 10_000,
+) -> DiabatizationResult:
+    """Property-based diabatization using the Coulomb tensor and density fitting.
+
+    Similar to Edmiston-Ruedenberg-localization, but w/ electronic states.
+
+    TODO: factor out the call to edmiston_ruedenberg() and put it in a separate function.
+
+    Parameters
+    ----------
+    adia_ens
+        1d array of shape (nstates, ) containing adiabatic excitation energies
+        in atomic units/Hartree.
+    df_tensor
+        3d array of shape (naux, nstates, nstates). Coulomb tensor
+        in the basis of the adiabatic electronic states.
+    overlap_matrix
+        Optional 2d array of shape (nstates, nstates). If not given, orthogonal
+        electronic states are assumed, which should be the case in typical TDDFT
+        calculations.
+    nruns
+        Number of initial conditions that are tested/number of macro cycles.
+    max_cycles
+        Positive intger, specifying the maximum number of micro cycles in a macro cycle.
+
+    Returns
+    -------
+    dia_result
+        Result of diabatization containing various quantities, e.g., the adiabatic-
+        diabatic-transformation matrix.
+    """
+    assert nruns > 0
     assert df_tensor.ndim == 3
     nstates = df_tensor.shape[1]
 
