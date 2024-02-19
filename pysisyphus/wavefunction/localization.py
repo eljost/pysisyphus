@@ -23,6 +23,7 @@
 #      An efficient method for calculating maxima of homogeneous
 #      functions of orthogonal matrices: Applications to localized
 #      occupied orbitals
+#      Subotnik, Shao, Liang, Head-Gordon, 2004
 
 from dataclasses import dataclass
 from functools import singledispatch
@@ -79,9 +80,15 @@ def _(wf: Wavefunction):
 
 
 def rot_inplace(mat, rad, i, j):
-    """Inplace rotation of matrix columns mat[:, i] and mat[:, j] by 'rad' radians."""
+    """2x2 inplace rotation of matrix columns mat[:, i] and mat[:, j] by 'rad' radians."""
     cos = np.cos(rad)
     sin = np.sin(rad)
+    # Rotation by matrix
+    #
+    #     ⎡cos(γ)  -sin(γ)⎤
+    # U = ⎢               ⎥
+    #     ⎣sin(γ)  cos(γ) ⎦
+    #
     i_rot = cos * mat[:, i] + sin * mat[:, j]
     j_rot = -sin * mat[:, i] + cos * mat[:, j]
     mat[:, i] = i_rot
@@ -100,6 +107,7 @@ def jacobi_sweeps(
     C: NDArray[float],
     cost_func: Callable,
     ab_func: Callable,
+    gamma_func: Optional[Callable] = None,
     callback: Optional[Callable] = None,
     max_cycles: int = 100,
     dP_thresh: float = 1e-8,
@@ -115,6 +123,8 @@ def jacobi_sweeps(
     ab_func
         Function that returns A & B values, used to calculate the angle
         for the 2x2 rotation.
+    gamma_func
+        Function that returns rotation angle in radius for given real numbers A and B.
     callback
         Function that is called after the 2x2 rotation took place. It takes three arguments:
         (gamma, j, k).
@@ -134,6 +144,14 @@ def jacobi_sweeps(
     C = C.copy()
     _, nmos = C.shape
 
+    if gamma_func is None:
+
+        def gamma_func(A, B):
+            """Calcuation of rotation angle as done in eq. (9) in [1]."""
+            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A**2 + B**2)) / 4
+            assert -PI_QUART <= gamma <= PI_QUART
+            return gamma
+
     if callback is None:
         callback = lambda *args: None
 
@@ -141,6 +159,15 @@ def jacobi_sweeps(
 
     logger.info(f"Starting Jacobi sweeps.")
     for i in range(max_cycles):
+        # Calculate the target cost function we want to maximize/minimize.
+        P = cost_func(C)
+        dP = P - P_prev
+        logger.info(f"{i:03d}: {P=: >12.8f} {dP=: >12.8f}")
+        if is_converged := (abs(dP) <= dP_thresh):
+            logger.info(f"Jacobi sweeps converged after {i} macro cycles.")
+            break
+        P_prev = P
+
         # Loop over pairs of MO indices and do 2x2 rotations.
         for j, k in it.combinations(range(nmos), 2):
             A, B = ab_func(j, k, C)
@@ -148,21 +175,12 @@ def jacobi_sweeps(
             if (A**2 + B**2) <= 1e-12:
                 continue
 
-            gamma = np.sign(B) * np.arccos(-A / np.sqrt(A**2 + B**2)) / 4
-            assert -PI_QUART <= gamma <= PI_QUART
+            gamma = gamma_func(A, B)
+
             # 2x2 MO rotations
             rot_inplace(C, gamma, j, k)
             callback(gamma, j, k)
         # Outside of loop over orbital pairs
-
-        # Calculate the target cost function we want to maximize/minimize.
-        P = cost_func(C)
-        dP = P - P_prev
-        logger.info(f"{i:03d}: {P=: >12.8f} {dP=: >12.8f}")
-        if is_converged := (abs(dP) <= dP_thresh):
-            logger.info(f"Jacobi sweeps converged in {i+1} cycles.")
-            break
-        P_prev = P
     # Outside macro cycles
 
     result = JacobiSweepResult(
@@ -232,7 +250,7 @@ def pipek_mezey(C, S, ao_center_map, **kwargs) -> JacobiSweepResult:
         return P
 
     logger.info("Pipek-Mezey localization")
-    return jacobi_sweeps(C, cost_func, ab_func, callback, **kwargs)
+    return jacobi_sweeps(C, cost_func, ab_func, callback=callback, **kwargs)
 
 
 @pipek_mezey.register
@@ -364,16 +382,28 @@ def edmiston_ruedenberg_grad(L):
 def edmiston_ruedenberg(C, Lao, Sao, diis_cycles=5, max_cycles=100):
     """Edmiston-Ruedenberg localization using DF integrals and DIIS.
 
+    This implementation follows [7].
+
+    The parameters given below are described for the case of MO localization,
+    but this function can also be used for diabatization of electronic states.
+    As the states obtained from TD-DFT and related methods are usually orthogonal,
+    the overlap matrix 'Sao' must be the unit matrix. The tensor Lao should then
+    be the contraction of the original density-fitting tensor w/ the densities of
+    the different states or their transition densities. The shape will be
+    (naux, nstates, nates). C has the shape (nstates, nstates) and can/should be
+    chosen as a random rotation matrix, e.g.,
+        via scipy.stats.special_ortho_group.rvs(nstates)
+    Multiple runs may be required when a random matrix used to initiate the
+    diabatization.
+
     Parameters
     ----------
     C
-        MO-coefficients of shape (naos, nmos); this means MOs should
-        be in columns.
-
+        MO-coefficients of shape (naos, nmos); this means MOs must be
+        organized in columns.
     Lao
         Density fitting tensor obtained from contracting the 2e3c-matrix
         with 2c2e**-0.5 in the AO basis. Must have shape (naux, nao, nao).
-        Same as in
     Sao
         Overlap matrix of shape (nao, nao) in the AO basis.
     diis_cycles
@@ -387,11 +417,12 @@ def edmiston_ruedenberg(C, Lao, Sao, diis_cycles=5, max_cycles=100):
         Edmiston-Ruedenberg localized orbitals.
     """
     nmos = C.shape[1]
+    assert Lao.ndim == 3
     # We can't keep more error vectors than MOs
     if nmos < diis_cycles:
         warnings.warn(
             f"Can keep at most {nmos} DIIS error vectors, but "
-            f"{diis_cycles} were requested!."
+            f"{diis_cycles} were requested!. Using at most {nmos} cycles."
         )
     diis_cycles = min(diis_cycles, nmos)
     if diis_cycles == 1:
@@ -420,12 +451,15 @@ def edmiston_ruedenberg(C, Lao, Sao, diis_cycles=5, max_cycles=100):
         # DIIS error; lack of symmetry in R.
         err = (R - R.T).flatten()
         errrms = rms(err)
-        print(
+        logger.debug(
             f"Cycle {i:02d} f={f:.8f}, |g|={np.linalg.norm(g):.4f}, rms(g)={grms:>8.4e} "
             f"rms(err)={errrms:>8.4e}"
         )
         if converged := grms <= 1e-4:
-            print("Edmiston-Ruedenberg localization converged!")
+            logger.info(
+                f"Edmiston-Ruedenberg localization converged in cycle {i: >6d} with "
+                f"f(U)={f: >12.6f}."
+            )
             break
 
         U = R @ matrix_power(R.T @ R, -0.5)
@@ -453,5 +487,11 @@ def edmiston_ruedenberg(C, Lao, Sao, diis_cycles=5, max_cycles=100):
         # Update Crot, step (4) in [7]. This either uses the D matrix obtained from DIIS
         # or the one previously calculated.
         Crot = C0 @ D
-    # TODO: return JacobiSweepResult?
-    return Crot, f
+
+    result = JacobiSweepResult(
+        is_converged=converged,
+        cur_cycle=i,
+        C=Crot,
+        P=f,
+    )
+    return result
