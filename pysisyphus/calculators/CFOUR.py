@@ -20,7 +20,6 @@ class CFOUR(Calculator):
         """CFOUR calculator.
 
         Wrapper handling CFOUR ground state energy and gradient calculations.
-        Memory must be specified as a CFOUR keyword (not checked).
 
         Parameters
         ----------
@@ -52,6 +51,18 @@ class CFOUR(Calculator):
         }
 
         self.float_regex = r"([-]?\d+\.\d+)"  ## CFOUR doesn't use scientific notation for final energy or gradient.
+
+        ## Convert pysisyphus keywords to CFOUR keywords
+        ## Explicitly not adding support for managing CFOUR parallelism - 
+        ## user-configured cmd script in .pysisyphusrc should set either OMP_NUM_THREADS 
+        ## or the environment variable they defined at compile-time for MPI parallelism
+        if 'mem' in kwargs:
+            cfour_input['MEM_SIZE'] = kwargs['mem']
+            cfour_input['MEM_UNIT'] = 'MB'
+        if 'charge' in kwargs:
+            cfour_input['CHARGE'] = kwargs['charge']
+        if 'mult' in kwargs:
+            cfour_input['MULT'] = kwargs['mult']
 
     def prepare(self, inp):
         path = super().prepare(inp)
