@@ -6,7 +6,9 @@ import numpy as np
 
 from pysisyphus.calculators.Calculator import Calculator
 
-cfour_float_regex = r"([-]?\d+\.\d+)" # CFOUR doesn't use scientific notation for final energy or gradient.
+# CFOUR doesn't use scientific notation for final energy or gradient.
+cfour_float_regex = r"([-]?\d+\.\d+)"
+
 
 def parse_cfour_energy(out_fn):
     with open(out_fn) as handle:
@@ -16,9 +18,8 @@ def parse_cfour_energy(out_fn):
     mobj = re.search(regex, text, re.DOTALL)
     energy = float(mobj.groups()[0])
 
-    return {
-        "energy": energy
-    }
+    return {"energy": energy}
+
 
 def parse_cfour_gradient(grd_fn, out_fn, coords_pysis_frame_3d):
     results = {}
@@ -27,7 +28,9 @@ def parse_cfour_gradient(grd_fn, out_fn, coords_pysis_frame_3d):
     gradient = gradient[natoms:, 1:]
 
     coords_comp_frame_3d = read_cfour_geom(out_fn)
-    gradient_rotated = rotate_gradient(gradient, coords_pysis_frame_3d, coords_comp_frame_3d).flatten()
+    gradient_rotated = rotate_gradient(
+        gradient, coords_pysis_frame_3d, coords_comp_frame_3d
+    ).flatten()
 
     energy = parse_cfour_energy(out_fn)["energy"]
     results["energy"] = energy
@@ -35,13 +38,15 @@ def parse_cfour_gradient(grd_fn, out_fn, coords_pysis_frame_3d):
 
     return results
 
+
 def read_cfour_geom(out_fn):
     with open(out_fn) as handle:
         text = handle.read()
-    
+
     regex = r"Coordinates used in calculation \(QCOMP\)(.+)Interatomic distance matrix"
-    floats =  [cfour_float_regex] * 3
-    line_regex = r"\s*[A-Z]+\s*\d+\s*" + r"\s*".join(floats) ## Element symbol, atomic number, then x, y, z in bohr
+    floats = [cfour_float_regex] * 3
+    # Element symbol, atomic number, then x, y, z in bohr
+    line_regex = r"\s*[A-Z]+\s*\d+\s*" + r"\s*".join(floats)
 
     mobj = re.search(regex, text, re.DOTALL)
     geom = list()
@@ -54,6 +59,7 @@ def read_cfour_geom(out_fn):
 
     return geom_3d
 
+
 def rotate_gradient(gradient, coords_pysis_frame_3d, coords_comp_frame_3d):
     # Following http://nghiaho.com/?page_id=671
     # Permalink: https://web.archive.org/web/20230128004529/http://nghiaho.com/?page_id=671
@@ -61,38 +67,47 @@ def rotate_gradient(gradient, coords_pysis_frame_3d, coords_comp_frame_3d):
     comp_frame_centroid = calc_centroid(coords_comp_frame_3d)
     pysis_frame_centroid = calc_centroid(coords_pysis_frame_3d)
 
-    rot_matrix = calc_rot_matrix(coords_comp_frame_3d, coords_pysis_frame_3d, comp_frame_centroid, pysis_frame_centroid)
+    rot_matrix = calc_rot_matrix(
+        coords_comp_frame_3d,
+        coords_pysis_frame_3d,
+        comp_frame_centroid,
+        pysis_frame_centroid,
+    )
 
-    return (gradient @ rot_matrix.T)
+    return gradient @ rot_matrix.T
+
 
 def calc_centroid(coords_3d):
-    centroid = np.sum(coords_3d, axis=0)/coords_3d.shape[0]
+    centroid = np.sum(coords_3d, axis=0) / coords_3d.shape[0]
     return centroid
 
-def calc_rot_matrix(source_coords_3d, target_coords_3d, source_centroid, target_centroid):
+
+def calc_rot_matrix(
+    source_coords_3d, target_coords_3d, source_centroid, target_centroid
+):
     H = (source_coords_3d - source_centroid).T @ (target_coords_3d - target_centroid)
-    assert H.shape == (3,3)
+    assert H.shape == (3, 3)
     U, S, V = np.linalg.svd(H)
     R = V @ U.T
 
     # Cover corner case
     if np.linalg.det(R) < 0:
         U, S, V = np.linalg.svd(R)
-        V[:,2] = V[:,2]*-1
+        V[:, 2] = V[:, 2] * -1
         R = V @ U.T
 
     return R
 
-class CFOUR(Calculator):
 
+class CFOUR(Calculator):
     conf_key = "cfour"
 
     def __init__(
-            self,
-            cfour_input,
-            wavefunction_dump=True,
-            initden_file=None,
-            **kwargs,
+        self,
+        cfour_input,
+        wavefunction_dump=True,
+        initden_file=None,
+        **kwargs,
     ):
         """CFOUR calculator.
 
@@ -111,9 +126,9 @@ class CFOUR(Calculator):
 
         self.cfour_input = cfour_input
 
-        self.inp_fn = 'ZMAT'
-        self.out_fn = 'out.log'
-        self.gradient_fn = 'GRD'
+        self.inp_fn = "ZMAT"
+        self.out_fn = "out.log"
+        self.gradient_fn = "GRD"
         self.to_keep = ("out.log", "density:__den.dat")
         self.initden = None
         self.wavefunction_dump = wavefunction_dump
@@ -130,18 +145,18 @@ class CFOUR(Calculator):
         }
 
         # Convert pysisyphus keywords to CFOUR keywords
-        # Explicitly not adding support for managing CFOUR parallelism - 
-        # user-configured cmd script in .pysisyphusrc should set either OMP_NUM_THREADS 
+        # Explicitly not adding support for managing CFOUR parallelism -
+        # user-configured cmd script in .pysisyphusrc should set either OMP_NUM_THREADS
         # or the environment variable they defined at compile-time for MPI parallelism
-        cfour_input['MEM_SIZE'] = self.mem
-        cfour_input['MEM_UNIT'] = 'MB'
-        cfour_input['CHARGE'] = self.charge
-        cfour_input['MULT'] = self.mult
+        cfour_input["MEM_SIZE"] = self.mem
+        cfour_input["MEM_UNIT"] = "MB"
+        cfour_input["CHARGE"] = self.charge
+        cfour_input["MULT"] = self.mult
 
     def prepare(self, inp):
         path = super().prepare(inp)
         if self.initden:
-            shutil.copy(self.initden,f"{path}/initden.dat")
+            shutil.copy(self.initden, f"{path}/initden.dat")
         return path
 
     def keep(self, path):
@@ -153,11 +168,15 @@ class CFOUR(Calculator):
 
     def prepare_input(self, atoms, coords, calc_type):
         xyz_string = self.prepare_coords(atoms, coords)
-        cfour_keyword_string = '\n'.join(f"{key.upper()}={str(value).upper()}" for key, value in self.cfour_input.items())
+        cfour_keyword_string = "\n".join(
+            f"{key.upper()}={str(value).upper()}"
+            for key, value in self.cfour_input.items()
+        )
         grad_string = "DERIV_LEVEL=1\n" if calc_type == "grad" else ""
 
-        ### Note: CFOUR abhors blank lines between keywords. Make sure no extra whitespace is added between keyword lines.
-        ### First dedent, then format.
+        # Note: CFOUR abhors blank lines between keywords. Make sure no extra whitespace is added between keyword lines.
+        # First dedent, then format.
+        # The extra newlines at the end are necessary to avoid crashes in certain development versions of CFOUR.
         input_str = textwrap.dedent("""\
         CFOUR calculation
         {xyz_string}
@@ -166,7 +185,14 @@ class CFOUR(Calculator):
         COORDINATES=CARTESIAN
         {grad_string}{cfour_keyword_string})
 
-        """).format(xyz_string=xyz_string, grad_string=grad_string, cfour_keyword_string=cfour_keyword_string)
+
+
+        """
+        ).format(
+            xyz_string=xyz_string,
+            grad_string=grad_string,
+            cfour_keyword_string=cfour_keyword_string,
+        )
 
         return input_str
 
@@ -206,10 +232,15 @@ class CFOUR(Calculator):
         return parse_cfour_energy(path / self.out_fn)
 
     def parse_gradient(self, path):
-        return parse_cfour_gradient(path / self.gradient_fn, path / self.out_fn, self.pysis_frame_coords.reshape((-1,3)))
+        return parse_cfour_gradient(
+            path / self.gradient_fn,
+            path / self.out_fn,
+            self.pysis_frame_coords.reshape((-1, 3)),
+        )
 
     def run_calculation(self, atoms, coords, calc_type, **prepare_kwargs):
-        self.pysis_frame_coords = coords  # For use later to rotate CFOUR gradient to the pysisyphus frame
+        # For use later to rotate CFOUR gradient to the pysisyphus frame
+        self.pysis_frame_coords = coords
         inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc=calc_type)
         return results
