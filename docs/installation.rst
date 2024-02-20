@@ -140,6 +140,13 @@ Depending on the software different choices were made how it is registered. An e
     # Make sure that the MOLCAS variable is set.
     cmd=pymolcas
 
+    [cfour]
+    # Parallelism is managed by the user by setting environment variables in the runscript,
+    # as the name of the environment variable for MPI parallelism depends on how CFOUR_MPI_CORES
+    # was compiled. The GENBAS file must also be symlinked by the runscript.
+    # A sample is provided below.
+    cmd=/home/ghjones/bin/runcfour.sh
+
     # Utilities
 
     [wfoverlap]
@@ -189,6 +196,20 @@ Example runmopac.sh
     module load mopac
 
     MOPAC2016.exe $1
+
+Example runcfour.sh
+==================
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    module purge
+    module load cfour
+    export OMP_NUM_THREADS=4
+    export CFOUR_MPI_CORES=1 # The name of this environment variable depends on how you compiled CFOUR
+    [ ! -f GENBAS ] && ln -s /software/cfour/basis/GENBAS
+    xcfour > out.log 2>&1
 
 Verifying Installation
 ==================================
