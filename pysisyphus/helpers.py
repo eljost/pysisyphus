@@ -51,7 +51,7 @@ def geom_from_xyz_file(xyz_fn, coord_type="cart", **coord_kwargs):
     kwargs.update(coord_kwargs)
     xyz_fn = str(xyz_fn)
     atoms, coords, comment = parse_xyz_file(xyz_fn, with_comment=True)
-    if 'bohr' not in comment.lower():
+    if "IN_BOHR" not in comment.split():
         coords *= ANG2BOHR
     geom = Geometry(
         atoms,
