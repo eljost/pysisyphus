@@ -14,7 +14,7 @@ def parse_cfour_energy(out_fn):
     with open(out_fn) as handle:
         text = handle.read()
 
-    regex = "\s*The final electronic energy is\s*" + cfour_float_regex
+    regex = r'\s*The final electronic energy is\s*' + cfour_float_regex
     mobj = re.search(regex, text, re.DOTALL)
     energy = float(mobj.groups()[0])
 
