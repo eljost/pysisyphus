@@ -127,17 +127,14 @@ class CFOUR(Calculator):
             "grad": self.parse_gradient,
         }
 
-        ## Convert pysisyphus keywords to CFOUR keywords
-        ## Explicitly not adding support for managing CFOUR parallelism - 
-        ## user-configured cmd script in .pysisyphusrc should set either OMP_NUM_THREADS 
-        ## or the environment variable they defined at compile-time for MPI parallelism
-        if 'mem' in kwargs:
-            cfour_input['MEM_SIZE'] = kwargs['mem']
-            cfour_input['MEM_UNIT'] = 'MB'
-        if 'charge' in kwargs:
-            cfour_input['CHARGE'] = kwargs['charge']
-        if 'mult' in kwargs:
-            cfour_input['MULT'] = kwargs['mult']
+        # Convert pysisyphus keywords to CFOUR keywords
+        # Explicitly not adding support for managing CFOUR parallelism - 
+        # user-configured cmd script in .pysisyphusrc should set either OMP_NUM_THREADS 
+        # or the environment variable they defined at compile-time for MPI parallelism
+        cfour_input['MEM_SIZE'] = self.mem
+        cfour_input['MEM_UNIT'] = 'MB'
+        cfour_input['CHARGE'] = self.charge
+        cfour_input['MULT'] = self.mult
 
     def prepare(self, inp):
         path = super().prepare(inp)
