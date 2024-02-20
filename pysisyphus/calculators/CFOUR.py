@@ -90,7 +90,7 @@ class CFOUR(Calculator):
     def __init__(
             self,
             cfour_input,
-            keep_molden=True,
+            wavefunction_dump=True,
             initden_file=None,
             **kwargs,
     ):
@@ -116,7 +116,9 @@ class CFOUR(Calculator):
         self.gradient_fn = 'GRD'
         self.to_keep = ("out.log", "density:__den.dat")
         self.initden = None
-        if keep_molden:
+        self.wavefunction_dump = wavefunction_dump
+
+        if self.wavefunction_dump:
             self.to_keep = self.to_keep + ("MOLDEN*",)
         if initden_file:
             self.initden = initden_file
