@@ -153,7 +153,7 @@ class CFOUR(Calculator):
             self.log("den.dat not found!")
 
     def prepare_input(self, atoms, coords, calc_type):
-        xyz_string = self.prepare_coords(atoms, coords, angstrom=False)
+        xyz_string = self.prepare_coords(atoms, coords)
         cfour_keyword_string = '\n'.join(f"{key.upper()}={str(value).upper()}" for key, value in self.cfour_input.items())
         grad_string = "DERIV_LEVEL=1\n" if calc_type == "grad" else ""
 
@@ -170,6 +170,32 @@ class CFOUR(Calculator):
         """).format(xyz_string=xyz_string, grad_string=grad_string, cfour_keyword_string=cfour_keyword_string)
 
         return input_str
+
+    def prepare_coords(self, atoms, coords):
+        """Get 3d coords in Bohr
+
+        Reshape internal 1d coords to 3d.
+
+        Parameters
+        ----------
+        atoms : iterable
+            Atom descriptors (element symbols).
+        coords: np.array, 1d
+            1D-array holding coordinates in Bohr.
+
+        Returns
+        -------
+        coords: np.array, 3d
+            3D-array holding coordinates in Bohr.
+        """
+        coords = coords.reshape(-1, 3)
+        coords = "\n".join(
+            [
+                "{} {:10.08f} {:10.08f} {:10.08f}".format(a, *c)
+                for a, c in zip(atoms, coords)
+            ]
+        )
+        return coords
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
         return self.run_calculation(atoms, coords, "energy", **prepare_kwargs)
