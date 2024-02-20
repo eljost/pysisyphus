@@ -262,7 +262,8 @@ def get_guess_hessian(
         if str(hessian_init).endswith(".h5"):
             with h5py.File(hessian_init, "r") as handle:
                 cart_hessian = handle["hessian"][:]
-        elif str(hessian_init) == 'FCMFINAL':
+        # CFOUR Hessians in the form we need are always named "FCMFINAL"
+        elif str(hessian_init).endswith("FCMFINAL"):
             raw_cart_hessian = np.loadtxt(hessian_init, skiprows=1)
             nindices = int(np.sqrt(raw_cart_hessian.size))
             cart_hessian = raw_cart_hessian.reshape((nindices, nindices), order='C')
