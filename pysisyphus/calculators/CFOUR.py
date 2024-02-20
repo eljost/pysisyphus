@@ -171,11 +171,11 @@ class CFOUR(Calculator):
 
         return input_str
 
-    def get_energy(self, atoms, coords):
-        return self.run_calculation(atoms, coords, "energy")
+    def get_energy(self, atoms, coords, **prepare_kwargs):
+        return self.run_calculation(atoms, coords, "energy", **prepare_kwargs)
 
-    def get_forces(self, atoms, coords):
-        return self.run_calculation(atoms, coords, "grad")
+    def get_forces(self, atoms, coords, **prepare_kwargs):
+        return self.run_calculation(atoms, coords, "grad", **prepare_kwargs)
 
     def parse_energy(self, path):
         return parse_cfour_energy(path / self.out_fn)
@@ -183,9 +183,9 @@ class CFOUR(Calculator):
     def parse_gradient(self, path):
         return parse_cfour_gradient(path / self.gradient_fn, path / self.out_fn, self.pysis_frame_coords.reshape((-1,3)))
 
-    def run_calculation(self, atoms, coords, calc_type):
+    def run_calculation(self, atoms, coords, calc_type, **prepare_kwargs):
         self.pysis_frame_coords = coords  # For use later to rotate CFOUR gradient to the pysisyphus frame
-        inp = self.prepare_input(atoms, coords, calc_type)
+        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
         results = self.run(inp, calc=calc_type)
         return results
 
