@@ -55,9 +55,9 @@ def read_cfour_geom(out_fn):
         if not mobj:
             continue
         geom.append(mobj.groups())
-    geom_3d = np.array(geom, dtype=float)
+    coords_3d = np.array(geom, dtype=float)
 
-    return geom_3d
+    return coords_3d
 
 
 def rotate_gradient(gradient, coords_pysis_frame_3d, coords_comp_frame_3d):
