@@ -151,7 +151,6 @@ class CFOUR(Calculator):
             self.initden = kept_fns["density"]
         except KeyError:
             self.log("den.dat not found!")
-            return
 
     def prepare_input(self, atoms, coords, calc_type):
         xyz_string = self.prepare_coords(atoms, coords, angstrom=False)
