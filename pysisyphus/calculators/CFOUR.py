@@ -116,8 +116,9 @@ class CFOUR(Calculator):
         Parameters
         ----------
         cfour_input : dict
-            CFOUR keywords and values. Note: "on" must be encapsulated in quotes to avoid being translated to True by YAML.
-        keep_molden : bool, optional
+            CFOUR keywords and values. Note: "on" must be encapsulated
+            in quotes to avoid being translated to True by YAML.
+        wavefunction_dump : bool, optional
             Whether or not to keep ground state SCF orbitals for each geometry step.
         initden_file: str, optional
             Path to an input initden file for use as a guess SCF density.
