@@ -35,13 +35,19 @@ def numba_wf():
         "lib:01_ch4_tzvp.json",
         shell_kwargs={
             "backend": "numba",
+            "ordering": "pysis",
         },
     )
 
 
 @pytest.fixture
 def py_wf():
-    return Wavefunction.from_file("lib:01_ch4_tzvp.json")
+    return Wavefunction.from_file(
+        "lib:01_ch4_tzvp.json",
+        shell_kwargs={
+            "ordering": "pysis",
+        },
+    )
 
 
 @using("numba")
