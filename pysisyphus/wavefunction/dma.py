@@ -427,7 +427,7 @@ def dma(
         # Try to import fater Fortran routines, if enabled & available
         if addons:
             try:
-                from pysisyphus_addons.wavefunction.gdma_int import (
+                from pysisyphus_addons.gdma.gdma_int import (
                     # Overwrite previously assigned numba function
                     get_diffuse_density as diffuse_density_func,
                 )
