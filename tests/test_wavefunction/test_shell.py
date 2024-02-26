@@ -71,7 +71,6 @@ def test_quadrupole_ints():
 @using("pyscf")
 @pytest.fixture
 def mol_auxmol():
-
     mol = gto.Mole()
     mol.atom = "He 0 0 0; He 0 0 1.0;"
     basis = {

@@ -38,6 +38,7 @@ class Wavefunction:
         occ: Tuple[int],
         C: NDArray[float],
         bf_type: BFType,
+        # TODO: make shells mandataory ...
         shells: Optional[Shells] = None,
         ecp_electrons=None,
         strict=True,
@@ -64,6 +65,13 @@ class Wavefunction:
             self.C = np.array((self.C, self.C.copy()))
         self.bf_type = bf_type
         self.shells = shells
+        # Reorder MO-coefficients, if requested
+        if self.shells.ordering == "pysis":
+            P = self.get_permut_matrix_native()
+            C = self.C.copy()
+            for i, c in enumerate(C):
+                C[i] = P.T @ c
+            self.C = C
         if ecp_electrons is None:
             ecp_electrons = np.zeros(len(self.atoms))
         elif isinstance(ecp_electrons, dict):
@@ -126,6 +134,15 @@ class Wavefunction:
             return self.shells.P_cart
         elif bf_type == BFType.PURE_SPHERICAL:
             return self.shells.P_sph
+        else:
+            raise Exception(f"Unknown {bf_type=}!")
+
+    def get_permut_matrix_native(self):
+        bf_type = self.bf_type
+        if bf_type == BFType.CARTESIAN:
+            return self.shells.P_cart_native
+        elif bf_type == BFType.PURE_SPHERICAL:
+            return self.shells.P_sph_native
         else:
             raise Exception(f"Unknown {bf_type=}!")
 
