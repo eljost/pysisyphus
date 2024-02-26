@@ -21,6 +21,7 @@
 #      Subotnik, Cave, Steele, Shenvi, 2009
 
 from dataclasses import dataclass
+import itertools as it
 from typing import Optional
 import warnings
 
@@ -181,7 +182,7 @@ ERTemplate = Template(
     """{{ name }}
 
 Coulomb-Tensor R
---------------
+----------------
 {{ R }}
 
 """
@@ -192,40 +193,15 @@ def edmiston_ruedenberg_jacobi_sweeps(
     R: np.ndarray,
     random: bool = False,
     U=None,
+    max_cycles: int = None,
+    dP_thresh: float = 1e-8,
 ) -> JacobiSweepResult:
-    """Edmiston-Ruedenberg localization using Jacobi sweeps.
+    assert R.ndim == 4
+    nstates = R.shape[0]
+    assert all([dim == nstates for dim in R.shape])
 
-    By any means, this is not intended to be used to localize (many) orbitals,
-    but to diabatize adiabatic electronic states. The tensor R contains the
-    expectation values of the 2-electron Coulomb operator for the different
-    adiabatic states and the transition densities between them.
-
-    The rotated tensor R_rot is a quartic function of the 2d rotation matrix U and
-    the current implementation using einsum scales as N⁵, with N being the number
-    of states. As the this function is intended to be used for diabatization, N
-    should be a small number, so the N⁵ shouldn't matter.
-
-    Parameters
-    ----------
-    R
-        4d-tensor of shape (nstates, nstates, nstates, nstates), containing
-        2-electron integrals contracted with the relaxed
-        densities of the different states and the transition densities between
-        them. See eqs. (A8) and (A10) in [6] on how to calculate it.
-    random
-        Boolean that controls if we start from the original adiabatic states (rotation
-        matrix U is the identity matrix) or if we start from randomly mixed states. In
-        high symmetry systems it may be beneficial to start from a random state.
-
-    Returns
-    -------
-    JacobiSweepResult
-        Dataclass containing all relevant parameters & results of the Jacobi-Sweeps
-        run.
-    """
-
-    nstates = len(R)
-    assert R.shape == (nstates, nstates, nstates, nstates)
+    if max_cycles is None:
+        max_cycles = nstates * 100
 
     if U is None:
         if random:
@@ -233,37 +209,145 @@ def edmiston_ruedenberg_jacobi_sweeps(
         else:
             U = np.eye(nstates)
 
-    def ab_func(j, k, U):
-        # Implementation is based on my own derivation.
-        # See '../../resources/derivs/edmiston_ruedenberg.ipynb'
-
-        # Rotate the Coulomb-tensor ... this scales as N⁵, but this shouldn't
-        # be a problem when this function is used for diabatization of electronic
-        # states, where N will be small.
-        R_rot = np.einsum("jJ,kK,lL,mM,JKLM->jklm", U, U, U, U, R, optimize="greedy")
-        A = 4.0 * (R_rot[j, k, j, j] - R_rot[j, k, k, k])
-        B = (
-            -R_rot[j, j, j, j]
-            + 2.0 * R_rot[j, j, k, k]
-            + 4.0 * R_rot[j, k, j, k]
-            - R_rot[k, k, k, k]
-        )
-        return A, B
-
-    def gamma_func(A, B):
-        return 0.5 * np.arctan2(A, B - np.sqrt(A**2 + B**2))
-
-    def cost_func(U):
-        # Eq. (A9) in [6]
-        return np.einsum("IJ,IK,IL,IM,JKLM->", U, U, U, U, R)
-
     msg = ERTemplate.render(
         name=highlight_text("Edmiston-Ruedenberg-diabatization"),
         R=R,
     )
     logger.info(msg)
 
-    return jacobi_sweeps(U, cost_func, ab_func, gamma_func=gamma_func)
+    D_prev = np.nan
+    # Macro-cycles
+    for i in range(max_cycles):
+        # Calculate rotated Coulomb-tensor
+        #
+        # The rotated Coulomb tensor is a quartic function of the rotation matrix 'U'.
+        # The exact contraction of the Coulomb tensor 'R' with 'U' depends on whether rows
+        # or columns of 'U' are rotated/mixed.
+        # When rows of 'U' are mixed/rotated we have to use
+        #   R_rot = np.einsum("jJ,kK,lL,mM,JKLM->jklm", U, U, U, U, R, optimize="greedy") .
+        # When columns of 'U' are mixed/rotated we have to use
+        R_rot = np.einsum("Jj,Kk,Ll,Mm,JKLM->jklm", U, U, U, U, R, optimize="greedy")
+        #
+        # Even though this function is intended to be used for diabatization where 'U' will
+        # be quiet small we chose to rotate columns of 'U'. This way, this function can also
+        # be used for MO-localization, where the different MOs will be organized in columns.
+        # For the diabatization of electronic states it does not matter if we rotate rows or
+        # columns, as long as the rotation and the calculation of R_rot are done in a consistent
+        # way.
+        # The calculation of R_rot scales with nstates**5, but this will be no problem when
+        # nstates remains small.
+
+        # Edmiston-Ruedenberg cost-function
+        D = np.einsum("IIII->", R_rot)
+        # Cost-function change compared to previous macro-cycle
+        dD = D - D_prev
+        print(f"Macro cycle {i: >3d}: {D=: >14.6f}, {dD=: >+12.6e}")
+        if converged := (abs(dD) <= dP_thresh):
+            print("Converged!")
+            break
+        D_prev = D
+
+        # Micro cycles
+        #
+        # Loop over all possible state pairs and determine the pair that promises the
+        # greatest cost-function increase.
+        term_max = None
+        j_max = None
+        k_max = None
+        A_max = None
+        B_max = None
+        for j, k in it.combinations(range(nstates), 2):
+            R1212 = R_rot[j, k, j, k]
+            R1111 = R_rot[j, j, j, j]
+            R1122 = R_rot[j, j, k, k]
+            R2222 = R_rot[k, k, k, k]
+            R1112 = R_rot[j, j, j, k]
+            R1222 = R_rot[j, k, k, k]
+
+            # Eq. (19) in [5
+            A = R1212 - 0.25 * (R1111 - 2.0 * R1122 + R2222)
+            B = R1112 - R1222
+            # RHS of eq. (26) in [5]
+            term = A + (A**2 + B**2) ** 0.5
+            # print(
+            # f"\t{j=: >3d}, {k=: >3d}, {A=: >12.6f}, {B=: >12.6f}, {term=: >12.6f}"
+            # )
+            # Update pair that promises the greatest cost-function increase
+            if (term_max is None) or term > term_max:
+                j_max = j
+                k_max = k
+                term_max = term
+                A_max = A
+                B_max = B
+        # End loop over all micro-cycles
+
+        # When B is very small and A is negative, then A + (A**2 + B**2)**0.5 will be 0.0
+        # and term_max will be 0.0 too. In this case no rotation will improve the cost-function
+        # to an appreciable degree and we skip the rotation. This will result in convergence
+        # in the next macro-cycle, as the cost-function will stay constant.
+        if abs(term_max) <= 1e-12:
+            continue
+
+        j = j_max
+        k = k_max
+        A = A_max
+        B = B_max
+        if term_max is None:
+            print("A**2 + B**2 is very small. Indicating convergence.")
+            break
+        # Denominator sqrt-term of eq. (19) in [5]
+        sqrt_term = (A**2 + B**2) ** 0.5
+        # Determine rotation angle according to right column on p. 460 of [5]
+        # Calcuate cosine and sinus terms according to eq. (19) in [5]
+        cos4a = -A / sqrt_term
+        sin4a = B / sqrt_term
+        # Two pairs (x1, y1) and (x2, y2)
+        #
+        # First pair
+        x21 = 0.5 * (1.0 + (1.0 - 0.5 * (1 - cos4a)) ** 0.5)
+        #                ^--- Note this sign
+        x1 = x21**0.5
+        y1 = (1.0 - x21) ** 0.5
+        # Second pair
+        x22 = 0.5 * (1.0 - (1.0 - 0.5 * (1 - cos4a)) ** 0.5)
+        #                ^--- Note this sign
+        x2 = x22**0.5
+        y2 = (1.0 - x22) ** 0.5
+        # Check which pair fulfills 4 * x * y * (x**2 - y**2) = sin(4a)
+        for x, y in ((x1, y1), (x2, y2)):
+            diff = 4 * x * y * (x**2 - y**2) - sin4a
+            # Interestingly, diff can become quite 'big' sometimes (> 1e-8)
+            if abs(diff) <= 5e-8:
+                break
+        else:
+            raise Exception(
+                f"Determination of rotation angle failed ({diff=: >12.6e})!"
+            )
+        # x of the correct pair corresponds to the cosine of the rotation angle
+        rad = np.arccos(x)
+        # deg = np.rad2deg(rad)
+        # print(f"\tRotation of {j=} and {k=} by {rad=: 10.6e} rad ({deg: >10.6f}°).")
+        # Inplace rotation of matrix columns with indices 'j' and 'k' by 'rad' radians.
+        # Eq. (15) in [5]
+        # NOTE: whether we rotate/mix columns or rows of U determines how we have to rotate
+        # the Coulomb-tensor at the beginning of a macro-cycle.
+        cos = np.cos(rad)
+        sin = np.sin(rad)
+        j_rot = cos * U[:, j] + sin * U[:, k]
+        k_rot = -sin * U[:, j] + cos * U[:, k]
+        U[:, j] = j_rot
+        U[:, k] = k_rot
+    else:
+        raise Exception(f"ER-localization did not converge after {max_cycles} cycles!")
+    # End loop over macro-cycles
+
+    result = JacobiSweepResult(
+        is_converged=converged,
+        cur_cycle=i,
+        C=U,
+        P=D,
+    )
+    return result
 
 
 DiaResultTemplate = Template(
