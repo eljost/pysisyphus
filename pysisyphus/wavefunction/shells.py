@@ -602,13 +602,27 @@ class Shells:
         return C
 
     @property
+    def P_sph_native(self):
+        return sp.linalg.block_diag(*[self.sph_Ps[shell.L] for shell in self.shells])
+
+    @property
+    def P_cart_native(self):
+        return sp.linalg.block_diag(*[self.cart_Ps[shell.L] for shell in self.shells])
+
+    @property
     def P_sph(self):
         """Permutation matrix for spherical basis functions."""
-        return sp.linalg.block_diag(*[self.sph_Ps[shell.L] for shell in self.shells])
+        if self.ordering == "pysis":
+            return np.eye(self.sph_size)
+        return self.P_sph_native
 
     @property
     def P_cart(self):
         """Permutation matrix for Cartesian basis functions."""
+        if self.ordering == "pysis":
+            return np.eye(self.cart_size)
+
+        """
         try:
             P_cart = sp.linalg.block_diag(
                 *[self.cart_Ps[shell.L] for shell in self.shells]
@@ -616,6 +630,8 @@ class Shells:
         except AttributeError:
             P_cart = np.eye(self.cart_size)
         return P_cart
+        """
+        return self.P_cart_native
 
     def eval(self, xyz, spherical=True):
         """Evaluate all basis functions at points xyz using generated code.
