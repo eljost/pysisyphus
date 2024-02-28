@@ -10,6 +10,10 @@
 #     via Orbital Interactions, Excitation Energy Components,
 #     Charge-Transfer Numbers, and Vibrational Reorganization Energies
 #     Pei, Ou, Mao, Yang, Lande, Plasser, Liang, Shuai, Shao, 2021
+# [4] https://doi.org/10.1021/j100039a012
+#     Analysis of Electronic Transitions as the Difference
+#     of Electron Attachment and Detachment Densities
+#     Head-Gordon, Grana, Maurice, White, 1995
 
 import itertools as it
 from functools import partial
@@ -549,3 +553,44 @@ def nto_org_overlaps(ntos_1, ntos_2, ao_ovlp, nto_thresh=0.3):
             ovlps[i, j] = ovlp
     return ovlps
 """
+
+
+def detachment_attachment_density(diff_dens: np.ndarray, atol=1e-12, verbose=False):
+    """Calculation of detachment and attachment densities in the MO-basis.
+
+    Based on [4]. As described in the paper, both density-matrices are positive
+    semidefinite.
+
+    Parameters
+    ----------
+    diff_dens
+        2d array containing a difference density in the MO basis w/ shape (nmos, nmos).
+    atol
+        Positive float; absolute tolerance used in the checks.
+
+    Returns
+    -------
+    detach_dens
+        2d array containing the detachment density in the MO basis w/ shape (nmos, nmos).
+    attach_dens
+        2d array containing the attachment density in the MO basis w/ shape (nmos, nmos).
+    """
+    np.testing.assert_allclose(diff_dens, diff_dens.T, atol=atol)
+    # Eq. (2) in [4]
+    w, v = np.linalg.eigh(diff_dens)
+
+    # Detachment density, eqs. (4) and (5) in [4]
+    d = w.copy()
+    d[d > 0.0] = 0.0
+    detach_dens = v @ np.diag(np.abs(d)) @ v.T
+    # Attachment density, eqs. (6) and (7) in [4]
+    a = w.copy()
+    a[a < 0.0] = 0.0
+    attach_dens = v @ np.diag(a) @ v.T
+
+    if verbose:
+        print(f"p={a.sum(): >6.2f}, λ(A)={a.max():.3f}, λ(D)={d.max():.3f}")
+
+    # Eq. (8) in [4]
+    np.testing.assert_allclose(attach_dens - detach_dens, diff_dens, atol=atol)
+    return detach_dens, attach_dens

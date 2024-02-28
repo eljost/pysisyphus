@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import functools
 from math import ceil
 import tempfile
 from typing import Tuple
@@ -12,9 +13,11 @@ from pysisyphus.elem_data import ATOMIC_NUMBERS, INV_ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wrapper.jmol import view_cdd_cube
+from pysisyphus.wavefunction import Wavefunction
 
 
-def get_grid(coords3d, num=10, offset=3.0):
+@functools.singledispatch
+def get_grid(coords3d: np.ndarray, num=10, offset=3.0):
     minx, miny, minz = coords3d.min(axis=0) - offset
     maxx, maxy, maxz = coords3d.max(axis=0) + offset
     X, Y, Z = np.mgrid[
@@ -25,6 +28,11 @@ def get_grid(coords3d, num=10, offset=3.0):
     xyz = np.stack((X.flatten(), Y.flatten(), Z.flatten()), axis=1)
     spacing = np.array((maxx - minx, maxy - miny, maxz - minz)) / (num - 1)
     return xyz, spacing, (num, num, num)
+
+
+@get_grid.register
+def _(wf: Wavefunction, **kwargs):
+    return get_grid(wf.coords3d, **kwargs)
 
 
 def get_grid_with_spacing(coords3d, spacing=0.30, margin=3.0):
