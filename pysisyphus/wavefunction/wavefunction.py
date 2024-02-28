@@ -284,7 +284,7 @@ class Wavefunction:
     def P_tot(self):
         return operator.add(*self.P)
 
-    def P_exc(self, trans_dens):
+    def P_exc(self, trans_dens, transform_ao=True):
         """
         Eqs. (2.25) and (2.26) in [1].
         """
@@ -301,10 +301,12 @@ class Wavefunction:
         dP_vv = np.einsum("ia,ic->ac", trans_dens, trans_dens)
         P[:occ, :occ] -= 2 * dP_oo
         P[occ:, occ:] += 2 * dP_vv
-        C, _ = self.C
-        # The density matric is currently still in the MO basis. Transform
-        # it to the AO basis and return.
-        return C @ P @ C.T
+        # The density matric is currently still in the MO basis.
+        # If requested, transform it to the AO basis.
+        if transform_ao:
+            C, _ = self.C
+            P = C @ P @ C.T
+        return P
 
     """
     def store_density(self, P, name, ao_or_mo="ao"):

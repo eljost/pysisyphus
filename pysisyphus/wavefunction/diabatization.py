@@ -352,7 +352,14 @@ def edmiston_ruedenberg_jacobi_sweeps(
 
 DiaResultTemplate = Template(
     """
+########################
+# DIABATIZATION REPORT #
+########################
+
 All energies are given in {{ unit }}.
+
+Every column of the rotation matrix U describes the composition of a
+diabatic state in terms of (possibly various) adiabatic states.
 
 Adiabatic energy matrix V
 -------------------------
@@ -368,7 +375,7 @@ Diabatic energy matrix D = UᵀVU
 {{ dia_mat }}
 
 Diabatic states Ξᵢ sorted by energy
---------------------------------
+-----------------------------------
 {%- for ind, dia_state, dia_en in dia_states_sorted %}
 {{ ind }}: {{ dia_state }}, {{ "%.4f"|format(dia_en) }} {{ unit }}
 {%- endfor %}
@@ -383,8 +390,8 @@ Weights U²
 ----------
 {{ U2 }}
 
-Absolute diabatic couplings
----------------------------
+Unique absolute diabatic couplings
+----------------------------------
 {%- for key, coupling in couplings %}
 |{{ key }}| = {{ "%.4f"|format(coupling) }} {{ unit }}
 {%- endfor %}
@@ -416,6 +423,7 @@ class DiabatizationResult:
     R_tensor: Optional[np.ndarray] = None  # Coulomb tensor
     # 3d density fitting tensor of shape (naux, nstates, nstates)
     L_tensor: Optional[np.ndarray] = None
+    # TODO: add adiabatic labels and use them in the report
 
     @property
     def nstates(self):
