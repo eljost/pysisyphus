@@ -589,7 +589,7 @@ def detachment_attachment_density(diff_dens: np.ndarray, atol=1e-12, verbose=Fal
     attach_dens = v @ np.diag(a) @ v.T
 
     if verbose:
-        print(f"p={a.sum(): >6.2f}, λ(A)={a.max():.3f}, λ(D)={d.max():.3f}")
+        print(f"p={a.sum(): >6.2f}, λ(A)={a.max():.3f}, -λ(D)={d.min():.3f}")
 
     # Eq. (8) in [4]
     np.testing.assert_allclose(attach_dens - detach_dens, diff_dens, atol=atol)

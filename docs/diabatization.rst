@@ -60,7 +60,7 @@ The related diabatic states :math:`\Xi_A` and :math:`\Xi_B` are
 .. math::
    \begin{align}
        \Xi_A &= \cos(\theta) \Psi_1 + \sin(\theta) \Psi_2 \\
-       \Xi_B &= -\sin(\theta) \Psi_1 - \cos(\theta) \Psi_2 \\
+       \Xi_B &= -\sin(\theta) \Psi_1 + \cos(\theta) \Psi_2 \\
    \end{align} ~ .
 
 Similarly, diabatic expectation values are calculated as linear combination of
