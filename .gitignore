@@ -171,6 +171,7 @@ version.py
 !tests/test_barriers/*.h5
 !tests/test_dma/data/*
 !tests/test_es_capabilities/control_path_mult_*
+!tests/test_exc_densities/data/*
 !tests/test_franckcondon/*.h5
 !tests/test_franckcondon/naphthalene_gradient
 !tests/test_hessian_updates/*.h5
