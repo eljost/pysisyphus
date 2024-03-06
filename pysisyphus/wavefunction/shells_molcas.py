@@ -1,6 +1,7 @@
 import warnings
 
 import numpy as np
+import scipy as sp
 
 from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
 from pysisyphus.wavefunction.shells import Shells
