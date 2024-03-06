@@ -41,7 +41,6 @@ from pysisyphus.wavefunction.helpers import (
 
 # TODO: move this to python backend
 from pysisyphus.wavefunction.ints import cart_gto3d
-from pysisyphus.wavefunction.molcas_shells import get_molcas_P_sph
 from pysisyphus.wavefunction.normalization import norm_cgto_lmn
 
 
@@ -264,7 +263,7 @@ class Shells:
             index += shell.size
             sph_index += shell.sph_size
 
-        # Try to construct Cartesian permutation matrix from cart_order, if defnied.
+        # Try to construct Cartesian permutation matrix from cart_order, if defined.
         try:
             self.cart_Ps = permut_for_order(self.cart_order)
         except AttributeError:
@@ -1128,86 +1127,3 @@ class ORCAMoldenShells(Shells):
             [0, 0, 0, 0, 0, 0, 0, 0, -1],
         ],
     }
-
-
-def pyscf_cart_order(l):
-    order = list()
-    for lx in reversed(range(l + 1)):
-        for ly in reversed(range(l + 1 - lx)):
-            lz = l - lx - ly
-            order.append("x" * lx + "y" * ly + "z" * lz)
-    return tuple(order)
-
-
-class PySCFShells(Shells):
-
-    """
-    Cartesian bfs >= d angular momentum are not normalized!
-    S_ref = mol.intor("int1e_ovlp_cart")
-    N = 1 / np.diag(S_ref)**0.5
-    ao *= N
-    """
-
-    cart_order = [pyscf_cart_order(l) for l in range(5)]
-
-    sph_Ps = {
-        0: [[1]],  # s
-        1: [[1, 0, 0], [0, 0, 1], [0, 1, 0]],  # px py pz
-        2: [
-            [0, 0, 0, 0, 1],  # dxy
-            [0, 0, 0, 1, 0],  # dyz
-            [0, 0, 1, 0, 0],  # dz²
-            [0, 1, 0, 0, 0],  # dxz
-            [1, 0, 0, 0, 0],  # dx² - y²
-        ],
-        3: [
-            [0, 0, 0, 0, 0, 0, 1],
-            [0, 0, 0, 0, 0, 1, 0],
-            [0, 0, 0, 0, 1, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 1, 0, 0, 0, 0],
-            [0, 1, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 0],
-        ],
-        4: [
-            [0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0],
-            [0, 0, 0, 0, 0, 0, 1, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 1, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0],
-        ],
-    }
-
-
-class MolcasShells(Shells):
-    """Override some properties to accomodate the insane basis function
-    ordering in OpenMolcas."""
-
-    # Store spherical permutation matrix once constructed.
-    _P_sph = None
-
-    @property
-    def cart2sph_coeffs(self):
-        """Cartesian-to-spherical coefficients w/ Cartesian p-Orbitals."""
-        cart2sph = cart2sph_coeffs(self.l_max)
-        # Disable conversion of p-orbitals, as they stay usually Cartesian in OpenMolcas.
-        cart2sph[1] = np.eye(3)
-        C = sp.linalg.block_diag(*[cart2sph[shell.L] for shell in self.shells])
-        return C
-
-    @property
-    def P_sph(self):
-        """Permutation matrix for mixed spherical/Cartesian basis functions.
-
-        Cartesian p-functions are assumed! Molcas stores the basis functions not
-        per shell, but (more or less) per center and angular momentum. So for a
-        given center the order would be something like this
-        1s, 2s, 3s, 1px, 2px, 1py, 2py, 1pz, 2pz, etc.
-        """
-        if self._P_sph is None:
-            self._P_sph = get_molcas_P_sph(self.shells, nbfs=self.sph_size)
-        return self._P_sph
