@@ -219,6 +219,13 @@ OpenBabel
     :undoc-members:
     :show-inheritance:
 
+CFOUR
+-------
+.. automodule:: pysisyphus.calculators.CFOUR
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 
 Meta (wrapping) Calculators

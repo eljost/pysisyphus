@@ -33,6 +33,7 @@ __all__ = [
     "Turbomole",
     "TransTorque",
     "XTB",
+    "CFOUR",
 ]
 
 
@@ -68,6 +69,7 @@ from pysisyphus.calculators.TIP3P import TIP3P
 from pysisyphus.calculators.TransTorque import TransTorque
 from pysisyphus.calculators.Turbomole import Turbomole
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.calculators.CFOUR import CFOUR
 
 
 logger = logging.getLogger("dimer")
