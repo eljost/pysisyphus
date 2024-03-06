@@ -239,6 +239,10 @@ def read_geoms(
     if geom_kwargs is None:
         geom_kwargs = {}
 
+    # As geometries can also be named inside pysisyphus we try to construct
+    # the appropriate name lists here. When no names are given empty strings
+    # will be used.
+    #
     # Single filename
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns]
@@ -251,12 +255,11 @@ def read_geoms(
         names = [""] * len(xyz_fns)
 
     geoms = list()
+    # Loop over filenames/inline strings and try to parse them into geometries
     for fn in xyz_fns:
-        # Valid for non-inline coordinates
-        if Path(fn).suffix or fn.startswith("pubchem:"):
-            geoms.extend(
-                geom_loader(fn, coord_type=coord_type, iterable=True, **geom_kwargs)
-            )
+        geoms.extend(
+            geom_loader(fn, coord_type=coord_type, iterable=True, **geom_kwargs)
+        )
 
     # Set names
     for name, geom in zip(names, geoms):

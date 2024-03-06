@@ -38,6 +38,7 @@ from pysisyphus.io import (
     geoms_from_inline_xyz,
     geom_from_pubchem_name,
 )
+from pysisyphus.io.coord import geoms_from_turbomole_coord
 from pysisyphus.thermo import (
     can_thermoanalysis,
     print_thermoanalysis,
@@ -76,6 +77,19 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
     return geoms
 
 
+def geom_from_missing_ext(fn, **kwargs):
+    fn_path = Path(fn)
+    name = fn_path.name
+    if name == "coord" or "coord" in name:
+        # Return an iterable of one geometry, because of this check later
+        #   'if iterable and (ext in (".trj", ".fchk", "")) ...' in
+        # geom_loader().
+        geoms = geoms_from_turbomole_coord(fn, **kwargs)
+    else:
+        geoms = geoms_from_inline_xyz(fn, **kwargs)
+    return geoms
+
+
 def geom_loader(
     fn, coord_type="cart", iterable=False, **coord_kwargs
 ) -> Union[Geometry, tuple[Geometry]]:
@@ -92,7 +106,7 @@ def geom_loader(
         index = None
     ext = "" if "\n" in fn else Path(fn).suffix
 
-    funcs = {
+    ext_funcs = {
         ".cjson": geom_from_cjson,
         ".crd": geom_from_crd,
         ".cub": geom_from_cube,
@@ -105,28 +119,30 @@ def geom_loader(
         ".trj": geoms_from_trj,
         ".xyz": geom_from_xyz_file,
         ".zmat": geom_from_zmat_fn,
-        "": geoms_from_inline_xyz,
+        "": geom_from_missing_ext,
     }
-    assert ext in funcs, f"Unknown filetype for '{fn}'!"
-    func = funcs[ext]
+    assert ext in ext_funcs, f"Unknown filetype for '{fn}'!"
+    ext_func = ext_funcs[ext]
 
     if fn.startswith("lib:"):
         fn = str(LIB_DIR / fn[4:])
     elif fn.startswith("pubchem:"):
-        func = geom_from_pubchem_name
+        ext_func = geom_from_pubchem_name
         fn = fn[8:]
 
     kwargs = {
         "coord_type": coord_type,
     }
     kwargs.update(coord_kwargs)
-    geom = func(fn, **kwargs)
+    geom = ext_func(fn, **kwargs)
 
     if index is not None:
         geom = geom[index]
 
     if iterable and org_fn.startswith("pubchem:"):
         geom = (geom,)
+    # TODO: simplify this. This condition is also True for 'coord' files and expects
+    # multiple geometries, or at least that geom is an iterable.
     if iterable and (ext in (".trj", ".fchk", "")) and index is None:
         geom = tuple(geom)
     elif not iterable and ext == "" and len(geom) == 1:
