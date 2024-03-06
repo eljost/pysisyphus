@@ -35,7 +35,7 @@ EXC_STATE_RE = re.compile(
     r"(?P<label>(?:Singlet|Triplet|[\d.]+)-\?Sym)\s+"
     r"(?P<exc_ev>[\d\-\.]+) eV\s+"
     r"(?P<exc_nm>[\d\.\-]+) nm\s+"
-    r"f=(?P<fosc>[\d\.]+)\s+"
+    r"f=(?P<fosc>[\d\.\-]+)\s+"
     r"<S\*\*2>=(?P<S2>[\d\.]+)\s+"
     rf"((?:(?!Excited State){TRANS_PATTERN}\s+)+)",
     re.DOTALL,

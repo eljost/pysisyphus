@@ -10,7 +10,6 @@ from pysisyphus.wavefunction.shells import (
     MoldenShells,
     ORCAShells,
     ORCAMoldenShells,
-    PySCFShells,
     Shell,
     Shells,
 )

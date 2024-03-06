@@ -423,20 +423,29 @@ def parse_orca_all_energies(text, triplets=False, do_tddft=False, do_ice=False):
     energy_mobj = re.search(energy_re, text)
     gs_energy = float(energy_mobj.groups()[0])
     all_energies = [gs_energy]
+    did_triplets = bool(re.search("Generation of triplets\s*... on", text))
 
     if do_tddft:
         scf_re = re.compile(r"E\(SCF\)\s+=\s*([\d\-\.]+) Eh")
         scf_mobj = scf_re.search(text)
         scf_en = float(scf_mobj.group(1))
         gs_energy = scf_en
-        tddft_re = re.compile(r"STATE\s*(\d+):\s*E=\s*([\d\.]+)\s*au")
+        tddft_re = re.compile(r"STATE\s*(\d+):\s*E=\s*([-\d\.]+)\s*au")
         states, exc_ens = zip(
             *[(int(state), float(en)) for state, en in tddft_re.findall(text)]
         )
-        if triplets:
+        if did_triplets:
             roots = len(states) // 2
-            exc_ens = exc_ens[-roots:]
-            states = states[-roots:]
+            if triplets:
+                exc_ens = exc_ens[-roots:]
+                states = states[-roots:]
+            else:
+                warnings.warn(
+                    "Detected singlet-triplet excitations but 'triplets' is set to "
+                    "False. Returning only singlet-energies!"
+                )
+                exc_ens = exc_ens[:roots]
+                states = states[:roots]
         assert len(exc_ens) == len(set(states))
         all_energies = np.full(1 + len(exc_ens), gs_energy)
         all_energies[1:] += exc_ens

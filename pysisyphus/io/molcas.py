@@ -1,7 +1,8 @@
 import h5py
 import numpy as np
 
-from pysisyphus.wavefunction.shells import Shell, MolcasShells
+from pysisyphus.wavefunction.shells import Shell
+from pysisyphus.wavefunction.shells_molcas import MolcasShells
 
 
 def shells_from_molcas_h5(h5_fn, **kwargs):
