@@ -698,3 +698,7 @@ SPIN_LABELS = {
 def get_state_label(mult: int, state_ind: int, default="?"):
     spin_label = SPIN_LABELS.get(mult, default)
     return f"{spin_label}_{state_ind:d}"
+
+
+def argsort(iterable):
+    return [i for i, _ in sorted(enumerate(iterable), key=lambda i_item: i_item[1])]

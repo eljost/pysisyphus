@@ -43,7 +43,7 @@ from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.wavefunction import Wavefunction
 from pysisyphus.wavefunction.excited_states import norm_ci_coeffs
-from pysisyphus.wavefunction.shells import PySCFShells
+from pysisyphus.wavefunction.shells_pyscf import get_pyscf_P
 from pysisyphus.wavefunction.helpers import BFType, cart_size, sph_size
 
 
@@ -72,12 +72,6 @@ def get_cart_norms(mol: "gto.Mole") -> np.ndarray:
     N = 1 / np.diag(S) ** 0.5
     NN = N[:, None] * N[None, :]
     return NN
-
-
-def get_pyscf_P_sph(shells):
-    sph_Ps = PySCFShells.sph_Ps
-    P_sph = sp.linalg.block_diag(*[sph_Ps[shell.L] for shell in shells])
-    return P_sph
 
 
 def get_effective_charge(atomic_num: int) -> float:
@@ -190,7 +184,7 @@ def singlet_triplet_so_couplings(
 ) -> np.ndarray:
     """Singlet-triplet spin-orbit couplings from LR-TDDFT.
 
-    As desribed in [3].
+    As described in [3].
 
     Parameters
     ----------
@@ -284,12 +278,11 @@ def _(
         intor_key = "int1e_prinvxp_cart"
         # PySCF has a sensible ordering of Cartesian basis functions.
         # xx, xy, xz, yy, yz, zz ... lexicographic.
-        perm_pyscf = np.eye(nbfs)
+        perm_pyscf = get_pyscf_P(shells, cartesian=True)
     else:
         nbfs = shells.sph_size
         intor_key = "int1e_prinvxp_sph"
-        perm_pyscf = get_pyscf_P_sph(shells)
-
+        perm_pyscf = get_pyscf_P(shells, cartesian=False)
     # Permutation matrix to reorder the MO coefficients
     perm = wf.get_permut_matrix()
 
@@ -298,13 +291,17 @@ def _(
 
     # Calculate spin-orbit integrals w/ PySCF
     charge_func = get_original_charge if boettger else get_effective_charge
+
     ints_ao = np.zeros((3, nbfs, nbfs))
     # Loop over all atoms, calculate the spin-orbit integrals and accumulate them
     # with the appropriate effective charge into ints_ao
     for i in range(mol.natm):
         mol.set_rinv_origin(mol.atom_coord(i))
-        # charge = mol.atom_charge(i)  # Plain charge
-        charge = charge_func(mol.atom_charge(i))
+        atom_charge = mol.atom_charge(i)
+        charge = charge_func(atom_charge)
+        print(
+            f"{i:03d}: {mol.atom_symbol(i): >2s}, Z={atom_charge: >3d}, Zeff={charge: >10.6f}"
+        )
         ints_ao += charge * mol.intor(intor_key)
 
     if boettger:
@@ -317,15 +314,12 @@ def _(
         ints_ao = N * ints_ao
 
     # Bring AO integrals from PySCF into pysisphus-order.
-    # For Cartesian basis functions the permutation matrix is the unit matrix,
-    # but for spherical basis functions this will have an effect on the basis
-    # function order.
-    ints_ao = perm_pyscf.T @ ints_ao @ perm_pyscf
+    ints_ao = perm_pyscf @ ints_ao @ perm_pyscf.T
 
-    # Considering alpha MO coefficients is enough as we have a restricted wavefunction.
+    # Considering only alpha MO coefficients is enough as we have a restricted wavefunction.
     Ca, _ = wf.C
-    # Reorder MO-coefficients from external order to pysisyphus order.
-    Ca = perm.T @ Ca
+    # Reorder MO-coefficients from external order to pysisyphus-order.
+    Ca = perm @ Ca
 
     return singlet_triplet_so_couplings(Ca, ints_ao, XpYs, XpYt)
 

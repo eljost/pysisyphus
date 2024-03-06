@@ -9,7 +9,8 @@ from pyscf import grad, gto, lib, hessian, qmmm, tddft
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.helpers import geom_loader
-from pysisyphus.wavefunction import PySCFShells, Shell, Wavefunction
+from pysisyphus.wavefunction import Shell, Wavefunction
+from pysisyphus.wavefunction.shells_pyscf import PySCFShells
 from pysisyphus.wavefunction.helpers import BFType
 
 

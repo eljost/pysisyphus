@@ -2,6 +2,9 @@ import warnings
 
 import numpy as np
 
+from pysisyphus.wavefunction.cart2sph import cart2sph_coeffs
+from pysisyphus.wavefunction.shells import Shells
+
 
 def bf_ind_key(bf_ind):
     """Key function to sort OpenMolcas basis functions."""
@@ -46,3 +49,33 @@ def get_molcas_P_sph(shells, nbfs):
     P_sph = np.zeros((nbfs, nbfs))
     P_sph[np.arange(nbfs), inds] = 1
     return P_sph
+
+
+class MolcasShells(Shells):
+    """Override some properties to accomodate the insane basis function
+    ordering in OpenMolcas."""
+
+    # Store spherical permutation matrix once constructed.
+    _P_sph = None
+
+    @property
+    def cart2sph_coeffs(self):
+        """Cartesian-to-spherical coefficients w/ Cartesian p-Orbitals."""
+        cart2sph = cart2sph_coeffs(self.l_max)
+        # Disable conversion of p-orbitals, as they stay usually Cartesian in OpenMolcas.
+        cart2sph[1] = np.eye(3)
+        C = sp.linalg.block_diag(*[cart2sph[shell.L] for shell in self.shells])
+        return C
+
+    @property
+    def P_sph(self):
+        """Permutation matrix for mixed spherical/Cartesian basis functions.
+
+        Cartesian p-functions are assumed! Molcas stores the basis functions not
+        per shell, but (more or less) per center and angular momentum. So for a
+        given center the order would be something like this
+        1s, 2s, 3s, 1px, 2px, 1py, 2py, 1pz, 2pz, etc.
+        """
+        if self._P_sph is None:
+            self._P_sph = get_molcas_P_sph(self.shells, nbfs=self.sph_size)
+        return self._P_sph
