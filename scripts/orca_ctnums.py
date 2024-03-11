@@ -2,8 +2,10 @@
 
 
 import argparse
+import itertools as it
 from pathlib import Path
 import sys
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,7 +17,10 @@ from pysisyphus.wavefunction import Wavefunction
 from pysisyphus.wavefunction.excited_states import norm_ci_coeffs, ct_numbers_for_states
 
 
-def load_data(base_name: Path):
+def load_data(base_name: Path, triplets: bool = False, ignore_bonds: Optional[list[int]] = None):
+    if ignore_bonds is None:
+        ignore_bonds = list()
+
     dump_fn = base_name.with_suffix(".npz")
 
     if dump_fn.exists():
@@ -27,7 +32,7 @@ def load_data(base_name: Path):
         wf_fn = base_name.with_suffix(".bson")
 
         # Drop GS, only keep excitation energies
-        all_ens = parse_orca_all_energies(log_fn, do_tddft=True)
+        all_ens = parse_orca_all_energies(log_fn, triplets=triplets, do_tddft=True)
         exc_ens = all_ens[1:] - all_ens[0]
         print(f"Parsed excitation energies from '{log_fn}'.")
 
@@ -36,7 +41,7 @@ def load_data(base_name: Path):
         wf = Wavefunction.from_file(wf_fn)
         print(f"Loaded wavefunction from '{wf_fn}'.")
 
-        frags = get_fragments(wf.atoms, wf.coords, with_unconnected_atoms=True)
+        frags = get_fragments(wf.atoms, wf.coords, ignore_bonds=ignore_bonds, with_unconnected_atoms=True)
         # Convert from list of frozensets to list of lists
         frags = list(map(list, frags))
 
@@ -52,6 +57,12 @@ def load_data(base_name: Path):
         foscs = wf.oscillator_strength(exc_ens, tdms)
         print(f"Calculated oscillator strengths.")
 
+        homogeneous_frags = np.zeros((len(wf.atoms), 2), dtype=int)
+        i = 0
+        for j, frag in enumerate(frags):
+            for atom in frag:
+                homogeneous_frags[i] = j, atom
+                i += 1
         data = dict(
             atoms=wf.atoms,
             coords=wf.coords,
@@ -64,7 +75,7 @@ def load_data(base_name: Path):
             tdms=tdms,
             foscs=foscs,
             ct_numbers=ct_numbers,
-            frags=frags,
+            frags=homogeneous_frags,
         )
         np.savez(dump_fn, **data)
     return data
@@ -74,6 +85,8 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("base_name")
+    parser.add_argument("--triplets", action="store_true")
+    parser.add_argument("--bonds", nargs="+", type=int)
 
     return parser.parse_args(args)
 
@@ -82,14 +95,32 @@ def run():
     args = parse_args(sys.argv[1:])
 
     base_name = Path(args.base_name)
-    data = load_data(base_name)
+    triplets = args.triplets
+    bonds = args.bonds
+    if bonds is None:
+        bonds = list()
+
+    assert len(bonds) % 2 == 0, "Length of bonds must be a multiple of 2!"
+    nbonds = len(bonds) // 2
+    ignore_bonds = list()
+    for i in range(nbonds):
+        ignore_bonds.append(bonds[2*i:2*(i+1)])
+
+    data = load_data(base_name, triplets, ignore_bonds)
 
     atoms = data["atoms"]
     coords = data["coords"]
     exc_ens = data["exc_ens"]
     foscs = data["foscs"]
     ct_numbers = data["ct_numbers"]
-    frags = data["frags"]
+    homogenous_frags = data["frags"]
+
+    frags = []
+    for key, _frag in it.groupby(homogenous_frags, key=lambda frag_atom_ind: frag_atom_ind[0]):
+        cur_frag = []
+        for _, atom_ind in _frag:
+            cur_frag.append(atom_ind)
+        frags.append(cur_frag)
 
     fig = ct_number_plot(atoms, coords, exc_ens, foscs, ct_numbers, frags=frags)
     plt.show()
