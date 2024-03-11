@@ -264,6 +264,8 @@ class Shells:
             sph_index += shell.sph_size
 
         # Try to construct Cartesian permutation matrix from cart_order, if defined.
+        self._P_cart = None
+        self._P_sph = None
         try:
             self.cart_Ps = permut_for_order(self.cart_order)
         except AttributeError:
@@ -507,7 +509,7 @@ class Shells:
 
         return from_pyscf_mol(mol, **kwargs)
 
-    def to_pyscf_mol(self):
+    def to_pyscf_mol(self, charge=0, mult=1):
         # TODO: this would be better suited as a method of Wavefunction,
         # as pyscf Moles must have sensible spin & charge etc.
         # TODO: currently, this does not support different basis sets
@@ -538,6 +540,8 @@ class Shells:
         mol.atom = "; ".join(atoms_coords)
         mol.unit = "Bohr"
         mol.basis = basis
+        mol.charge = charge
+        mol.spin = mult - 1
         mol.build()
         return mol
 
