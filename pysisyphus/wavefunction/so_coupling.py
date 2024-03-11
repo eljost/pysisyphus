@@ -1,4 +1,4 @@
-# [1] https://doi.org/10.1002/jcc.21113
+# [1] https://doi.org/10.1002/jcc.21113op
 #     One-electron spin-orbit contribution by effective nuclear charges
 #     Chiodo, Russo, 2008
 # [2] https://doi.org/10.1021/jp983453n
@@ -36,7 +36,6 @@ from typing import Sequence, TYPE_CHECKING
 if TYPE_CHECKING:
     from pyscf import gto
 import numpy as np
-import scipy as sp
 
 from pysisyphus.constants import AU2NU, CAU
 from pysisyphus.helpers_pure import highlight_text
@@ -210,7 +209,7 @@ def singlet_triplet_so_couplings(
     assert XpYs.shape[1:] == XpYt.shape[1:]
 
     # Transform AO integrals to MO basis
-    ints_mo = C.T @ ints_ao @ C
+    ints_mo = np.einsum("mr,Imn,ns->Irs", C, ints_ao, C, optimize="greedy")
     ints_mo = _FACTOR * ints_mo
 
     # Determine number of active occupied and virtual orbitals from the shape of the
@@ -287,7 +286,7 @@ def _(
     perm = wf.get_permut_matrix()
 
     # Create PySCF mol from pysisyphus shells object
-    mol = shells.to_pyscf_mol()
+    mol = shells.to_pyscf_mol(charge=wf.charge, mult=wf.mult)
 
     # Calculate spin-orbit integrals w/ PySCF
     charge_func = get_original_charge if boettger else get_effective_charge
@@ -314,12 +313,14 @@ def _(
         ints_ao = N * ints_ao
 
     # Bring AO integrals from PySCF into pysisphus-order.
-    ints_ao = perm_pyscf @ ints_ao @ perm_pyscf.T
+    ints_ao = np.einsum(
+        "Iop,om,pn->Imn", ints_ao, perm_pyscf, perm_pyscf, optimize="greedy"
+    )
 
     # Considering only alpha MO coefficients is enough as we have a restricted wavefunction.
     Ca, _ = wf.C
     # Reorder MO-coefficients from external order to pysisyphus-order.
-    Ca = perm @ Ca
+    Ca = perm.T @ Ca
 
     return singlet_triplet_so_couplings(Ca, ints_ao, XpYs, XpYt)
 
@@ -566,7 +567,7 @@ def report_so_trans_moms(w, soc_oscs, soc_tdms):
         )
 
 
-def run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens, **kwargs):
+def run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens, pysoc_norm=True, **kwargs):
     # Singlet-singlet excitations
     nsings, *_ = Xas.shape
     Xas, Yas = norm_ci_coeffs(Xas, Yas)
@@ -575,6 +576,16 @@ def run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens, **kwargs):
     # Singlet-triplet excitations
     Xat, Yat = norm_ci_coeffs(Xat, Yat)
     XpYt = Xat + Yat
+
+    # Both PySOC and ORCA seem to normalize X+Y to 1.0 ... I've never seen something
+    # like this. Afaik know, properties are usually evaluated with X+Y or X-Y, depending
+    # on the hermiticity of the operator w/o renormalizing X+Y to one.
+    # X and Y are usually already normalized via <X+Y|X-Y>.
+    if pysoc_norm:
+        snorms = 1 / np.sqrt(2 * np.sum(XpYs**2, axis=(1, 2)))
+        XpYs *= snorms[:, None, None]
+        tnorms = 1 / np.sqrt(2 * np.sum(XpYt**2, axis=(1, 2)))
+        XpYt *= tnorms[:, None, None]
 
     # The way CI coefficients are normalized in pysisyphus mandates multiplication by
     # sqrt(2). This is also discussed in the PySOC paper.
@@ -593,6 +604,9 @@ def run(wf, Xas, Yas, Xat, Yat, sing_ens, trip_ens, **kwargs):
     # Ty = (socs[..., 0] + socs[..., 2]) / 2.0j
     # Tz = 1 / np.sqrt(2.0) * socs[..., 1]
     # See eq. (14) to (16) in [6].
+    #
+    # Compared to ORCA, which only reports the Cartesian SOCs theses formulas
+    # don't seem to yield correct results.
     print()
 
     ##############

@@ -63,6 +63,12 @@ def get_pyscf_P(shells: Shells, cartesian: bool = True) -> np.ndarray:
     ----------
     shells
         Pysisyphus Shells object.
+
+    Returns
+    -------
+    P.T
+        Permutation matrix. PySCF-order will be along columns, pysisyphus-order
+        along the rows.
     """
     if cartesian:
         nbfs = shells.cart_size
@@ -115,7 +121,8 @@ def get_pyscf_P(shells: Shells, cartesian: bool = True) -> np.ndarray:
             # Increase offsets and advance to the next shell
             pyscf_offset += size
         pysis_offset += center_tot_size
-    return P
+    # Permutation matrix
+    return P.T
 
 
 class PySCFShells(Shells):
@@ -126,19 +133,23 @@ class PySCFShells(Shells):
     ao *= N
     """
 
-    # cart_order = _CART_ORDER
-    # sph_Ps = _SPH_PS
+    cart_Ps = _CART_PS
+    sph_Ps = _SPH_PS
 
     @property
     def P_cart(self):
         """Permutation matrix for Cartesian basis functions."""
-        if self._P_cart is None:
+        if self.ordering == "pysis":
+            return np.eye(self.cart_size)
+        elif self._P_cart is None:
             self._P_cart = get_pyscf_P(self, cartesian=True)
         return self._P_cart
 
     @property
     def P_sph(self):
         """Permutation matrix for Spherical basis functions."""
-        if self._P_sph is None:
+        if self.ordering == "pysis":
+            return np.eye(self.sph_size)
+        elif self._P_sph is None:
             self._P_sph = get_pyscf_P(self, cartesian=False)
         return self._P_sph
