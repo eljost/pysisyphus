@@ -114,6 +114,35 @@ def parse_ci_coeffs(text, restricted_same_ab=False):
     return Xa, Ya, Xb, Yb
 
 
+def noparse(path):
+    return dict()
+
+
+@file_or_str(".fchk")
+def parse_all_energies(text):
+    float_ = r"([\d\-\+Ee\.]+)"
+    gs_re = re.compile(r"SCF Energy\s+R\s+" + float_)
+    gs_mobj = gs_re.search(text)
+    gs_energy = float(gs_mobj[1])
+    # cis_re = re.compile(r"CIS Energy\s+R\s+" + float_)
+    # cis_mobj = cis_re.search(text)
+    # cis_energy = float(cis_mobj[1])
+    etrans_re = re.compile(
+        r"ETran state values\s+R\s+N=\s+(\d+)([\d\-\.Ee\+\s]+)", re.DOTALL
+    )
+    etrans_mobj = etrans_re.search(text)
+    try:
+        etrans = etrans_mobj[2].strip().split()
+        etrans = np.array(etrans, dtype=float).reshape(-1, 16)
+        exc_energies = etrans[:, 0]
+        all_energies = np.zeros(exc_energies.size + 1)
+        all_energies[0] = gs_energy
+        all_energies[1:] = exc_energies
+    except TypeError:
+        all_energies = np.array((gs_energy,))
+    return all_energies
+
+
 class Gaussian16(OverlapCalculator):
     conf_key = "gaussian16"
     _set_plans = (
@@ -215,7 +244,7 @@ class Gaussian16(OverlapCalculator):
             "force": self.parse_force,
             "hessian": self.parse_hessian,
             "stable": self.parse_stable,
-            "noparse": lambda path: None,
+            "noparse": noparse,
             "double_mol": self.parse_double_mol,
         }
 
@@ -538,8 +567,7 @@ class Gaussian16(OverlapCalculator):
             self.store_overlap_data(atoms, coords)
             self.track_root()
             self.log(
-                "This track_root() call is a bit superfluous as the "
-                "as the result is ignored :)"
+                "This track_root() call is a bit superfluous as the result is ignored."
             )
         return results
 
