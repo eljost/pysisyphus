@@ -72,12 +72,16 @@ def get_fragments(
     bond_inds=None,
     bond_factor=BOND_FACTOR,
     ignore_atom_inds=None,
+    ignore_bonds=None,
     with_unconnected_atoms=False,
 ):
     """This misses unconnected single atoms w/ 'with_unconnected_atoms=False'!"""
     coords3d = coords.reshape(-1, 3)
     if ignore_atom_inds is None:
         ignore_atom_inds = list()
+    if ignore_bonds  is None:
+        ignore_bonds = set()
+    ignore_bonds = set([frozenset(ib) for ib in ignore_bonds])
     ignore_atom_inds = set(ignore_atom_inds)
 
     if bond_inds is None:
@@ -85,7 +89,8 @@ def get_fragments(
         bond_inds = get_bond_sets(atoms, coords3d, bond_factor=bond_factor)
 
     bond_ind_sets = [frozenset(bi) for bi in bond_inds]
-    bond_ind_sets = [bi for bi in bond_ind_sets if not bi & ignore_atom_inds]
+    bond_ind_sets = [bi for bi in bond_ind_sets
+                     if (not bi & ignore_atom_inds) and (bi not in ignore_bonds)]
     fragments = merge_sets(bond_ind_sets)
 
     # Also add single-atom fragments for unconnected atoms that don't participate

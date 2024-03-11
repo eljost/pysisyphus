@@ -29,7 +29,8 @@ def get_frags_noh(atoms, coords, bond_inds):
     return frags
 
 
-def plot_geometry_graph(ax, atoms, coords3d, frags, bond_inds, scale=12.5):
+def plot_geometry_graph(ax, atoms, coords3d, frags, bond_inds, scale=12.5, filter_atoms={"h", }):
+    atoms = [atom.lower() for atom in atoms]
     node_color = list()
     node_size = list()
     pos0 = dict()
@@ -39,13 +40,15 @@ def plot_geometry_graph(ax, atoms, coords3d, frags, bond_inds, scale=12.5):
     drop_ind = pos_variances.argmin()
     keep_dims = [i for i in range(3) if i != drop_ind]
     for i, atom in enumerate(atoms):
-        atom = atom.lower()
         node_color.append(CPK_RGB[atom])
         node_size.append(COVALENT_RADII[atom])
-        if atom == "h":
+        if atom in filter_atoms:
             continue
         pos0[i] = coords3d[i, keep_dims]
         G.add_node(i, atom=atom)
+    pos0_max = coords3d[:, keep_dims].max(axis=0)
+    pos0_min = coords3d[:, keep_dims].min(axis=0)
+    pos0_extents = pos0_max - pos0_min
     node_color = np.array(node_color)
     node_size = np.array(node_size)
     node_size /= node_size.min()
@@ -54,15 +57,28 @@ def plot_geometry_graph(ax, atoms, coords3d, frags, bond_inds, scale=12.5):
     for from_, to_ in bond_inds:
         from_atom = atoms[from_]
         to_atom = atoms[to_]
-        if from_atom == "h" or to_atom == "h":
+        if from_atom in filter_atoms or to_atom in filter_atoms:
             continue
         bond_length = np.linalg.norm(coords3d[from_] - coords3d[to_])
         G.add_edge(from_, to_, weight=bond_length)
 
     labels = {
-        i: f"{atom.capitalize()}{i}" for i, atom in enumerate(atoms) if atom != "h"
+        i: f"{atom.capitalize()}{i}" for i, atom in enumerate(atoms) if atom not in filter_atoms
     }
-    pos = nx.kamada_kawai_layout(G, scale=scale, pos=pos0)
+    try:
+        pos = nx.nx_agraph.graphviz_layout(G, prog="neato")
+        pos_arr = np.array(list(pos.values()))
+        pos_max = pos_arr.max(axis=0)
+        pos_min = pos_arr.min(axis=0)
+        pos_extents = pos_max - pos_min
+        pos_scale = pos0_extents / pos_extents
+        pos_arr = pos_arr * pos_scale
+        for i, key in enumerate(pos.keys()):
+            pos[key] = pos_arr[i]
+    except ImportError:
+        print("Falling back to networkx-layout, as (py)graphviz is not available.")
+        # Kamda-Kawai can also lead to overlapping nodes
+        pos = nx.kamada_kawai_layout(G, scale=scale, pos=pos0)
     """
     nx.draw(
         G, pos=pos, ax=ax, labels=labels, node_color=node_color, node_size=node_size
@@ -74,7 +90,16 @@ def plot_geometry_graph(ax, atoms, coords3d, frags, bond_inds, scale=12.5):
     # nodes different, depending on whether they loose or receive electron density.
     # Now arrows are used and drawing each fragment separately is actually not required.
     # But it doesn't hurt either to keep it like this.
-    for fnodes in frags:
+    frags_filtered = list()
+    for frag in frags:
+        cur_frag = list()
+        for atom_ind in frag:
+            if atoms[atom_ind] in filter_atoms:
+                continue
+            cur_frag.append(atom_ind)
+        frags_filtered.append(cur_frag)
+
+    for fnodes in frags_filtered:
         fnode_color = node_color[fnodes]
         fnode_size = node_size[fnodes]
         fpos = sum([pos[n] for n in fnodes]) / len(fnodes)
@@ -204,6 +229,9 @@ def get_render_exc(ax, exc_ens, foscs, ct_numbers, frag_pos):
 def get_annotate_state(ax, exc_ens, foscs):
     exc_ens_nm = _1OVER_AU2NM / exc_ens
     exc_ens_eV = exc_ens * AU2EV
+    ylim = ax.get_ylim()
+    ymax = ylim[1]
+    lower_third = (ymax - ylim[0]) / 3.
 
     def annotate_state(ind):
         exc_en_nm = exc_ens_nm[ind]
@@ -211,7 +239,8 @@ def get_annotate_state(ax, exc_ens, foscs):
         fosc = foscs[ind]
         text = f"{exc_en_nm:.2f} nm, {exc_en_eV:.2f} eV\nf={fosc:.5f}"
         xy = (exc_en_nm, fosc)
-        xytext = (exc_en_nm + 15.0, fosc + 0.125)
+        ytext = min(ymax, fosc + max(fosc * 0.1, lower_third))
+        xytext = (exc_en_nm + 15.0, ytext)#fosc + max(fosc * 0.1, lower_third))
         annot = ax.annotate(
             text,
             xy,
