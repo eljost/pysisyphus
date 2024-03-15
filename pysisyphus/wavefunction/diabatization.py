@@ -20,7 +20,7 @@
 #      Diabatization as motivated by system-solvent interactions
 #      Subotnik, Cave, Steele, Shenvi, 2009
 
-from dataclasses import dataclass
+import dataclasses
 import itertools as it
 from typing import Optional
 import warnings
@@ -393,13 +393,13 @@ Weights U²
 Unique absolute diabatic couplings
 ----------------------------------
 {%- for key, coupling in couplings %}
-|{{ key }}| = {{ "%.4f"|format(coupling) }} {{ unit }}
+|{{ key }}| = {{ "%.5f"|format(coupling) }} {{ unit }}
 {%- endfor %}
 """
 )
 
 
-@dataclass
+@dataclasses.dataclass
 class DiabatizationResult:
     U: np.ndarray
     adia_ens: np.ndarray
@@ -424,6 +424,10 @@ class DiabatizationResult:
     # 3d density fitting tensor of shape (naux, nstates, nstates)
     L_tensor: Optional[np.ndarray] = None
     # TODO: add adiabatic labels and use them in the report
+
+    def savez(self, fn):
+        kwargs = dataclasses.asdict(self)
+        np.savez(fn, **kwargs)
 
     @property
     def nstates(self):
