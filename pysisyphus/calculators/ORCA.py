@@ -1151,9 +1151,14 @@ class ORCA(OverlapCalculator):
         self.log(f"Setting MO coefficients from {gbw}.")
         self.mo_coeffs, _ = self.parse_gbw(self.gbw)
 
-    def prepare_overlap_data(self, path):
+    def prepare_overlap_data(self, path, triplets=None):
+        if triplets is None:
+            triplets = self.triplets
         # Parse eigenvectors from tda/tddft calculation
         X, Y = self.parse_cis(self.cis)
+        if triplets:
+            X = X[self.nroots:]
+            Y = Y[self.nroots:]
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
         C, _ = self.parse_gbw(self.gbw)
