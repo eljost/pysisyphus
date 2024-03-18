@@ -273,7 +273,7 @@ def get_optimal_bias(
         Optional dict of arguments passed to the optimizer.
     k_max
         Maximum absolute value of bias factor k. Must be a > k_min.
-    k_max
+    k_min
         Minimum absolute value of bias factor k. Must be a positive number >= 0.0.
         Defaults to 0.0.
     rmsd_target
