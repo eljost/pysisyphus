@@ -28,17 +28,20 @@ def get_parser(widths):
 
 STRIP_RE = re.compile(r"[\d\s]*")  # To remove numbers and whitespace
 NAME_MAP = {
+    "ha": "H",
     "hb": "H",
     "he": "H",
     "hh": "H",
     "hd": "H",
     "hg": "H",
+    "hm": "H",
     "so": "Na",
 }
 FULL_NAME = {
     " sod",
     " cla",
     " cal",
+    " fe ",
 }
 
 
