@@ -149,7 +149,7 @@ def ct_numbers_for_states(
     Ta
         Alpha-spin transition density matrices of shape (nstates, occ_a, virt_a).
     Tb
-        Beta-spin transition density matrices of shape (nstates, occ_a, virt_a).
+        Beta-spin transition density matrices of shape (nstates, occ_b, virt_b).
 
     Returns
     -------
@@ -170,7 +170,8 @@ def ct_numbers_for_states(
     if Tb is None:
         om_b = om_a
     else:
-        assert Ta.shape == Tb.shape
+        # Number of states must match
+        assert Ta.shape[0] == Tb.shape[0]
         om_b = ctn(Cb, occ_b, Tb)
     omegas = om_a + om_b
     omegas = omegas.reshape(nstates, nfrags, nfrags)
