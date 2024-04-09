@@ -675,7 +675,7 @@ class ORCA(OverlapCalculator):
                 )
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
-        self.triplets = bool(re.search(r"triplets\s+true", self.blocks))
+        self.triplets = bool(re.search(r"triplets\s+true|irootmult\s+triplet", self.blocks))
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
         self.to_keep = (
