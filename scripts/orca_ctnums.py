@@ -17,7 +17,9 @@ from pysisyphus.wavefunction import Wavefunction
 from pysisyphus.wavefunction.excited_states import norm_ci_coeffs, ct_numbers_for_states
 
 
-def load_data(base_name: Path, triplets: bool = False, ignore_bonds: Optional[list[int]] = None):
+def load_data(
+    base_name: Path, triplets: bool = False, ignore_bonds: Optional[list[int]] = None
+):
     if ignore_bonds is None:
         ignore_bonds = list()
 
@@ -31,6 +33,9 @@ def load_data(base_name: Path, triplets: bool = False, ignore_bonds: Optional[li
         log_fn = base_name.with_suffix(".log")
         wf_fn = base_name.with_suffix(".bson")
 
+        if not log_fn.exists():
+            log_fn = base_name.with_suffix(".out")
+
         # Drop GS, only keep excitation energies
         all_ens = parse_orca_all_energies(log_fn, triplets=triplets, do_tddft=True)
         exc_ens = all_ens[1:] - all_ens[0]
@@ -41,7 +46,9 @@ def load_data(base_name: Path, triplets: bool = False, ignore_bonds: Optional[li
         wf = Wavefunction.from_file(wf_fn)
         print(f"Loaded wavefunction from '{wf_fn}'.")
 
-        frags = get_fragments(wf.atoms, wf.coords, ignore_bonds=ignore_bonds, with_unconnected_atoms=True)
+        frags = get_fragments(
+            wf.atoms, wf.coords, ignore_bonds=ignore_bonds, with_unconnected_atoms=True
+        )
         # Convert from list of frozensets to list of lists
         frags = list(map(list, frags))
 
@@ -104,7 +111,7 @@ def run():
     nbonds = len(bonds) // 2
     ignore_bonds = list()
     for i in range(nbonds):
-        ignore_bonds.append(bonds[2*i:2*(i+1)])
+        ignore_bonds.append(bonds[2 * i : 2 * (i + 1)])
 
     data = load_data(base_name, triplets, ignore_bonds)
 
@@ -116,7 +123,9 @@ def run():
     homogenous_frags = data["frags"]
 
     frags = []
-    for key, _frag in it.groupby(homogenous_frags, key=lambda frag_atom_ind: frag_atom_ind[0]):
+    for key, _frag in it.groupby(
+        homogenous_frags, key=lambda frag_atom_ind: frag_atom_ind[0]
+    ):
         cur_frag = []
         for _, atom_ind in _frag:
             cur_frag.append(atom_ind)
