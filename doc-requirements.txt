@@ -56,7 +56,7 @@ future==0.18.3
     # via autograd
 h5py==3.8.0
     # via pysisyphus (setup.cfg)
-idna==3.4
+idna==3.7
     # via requests
 imagesize==1.4.1
     # via sphinx
