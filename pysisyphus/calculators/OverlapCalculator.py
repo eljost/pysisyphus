@@ -108,6 +108,130 @@ class GroundStateContext:
             pass
 
 
+def get_tden_overlaps(Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO):
+    XpYa1 = Xa1 + Ya1
+    XpYa2 = Xa2 + Ya2
+    ovlp_mat_a = tden_overlaps(Ca1, XpYa1, Ca2, XpYa2, S_AO)
+
+    XpYb1 = Xb1 + Yb1
+    XpYb2 = Xb2 + Yb2
+    ovlp_mat_b = tden_overlaps(Cb1, XpYb1, Cb2, XpYb2, S_AO)
+
+    ovlp_mat = ovlp_mat_a + ovlp_mat_b
+    return ovlp_mat
+
+
+def get_top_differences(
+    Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO
+):
+    """Transition orbital projection."""
+    S_MO_a = Ca1.T @ S_AO @ Ca2
+    S_MO_b = Cb1.T @ S_AO @ Cb2
+
+    alpha_diffs = top_differences(Xa1, Ya1, Xa2, Ya2, S_MO_a)
+    beta_diffs = top_differences(Xb1, Yb1, Xb2, Yb2, S_MO_b)
+    diffs = alpha_diffs + beta_diffs
+    return diffs
+
+
+def get_ovlp_mat(
+    Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO, ovlp_type
+):
+    assert ovlp_type in ("tden", "top")
+
+    if ovlp_type == "tden":
+        ovlp_mat = get_tden_overlaps(
+            Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO
+        )
+    # elif ovlp_type == "wf":
+    # raise Exception("wf-overlaps are not yet implemented!")
+    # elif ovlp_type == "nto":
+    # raise Exception("nto-overlaps are not yet implemented!")
+    # elif ovlp_type == "nto_org":
+    # raise Exception("nto_org-overlaps are not yet implemented!")
+    elif ovlp_type == "top":
+        top_rs = get_top_differences(
+            Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO
+        )
+        # Convert differences to some kind of pseudo-overlap matrix
+        ovlp_mat = 1.0 - top_rs
+    return ovlp_mat
+
+
+def root2_from_ovlp_mat_and_root1(ovlp_mat, root1, min_cost=True):
+    assert root1 > 0, "This function does not yet handle root1 == 0!"
+    # TODO: update this function to work with wf-overlaps.
+    # Two ideas: force the user to already provide a row_ind, e.g. calculate root1 - 1
+    # outside this function, or add a flag that indicates that the ovlp_mat includes
+    # the ground state which would be root 0. In such cases we would not subtract
+    # 1 from the provided root.
+    row_ind = root1 - 1
+
+    # Work with the absolute overlap matrix, as phase switches between wavefunction
+    # can lead to negative overlaps.
+    abs_ovlp_mat = np.abs(ovlp_mat)
+
+    if min_cost:
+        # Match all excited state of the current and the reference step to make the
+        # assignment more reasonable and avoid any double assignments.
+        _, col_inds = linear_sum_assignment(-abs_ovlp_mat)
+        ref_root_row = ovlp_mat[row_ind]
+        root2 = col_inds[row_ind]
+    else:
+        # Match the best root row wise/just pick the root w/ the highest overlap.
+        ref_root_row = abs_ovlp_mat[row_ind]
+        root2 = ref_root_row.argmax()
+    root2 += 1
+    return root2
+
+
+def track_root(
+    Ca1,
+    Cb1,
+    Xa1,
+    Ya1,
+    Xb1,
+    Yb1,
+    Ca2,
+    Cb2,
+    Xa2,
+    Ya2,
+    Xb2,
+    Yb2,
+    S_AO,
+    ovlp_type,
+    root1,
+    min_cost=True,
+):
+    ovlp_mat = get_ovlp_mat(
+        Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO, ovlp_type
+    )
+    return root2_from_ovlp_mat_and_root1(ovlp_mat, root1, min_cost=min_cost)
+
+
+def args_from_calc(calc):
+    Ca = calc.Ca_list[-1]
+    Cb = calc.Cb_list[-1]
+    Xa = calc.Xa_list[-1]
+    Ya = calc.Ya_list[-1]
+    Xb = calc.Xb_list[-1]
+    Yb = calc.Yb_list[-1]
+    return Ca, Cb, Xa, Ya, Xb, Yb
+
+
+def track_root_between_ovlp_cals(calc1, calc2, **kwargs):
+    ovlp_type = calc1.ovlp_type
+    S_AO = calc1.get_sao_from_mo_coeffs(calc1.Ca_list[-1])
+    return track_root(
+        *args_from_calc(calc1),
+        *args_from_calc(calc2),
+        S_AO,
+        ovlp_type,
+        calc1.root,
+        **kwargs,
+    )
+
+
 class OverlapCalculator(Calculator):
     OVLP_TYPE_VERBOSE = {
         "wf": "wavefunction overlap",
@@ -315,12 +439,30 @@ class OverlapCalculator(Calculator):
     @property
     def stored_calculations(self):
         assert (
-            len(self.Xa_list)
+            len(self.Ca_list)
+            == len(self.Cb_list)
+            == len(self.Xa_list)
             == len(self.Ya_list)
             == len(self.Xb_list)
             == len(self.Yb_list)
         )
         return len(self.Xa_list)
+
+    def clear_stored_calculations(self):
+        for lst in (
+            self.nto_list,
+            self.coords_list,
+            self.calculated_roots,
+            self.roots_list,
+            self.all_energies_list,
+            self.Ca_list,
+            self.Cb_list,
+            self.Xa_list,
+            self.Ya_list,
+            self.Xb_list,
+            self.Yb_list,
+        ):
+            lst.clear()
 
     def get_ci_coeffs_for(self, ind):
         return [
