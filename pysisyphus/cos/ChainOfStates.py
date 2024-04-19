@@ -167,6 +167,102 @@ class ChainOfStates:
             calc = None
         return calc
 
+    def propagate(self, force_unique_overlap_data_fns=True):
+        """Propagate chkfiles and root information along COS.
+
+        Does an energy calculation at every image and tries to propagate
+        the converged wavefunction to the next image.
+
+        When excited states should be tracked it is assumed that the correct root is
+        set at the first image. In most cases, e.g. in COS calculations started from
+        YAML input the initial root will be the same for all images. When the correct
+        root switches between the first image (with the correct root) and the last image,
+        then using the same root for all images will be wrong. This is also corrected
+        here. From the second image on the excited state (ES) overlaps are calculated
+        between the current image and the image before it and the root with the highest
+        overlap to the root on the previous image is set on the current image. As we
+        start from the correct root at the first image this will ensure that the correct
+        root is selected at all images.
+
+        If requested, unique names for the dumped overlap data HDF5 will be picked.
+        """
+        try:
+            track = self.images[0].calculator.track
+        except AttributeError:
+            track = False
+
+        # To avoid cyclic import
+        from pysisyphus.calculators.OverlapCalculator import (
+            track_root_between_ovlp_cals,
+        )
+
+        # If requested, check if all calculators dump their overlap data into unique
+        # HDF5 files. If they don't, update the filenames.
+        # Won't really work for Growing-String calculations ...
+        if track and force_unique_overlap_data_fns:
+            nimages = len(self.images)
+            cur_dump_fns = set([image.calculator.dump_fn for image in self.images])
+            if len(cur_dump_fns) != nimages:
+                for i, image in enumerate(self.images):
+                    calc = image.calculator
+                    new_dump_fn = calc.dump_fn.with_name(
+                        f"overlap_data_{calc.calc_number:03d}.h5"
+                    )
+                    calc.dump_fn = new_dump_fn
+                    self.log(f"Updated dump_fn of image {i} to {new_dump_fn.name}")
+            assert (
+                len(set([image.calculator.dump_fn for image in self.images])) == nimages
+            )
+        if track:
+            for image in self.images:
+                image.calculator.ovlp_with = "previous"
+
+        # Run an energy calculation on all calculators sequentially,
+        # then propagate chkfiles and root-information along them.
+        for i, image in enumerate(self.images):
+            # Do an energy calculation. Don't worry when the calculated/selected root
+            # is actually the wrong one. This will be correct below and from the second
+            # iteration on, the roots will be correct.
+            image.energy
+            self.log(f"Calculated energy for image {i}.")
+
+            calc = image.calculator
+            # Try to set chkfiles on the next calculator
+            try:
+                next_calc = self.images[i + 1].calculator
+                next_calc.set_chkfiles(calc.get_chkfiles())
+                self.log(f"Set chkfiles of image {i} at image {i+1}.")
+            except IndexError:
+                self.log("Last image. No further image to set chkfiles on!")
+            except AttributeError:
+                self.log("Calculator does not implement set_chkfiles/get_chkfiles!")
+
+            # Update root information when it is a tracking calculation
+            if track and i > 0:
+                prev_calc = self.images[i - 1].calculator
+                # prev_root = prev_calc.root
+                # root = calc.root
+                new_root = track_root_between_ovlp_cals(prev_calc, calc)
+                calc.root = new_root
+                self.log(
+                    f"Calculated ES overlaps between image {i-1} and image {i}. "
+                    f"New root at image {i} is {new_root}."
+                )
+                # self.log(
+                # f"Root at image {i-1}: {prev_root}, previous root at image {i}: {root}, "
+                # f"new root at image {i}: {new_root}."
+                # )
+
+        # Clear the lists storing infomration about the calculated roots.
+        # If we don't reset them then the first reference cycle will be a cycle with a
+        # potentially erroneous root, leading to undesired root flips.
+        if track:
+            for image in self.images:
+                image.calculator.clear_stored_calculations()
+                image.clear()
+        self.log("Finished propagating chkfiles/roots along COS.")
+        # TODO: return roots?!
+
     @property
     def is_analytical_2d(self):
         try:

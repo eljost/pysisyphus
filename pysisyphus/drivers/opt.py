@@ -105,8 +105,16 @@ def run_opt(
         for image in geom.images:
             image.set_calculator(calc_getter())
             title = str(geom)
+
         # Initialize dask cluster, if required
         cluster = geom.init_dask()
+
+        try:
+            if geom.images[0].calculator.track:
+                print("Propagating root information of first image along COS.")
+                geom.propagate()
+        except AttributeError:
+            pass
     else:
         geom.set_calculator(calc_getter())
         geom.cart_hessian = cart_hessian
