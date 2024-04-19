@@ -423,7 +423,7 @@ def parse_orca_all_energies(text, triplets=False, do_tddft=False, do_ice=False):
     energy_mobj = re.search(energy_re, text)
     gs_energy = float(energy_mobj.groups()[0])
     all_energies = [gs_energy]
-    did_triplets = bool(re.search("Generation of triplets\s*... on", text))
+    did_triplets = bool(re.search(r"Generation of triplets\s*... on", text))
 
     if do_tddft:
         scf_re = re.compile(r"E\(SCF\)\s+=\s*([\d\-\.]+) Eh")
@@ -821,6 +821,9 @@ class ORCA(OverlapCalculator):
                 # Redo the calculation with the updated root
                 results = func(atoms, coords, **prepare_kwargs)
         results["all_energies"] = self.parse_all_energies()
+        # Set energy of current root if set
+        if self.root is not None:
+            results["energy"] = results["all_energies"][self.root]
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
@@ -1028,7 +1031,7 @@ class ORCA(OverlapCalculator):
             en_re = r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)"
         # ... so we look at the energy that was reported after the SCF.
         else:
-            en_re = "Total Energy\s+:\s+([\d\-\.]+) Eh"
+            en_re = r"Total Energy\s+:\s+([\d\-\.]+) Eh"
         en_re = re.compile(en_re)
         mobj = en_re.search(text)
         energy = float(mobj[1])
