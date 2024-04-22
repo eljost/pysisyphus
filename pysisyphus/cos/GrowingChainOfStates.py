@@ -65,3 +65,13 @@ class GrowingChainOfStates(ChainOfStates):
         length_changed = last_size != self.coords.size
         reset_flag = parent_result or length_changed
         return reset_flag, parent_messages
+
+    def propagate(self, force_unique_overlap_data_fns=True):
+        # As the COS is not fully grown at the beginning calculating overlaps
+        # between both sides of the COS may be difficult/impossible.
+        # A way in supporting this for double-sided COS calucaltions may be to ask
+        # the user for a second root that is used for the final image in the COS,
+        # which is then propagated "inwards".
+        raise Exception(
+            "propagate() is not yet implemented for growing Chain-Of-States!"
+        )

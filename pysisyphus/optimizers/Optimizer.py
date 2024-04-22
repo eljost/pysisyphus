@@ -366,7 +366,10 @@ class Optimizer(metaclass=abc.ABCMeta):
 
         if self.is_cos:
             moving_image_num = len(self.geometry.moving_indices)
-            self.print(f"Path with {moving_image_num} moving images.")
+            self.print(
+                f"Path with {moving_image_num} moving images "
+                f"(first fixed: {self.geometry.fix_first}, last fixed: {self.geometry.fix_last})."
+            )
 
         # Don't use prefix for this fn, as different optimizations
         # can be distinguished according to their group in the HDF5 file.
