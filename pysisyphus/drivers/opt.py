@@ -111,7 +111,10 @@ def run_opt(
 
         try:
             if geom.images[0].calculator.track:
-                print("Propagating root information of first image along COS.")
+                print(
+                    "Propagating root information of first image along COS w/ "
+                    "energy calculations."
+                )
                 geom.propagate()
         except AttributeError:
             pass

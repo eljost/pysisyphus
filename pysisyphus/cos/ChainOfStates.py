@@ -257,9 +257,10 @@ class ChainOfStates:
         # If we don't reset them then the first reference cycle will be a cycle with a
         # potentially erroneous root, leading to undesired root flips.
         if track:
-            for image in self.images:
+            for i, image in enumerate(self.images):
                 image.calculator.clear_stored_calculations()
                 image.clear()
+                print(f"Using root {image.calculator.root} for image {i}.")
         self.log("Finished propagating chkfiles/roots along COS.")
         # TODO: return roots?!
 
