@@ -124,7 +124,7 @@ py-cpuinfo==9.0.0
     # via qcengine
 pycparser==2.21
     # via cffi
-pydantic==1.10.8
+pydantic==1.10.13
     # via
     #   qcelemental
     #   qcengine
