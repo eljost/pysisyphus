@@ -3457,6 +3457,10 @@ def nuc_charges_for_atoms(atoms):
     return np.array([ATOMIC_NUMBERS[atom.lower()] for atom in atoms])
 
 
+def atomic_numbers_for_atoms(atoms):
+    return nuc_charges_for_atoms(atoms)
+
+
 def get_tm_indices(atoms):
     trans_metal_nums = list(it.chain(
         #       3d             4d             5d             6d
