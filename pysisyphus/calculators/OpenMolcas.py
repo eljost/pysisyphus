@@ -312,5 +312,18 @@ class OpenMolcas(Calculator):
             self.log("Found a root flip!")
         self.mdrlxroot = new_root
 
+    def get_chkfiles(self):
+        return {
+            "inporb": self.inporb,
+        }
+
+    def set_chkfiles(self, chkfiles):
+        try:
+            inporb = chkfiles["inporb"]
+            self.inporb = inporb
+            self.log(f"Set chkfile '{inporb}' as inporb.")
+        except KeyError:
+            self.log("Found no inporb information in chkfiles!")
+
     def __str__(self):
         return "OpenMolcas calculator"
