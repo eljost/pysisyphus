@@ -99,26 +99,29 @@ def wavefunction_from_json_dict(data, **kwargs):
 
     def get_occ_and_mo_coeffs(mos):
         mo_coeffs = list()
+        mo_ens = list()
         occ = 0
         for mo in mos:
             _occ = mo["Occupancy"]
             if (_occ % 1) != 0.0:
                 raise Exception("Fractional occupations are not handled!")
             occ += int(_occ)
-
             mo_coeffs.append(mo["MOCoefficients"])
+            mo_ens.append(mo["OrbitalEnergy"])
         # MOs must be in columns
         mo_coeffs = np.array(mo_coeffs).T
-        return occ, mo_coeffs
+        return occ, mo_coeffs, mo_ens
 
-    occ_a, Ca = get_occ_and_mo_coeffs(mos_a)
-    occ_b, Cb = get_occ_and_mo_coeffs(mos_b)
+    occ_a, Ca, ens_a = get_occ_and_mo_coeffs(mos_a)
+    occ_b, Cb, ens_b = get_occ_and_mo_coeffs(mos_b)
 
     # Restricted calculation
     if Cb.size == 0:
         Cb = Ca.copy()
         occ_a = occ_b = occ_a // 2
+        ens_b = ens_a
     C = np.stack((Ca, Cb))
+    mo_ens = np.stack((ens_a, ens_b))
 
     shells = shells_from_json_dict(data, **shell_kwargs)
 
@@ -132,6 +135,7 @@ def wavefunction_from_json_dict(data, **kwargs):
         C=C,
         bf_type=BFType.PURE_SPHERICAL,
         shells=shells,
+        mo_ens=mo_ens,
         **kwargs,
     )
 

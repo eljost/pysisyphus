@@ -41,6 +41,7 @@ class Wavefunction:
         # TODO: make shells mandataory ...
         shells: Optional[Shells] = None,
         ecp_electrons=None,
+        mo_ens=None,
         strict=True,
         warn_charge=4,
     ):
@@ -65,13 +66,21 @@ class Wavefunction:
             self.C = np.array((self.C, self.C.copy()))
         self.bf_type = bf_type
         self.shells = shells
-        # Reorder MO-coefficients, if requested
+        self.mo_ens = mo_ens
+        # Reorder MO-coefficients & energies, if requested
         if self.shells.ordering == "pysis":
             P = self.get_permut_matrix_native()
             C = self.C.copy()
+            # Loop over alpha and beta MOs
             for i, c in enumerate(C):
                 C[i] = P.T @ c
             self.C = C
+            # Reorder MO-energies if set
+            if self.mo_ens is not None:
+                mo_ens = self.mo_ens.copy()
+                for i, moe in enumerate(self.mo_ens):
+                    mo_ens[i] = P.T @ moe[:, None]
+                self.mo_ens = mo_ens
         if ecp_electrons is None:
             ecp_electrons = np.zeros(len(self.atoms))
         elif isinstance(ecp_electrons, dict):
