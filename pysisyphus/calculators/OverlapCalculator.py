@@ -135,7 +135,20 @@ def get_top_differences(
 
 
 def get_ovlp_mat(
-    Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO, ovlp_type
+    Ca1: np.ndarray,
+    Cb1: np.ndarray,
+    Xa1: np.ndarray,
+    Ya1: np.ndarray,
+    Xb1: np.ndarray,
+    Yb1: np.ndarray,
+    Ca2: np.ndarray,
+    Cb2: np.ndarray,
+    Xa2: np.ndarray,
+    Ya2: np.ndarray,
+    Xb2: np.ndarray,
+    Yb2: np.ndarray,
+    S_AO: np.ndarray,
+    ovlp_type: str,
 ):
     assert ovlp_type in ("tden", "top")
 
