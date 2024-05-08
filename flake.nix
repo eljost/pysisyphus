@@ -105,6 +105,11 @@
         }) // {
       overlays.default = import ./nix/overlay.nix;
 
-      hydraJobs = self.checks;
+      hydraJobs = self.checks // {
+        x86_64-linux = {
+          pysisyphusTurbomole = self.packages.x86_64-linux.pysisyphusTurbomole;
+          pysisyphusOrca = self.packages.x86_64-linux.pysisyphusOrca;
+        };
+      };
     };
 }
