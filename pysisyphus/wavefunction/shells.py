@@ -23,6 +23,7 @@ import scipy as sp
 from pysisyphus.config import L_MAX, L_AUX_MAX
 from pysisyphus.elem_data import (
     ATOMIC_NUMBERS,
+    GOSH_RADII,
     INV_ATOMIC_NUMBERS,
     nuc_charges_for_atoms,
 )
@@ -915,8 +916,28 @@ class Shells:
         return multi_component_sym_mat(ints_flat, 3)
 
     def to_sap_shells(self):
+        # TODO: this should really return a new Shells object ...
         for shell in self.shells:
             shell.to_sap_shell()
+
+    def to_ris_shells(self, theta=0.2):
+        atoms, coords3d = self.atoms_coords3d
+        ris_shells = list()
+        L = 0
+        coeffs = np.array(
+            1.0,
+        )
+        for i, atom in enumerate(atoms):
+            rad2 = GOSH_RADII[atom] ** 2
+            exps = np.array((theta / rad2,))
+            center = coords3d[i]
+            coeffs = np.array((1.0,))
+            atomic_num = ATOMIC_NUMBERS[atom]
+            ris_shell = Shell(L, center, coeffs.copy(), exps, i, atomic_num=atomic_num)
+            ris_shells.append(ris_shell)
+        shells_cls = type(self)
+        shells = shells_cls(ris_shells)
+        return shells
 
     def __str__(self):
         return f"{self.__class__.__name__}({len(self.shells)} shells, ordering={self.ordering})"
