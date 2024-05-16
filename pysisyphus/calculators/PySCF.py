@@ -43,6 +43,7 @@ def kernel_to_wavefunction(mf):
         C=mf.mo_coeff,
         bf_type=BFType.CARTESIAN if mol.cart else BFType.PURE_SPHERICAL,
         shells=shells,
+        mo_ens=mf.mo_energy,
     )
     return wf
 
