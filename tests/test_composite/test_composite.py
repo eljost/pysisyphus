@@ -1,6 +1,8 @@
+import numpy as np
 import pytest
 
-from pysisyphus.calculators import Composite
+from pysisyphus.calculators import Composite, XTB
+from pysisyphus.finite_diffs import finite_difference_gradient
 from pysisyphus.helpers import geom_loader
 from pysisyphus.run import run_from_dict
 from pysisyphus.testing import using
@@ -56,12 +58,50 @@ def test_composite_run_dict(this_dir):
                 "low": {
                     "type": "pyscf",
                     "basis": "sto3g",
-                }
+                },
             },
             "final": "high - low",
             "pal": 4,
-        }
+        },
     }
     results = run_from_dict(run_dict)
     geom = results.calced_geoms[0]
     assert geom._energy == pytest.approx(-0.250071439626311)
+
+
+@using("xtb")
+@pytest.mark.parametrize("dE", (-0.25, -0.1, 0.0, 0.1, 0.25, 0.5, 1.0))
+def test_gamd_composite(dE):
+    k = 0.12345
+    E0 = -5.070431326355
+    E = E0 + dE  # Boost threshold
+    V = "base"  # Plain xTB energy
+    dV = f"0.5 * {k} * ({E} - base)**2"  # GaMD energy boost/correction
+
+    # GaMD expression; Gaussian-accelerated molecular dynamics.
+    #
+    # Energy is boosted (V + dV) when V is below given threshold E.
+    # The original unmodified energy V is returned otherwise (V >= E).
+    pot_str = f"Piecewise(({V}, {V} >= {E}), ({V} + {dV}, {V} < {E}))"
+    # print(f"{pot_str=}")
+
+    base = XTB(acc=0.0001)
+    geom = geom_loader("lib:h2o.xyz")
+
+    calc_kwargs = {
+        "keys_calcs": {
+            "base": base,
+        },
+        "final": pot_str,
+    }
+    comp_calc = Composite(**calc_kwargs)
+    geom.set_calculator(comp_calc)
+    energy = geom.energy
+    assert energy == pytest.approx(E0 + 0.5 * k * max(0.0, dE) ** 2)
+    forces = geom.forces
+
+    def scalar_func(coords):
+        return geom.calculator.get_energy(geom.atoms, coords)["energy"]
+
+    fd_grad = finite_difference_gradient(geom.cart_coords, scalar_func, step_size=1e-3)
+    np.testing.assert_allclose(-fd_grad, forces, atol=2e-7)
