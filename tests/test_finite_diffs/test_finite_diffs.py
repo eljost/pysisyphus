@@ -66,7 +66,7 @@ def test_orca_num_hessian(serial):
     }
     calc = ORCA(
         keywords="tpss def2-svp tightscf",
-        pal=8,
+        pal=6,
         # Compare against finite diff. Hessian calculated by ORCA itself
         numfreq=True,
         num_hess_kwargs=num_hess_kwargs,
