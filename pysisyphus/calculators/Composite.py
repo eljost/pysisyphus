@@ -1,10 +1,11 @@
+# [1]   https://doi.org/10.1021/acscentsci.3c01403
+#       Exploring Chemical Space Using Ab Initio Hyperreactor Dynamics
+#       Stan-Bernhardt, Glinkina, Hulm, Ochsenfeld, 2024
+
 import numpy as np
 import sympy as sym
 
-# from sympy import sympify, lambdify,
-
 from pysisyphus.calculators.Calculator import Calculator
-
 from pysisyphus.calculators import ORCA, Turbomole, DFTD4
 
 
@@ -194,3 +195,97 @@ class Composite(Calculator):
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         return self.get_energy(atoms, coords, **prepare_kwargs)
+
+
+def get_boosted_composite_calc(
+    calc: Calculator, dV: str, E: float, **calc_kwargs
+) -> Composite:
+    """
+    Get Composite calculator, boosting the potential energy below a given threshold.
+
+    See eq. (4) in [1].
+
+    Parameters
+    ----------
+    calc
+        Base calculator.
+    dV
+        Boost expression.
+    E
+        Threshold energy, below which the potential energy is boosted.
+
+    Returns
+    -------
+    gamd_comp_calc
+        Calculator that boosts the potential energy when it falls below
+        the given threshold.
+    """
+    V = "base"  # Original, unmodified energy
+
+    # Boost expression that depends on the calculated potential energy.
+    #
+    # Energy is boosted (V + dV) when V is below given threshold E.
+    # The original unmodified energy V is returned otherwise (V >= E).
+    pot_str = f"Piecewise(({V}, {V} >= {E}), ({V} + {dV}, {V} < {E}))"
+    calc_kwargs = calc_kwargs.copy()
+    _calc_kwargs = {
+        "keys_calcs": {
+            "base": calc,
+        },
+        "final": pot_str,
+    }
+    calc_kwargs.update(_calc_kwargs)
+    return Composite(**calc_kwargs)
+
+
+def get_aMD_composite_calc(
+    calc: Calculator, alpha: float, E: float, **calc_kwargs
+) -> Composite:
+    """
+    Get Composite calculator for accelerated molecular dynamics.
+
+    See Table 1 in [1].
+
+    Parameters
+    ----------
+    calc
+        Base calculator.
+    alpha
+        Bias strength.
+    E
+        Threshold energy, below which the potential energy is boosted.
+
+    Returns
+    -------
+    amd_comp_calc
+        Boosting calculator for aMD.
+    """
+    dEV = f"{E} - base"
+    dV = f"{dEV}**2 / ({alpha} + {dEV})"
+    return get_boosted_composite_calc(calc, dV=dV, E=E, **calc_kwargs)
+
+
+def get_GaMD_composite_calc(
+    calc: Calculator, k: float, E: float, **calc_kwargs
+) -> Composite:
+    """
+    Get Composite calculator for Gaussian-accelerated molecular dynamics.
+
+    See Table 1 in [1].
+
+    Parameters
+    ----------
+    calc
+        Base calculator.
+    k
+        Force constant.
+    E
+        Threshold energy, below which the potential energy is boosted.
+
+    Returns
+    -------
+    gamd_comp_calc
+        Boosting calculator for GaMD.
+    """
+    dV = f"0.5 * {k} * ({E} - base)**2"  # GaMD energy boost/correction
+    return get_boosted_composite_calc(calc, dV=dV, E=E, **calc_kwargs)

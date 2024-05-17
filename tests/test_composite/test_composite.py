@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from pysisyphus.calculators import Composite, XTB
+from pysisyphus.calculators import XTB
+from pysisyphus.calculators.Composite import Composite, get_GaMD_composite_calc
 from pysisyphus.finite_diffs import finite_difference_gradient
 from pysisyphus.helpers import geom_loader
 from pysisyphus.run import run_from_dict
@@ -75,26 +76,11 @@ def test_gamd_composite(dE):
     k = 0.12345
     E0 = -5.070431326355
     E = E0 + dE  # Boost threshold
-    V = "base"  # Plain xTB energy
-    dV = f"0.5 * {k} * ({E} - base)**2"  # GaMD energy boost/correction
 
-    # GaMD expression; Gaussian-accelerated molecular dynamics.
-    #
-    # Energy is boosted (V + dV) when V is below given threshold E.
-    # The original unmodified energy V is returned otherwise (V >= E).
-    pot_str = f"Piecewise(({V}, {V} >= {E}), ({V} + {dV}, {V} < {E}))"
-    # print(f"{pot_str=}")
-
-    base = XTB(acc=0.0001)
     geom = geom_loader("lib:h2o.xyz")
+    base = XTB(acc=0.0001)
 
-    calc_kwargs = {
-        "keys_calcs": {
-            "base": base,
-        },
-        "final": pot_str,
-    }
-    comp_calc = Composite(**calc_kwargs)
+    comp_calc = get_GaMD_composite_calc(base, k=k, E=E)
     geom.set_calculator(comp_calc)
     energy = geom.energy
     assert energy == pytest.approx(E0 + 0.5 * k * max(0.0, dE) ** 2)
