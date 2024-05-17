@@ -560,12 +560,18 @@ def geom_from_orca_hess(fn):
 class ORCAGroundStateContext(GroundStateContext):
     def __enter__(self):
         super().__enter__()
-        self.do_es_bak = self.calc.do_es
-        self.calc.do_es = False
+        try:
+            self.root_bak = self.root
+        except AttributeError:
+            self.had_root = False
+        self.root = None
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         super().__exit__(exc_type, exc_value, exc_traceback)
-        self.calc.do_es = self.do_es_bak
+        if self.had_root:
+            self.root = self.root_bak
+        else:
+            del self.root
 
 
 class ORCA(OverlapCalculator):
@@ -675,7 +681,9 @@ class ORCA(OverlapCalculator):
                 )
             except AttributeError:
                 self.log("Doing TDA/TDDFT calculation without gradient.")
-        self.triplets = bool(re.search(r"triplets\s+true|irootmult\s+triplet", self.blocks))
+        self.triplets = bool(
+            re.search(r"triplets\s+true|irootmult\s+triplet", self.blocks)
+        )
         self.inp_fn = "orca.inp"
         self.out_fn = "orca.out"
         self.to_keep = (
@@ -1025,13 +1033,14 @@ class ORCA(OverlapCalculator):
         log_fn = log_fn[0]
         with open(log_fn) as handle:
             text = handle.read()
-        # By default reports the total energy of the first ES, when ES were calculated.
+        # By default, ORCA reports the total energy of the first ES, when ES were calculated.
         # But we are interested in the GS energy, when self.root is None ...
-        if not self.do_es and self.root is not None:
-            en_re = r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)"
+        # if not self.do_es and self.root is not None:
+        if (self.root is None or self.root == 0) and self.do_es:
+            en_re = r"Total Energy\s+:\s+([\d\-\.]+) Eh"
         # ... so we look at the energy that was reported after the SCF.
         else:
-            en_re = r"Total Energy\s+:\s+([\d\-\.]+) Eh"
+            en_re = r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)"
         en_re = re.compile(en_re)
         mobj = en_re.search(text)
         energy = float(mobj[1])
@@ -1160,8 +1169,8 @@ class ORCA(OverlapCalculator):
         # Parse eigenvectors from tda/tddft calculation
         X, Y = self.parse_cis(self.cis)
         if triplets:
-            X = X[self.nroots:]
-            Y = Y[self.nroots:]
+            X = X[self.nroots :]
+            Y = Y[self.nroots :]
         # Parse mo coefficients from gbw file and write a 'fake' turbomole
         # mos file.
         C, _ = self.parse_gbw(self.gbw)
