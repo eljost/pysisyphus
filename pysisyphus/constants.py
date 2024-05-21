@@ -41,8 +41,6 @@ NU2AU = spc.h * C * 1e2 / AU2J
 AU2NU = 1 / NU2AU
 # eV/Å -> Hartree/Bohr
 EVANG2AUBOHR = 1 / AU2EV / ANG2BOHR
-# fs -> Bohr * sqrt(amu/Hartree)
-FS2AU = 0.9682885864793366
 # Boltzman constant, (m² kg s⁻² K⁻¹) or just (J / K)
 KB = spc.Boltzmann
 KBAU = KB / AU2J
@@ -77,3 +75,4 @@ FORCE2ACC = AU2J / (AMU2KG * BOHR2M**2 * 1e30)
 VELO2E = 1 / FORCE2ACC
 # Velocity from Bohr/fs to Bohr/t_atomic_unit
 BOHRPERFS2AU = AU2SEC * 1e15
+KCALPERMOLPERANG2 = 1 / AU2KCALPERMOL / ANG2BOHR**2
