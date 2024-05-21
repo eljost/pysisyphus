@@ -28,7 +28,7 @@ IMPORT_DICT = {
     "obabel": "openbabel.openbabel",
     "openmm": "simtk.openmm",
     "pyscf": "pyscf",
-    "pyxtb": "xtb.interface",
+    "tblite": "tblite",
     "qcengine": "qcengine",
     "thermoanalysis": "thermoanalysis",
 }

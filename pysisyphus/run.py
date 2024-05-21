@@ -97,7 +97,7 @@ CALC_DICT = {
     "orca": ORCA,
     "orca5": ORCA5,
     "psi4": Psi4,
-    "pyxtb": PyXTB,
+    "tblite": TBLite,
     "remote": Remote,
     "turbomole": Turbomole,
     "xtb": XTB,

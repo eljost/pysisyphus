@@ -38,9 +38,9 @@ from pysisyphus.calculators import (
     ORCA,
     ORCA5,
     Psi4,
+    TBLite,
     Turbomole,
     XTB,
-    PyXTB,
 )
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.elem_data import COVALENT_RADII as CR
@@ -62,7 +62,7 @@ CALC_DICT = {
     "turbomole": Turbomole,
     "xtb": XTB.XTB,
     # "pypsi4": PyPsi4,
-    "pyxtb": PyXTB.PyXTB,
+    "tblite": TBLite.TBLite,
 }
 try:
     from pysisyphus.calculators.PySCF import PySCF
