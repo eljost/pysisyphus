@@ -395,7 +395,7 @@ def plot_md(h5_group="run"):
     ens_conserved -= mean_conserved
     ax1.plot(dts, ens_conserved)
     ax1.axhline(0, ls="--", c="k")
-    ax1.set_ylabel(r"$E_\\mathrm{cons.} - \overline{E}_\\mathrm{cons.}$ / {en_unit}")
+    ax1.set_ylabel(r"$E_\text{cons.} - \overline{E}_\text{cons.}$ / " + en_unit)
     ax1.set_title("Conserved quantity")
 
     ax2.plot(dts, Ts, label="Current")
