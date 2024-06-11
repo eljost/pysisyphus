@@ -37,7 +37,7 @@ def inertia_tensor(coords3d, masses):
     return I
 
 
-def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-6):
+def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-5):
     """Vectors describing translation and rotation.
 
     These vectors are used for the Eckart projection by constructing
