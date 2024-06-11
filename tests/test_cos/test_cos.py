@@ -5,6 +5,7 @@ import pytest
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.calculators.NFK import NFK
 from pysisyphus.calculators.MullerBrownSympyPot import MullerBrownPot
+from pysisyphus.calculators.SerpentinePot import SerpentinePot
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.cos.SimpleZTS import SimpleZTS
 from pysisyphus.Geometry import Geometry
@@ -303,3 +304,17 @@ def test_cos_image_ts_opt():
     # animate(opt, show=True)
 
     np.testing.assert_allclose(hei_coords, ref_ts_coords, atol=2e-6)
+
+
+def test_serpentine_pot():
+
+    pot = SerpentinePot()
+    geoms = pot.get_path(20)
+    cos = NEB(geoms)
+    opt = LBFGS(cos)
+    opt.run()
+    pot.anim_cos_coords(opt.coords, show=True)
+
+    ref_coords = np.array([-0.42986693, 0.38809609, 0.0])
+    cur_coords = cos.images[cos.get_hei_index()].coords
+    np.testing.assert_allclose(cur_coords, ref_coords, atol=1e-8)
