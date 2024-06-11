@@ -67,6 +67,7 @@ def homogeneous_broadening(
     resolution: float = 0.5,
     stddev: float = _04EV,
     from_to=None,
+    grid_kwargs=None,
 ) -> Tuple[NDArray[float], NDArray[float]]:
     """Homogeneous broadening of stick spectra as outlined in Gaussian
     whitepaper [1].
@@ -75,8 +76,15 @@ def homogeneous_broadening(
     extinction coefficients in l mol cm⁻¹."""
     exc_ens_nm = _1OVER_AU2NM / exc_ens
     if from_to is None:
-        from_to = np.array((exc_ens_nm[0], exc_ens_nm[-1]))
-    nm = get_grid(resolution, from_to, padding=100, min_=100, max_=900)
+        from_to = (exc_ens_nm[0], exc_ens_nm[-1])
+    if grid_kwargs is None:
+        grid_kwargs = {}
+    _grid_kwargs = {
+        "padding": 100,
+    }
+    _grid_kwargs.update(grid_kwargs)
+    from_to = np.array(from_to)
+    nm = get_grid(resolution, from_to, min_=100, max_=900, **_grid_kwargs)
     stddev_nm = _1OVER_AU2NM / stddev
 
     quot = stddev_nm * (1 / nm[None, :] - (1 / exc_ens_nm[:, None]))
