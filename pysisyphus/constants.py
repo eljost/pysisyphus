@@ -48,6 +48,7 @@ KBAU = KB / AU2J
 R = spc.gas_constant
 # Atomic unit of time to second
 AU2SEC = spc.value("atomic unit of time")
+AU2FS = AU2SEC * 1e15
 # Atomic mass unit to kg
 AMU2KG = spc.value("atomic mass constant")
 M_E = spc.electron_mass
