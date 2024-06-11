@@ -28,7 +28,7 @@ class AnaPotBase(Calculator):
         self.scale = scale
         self.xlim = xlim
         self.ylim = ylim
-        if levels is not None:
+        if levels is not None and not (type(levels) == int):
             levels = levels * self.scale
         self.levels = levels
         if minima is None:
@@ -269,6 +269,27 @@ class AnaPotBase(Calculator):
             if title_func:
                 self.ax.set_title(title_func(frame))
             scatter.set_offsets(coords[frame][:2])
+
+        self.animation = animation.FuncAnimation(
+            self.fig, func, frames=steps, interval=interval
+        )
+
+        if show:
+            plt.show()
+
+    def anim_cos_coords(self, coords, interval=50, show=False, title_func=None):
+        self.plot()
+        nsteps = len(coords)
+        steps = range(nsteps)
+        coords = np.array(coords).reshape(nsteps, -1, 3)
+        # Drop z-coordinate
+        coords = coords[:, :, :2]
+        lines, *_ = self.ax.plot(*coords[0].T, "o-")
+
+        def func(frame):
+            curx, cury = coords[frame].T
+            lines.set_xdata(curx)
+            lines.set_ydata(cury)
 
         self.animation = animation.FuncAnimation(
             self.fig, func, frames=steps, interval=interval
