@@ -157,7 +157,7 @@ class Composite(Calculator):
         keys = self.keys_calcs.keys()
         for key in keys:
             self.log(
-                f"|forces_{key}|={np.linalg.norm(deriv_kwargs[key + "_deriv"]):.6f}"
+                f"|forces_{key}|={np.linalg.norm(deriv_kwargs[key + '_deriv']):.6f}"
             )
         self.log("")
 
