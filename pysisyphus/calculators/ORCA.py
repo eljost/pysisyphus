@@ -60,50 +60,7 @@ def save_orca_pc_file(point_charges, pc_fn, hardness=None):
     )
 
 
-def parse_orca_gbw(gbw_fn):
-    """Adapted from
-    https://orcaforum.kofo.mpg.de/viewtopic.php?f=8&t=3299
-
-    The first 5 long int values represent pointers into the file:
-
-    Pointer @+0:  Internal ORCA data structures
-    Pointer @+8:  Geometry
-    Pointer @+16: BasisSet
-    Pointer @+24: Orbitals
-    Pointer @+32: ECP data
-    """
-
-    warnings.warn(
-        "'parse_orca_gbw()' is deprecated. Please use 'parse_orca_gbw_new()'.",
-        DeprecationWarning,
-    )
-
-    with open(gbw_fn, "rb") as handle:
-        handle.seek(24)
-        offset = struct.unpack("<q", handle.read(8))[0]
-        handle.seek(offset)
-        operators = struct.unpack("<i", handle.read(4))[0]
-        dimension = struct.unpack("<i", handle.read(4))[0]
-
-        coeffs_fmt = "<" + dimension**2 * "d"
-        assert operators == 1, "Unrestricted case is not implemented!"
-
-        for i in range(operators):
-            # print('\nOperator: {}'.format(i))
-            coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension**2))
-            occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
-            energies = struct.iter_unpack("<d", handle.read(8 * dimension))
-            irreps = struct.iter_unpack("<i", handle.read(4 * dimension))
-            cores = struct.iter_unpack("<i", handle.read(4 * dimension))
-
-            coeffs = np.array(coeffs).reshape(-1, dimension)
-            energies = np.array([en[0] for en in energies])
-
-        # MOs are returned in columns
-        return coeffs, energies
-
-
-def parse_orca_gbw_new(gbw_fn: str) -> MOCoeffs:
+def parse_orca_gbw(gbw_fn: str) -> MOCoeffs:
     """Adapted from
     https://orcaforum.kofo.mpg.de/viewtopic.php?f=8&t=3299
 
@@ -572,6 +529,19 @@ class ORCAGroundStateContext(GroundStateContext):
             self.root = self.root_bak
         else:
             del self.root
+
+
+def get_overlap_data_from_base_name(base_name: str | Path):
+    base = Path(base_name)
+
+    cis_fn = base.with_suffix(".cis")
+    Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn, restricted_same_ab=True)
+    Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+
+    gbw_fn = base.with_suffix(".gbw")
+    mo_coeffs = parse_orca_gbw(gbw_fn)
+
+    return mo_coeffs.Ca, mo_coeffs.Cb, Xa, Ya, Xb, Yb
 
 
 class ORCA(OverlapCalculator):
@@ -1076,16 +1046,8 @@ class ORCA(OverlapCalculator):
         return results
 
     @staticmethod
-    def parse_cis(cis):
-        """Simple wrapper of external function.
-
-        Currently, only returns Xα and Yα.
-        """
-        return parse_orca_cis(cis)[:2]
-
-    @staticmethod
     def parse_gbw(gbw_fn):
-        moc = parse_orca_gbw_new(gbw_fn)
+        moc = parse_orca_gbw(gbw_fn)
         return moc.Ca, moc.ensa
 
     @staticmethod
@@ -1167,15 +1129,17 @@ class ORCA(OverlapCalculator):
         if triplets is None:
             triplets = self.triplets
         # Parse eigenvectors from tda/tddft calculation
-        X, Y = self.parse_cis(self.cis)
+        Xa, Ya, Xb, Yb = parse_orca_cis(self.cis, restricted_same_ab=True)
         if triplets:
-            X = X[self.nroots :]
-            Y = Y[self.nroots :]
-        # Parse mo coefficients from gbw file and write a 'fake' turbomole
-        # mos file.
-        C, _ = self.parse_gbw(self.gbw)
+            Xa = Xa[self.nroots :]
+            Ya = Ya[self.nroots :]
+            Xb = Xb[self.nroots :]
+            Yb = Yb[self.nroots :]
+        mo_coeffs = parse_orca_gbw(self.gbw)
+        Ca = mo_coeffs.Ca
+        Cb = mo_coeffs.Cb
         all_energies = self.parse_all_energies()
-        return C, X, Y, all_energies
+        return Ca, Xa, Ya, Cb, Xb, Yb, all_energies
 
     def get_chkfiles(self):
         return {
