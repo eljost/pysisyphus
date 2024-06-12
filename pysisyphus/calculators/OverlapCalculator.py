@@ -258,7 +258,6 @@ class OverlapCalculator(Calculator):
         k for k in OVLP_TYPE_VERBOSE.keys()
     ]  # lgtm [py/non-iterable-in-for-loop]
     VALID_CDDS = (None, "calc", "render")
-    VALID_XY = ("X", "X+Y", "X-Y")
     H5_MAP = {
         "Ca": "Ca_list",
         "Cb": "Cb_list",
@@ -318,8 +317,6 @@ class OverlapCalculator(Calculator):
             "top",
             "adapat",
         ), "ovlp_type: top and ovlp_with: adapat are not yet compatible"
-        # self.XY = XY
-        # assert self.XY in self.VALID_XY
         self.adapt_args = np.abs(adapt_args, dtype=float)
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
         # self.use_ntos = use_ntos
@@ -510,27 +507,13 @@ class OverlapCalculator(Calculator):
         assert Ca.ndim == Cb.ndim == 2
         assert all([mat.ndim == 3 for mat in (Xa, Ya, Xb, Yb)])
 
-        Xa_, Ya_, Xb_, Yb_ = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+        Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
         self.Ca_list.append(Ca.copy())
         self.Cb_list.append(Cb.copy())
-        self.Xa_list.append(Xa_)
-        self.Ya_list.append(Ya_)
-        self.Xb_list.append(Xb_)
-        self.Yb_list.append(Yb_)
-
-        # TODO: handle self.XY
-        """
-        if self.XY == "X":
-            ci_coeffs = X
-        elif self.XY == "X+Y":
-            ci_coeffs = X + Y
-        elif self.XY == "X-Y":
-            ci_coeffs = X - Y
-        else:
-            raise Exception(
-                f"Invalid 'XY' value. Allowed values are: '{self.VALID_XY}'!"
-            )
-        """
+        self.Xa_list.append(Xa)
+        self.Ya_list.append(Ya)
+        self.Xb_list.append(Xb)
+        self.Yb_list.append(Yb)
 
         # Don't create the wf-object when we use a different ovlp method.
         # TODO: handle overlap calculator
@@ -688,9 +671,21 @@ class OverlapCalculator(Calculator):
         # Current step
         Xa_cur, Ya_cur, Xb_cur, Yb_cur = self.get_ci_coeffs_for(cur)
 
-        # TODO: remove 2 when beta part is also considered!
-        overlaps = 2 * tden_overlaps(Ca_ref, Xa_ref, Ca_cur, Xa_cur, S_AO)
-        return overlaps
+        return get_tden_overlaps(
+            Ca_ref,
+            Cb_ref,
+            Xa_ref,
+            Ya_ref,
+            Xb_ref,
+            Yb_ref,
+            Ca_cur,
+            Cb_cur,
+            Xa_cur,
+            Ya_cur,
+            Xb_cur,
+            Yb_cur,
+            S_AO,
+        )
 
     """
     def calculate_state_ntos(self, state_ci_coeffs, mos):
