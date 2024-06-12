@@ -97,6 +97,17 @@ def mo_coeffs_from_fchk_data(data: dict) -> MOCoeffs:
     return mo_coeffs
 
 
+def all_energies_from_fchk_data(data: dict) -> np.ndarray:
+    # GS and excitation energies
+    gs_energy = data["SCF Energy"]
+    etran = np.reshape(data["ETran state values"], (-1, 16))
+    exc_ens = etran[:, 0]
+    nstates = len(exc_ens)
+    all_energies = np.full(nstates + 1, gs_energy)
+    all_energies[1:] += exc_ens
+    return all_energies
+
+
 @file_or_str(".fchk")
 def shells_from_fchk(text, **kwargs):
     data = parse_fchk(text)
