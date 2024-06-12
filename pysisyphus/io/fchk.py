@@ -5,7 +5,7 @@ from typing import Union
 
 import numpy as np
 
-from pysisyphus.calculators.MOCoeffs import MOCoeffs
+from pysisyphus.MOCoeffs import MOCoeffs
 from pysisyphus.elem_data import INV_ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
@@ -103,7 +103,8 @@ def all_energies_from_fchk_data(data: dict) -> np.ndarray:
     etran = np.reshape(data["ETran state values"], (-1, 16))
     exc_ens = etran[:, 0]
     nstates = len(exc_ens)
-    all_energies = np.full(nstates + 1, gs_energy)
+    all_energies = np.zeros(nstates + 1)
+    all_energies[0] = gs_energy
     all_energies[1:] += exc_ens
     return all_energies
 

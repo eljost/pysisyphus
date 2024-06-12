@@ -11,7 +11,7 @@ import warnings
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.calculators.MOCoeffs import MOCoeffs
+from pysisyphus.MOCoeffs import MOCoeffs
 from pysisyphus.calculators.OverlapCalculator import (
     GroundStateContext,
     OverlapCalculator,
