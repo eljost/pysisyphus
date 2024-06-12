@@ -5,6 +5,7 @@ from typing import Union
 
 import numpy as np
 
+from pysisyphus.calculators.MOCoeffs import MOCoeffs
 from pysisyphus.elem_data import INV_ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
@@ -16,6 +17,16 @@ from pysisyphus.wavefunction.helpers import BFType
 
 @file_or_str(".fchk")
 def parse_fchk(text):
+    """Data will be returned in the order, as found in the FCHK file. At least
+    for files produced by Gaussian (Fortran code) this means that the data will
+    be in column-major order.
+
+    If for example MO coefficients are desired one must reshape the
+    'Alpha MO coefficiens' list into the appropriate shape (nmos, nmos) and then
+    transpose the reshaped array.
+    See pysisyphus.calculats.Gaussian16.get_overlap_data_from_base_name() for an
+    example."""
+
     header_re = r"\s+".join(
         (
             r"(?P<keyword>[\w\-\s/\(\)=\*]+)",
@@ -52,6 +63,38 @@ def parse_fchk(text):
             continue
         data[cur_keyword].extend(conv_func(line))
     return data
+
+
+def mo_coeffs_from_fchk_data(data: dict) -> MOCoeffs:
+    occa = data["Number of alpha electrons"]
+    occb = data["Number of beta electrons"]
+    ensa = np.array(data["Alpha Orbital Energies"])
+    nmo = len(ensa)
+    occsa = np.zeros(nmo)
+    # Does Gaussian store fractional occupation numbers somewhere?
+    # For now we all of them at 1.0.
+    occsa[:occa] = 1.0
+    occsb = np.zeros(nmo)
+    occsb[:occb] = 1.0
+    Ca = np.array(data["Alpha MO coefficients"])
+    Ca = Ca.reshape(nmo, nmo).T
+    # Beta quantities may not be present
+    try:
+        Cb = np.array(data["Beta MO coefficients"])
+        Cb = Cb.reshape(nmo, nmo).T
+        ensb = np.array(data["Beta Orbital Energies"])
+    except KeyError:
+        Cb = Ca.copy()
+        ensb = ensa.copy()
+    mo_coeffs = MOCoeffs(
+        Ca=Ca,
+        ensa=ensa,
+        occsa=occsa,
+        Cb=Cb,
+        ensb=ensb,
+        occsb=occsb,
+    )
+    return mo_coeffs
 
 
 @file_or_str(".fchk")

@@ -33,12 +33,18 @@ def filter_ens(
 
 @dataclasses.dataclass
 class MOCoeffs:
+    # Ca/Cb: 2d array of floats w/ shape (naos, nmos) containing MO coefficients
+    # ensa/ensb: 1d array of floats w/ shape (nmos, ) containing MO energies
+    # occsa/occs: 1d array of floats w/ shape (nmos, ) containing MO occupation numbers
     Ca: np.ndarray
     ensa: np.ndarray
-    occsa: int
+    occsa: np.ndarray
+    # Beta electron/MO quantities are optional, as they are not present in restricted
+    # calculations. When only alpha quantities are given all beta quantities will be
+    # derived/copied from them.
     Cb: Optional[np.ndarray] = None
     ensb: Optional[np.ndarray] = None
-    occsb: Optional[int] = None
+    occsb: Optional[np.ndarray] = None
 
     def __post_init__(self):
         self._restricted = self.Cb is None
