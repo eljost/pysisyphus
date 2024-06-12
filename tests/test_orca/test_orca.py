@@ -13,7 +13,7 @@ from pysisyphus.calculators import ORCA
 from pysisyphus.calculators.ORCA import (
     parse_orca_cis,
     parse_orca_densities,
-    parse_orca_gbw_new,
+    parse_orca_gbw,
     update_gbw,
 )
 from pysisyphus.config import WF_LIB_DIR
@@ -254,9 +254,9 @@ def test_set_gbw_restricted(this_dir, tmp_path):
     """Do a roundtrip."""
     gbw_in = this_dir / "restricted.gbw"
     gbw_out = tmp_path / "restricted.gbw"
-    moc = parse_orca_gbw_new(gbw_in)
+    moc = parse_orca_gbw(gbw_in)
     update_gbw(gbw_in, gbw_out, moc.Ca)
-    moc2 = parse_orca_gbw_new(gbw_out)
+    moc2 = parse_orca_gbw(gbw_out)
     np.testing.assert_allclose(moc2.Ca, moc.Ca)
 
 
@@ -264,9 +264,9 @@ def test_set_gbw_unrestricted(this_dir, tmp_path):
     """Do a roundtrip."""
     gbw_in = this_dir / "unrestricted.gbw"
     gbw_out = tmp_path / "unrestricted.gbw"
-    moc = parse_orca_gbw_new(gbw_in)
+    moc = parse_orca_gbw(gbw_in)
     update_gbw(gbw_in, gbw_out, moc.Ca, moc.Cb)
-    moc2 = parse_orca_gbw_new(gbw_out)
+    moc2 = parse_orca_gbw(gbw_out)
     np.testing.assert_allclose(moc2.Ca, moc.Ca)
     np.testing.assert_allclose(moc2.Cb, moc.Cb)
 
@@ -275,9 +275,9 @@ def test_set_gbw_empty(this_dir, tmp_path):
     """Do a roundtrip."""
     gbw_in = this_dir / "unrestricted.gbw"
     gbw_out = tmp_path / "unrestricted.gbw"
-    moc = parse_orca_gbw_new(gbw_in)
+    moc = parse_orca_gbw(gbw_in)
     update_gbw(gbw_in, gbw_out)
-    moc2 = parse_orca_gbw_new(gbw_out)
+    moc2 = parse_orca_gbw(gbw_out)
     np.testing.assert_allclose(moc2.Ca, moc.Ca)
     np.testing.assert_allclose(moc2.Cb, moc.Cb)
 
@@ -288,11 +288,11 @@ def test_set_gbw_occs_ens_restricted(this_dir, tmp_path):
     Modify occupation numbers and energies."""
     gbw_in = this_dir / "restricted.gbw"
     gbw_out = tmp_path / "restricted_occs_ens.gbw"
-    moc = parse_orca_gbw_new(gbw_in)
+    moc = parse_orca_gbw(gbw_in)
     occsa = np.arange(moc.occsa.size)
     ensa = -np.arange(moc.ensa.size)
     update_gbw(gbw_in, gbw_out, alpha_energies=ensa, alpha_occs=occsa)
-    moc2 = parse_orca_gbw_new(gbw_out)
+    moc2 = parse_orca_gbw(gbw_out)
     np.testing.assert_allclose(moc2.ensa, ensa)
     np.testing.assert_allclose(moc2.occsa, occsa / 2.0)
 
