@@ -15,6 +15,7 @@ from pysisyphus.calculators.OverlapCalculator import (
     OverlapCalculator,
 )
 from pysisyphus.constants import AU2EV, BOHR2ANG
+from pysisyphus.wavefunction.excited_states import norm_ci_coeffs
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.io import fchk as io_fchk
 
@@ -141,6 +142,25 @@ def parse_all_energies(text):
     except TypeError:
         all_energies = np.array((gs_energy,))
     return all_energies
+
+
+def get_overlap_data_from_base_name(base_name: str | Path):
+    base = Path(base_name)
+
+    # CI coefficients: parsing them from the logfile requires a sufficiently high
+    # IOp(9/40) value. At least 3 or 4.
+    log_fn = base.with_suffix(".log")
+    Xa, Ya, Xb, Yb = parse_ci_coeffs(log_fn, restricted_same_ab=True)
+    Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+
+    # MO coefficients
+    fchk_fn = base.with_suffix(".fchk")
+    data = io_fchk.parse_fchk(fchk_fn)
+    mo_coeffs = io_fchk.mo_coeffs_from_fchk_data(data)
+
+    # GS and excitation energies
+    all_energies = io_fchk.all_energies_from_fchk_data(data)
+    return mo_coeffs.Ca, mo_coeffs.Cb, Xa, Ya, Xb, Yb, all_energies
 
 
 class Gaussian16(OverlapCalculator):
@@ -379,7 +399,9 @@ class Gaussian16(OverlapCalculator):
         self.make_fchk(path)
 
         if self.track:
-            self.run_rwfdump(path, "635r")
+            # As of 2024/06/12 the 635r section is not dummped anymore, but the
+            # coefficients are parsed from the .log-file w/ proper IOp(9/40=3) set.
+            # self.run_rwfdump(path, "635r")
             self.nmos, self.roots = self.parse_log(path / self.out_fn)
 
     def parse_keyword(self, text):
@@ -610,7 +632,11 @@ class Gaussian16(OverlapCalculator):
             text = handle.read()
         td_re = r"Excited State\s*\d+:\s*[\.\w\?-]+\s*([\d\.-]+?)\s*eV"
         matches = re.findall(td_re, text)
-        assert len(matches) == self.nstates
+        nstates_present = len(matches)
+        assert nstates_present == self.nstates, (
+            f"Did you request too many states? {self.nstates} states were requested, "
+            f"but (only) {nstates_present} were found!"
+        )
         # Excitation energies in eV
         exc_energies = np.array(matches, dtype=np.float64)
         # Convert to Hartree
@@ -720,41 +746,11 @@ class Gaussian16(OverlapCalculator):
         return X_full, Y_full
 
     def prepare_overlap_data(self, path):
-        # Parse X eigenvector from 635r dump
-        X, Y = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
-
-        # From http://gaussian.com/cis/, Examples tab, Normalization:
-        #
-        # 'For closed shell calculations, the sum of the squares of the
-        # expansion coefficients is normalized to total 1/2 (as the beta
-        # coefficients are not shown).'
-        #
-        # Right now we only deal with restricted calculatios, so alpha == beta
-        # and we ignore beta. So we are lacking a factor of sqrt(2). Another
-        # option would be to normalize all states to 1.
-        # ci_coeffs *= 2**0.5
-
-        # Parse mo coefficients from .fchk file and write a 'fake' turbomole
-        # mos file.
-        keys = (
-            "SCF Energy",
-            "Alpha Orbital Energies",
-            "Alpha MO coefficients",
-            "ETran state values",
+        base_name = self.out
+        Ca, Cb, Xa, Ya, Xb, Yb, all_energies = get_overlap_data_from_base_name(
+            base_name
         )
-        scf_key, mo_energies_key, mo_key, exc_key = keys
-        fchk_dict = self.parse_fchk(self.fchk, keys=keys)
-        mo_energies = fchk_dict[mo_energies_key]
-        C = fchk_dict[mo_key].T
-        C = C.reshape(-1, mo_energies.size)
-
-        gs_energy = fchk_dict[scf_key]
-        exc_data = fchk_dict[exc_key].reshape(-1, 16)
-        exc_energies = exc_data[:, 0]
-        all_energies = np.zeros(len(exc_energies) + 1)
-        all_energies[0] = gs_energy
-        all_energies[1:] += exc_energies
-        return C, X, Y, all_energies
+        return Ca, Xa, Ya, Cb, Xb, Yb, all_energies
 
     def parse_energy(self, path):
         results = {}

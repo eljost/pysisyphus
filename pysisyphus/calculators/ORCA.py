@@ -541,6 +541,11 @@ def get_overlap_data_from_base_name(base_name: str | Path):
     gbw_fn = base.with_suffix(".gbw")
     mo_coeffs = parse_orca_gbw(gbw_fn)
 
+    # TODO: also obtain all_energies and return them
+    #
+    # Getting the energies from parse_orca_all_energies would require additional
+    # arguments (triplets, do_tddft, do_ice)...
+
     return mo_coeffs.Ca, mo_coeffs.Cb, Xa, Ya, Xb, Yb
 
 
