@@ -105,9 +105,8 @@ class PySCF(OverlapCalculator):
         self.keep_chk = keep_chk
         self.verbose = int(verbose)
         if unrestricted is None:
-            self.unrestricted = self.mult > 1
-        else:
-            self.unrestricted = unrestricted
+            unrestricted = self.mult > 1
+        self.unrestricted = unrestricted
         self.grid_level = int(grid_level)
         self.pruning = pruning.lower()
 
@@ -242,10 +241,12 @@ class PySCF(OverlapCalculator):
         gradient = grad_driver.kernel()
         self.log("Completed gradient step")
 
-        try:
+        if self.root is not None:
+            # Index 0 of e_tot contains energy of 1st excited state etc..., so we have
+            # to substract 1.
+            e_tot = mf.e_tot[self.root - 1]
+        else:
             e_tot = mf._scf.e_tot
-        except AttributeError:
-            e_tot = mf.e_tot
 
         results = {
             "energy": e_tot,
@@ -379,6 +380,42 @@ class PySCF(OverlapCalculator):
 
         all_energies = self.parse_all_energies(exc_mf)
         return C, X, Y, all_energies
+
+    def prepare_overlap_data(self, path):
+        gs_mf = self.mf._scf
+        exc_mf = self.mf
+
+        # MO coefficients
+        if self.unrestricted:
+            Ca, Cb = gs_mf.mo_coeff
+        else:
+            Ca = gs_mf.mo_coeff
+            Cb = Ca.copy()
+
+        xy = exc_mf.xy
+        X = np.array([x for x, _ in xy])
+        Y = np.array([y for _, y in xy])
+
+        if self.unrestricted:
+            Xa = X[:, 0]
+            Xb = X[:, 1]
+            Ya = Y[:, 0]
+            Yb = Y[:, 1]
+        else:
+            Xa = X
+            Xb = Xa.copy()
+            Ya = Y
+            Yb = Ya.copy()
+
+        # Methods that don't yield a Y-vector (TDA/TDAHF) will only produce a 0
+        # instread of a proper Y vector. Below we fix this by creating appropriate
+        # arrays.
+        if self.method in ("tda", "tdahf"):
+            Ya = np.zeros_like(Xa)
+            Yb = np.zeros_like(Xb)
+
+        all_energies = self.parse_all_energies(exc_mf)
+        return Ca, Xa, Ya, Cb, Xb, Yb, all_energies
 
     def parse_charges(self):
         results = self.mf.analyze(with_meta_lowdin=False)
