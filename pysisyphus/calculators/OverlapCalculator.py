@@ -479,7 +479,15 @@ class OverlapCalculator(Calculator):
             lst[ind] for lst in (self.Xa_list, self.Ya_list, self.Xb_list, self.Yb_list)
         ]
 
-    def prepare_overlap_data(self, path):
+    def prepare_overlap_data(self, path) -> tuple[
+        np.ndarray,  # Ca
+        np.ndarray,  # Xa
+        np.ndarray,  # Ya
+        np.ndarray,  # Cb
+        np.ndarray,  # Xb
+        np.ndarray,  # Yb
+        np.ndarray,  # all_energies
+    ]:
         """This method has to implement the calculator specific parsing of
         MO-coefficients, CI-coefficients and energies.
         Should return a filename pointing to TURBOMOLE

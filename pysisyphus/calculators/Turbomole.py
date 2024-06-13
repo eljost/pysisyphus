@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+from typing import Optional
 import warnings
 
 from jinja2 import Template
@@ -24,7 +25,10 @@ from pysisyphus.calculators.parser import (
     parse_turbo_exstates_re as parse_turbo_exstates,
 )
 from pysisyphus.helpers_pure import file_or_str, get_random_path
-from pysisyphus.wavefunction.excited_states import make_density_matrices_for_root
+from pysisyphus.wavefunction.excited_states import (
+    make_density_matrices_for_root,
+    norm_ci_coeffs,
+)
 
 
 @dataclass
@@ -167,7 +171,7 @@ def render_data_groups(raw_data_groups):
         elif type(kws) in (str, int, float):
             data_groups[f"{dg} {kws}"] = dict()
         # Otherwise a dict is expected
-        elif type(kws) == dict:
+        elif type(kws) is dict:
             data_groups[dg] = kws
         else:
             raise Exception(f"Can't handle input '{dg}': '{kws}'!")
@@ -320,6 +324,65 @@ class TurbomoleGroundStateContext(GroundStateContext):
         self.calc.energy_cmd = self.energy_cmd_bak
 
 
+# def get_overlap_data_from_base_name(base: str | Path, vec_fn: str | Path):
+def get_overlap_data_from_base_name(base: str | Path, ci_suffix: str):
+    base = Path(base)
+
+    with open(base.with_suffix(".turbomole.out")) as handle:
+        text = handle.read()
+    ((nfocc_a, nfvirt_a), (nfocc_b, nfvirt_b)), _ = parse_frozen_nmos(text)
+
+    """
+    # At first it seemed clever to just look for the available files and pick the
+    # first one to be found, but of course this is a stupid idea. When multiple
+    # calculations are run in the same directory restricted and unrestricted
+    # calculations can become mixed ...
+    vec_exts = ("ciss_a", "ucis_a", "sing_a", "unrs_a")
+    if vec_fn is None:
+        for ext in vec_exts:
+            if (vec_fn := base.with_suffix(f".{ext}")).exists():
+                break
+        else:
+            raise Exception("Couldn't find any files containing CI coefficients")
+    else:
+        vec_fn = Path(vec_fn)
+    """
+    vec_fn = base.with_suffix(ci_suffix)
+
+    # CI coefficients
+    Xa, Ya, Xb, Yb = parse_ci_coeffs(
+        vec_fn, nfocc_a, nfvirt_a, nfocc_b, nfvirt_b, restricted_same_ab=True
+    )
+    Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+
+    mos_fn = base.with_suffix(".mos")
+    if mos_fn.exists():
+        with open(mos_fn) as handle:
+            text = handle.read()
+        Ca = parse_turbo_mos(text)
+        Cb = Ca.copy()
+    else:
+        with open(base.with_suffix(".alpha")) as handle:
+            text = handle.read()
+        Ca = parse_turbo_mos(text)
+        with open(base.with_suffix(".beta")) as handle:
+            text = handle.read()
+        Cb = parse_turbo_mos(text)
+
+    return Ca, Cb, Xa, Ya, Xb, Yb
+
+
+"""
+def parse_shells(text, key: Literal["closed", "alpha", "beta"]):
+    regex = re.compile(rf"{key} shells\s+(\w)\s*(\d+)-(\d+)")
+    mobj = regex.search(text)
+    from_ = int(mobj.groups(1))
+    to_ = int(mobj.groups(2))
+    assert from_ == 1
+    return to_
+"""
+
+
 class Turbomole(OverlapCalculator):
     conf_key = "turbomole"
     _set_plans = (
@@ -388,7 +451,7 @@ class Turbomole(OverlapCalculator):
                 text = handle.read()
             assert re.search(r"\$intsdebug\s*sao", text) and re.search(
                 r"\$scfiterlimit\s*0", text
-            ), ("Please set " "$intsdebug sao and $scfiterlimit 0 !")
+            ), "Please set " "$intsdebug sao and $scfiterlimit 0 !"
         self.cosmo_kwargs = cosmo_kwargs
         if self.cosmo_kwargs:
             assert (
@@ -434,9 +497,10 @@ class Turbomole(OverlapCalculator):
         self.alpha = None
         self.beta = None
 
-        # Prepare base_cmd
+        # Read control file
         with open(self.control_path / "control") as handle:
-            text = handle.read()
+            text = handle.read().lower()
+        # Prepare base_cmd
         scf_cmd = "dscf"
         second_cmd = "grad"
         # Check for RI
@@ -448,17 +512,24 @@ class Turbomole(OverlapCalculator):
 
         self.uhf = ("$uhf" in text) or (self.mult > 1)
 
-        # It seems as they changed whats written in the control file in version 7.7
+        # TODO: drop this block below
+        """
         try:
-            self.set_occ_and_mo_nums(text)
+            # It seems as they changed whats written in the control file in version 7.7
+            # self.set_occ_and_mo_nums(text)
+            pass
         except TypeError:
             warnings.warn(
                 "Parsing of occupied and virtual MO numbers failed! Disabling "
                 "excited state tracking!"
             )
             self.track = False
+        """
 
-        assert not (("$exopt" in text) and ("$ricc2" in text)), (
+        exopt_present = "$exopt" in text
+        geoopt_present = "$geoopt" in text
+        # At most one of these flags (exopt/geoopt) can be present
+        assert not (exopt_present and geoopt_present), (
             "Found $exopt and $ricc2 in the control file! $exopt is used "
             "for TD-DFT/TDA gradients whereas $ricc2 with 'geoopt ...' "
             "leads to ricc2 gradients. Please delete one of the keywords!"
@@ -469,9 +540,16 @@ class Turbomole(OverlapCalculator):
         self.ricc2 = False
         self.ricc2_opt = False
         # Check for excited state calculation
-        if "$exopt" in text:
+        if exopt_present:
             exopt_re = r"\$exopt\s*(\d+)"
-            self.root = int(re.search(exopt_re, text)[1])
+            # Only use root from $exopt if no explicit root was given
+            if self.root is None:
+                try:
+                    self.root = int(re.search(exopt_re, text)[1])
+                except TypeError:
+                    self.log(
+                        f"Couldn't parse root from $exopt and no explicit root was given!"
+                    )
             second_cmd = "egrad"
             self.prepare_td(text)
             self.td = True
@@ -479,6 +557,14 @@ class Turbomole(OverlapCalculator):
             second_cmd = "escf"
             self.td = True
             self.prepare_td(text)
+            if not exopt_present:
+                warnings.warn(
+                    "ES calculations w/ escf requested, but '$exopt' isn't present "
+                    "in the control file. In gradient/force calculations Turbomole "
+                    "will default to the highest ES, which may lead to suprising results. "
+                    "If gradients/forces for certain ES are desired please add a valid "
+                    "$exopt datagroup to the control file!"
+                )
         elif ("$ricc2" in text) and ("$excitations" in text):
             self.ricc2 = True
             self.ricc2_opt = "geoopt" in text
@@ -492,10 +578,9 @@ class Turbomole(OverlapCalculator):
             self.frozen_mos = frozen_mos
             self.log(f"Found {self.frozen_mos} frozen orbitals.")
         if self.track:
-            assert self.td or self.ricc2, (
-                "track=True can only be used "
-                "in connection with excited state calculations."
-            )
+            assert (
+                self.td or self.ricc2
+            ), "track=True can only be used in connection with excited state calculations."
         # Right now this can't handle a root flip from some excited state
         # to the ground state ... Then we would need grad/rdgrad again,
         # instead of egrad.
@@ -529,7 +614,7 @@ class Turbomole(OverlapCalculator):
         self.log("\tForces cmd: " + self.forces_cmd)
         self.log("\tHessian cmd: " + self.hessian_cmd)
 
-        if self.td or self.ricc2 and (self.root is None):
+        if (self.td or self.ricc2) and (self.root is None):
             warnings.warn(
                 "No root set! Either include '$exopt' for TDA/TDDFT or "
                 "'geoopt' for ricc2 in the control or supply a value for 'root'! "
@@ -688,7 +773,8 @@ class Turbomole(OverlapCalculator):
         control_path = path / "control"
         with open(control_path) as handle:
             text = handle.read()
-        text = re.sub(pattern, repl, text, **kwargs)
+        # text = re.sub(pattern, repl, text, **kwargs)
+        text, nsubs = re.subn(pattern, repl, text, **kwargs)
         with open(control_path, "w") as handle:
             handle.write(text)
 
@@ -704,12 +790,13 @@ class Turbomole(OverlapCalculator):
         return env_copy
 
     def store_and_track(self, results, func, atoms, coords, **prepare_kwargs):
+        # Increase counter manually as it wasn't increased in Calculator.run()
+        self.calc_counter += 1
         if self.track:
             prev_run_path = self.last_run_path
             self.store_overlap_data(atoms, coords)
             # Redo the calculation with the updated root
             if self.track_root():
-                self.calc_counter += 1
                 results = func(atoms, coords, **prepare_kwargs)
             self.last_run_path = prev_run_path
         try:
@@ -1114,6 +1201,7 @@ class Turbomole(OverlapCalculator):
                 continue
         raise Exception("Couldn't parse ground state energy!")
 
+    """
     def prepare_overlap_data(self, path):
         all_energies = self.parse_all_energies()
         X, Y = self.parse_ci_coeffs()
@@ -1123,6 +1211,15 @@ class Turbomole(OverlapCalculator):
         C = parse_turbo_mos(text)
         self.log(f"Reading electronic energies from '{self.out}'.")
         return C, X, Y, all_energies
+    """
+
+    def prepare_overlap_data(self, path):
+        base = self.out.parent / self.out.stem
+        Ca, Cb, Xa, Ya, Xb, Yb = get_overlap_data_from_base_name(
+            base, ci_suffix=self.td_vec_fn.suffix
+        )
+        all_energies = self.parse_all_energies()
+        return Ca, Xa, Ya, Cb, Xb, Yb, all_energies
 
     def run_after(self, path):
         # Convert binary CCRE0 files to ASCII for easier parsing
