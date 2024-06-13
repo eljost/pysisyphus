@@ -113,18 +113,17 @@ def parse_turbo_mos(text):
     )
 
     parser = (
-        pp.Literal("$scfmo")
+        (pp.Literal("$scfmo") | pp.Literal("$uhfmo_alpha") | pp.Literal("$uhfmo_beta"))
         + pp.Literal("scfconv=")
         + pp.Word(pp.nums)
-        + pp.Literal("format(4d20.14) ")
+        + pp.Literal("format(4d20.14)")
         + pp.ZeroOrMore(comment)
         + pp.OneOrMore(mo).setResultsName("mos")
         + pp.Literal("$end")
     )
     parsed = parser.parseString(text)
-    mo_coeffs = np.array([mo.mo_coeffs.asList() for mo in parsed.mos]).T
-
     # MOs are in columns
+    mo_coeffs = np.array([mo.mo_coeffs.asList() for mo in parsed.mos]).T
     return mo_coeffs
 
 
