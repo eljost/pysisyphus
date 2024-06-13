@@ -1,6 +1,7 @@
 import pytest
 
 from pysisyphus.calculators import Gaussian16, ORCA, Turbomole
+from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.testing import using
@@ -47,6 +48,16 @@ from pysisyphus.testing import using
             },
             marks=using("turbomole"),
         ),
+        pytest.param(
+            PySCF,
+            {
+                "basis": "sto3g",
+                "method": "tdahf",
+                "nroots": 10,
+                "unrestricted": True,
+            },
+            marks=using("pyscf"),
+        ),
     ),
 )
 def test_ucis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
@@ -70,7 +81,7 @@ def test_ucis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
-    assert geom.energy == pytest.approx(-74.642649, abs=5e-5)
+    assert geom.energy == pytest.approx(-74.642649, abs=1e-5)
     # Root flips from 2 to 3 in cycle 1
     assert geom.calculator.root == 3
 
@@ -115,6 +126,15 @@ def test_ucis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
             },
             marks=using("turbomole"),
         ),
+        pytest.param(
+            PySCF,
+            {
+                "basis": "sto3g",
+                "method": "tdahf",
+                "nroots": 8,
+            },
+            marks=using("pyscf"),
+        ),
     ),
 )
 def test_rcis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
@@ -138,5 +158,5 @@ def test_rcis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
     opt = RFOptimizer(geom, **opt_kwargs)
     opt.run()
 
-    assert geom.energy == pytest.approx(-74.350827, abs=5e-5)
+    assert geom.energy == pytest.approx(-74.350827, abs=2e-5)
     assert geom.calculator.root == 5
