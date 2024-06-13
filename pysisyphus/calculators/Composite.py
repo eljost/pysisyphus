@@ -6,6 +6,7 @@ import numpy as np
 import sympy as sym
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.calculators import pyscf_lazy
 from pysisyphus.calculators import ORCA, Turbomole, DFTD4
 
 
@@ -14,18 +15,6 @@ CALC_CLASSES = {
     "orca": ORCA.ORCA,
     "turbomole": Turbomole.Turbomole,
 }
-
-
-def import_pyscf():
-    if "pyscf" in CALC_CLASSES:
-        return
-
-    try:
-        from pysisyphus.calculators import PySCF
-
-        CALC_CLASSES["pyscf"] = PySCF.PySCF
-    except (ModuleNotFoundError, OSError):
-        pass
 
 
 class Composite(Calculator):
@@ -54,7 +43,7 @@ class Composite(Calculator):
                 kwargs = kwargs.copy()
                 type_ = kwargs.pop("type")
                 if type_ == "pyscf":
-                    import_pyscf()
+                    pyscf_lazy.add_pyscf_to_dict(CALC_CLASSES)
                 calc_kwargs.update(**kwargs)
                 calc_cls = CALC_CLASSES[type_]
                 keys_calcs[key] = calc_cls(**calc_kwargs)
