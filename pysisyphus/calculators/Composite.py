@@ -14,12 +14,18 @@ CALC_CLASSES = {
     "orca": ORCA.ORCA,
     "turbomole": Turbomole.Turbomole,
 }
-try:
-    from pysisyphus.calculators import PySCF
 
-    CALC_CLASSES["pyscf"] = PySCF.PySCF
-except (ModuleNotFoundError, OSError):
-    pass
+
+def import_pyscf():
+    if "pyscf" in CALC_CLASSES:
+        return
+
+    try:
+        from pysisyphus.calculators import PySCF
+
+        CALC_CLASSES["pyscf"] = PySCF.PySCF
+    except (ModuleNotFoundError, OSError):
+        pass
 
 
 class Composite(Calculator):
@@ -47,6 +53,8 @@ class Composite(Calculator):
                 # Don't modify original dict
                 kwargs = kwargs.copy()
                 type_ = kwargs.pop("type")
+                if type_ == "pyscf":
+                    import_pyscf()
                 calc_kwargs.update(**kwargs)
                 calc_cls = CALC_CLASSES[type_]
                 keys_calcs[key] = calc_cls(**calc_kwargs)
