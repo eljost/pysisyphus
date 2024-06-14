@@ -187,6 +187,29 @@ def test_rcis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
             },
             marks=using("pyscf"),
         ),
+        pytest.param(
+            Gaussian16,
+            {
+                "route": "rhf sto-3g tda=(nstates=8,triplets)",
+            },
+            marks=using("gaussian16"),
+        ),
+        pytest.param(
+            Turbomole,
+            {
+                "simple_input": {
+                    "basis": "sto-3g hondo",
+                    "scfconv": 8,
+                    "scfiterlimit": 200,
+                    # Note the cist below
+                    "scfinstab": "cist",
+                    "soes": "all 8",
+                    "exopt": 2,
+                    "denconv": "1d-7",
+                },
+            },
+            marks=using("turbomole"),
+        ),
     ),
 )
 def test_rcis_singlet_triplet_es_tracking(calc_cls, calc_kwargs, ovlp_type):
