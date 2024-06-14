@@ -160,3 +160,45 @@ def test_rcis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
 
     assert geom.energy == pytest.approx(-74.350827, abs=2e-5)
     assert geom.calculator.root == 5
+
+
+@pytest.mark.parametrize(
+    "ovlp_type",
+    ("tden",),
+)
+@pytest.mark.parametrize(
+    "calc_cls, calc_kwargs",
+    (
+        pytest.param(
+            ORCA,
+            {
+                "keywords": "rhf sto-3g tightscf",
+                "blocks": "%tddft tda true nroots 8 triplets true irootmult triplet end",
+            },
+            marks=using("orca"),
+        ),
+    ),
+)
+def test_rcis_singlet_triplet_es_tracking(calc_cls, calc_kwargs, ovlp_type):
+    geom = geom_loader("lib:h2o_hf_sto3g_orca_opt.xyz", coord_type="redund")
+
+    calc_kwargs.update(
+        {
+            "root": 2,
+            "track": True,
+            "charge": 0,
+            "mult": 1,
+            "ovlp_type": ovlp_type,
+        }
+    )
+    calc = calc_cls(**calc_kwargs)
+    geom.set_calculator(calc)
+
+    opt_kwargs = {
+        "thresh": "gau",
+    }
+    opt = RFOptimizer(geom, **opt_kwargs)
+    opt.run()
+
+    assert geom.energy == pytest.approx(-74.617963, abs=2e-5)
+    assert geom.calculator.root == 3
