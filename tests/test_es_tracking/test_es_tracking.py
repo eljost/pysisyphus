@@ -177,6 +177,16 @@ def test_rcis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
             },
             marks=using("orca"),
         ),
+        pytest.param(
+            PySCF,
+            {
+                "basis": "sto3g",
+                "method": "tdahf",
+                "nroots": 8,
+                "td_triplets": True,
+            },
+            marks=using("pyscf"),
+        ),
     ),
 )
 def test_rcis_singlet_triplet_es_tracking(calc_cls, calc_kwargs, ovlp_type):

@@ -86,6 +86,7 @@ class PySCF(OverlapCalculator):
         unrestricted: Optional[bool] = None,
         grid_level: int = 3,
         pruning="nwchem",
+        td_triplets=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -108,6 +109,7 @@ class PySCF(OverlapCalculator):
         self.unrestricted = unrestricted
         self.grid_level = int(grid_level)
         self.pruning = pruning.lower()
+        self.td_triplets = td_triplets
 
         self.chkfile = None
         self.out_fn = "pyscf.out"
@@ -133,6 +135,12 @@ class PySCF(OverlapCalculator):
         # Method can be overriden in a subclass to modify the mf object.
         return mf
 
+    def configure_td_mf(self, mf):
+        mf.nstates = self.nroots
+        # Whether to calculate spin-adapated triplets from a singlet reference
+        # When triplets are requested, mf.singlet must be set to False.
+        mf.singlet = not self.td_triplets
+
     def get_driver(self, step, mol=None, mf=None):
         def _get_driver():
             return self.drivers[(step, self.unrestricted)]
@@ -154,10 +162,10 @@ class PySCF(OverlapCalculator):
             mf = mp2_mf(mf)
         elif mf and (step == "tddft"):
             mf = pyscf.tddft.TDDFT(mf)
-            mf.nstates = self.nroots
+            self.configure_td_mf(mf)
         elif mf and (step == "tda"):
             mf = pyscf.tddft.TDA(mf)
-            mf.nstates = self.nroots
+            self.configure_td_mf(mf)
         else:
             raise Exception("Unknown method '{step}'!")
         return mf
