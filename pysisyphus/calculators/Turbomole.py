@@ -222,7 +222,15 @@ def parse_frozen_nmos(text: str) -> tuple[list[tuple[int, int], tuple[int, int]]
 
 
 @file_or_str(
-    "ciss_a", "ucis_a", "sing_a", "unrs_a", "dipl_a", exact=True, add_exts=True
+    "ciss_a",
+    "cist_a",
+    "ucis_a",
+    "sing_a",
+    "trip_a",
+    "unrs_a",
+    "dipl_a",
+    exact=True,
+    add_exts=True,
 )
 def parse_ci_coeffs(
     text: str,
@@ -396,7 +404,9 @@ class Turbomole(OverlapCalculator):
         "mos",
         "mwfn_wf",
         ("ciss_a", "td_vec_fn"),
+        ("cist_a", "td_vec_fn"),
         ("sing_a", "td_vec_fn"),
+        ("trip_a", "td_vec_fn"),
         ("ucis_a", "td_vec_fn"),
         ("unrs_a", "td_vec_fn"),
         ("dipl_a", "rlx_vec_fn"),
@@ -451,7 +461,7 @@ class Turbomole(OverlapCalculator):
                 text = handle.read()
             assert re.search(r"\$intsdebug\s*sao", text) and re.search(
                 r"\$scfiterlimit\s*0", text
-            ), "Please set " "$intsdebug sao and $scfiterlimit 0 !"
+            ), ("Please set " "$intsdebug sao and $scfiterlimit 0 !")
         self.cosmo_kwargs = cosmo_kwargs
         if self.cosmo_kwargs:
             assert (
@@ -466,8 +476,10 @@ class Turbomole(OverlapCalculator):
             "beta",
             "out",
             "ciss_a",
+            "cist_a",
             "ucis_a",
             "sing_a",
+            "trip_a",
             "unrs_a",
             "dipl_a",
             "gradient",
