@@ -18,7 +18,7 @@ from scipy.optimize import linear_sum_assignment
 from pysisyphus import logger
 from pysisyphus.calculators.Calculator import Calculator
 
-# from pysisyphus.calculators.WFOWrapper import WFOWrapper
+from pysisyphus.calculators.WFOWrapper import WFOWrapper
 from pysisyphus.config import get_cmd
 from pysisyphus.helpers_pure import describe
 from pysisyphus.io.hdf5 import get_h5_group
@@ -37,7 +37,6 @@ NTOs = namedtuple("NTOs", "ntos lambdas")
 
 
 def get_data_model(
-    # exc_state_num, occ_mo_num, virt_mo_num, ovlp_type, atoms, max_cycles
     exc_state_num,
     occ_a,
     virt_a,
@@ -280,6 +279,7 @@ class OverlapCalculator(Calculator):
         ovlp_type="tden",
         double_mol=False,
         ovlp_with="previous",
+        # TODO: reenable XY for wfoverlap?!
         # XY="X+Y",
         adapt_args=(0.5, 0.3, 0.6),
         # use_ntos=4,
@@ -289,9 +289,8 @@ class OverlapCalculator(Calculator):
         orient="",
         dump_fn="overlap_data.h5",
         h5_dump=False,
-        # ncore=0,
+        ncore=0,
         conf_thresh=1e-3,
-        # dyn_roots=0,
         mos_ref="cur",
         mos_renorm: bool = True,
         min_cost: bool = False,
@@ -345,20 +344,14 @@ class OverlapCalculator(Calculator):
         self.orient = orient
         self.dump_fn = self.out_dir / dump_fn
         self.h5_dump = h5_dump
-        # self.ncore = int(ncore)
+        self.ncore = int(ncore)
         self.conf_thresh = float(conf_thresh)
-        """
-        self.dyn_roots = int(dyn_roots)
-        if self.dyn_roots != 0:
-            self.dyn_roots = 0
-            self.log("dyn_roots = 0 is hardcoded right now")
-        """
         self.mos_ref = mos_ref
         assert self.mos_ref in ("cur", "ref")
         self.mos_renorm = bool(mos_renorm)
         self.min_cost = bool(min_cost)
 
-        # assert self.ncore >= 0, "ncore must be a >= 0!"
+        assert self.ncore >= 0, f"{ncore=} must be a positive number!"
 
         # MO-coefficients; MOs are expected to be in rows.
         self.Ca_list = list()
@@ -523,10 +516,11 @@ class OverlapCalculator(Calculator):
         self.Xb_list.append(Xb)
         self.Yb_list.append(Yb)
 
-        # Don't create the wf-object when we use a different ovlp method.
-        # TODO: handle overlap calculator
-        # if (self.ovlp_type == "wf") and (self.wfow is None):
-        # self.set_wfow(ci_coeffs)
+        # If WF-overlaps were requested we initialize the WFOWrapper object
+        if (self.ovlp_type == "wf") and (self.wfow is None):
+            _, occa, virta = Xa.shape
+            _, occb, virtb = Xb.shape
+            self.set_wfow(occa, virta, occb, virtb)
 
         if self.first_root is None:
             self.first_root = self.root
@@ -646,13 +640,21 @@ class OverlapCalculator(Calculator):
         S_AO = C_inv.T @ C_inv
         return S_AO
 
-    """
     def get_wf_overlaps(self, indices=None, S_AO=None):
-        old, new = self.get_indices(indices)
-        old_cycle = (self.mo_coeff_list[old], self.ci_coeff_list[old])
-        new_cycle = (self.mo_coeff_list[new], self.ci_coeff_list[new])
-        return self.wfow.wf_overlap(old_cycle, new_cycle, S_AO)
+        Ca_ref, Cb_ref, Ca_cur, Cb_cur, S_AO = self.get_orbital_matrices(indices, S_AO)
+        C_ref = np.concatenate((Ca_ref, Cb_ref), axis=1)
+        C_cur = np.concatenate((Ca_cur, Cb_cur), axis=1)
 
+        ref, cur = self.get_indices(indices)
+        # Reference step
+        Xa_ref, Ya_ref, Xb_ref, Yb_ref = self.get_ci_coeffs_for(ref)
+        # Current step
+        Xa_cur, Ya_cur, Xb_cur, Yb_cur = self.get_ci_coeffs_for(cur)
+        ref_cycle = (C_ref, Xa_ref + Ya_ref, Xb_ref + Yb_ref)
+        cur_cycle = (C_cur, Xa_cur + Ya_cur, Xb_cur + Yb_cur)
+        return self.wfow.wf_overlap(*ref_cycle, *cur_cycle, ao_ovlp=S_AO)
+
+    """
     def wf_overlaps(self, mo_coeffs1, ci_coeffs1, mo_coeffs2, ci_coeffs2, S_AO=None):
         cycle1 = (mo_coeffs1, ci_coeffs1)
         cycle2 = (mo_coeffs2, ci_coeffs2)
@@ -895,22 +897,23 @@ class OverlapCalculator(Calculator):
 
         return calc
 
-    """
-    def set_wfow(self, ci_coeffs):
-        occ_mo_num, virt_mo_num = ci_coeffs[0].shape
+    def set_wfow(self, occa: int, virta: int, occb: int, virtb: int):
+        assert occa + virta == occb + virtb
         try:
             wfow_mem = self.pal * self.mem
         except AttributeError:
             wfow_mem = 8000
         self.wfow = WFOWrapper(
-            occ_mo_num,
-            virt_mo_num,
+            occa,
+            virta,
+            occb,
+            virtb,
             calc_number=self.calc_number,
             wfow_mem=wfow_mem,
             ncore=self.ncore,
             conf_thresh=self.conf_thresh,
+            out_dir=self.out_dir,
         )
-    """
 
     def track_root(self, ovlp_type=None):
         """Check if a root flip occured occured compared to the previous cycle
@@ -944,10 +947,9 @@ class OverlapCalculator(Calculator):
 
         self.log(f"Calculating '{self.ovlp_type}' overlaps.")
         if ovlp_type == "wf":
-            raise Exception("wf-overlaps are not yet implemented!")
             overlap_mats = self.get_wf_overlaps(S_AO=S_AO)
+            # Use SVD-orthogonalized overlap matrix
             overlaps = np.abs(overlap_mats[2])
-            # overlaps = overlaps**2
         elif ovlp_type == "tden":
             overlaps = self.get_tden_overlaps(S_AO=S_AO)
         elif ovlp_type == "nto":
