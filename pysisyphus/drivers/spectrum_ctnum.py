@@ -29,7 +29,17 @@ def get_frags_noh(atoms, coords, bond_inds):
     return frags
 
 
-def plot_geometry_graph(ax, atoms, coords3d, frags, bond_inds, scale=12.5, filter_atoms={"h", }):
+def plot_geometry_graph(
+    ax,
+    atoms,
+    coords3d,
+    frags,
+    bond_inds,
+    scale=12.5,
+    filter_atoms={
+        "h",
+    },
+):
     atoms = [atom.lower() for atom in atoms]
     node_color = list()
     node_size = list()
@@ -63,7 +73,9 @@ def plot_geometry_graph(ax, atoms, coords3d, frags, bond_inds, scale=12.5, filte
         G.add_edge(from_, to_, weight=bond_length)
 
     labels = {
-        i: f"{atom.capitalize()}{i}" for i, atom in enumerate(atoms) if atom not in filter_atoms
+        i: f"{atom.capitalize()}{i}"
+        for i, atom in enumerate(atoms)
+        if atom not in filter_atoms
     }
     try:
         pos = nx.nx_agraph.graphviz_layout(G, prog="neato")
@@ -231,7 +243,7 @@ def get_annotate_state(ax, exc_ens, foscs):
     exc_ens_eV = exc_ens * AU2EV
     ylim = ax.get_ylim()
     ymax = ylim[1]
-    lower_third = (ymax - ylim[0]) / 3.
+    lower_third = (ymax - ylim[0]) / 3.0
 
     def annotate_state(ind):
         exc_en_nm = exc_ens_nm[ind]
@@ -240,7 +252,7 @@ def get_annotate_state(ax, exc_ens, foscs):
         text = f"{exc_en_nm:.2f} nm, {exc_en_eV:.2f} eV\nf={fosc:.5f}"
         xy = (exc_en_nm, fosc)
         ytext = min(ymax, fosc + max(fosc * 0.1, lower_third))
-        xytext = (exc_en_nm + 15.0, ytext)#fosc + max(fosc * 0.1, lower_third))
+        xytext = (exc_en_nm + 15.0, ytext)
         annot = ax.annotate(
             text,
             xy,
