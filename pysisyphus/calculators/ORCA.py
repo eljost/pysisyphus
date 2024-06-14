@@ -753,8 +753,12 @@ class ORCA(OverlapCalculator):
         block_str = self.blocks
         # Use the correct iroot if 'root' attribute is set.
         if self.root is not None:
-            if "iroot" in self.blocks:
-                block_str = re.sub(r"iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
+            # The spaces around ' iroot ' are important, because w/o them this conditional
+            # would also evaluate to True for 'irootmult', which is not intended.
+            if " iroot " in self.blocks:
+                block_str = re.sub(
+                    r" iroot\s+(\d+)", f" iroot {self.root}", self.blocks
+                )
             # Insert appropriate iroot keyword if not already present
             else:
                 block_str = re.sub(
