@@ -219,10 +219,7 @@ class PySCF(OverlapCalculator):
         mol = self.prepare_input(atoms, coords)
         mf = self.run(mol, point_charges=point_charges)
         all_energies = self.parse_all_energies()
-        if self.root is not None:
-            energy = all_energies[self.root]
-        else:
-            energy = all_energies[0]
+        energy = self.get_energy_from_all_energies(all_energies)
 
         results = {
             "energy": energy,
@@ -249,15 +246,11 @@ class PySCF(OverlapCalculator):
         gradient = grad_driver.kernel()
         self.log("Completed gradient step")
 
-        if self.root is not None:
-            # Index 0 of e_tot contains energy of 1st excited state etc..., so we have
-            # to substract 1.
-            e_tot = mf.e_tot[self.root - 1]
-        else:
-            e_tot = mf._scf.e_tot
+        all_energies = self.parse_all_energies()
+        energy = self.get_energy_from_all_energies(all_energies)
 
         results = {
-            "energy": e_tot,
+            "energy": energy,
             "forces": -gradient.flatten(),
         }
         results = self.store_and_track(
@@ -272,11 +265,14 @@ class PySCF(OverlapCalculator):
         mf = self.run(mol, point_charges=point_charges)
         H = mf.Hessian().kernel()
 
+        all_energies = self.parse_all_energies()
+        energy = self.get_energy_from_all_energies(all_energies)
+
         # The returned hessian is 4d ... ok. This probably serves a purpose
         # that I don't understand. We transform H to a nice, simple 2d array.
         H = np.hstack(np.concatenate(H, axis=1))
         results = {
-            "energy": mf.e_tot,
+            "energy": energy,
             "hessian": H,
         }
         # results = self.store_and_track(
@@ -367,6 +363,13 @@ class PySCF(OverlapCalculator):
             all_energies = np.array((gs_energy,))
 
         return all_energies
+
+    def get_energy_from_all_energies(self, all_energies):
+        if self.root is not None:
+            energy = all_energies[self.root]
+        else:
+            energy = all_energies[0]
+        return energy
 
     def prepare_overlap_data(self, path):
         gs_mf = self.mf._scf
