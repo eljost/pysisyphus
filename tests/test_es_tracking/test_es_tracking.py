@@ -12,6 +12,7 @@ from pysisyphus.testing import using
     (
         "tden",
         # "top",
+        "wf",
     ),
 )
 @pytest.mark.parametrize(
@@ -91,6 +92,7 @@ def test_ucis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
     (
         "tden",
         "top",
+        "wf",
     ),
 )
 @pytest.mark.parametrize(
@@ -164,7 +166,10 @@ def test_rcis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
 
 @pytest.mark.parametrize(
     "ovlp_type",
-    ("tden",),
+    (
+        "tden",
+        "wf",
+    ),
 )
 @pytest.mark.parametrize(
     "calc_cls, calc_kwargs",
