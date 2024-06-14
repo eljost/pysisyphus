@@ -78,8 +78,9 @@ class Wavefunction:
             # Reorder MO-energies if set
             if self.mo_ens is not None:
                 mo_ens = self.mo_ens.copy()
+                # Loop over alpha and beta MO energies
                 for i, moe in enumerate(self.mo_ens):
-                    mo_ens[i] = P.T @ moe[:, None]
+                    mo_ens[i] = (P.T @ moe[:, None]).flatten()
                 self.mo_ens = mo_ens
         if ecp_electrons is None:
             ecp_electrons = np.zeros(len(self.atoms))
