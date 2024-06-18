@@ -169,6 +169,7 @@ def test_rcis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
     (
         "tden",
         "wf",
+        "nto",
     ),
 )
 @pytest.mark.parametrize(
