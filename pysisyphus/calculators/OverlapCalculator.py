@@ -5,8 +5,12 @@
 # [3] https://doi.org/10.1021/acs.jctc.0c00295
 #     First Principles Nonadiabatic Excited-State Molecular Dynamics in NWChem
 #     Song, Fischer, Zhang, Cramer, Mukamel, Govind, Tretiak, 2020
+# [4] https://doi.org/10.1016/j.ccr.2018.01.019
+#     Quantitative wave function analysis for excited states of transition metal
+#     complexes
+#     Mai, Plasser, Dorn, Fumanal, Daniel, Gonzalez, 2018
 
-from collections import namedtuple
+import dataclasses
 from pathlib import Path, PosixPath
 import shutil
 import tempfile
@@ -25,15 +29,36 @@ from pysisyphus.io.hdf5 import get_h5_group
 from pysisyphus.wrapper.mwfn import make_cdd, get_mwfn_exc_str
 from pysisyphus.wrapper.jmol import render_cdd_cube as render_cdd_cube_jmol
 from pysisyphus.wavefunction.excited_states import (
-    # nto_overlaps,
+    nto_overlaps,
     norm_ci_coeffs,
-    # nto_org_overlaps,
     tden_overlaps,
     top_differences,
 )
 
 
-NTOs = namedtuple("NTOs", "ntos lambdas")
+@dataclasses.dataclass
+class StateNTOs:
+    holes: np.ndarray
+    particles: np.ndarray
+    lambdas: np.ndarray
+
+    def __post__init__(self):
+        assert self.holes.shape == self.particles.shape
+        # NTO holes & particles are expected to be in columns, so rows denote
+        # the MO basis.
+        # nmos, nntos
+        _, nntos = self.holes.shape
+        assert len(self.lambdas) == nntos
+
+
+@dataclasses.dataclass
+class StepNTOs:
+    holes_a: list[np.ndarray]
+    particles_a: list[np.ndarray]
+    lambdas_a: list[np.ndarray]
+    holes_b: list[np.ndarray]
+    particles_b: list[np.ndarray]
+    lambdas_b: list[np.ndarray]
 
 
 def get_data_model(
@@ -120,6 +145,29 @@ def get_tden_overlaps(Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2
     return ovlp_mat
 
 
+def get_nto_overlaps(ntos1, ntos2, S_AO):
+    # Hole overlap
+    S_holes_a = nto_overlaps(
+        ntos1.holes_a, ntos1.lambdas_a, ntos2.holes_a, ntos2.lambdas_a, S_AO
+    )
+    S_holes_b = nto_overlaps(
+        ntos1.holes_b, ntos1.lambdas_b, ntos2.holes_b, ntos2.lambdas_b, S_AO
+    )
+    S_holes = S_holes_a + S_holes_b
+
+    # Particle everlap
+    S_particles_a = nto_overlaps(
+        ntos1.particles_a, ntos1.lambdas_a, ntos2.particles_a, ntos2.lambdas_a, S_AO
+    )
+    S_particles_b = nto_overlaps(
+        ntos1.particles_b, ntos1.lambdas_b, ntos2.particles_b, ntos2.lambdas_b, S_AO
+    )
+    S_particles = S_particles_a + S_particles_b
+
+    ovlp_mat = S_holes + S_particles
+    return ovlp_mat
+
+
 def get_top_differences(
     Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO
 ):
@@ -131,6 +179,45 @@ def get_top_differences(
     beta_diffs = top_differences(Xb1, Yb1, Xb2, Yb2, S_MO_b)
     diffs = alpha_diffs + beta_diffs
     return diffs
+
+
+def calculate_state_ntos(state_ci_coeffs, mos):
+    """Returns NTOs in the AO basis."""
+    u, s, vh = np.linalg.svd(state_ci_coeffs, full_matrices=False)
+    lambdas = s**2
+    occ_mo_num = state_ci_coeffs.shape[0]
+    # Transfrom from MO to AO basis
+    occ_mos = mos[:, :occ_mo_num]
+    occ_ntos = occ_mos @ u
+    vir_mos = mos[:, occ_mo_num:]
+    vir_ntos = vir_mos @ vh
+    return occ_ntos, vir_ntos, lambdas
+
+
+def get_significant_ntos(
+    mo_coeffs: np.ndarray,
+    ci_coeffs: np.ndarray,
+    use_pr: bool = False,
+    use_ntos: int = 4,
+):
+    """Return signficant NTOs in the AO basis."""
+    assert use_pr or (use_ntos > 0)
+    sig_holes = list()
+    sig_particles = list()
+    sig_lambdas = list()
+
+    # Loop over all states
+    for sn_ci_coeffs in ci_coeffs:
+        occ_ntos, vir_ntos, lambdas = calculate_state_ntos(sn_ci_coeffs, mo_coeffs)
+        participation_ratios = lambdas.sum() ** 2 / (lambdas**2).sum()
+        # Select number of NTOs dynamically based on their participation ratio.
+        # See eq. (8) in [4].
+        if use_pr:
+            use_ntos = int(np.round(participation_ratios))
+        sig_holes.append(occ_ntos[:, :use_ntos])
+        sig_particles.append(vir_ntos[:, :use_ntos])
+        sig_lambdas.append(lambdas[:use_ntos])
+    return sig_holes, sig_particles, sig_lambdas
 
 
 def get_ovlp_mat(
@@ -159,8 +246,6 @@ def get_ovlp_mat(
     # raise Exception("wf-overlaps are not yet implemented!")
     # elif ovlp_type == "nto":
     # raise Exception("nto-overlaps are not yet implemented!")
-    # elif ovlp_type == "nto_org":
-    # raise Exception("nto_org-overlaps are not yet implemented!")
     elif ovlp_type == "top":
         top_rs = get_top_differences(
             Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO
@@ -249,8 +334,6 @@ class OverlapCalculator(Calculator):
         "wf": "wavefunction overlap",
         "tden": "transition density matrix overlap",
         "nto": "natural transition orbital overlap",
-        # As described in 10.1002/jcc.25800
-        "nto_org": "original natural transition orbital overlap",
         "top": "transition orbital pair overlap",
     }
     VALID_KEYS = [
@@ -282,9 +365,9 @@ class OverlapCalculator(Calculator):
         # TODO: reenable XY for wfoverlap?!
         # XY="X+Y",
         adapt_args=(0.5, 0.3, 0.6),
-        # use_ntos=4,
-        # pr_nto=False,
-        # nto_thresh=0.3,
+        use_ntos=4,
+        use_pr=True,
+        keep_ntos=False,
         cdds=None,
         orient="",
         dump_fn="overlap_data.h5",
@@ -318,9 +401,9 @@ class OverlapCalculator(Calculator):
         ), "ovlp_type: top and ovlp_with: adapat are not yet compatible"
         self.adapt_args = np.abs(adapt_args, dtype=float)
         self.adpt_thresh, self.adpt_min, self.adpt_max = self.adapt_args
-        # self.use_ntos = use_ntos
-        # self.pr_nto = pr_nto
-        # self.nto_thresh = nto_thresh
+        self.use_ntos = use_ntos
+        self.use_pr = use_pr
+        self.keep_ntos = (self.ovlp_type == "nto") or keep_ntos
         self.cdds = cdds
         # When calculation/rendering of charge density differences (CDDs) is
         # requested check fore the required programs (Multiwfn/Jmol). If they're
@@ -363,7 +446,9 @@ class OverlapCalculator(Calculator):
         self.Yb_list = list()
 
         self.wfow = None
-        self.nto_list = list()
+        # self.ntosa_list = list()
+        # self.ntosb_list = list()
+        self.ntos = list()
         self.coords_list = list()
         # This list will hold the root indices at the beginning of the cycle
         # before any overlap calculation.
@@ -453,7 +538,8 @@ class OverlapCalculator(Calculator):
 
     def clear_stored_calculations(self):
         for lst in (
-            self.nto_list,
+            self.ntosa_list,
+            self.ntosb_list,
             self.coords_list,
             self.calculated_roots,
             self.roots_list,
@@ -472,7 +558,9 @@ class OverlapCalculator(Calculator):
             lst[ind] for lst in (self.Xa_list, self.Ya_list, self.Xb_list, self.Yb_list)
         ]
 
-    def prepare_overlap_data(self, path) -> tuple[
+    def prepare_overlap_data(
+        self, path
+    ) -> tuple[
         np.ndarray,  # Ca
         np.ndarray,  # Xa
         np.ndarray,  # Ya
@@ -535,10 +623,23 @@ class OverlapCalculator(Calculator):
             self.roots_list.append(self.root)
         self.all_energies_list.append(all_ens)
 
-        # Also store NTOs if requested
-        # TODO: handle this differently
-        # if self.ovlp_type in ("nto", "nto_org"):
-        # self.set_ntos(mo_coeffs, ci_coeffs)
+        # Store NTOs if requested
+        if self.keep_ntos:
+            holes_a, particles_a, lambdas_a = get_significant_ntos(
+                Ca, Xa + Ya, use_pr=self.use_pr, use_ntos=self.use_ntos
+            )
+            holes_b, particles_b, lambdas_b = get_significant_ntos(
+                Cb, Xb + Yb, use_pr=self.use_pr, use_ntos=self.use_ntos
+            )
+            sntos = StepNTOs(
+                holes_a=holes_a,
+                particles_a=particles_a,
+                lambdas_a=lambdas_a,
+                holes_b=holes_b,
+                particles_b=particles_b,
+                lambdas_b=lambdas_b,
+            )
+            self.ntos.append(sntos)
 
     def get_indices(self, indices=None):
         """
@@ -697,71 +798,13 @@ class OverlapCalculator(Calculator):
             S_AO,
         )
 
-    """
-    def calculate_state_ntos(self, state_ci_coeffs, mos):
-        # TODO: don't renorm; respect self.XY choice 
-        normed = state_ci_coeffs / np.linalg.norm(state_ci_coeffs)
-        # u, s, vh = np.linalg.svd(state_ci_coeffs)
-        u, s, vh = np.linalg.svd(normed)
-        lambdas = s ** 2
-        self.log("Normalized transition density vector to 1.")
-        self.log(f"Sum(lambdas)={np.sum(lambdas):.4f}")
-        lambdas_str = np.array2string(lambdas[:3], precision=4, suppress_small=True)
-        self.log(f"First three lambdas: {lambdas_str}")
-
-        occ_mo_num = state_ci_coeffs.shape[0]
-        occ_mos = mos[:occ_mo_num]
-        vir_mos = mos[occ_mo_num:]
-        occ_ntos = occ_mos.T.dot(u)
-        vir_ntos = vir_mos.T.dot(vh)
-        return occ_ntos, vir_ntos, lambdas
-
     def get_nto_overlaps(self, indices=None, S_AO=None, org=False):
+        *_, S_AO = self.get_orbital_matrices(indices, S_AO)
+
         ref, cur = self.get_indices(indices)
-
-        if S_AO is None:
-            S_AO = self.get_sao_from_mo_coeffs_and_dump(
-                self.get_ref_mos(self.mo_coeff_list[ref], self.mo_coeff_list[cur])
-            )
-
-        ntos_1 = self.nto_list[ref]
-        ntos_2 = self.nto_list[cur]
-        if org:
-            overlaps = nto_org_overlaps(
-                ntos_1, ntos_2, S_AO, nto_thresh=self.nto_thresh
-            )
-        else:
-            overlaps = nto_overlaps(ntos_1, ntos_2, S_AO)
-        return overlaps
-    """
-
-    """
-    def set_ntos(self, mo_coeffs, ci_coeffs):
-        roots = ci_coeffs.shape[0]
-        ntos_for_cycle = list()
-        for root in range(roots):
-            sn_ci_coeffs = ci_coeffs[root]
-            self.log(f"Calculating NTOs for root {root+1}")
-            occ_ntos, vir_ntos, lambdas = self.calculate_state_ntos(
-                sn_ci_coeffs,
-                mo_coeffs,
-            )
-            pr_nto = lambdas.sum() ** 2 / (lambdas ** 2).sum()
-            if self.pr_nto:
-                use_ntos = int(np.round(pr_nto))
-                self.log(f"PR_NTO={pr_nto:.2f}")
-            else:
-                use_ntos = self.use_ntos
-            self.log(f"Using {use_ntos} NTOS")
-            ovlp_occ_ntos = occ_ntos.T[:use_ntos]
-            ovlp_vir_ntos = vir_ntos.T[:use_ntos]
-            ovlp_lambdas = lambdas[:use_ntos]
-            ovlp_lambdas = np.concatenate((ovlp_lambdas, ovlp_lambdas))
-            ovlp_ntos = np.concatenate((ovlp_occ_ntos, ovlp_vir_ntos), axis=0)
-            ntos = NTOs(ntos=ovlp_ntos, lambdas=ovlp_lambdas)
-            ntos_for_cycle.append(ntos)
-        self.nto_list.append(ntos_for_cycle)
-    """
+        ntos_ref = self.ntos[ref]
+        ntos_cur = self.ntos[cur]
+        return get_nto_overlaps(ntos_ref, ntos_cur, S_AO)
 
     def get_top_differences(self, indices=None, S_AO=None):
         """Transition orbital projection."""
@@ -953,11 +996,7 @@ class OverlapCalculator(Calculator):
         elif ovlp_type == "tden":
             overlaps = self.get_tden_overlaps(S_AO=S_AO)
         elif ovlp_type == "nto":
-            raise Exception("nto-overlaps are not yet implemented!")
             overlaps = self.get_nto_overlaps(S_AO=S_AO)
-        elif ovlp_type == "nto_org":
-            raise Exception("nto_org-overlaps are not yet implemented!")
-            overlaps = self.get_nto_overlaps(S_AO=S_AO, org=True)
         elif ovlp_type == "top":
             top_rs = self.get_top_differences(S_AO=S_AO)
             overlaps = 1.0 - top_rs

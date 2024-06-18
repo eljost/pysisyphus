@@ -1,4 +1,5 @@
 import dataclasses
+import math
 from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -9,9 +10,9 @@ from pysisyphus.constants import AU2EV
 
 def occ_from_occs(occs):
     occ = occs.sum()
-    iocc = int(occ)
+    iocc = round(occ)
     # Don't allow fractional total occupations
-    assert float(iocc) == occ
+    assert math.isclose(float(iocc), occ, abs_tol=1e-10)
     return iocc
 
 

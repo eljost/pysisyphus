@@ -517,43 +517,18 @@ def tden_overlaps(
 ###############################
 
 
-"""
-def nto_overlaps(ntos_1, ntos_2, ao_ovlp):
+def nto_overlaps(ntos_1, lambdas_1, ntos_2, lambdas_2, ao_ovlp):
+    """NTOS are expected to be given in columns."""
     states1 = len(ntos_1)
     states2 = len(ntos_2)
     ovlps = np.zeros((states1, states2))
     for i in range(states1):
-        n_i = ntos_1[i]
-        l_i = n_i.lambdas[:, None]
-        ntos_i = l_i * n_i.ntos
+        ntos_i = ntos_1[i]
+        l_i = lambdas_1[i]
         for j in range(states2):
-            n_j = ntos_2[j]
-            l_j = n_j.lambdas[:, None]
-            ntos_j = l_j * n_j.ntos
-            ovlp = np.sum(np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
-            ovlps[i, j] = ovlp
+            ovlp = l_i * lambdas_2[j] * np.abs(ntos_i.T @ ao_ovlp @ ntos_2[j])
+            ovlps[i, j] = ovlp.sum()
     return ovlps
-
-def nto_org_overlaps(ntos_1, ntos_2, ao_ovlp, nto_thresh=0.3):
-    states_1 = len(ntos_1)
-    states_2 = len(ntos_2)
-    ovlps = np.zeros((states_1, states_2))
-
-    for i in range(states_1):
-        n_i = ntos_1[i]
-        l_i = n_i.lambdas[:, None]
-        ntos_i = n_i.ntos[(l_i >= nto_thresh).flatten()]
-        l_i_big = l_i[l_i >= nto_thresh]
-        for j in range(states_2):
-            n_j = ntos_2[j]
-            l_j = n_j.lambdas[:, None]
-            ntos_j = n_j.ntos[(l_j >= nto_thresh).flatten()]
-            ovlp = np.sum(
-                l_i_big[:, None] * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T))
-            )
-            ovlps[i, j] = ovlp
-    return ovlps
-"""
 
 
 def detachment_attachment_density(diff_dens: np.ndarray, atol=1e-12, verbose=False):
