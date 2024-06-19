@@ -154,7 +154,7 @@ qcengine==0.26.0
     # via pysisyphus (setup.cfg)
 rmsd==1.5.1
     # via pysisyphus (setup.cfg)
-scikit-learn==1.2.2
+scikit-learn==1.5.0
     # via pysisyphus (setup.cfg)
 scipy==1.10.1
     # via
