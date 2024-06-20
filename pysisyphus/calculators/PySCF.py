@@ -114,8 +114,6 @@ class PySCF(OverlapCalculator):
         self.chkfile = None
         self.out_fn = "pyscf.out"
 
-        lib.num_threads(self.pal)
-
     @staticmethod
     def geom_from_fn(fn, **kwargs):
         geom = geom_loader(fn)
@@ -292,6 +290,8 @@ class PySCF(OverlapCalculator):
         return results
 
     def run(self, mol, point_charges=None, method=None):
+        lib.num_threads(self.pal)
+
         if method is None:
             method = self.method
         steps = self.multisteps[method]
