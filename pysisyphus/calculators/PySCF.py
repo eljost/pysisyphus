@@ -114,9 +114,7 @@ class PySCF(OverlapCalculator):
 
         self.chkfile = None
         self.out_fn = "pyscf.out"
-
         self.use_gpu = use_gpu
-
         lib.num_threads(self.pal)
 
     @staticmethod
@@ -298,6 +296,8 @@ class PySCF(OverlapCalculator):
         return results
 
     def run(self, mol, point_charges=None, method=None):
+        lib.num_threads(self.pal)
+
         if method is None:
             method = self.method
         steps = self.multisteps[method]

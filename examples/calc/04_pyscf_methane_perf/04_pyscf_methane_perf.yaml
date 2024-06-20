@@ -2,9 +2,9 @@ geom:
   fn: lib:methane.xyz
 calc:
  type: pyscf
- basis: def2svp
+ basis: def2tzvpp
 perf:
- pal_range: [1, 4, 1]
+ pal_range: [1, 5, 1]
  mems: 1000
- repeat: 2
+ repeat: 3
  kind: hessian
