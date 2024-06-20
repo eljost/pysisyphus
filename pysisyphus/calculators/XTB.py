@@ -209,8 +209,8 @@ class XTB(Calculator):
         return env_copy
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
+        """XTB always calculates the gradient w/ the energy."""
         results = self.get_forces(atoms, coords, **prepare_kwargs)
-        del results["forces"]
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
