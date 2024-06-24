@@ -20,10 +20,8 @@ class NCOptimizer(HessianOptimizer):
 
         self.sqrt_m = np.sqrt(self.geometry.masses_rep)
 
-    def get_step(self):
-        grad = self.geometry.gradient
-        self.forces.append(-grad.copy())
-        self.energies.append(self.geometry.energy)
+    def get_step(self, energy, forces, hessian, eigvals, eigvecs, resetted):
+        grad = -forces
 
         if self.cur_cycle > 0:
             self.update_trust_radius()

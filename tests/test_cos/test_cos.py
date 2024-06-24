@@ -54,7 +54,7 @@ def assert_cos_opt(opt, ref_cycle):
     [
         (SteepestDescent, {}, {}, 30, 5),
         (SteepestDescent, {}, {}, 32, 10),
-        (ConjugateGradient, {}, {}, 30, 5),
+        (ConjugateGradient, {}, {}, 29, 5),
         (QuickMin, {"dt": 0.1}, {}, 27, 5),
         (FIRE, {"dt_max": 0.2}, {}, 42, 5),
         (LBFGS, {"gamma_mult": True}, {}, 12, 5),
@@ -239,7 +239,7 @@ def test_stiff_neb_nfk():
 
 
 # @pytest.mark.parametrize("climb, ref_cycles", ((True, 217), ("one", 101), (False, 120)))
-@pytest.mark.parametrize("climb, ref_cycles", ((True, 211), ("one", 81), (False, 94)))
+@pytest.mark.parametrize("climb, ref_cycles", ((True, 195), ("one", 93), (False, 77)))
 def test_neb_climb(climb, ref_cycles):
     geoms = get_geoms()
 

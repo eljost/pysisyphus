@@ -129,11 +129,9 @@ class LBFGS(Optimizer):
         self.coord_diffs = rot_coord_diffs
         self.grad_diffs = rot_grad_diffs
 
-    def get_step(self):
-        forces = self.geometry.forces
-        self.forces.append(forces)
-        energy = self.geometry.energy
-        self.energies.append(energy)
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         norm = np.linalg.norm(forces)
         if not self.is_cos:
             self.log(f"      Energy={energy: >24.6f} au")

@@ -132,12 +132,12 @@ class MicroOptimizer:
             new_coords = self.geometry.coords + step
             self.geometry.coords = new_coords
 
-    def get_step(self):
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         if not hasattr(self, "cur_cycle"):
             self.cur_cycle = 0
-        step = self.take_step(
-            self.geometry.energy, self.geometry.forces, return_step=True
-        )
+        step = self.take_step(energy, forces, return_step=True)
         self.cur_cycle += 1
         return step
 

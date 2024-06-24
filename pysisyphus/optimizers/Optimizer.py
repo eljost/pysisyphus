@@ -167,7 +167,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         prefix: str = "",
         reparam_thresh: float = 1e-3,
         reparam_check_rms: bool = True,
-        reparam_when: Optional[Literal["before", "after"]] = "after",
+        # reparam_when: Optional[Literal["before", "after"]] = "after",
+        reparam_when: Optional[Literal["after", None]] = "after",
         overachieve_factor: float = 0.0,
         check_eigval_structure: bool = False,
         restart_info=None,
@@ -308,7 +309,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         self.reparam_thresh = reparam_thresh
         self.reparam_check_rms = reparam_check_rms
         self.reparam_when = reparam_when
-        assert self.reparam_when in ("after", "before", None)
+        assert self.reparam_when in ("after", None)
         self.overachieve_factor = float(overachieve_factor)
         self.check_eigval_structure = check_eigval_structure
         self.check_coord_diffs = check_coord_diffs
@@ -758,8 +759,33 @@ class Optimizer(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def get_step(self):
+    def get_step(
+        self,
+        energy,
+        forces: np.ndarray,
+        hessian: Optional[np.ndarray] = None,
+        eigvals: Optional[np.ndarray] = None,
+        eigvecs: Optional[np.ndarray] = None,
+        resetted: Optional[bool] = None,
+    ):
         pass
+
+    def housekeeping(self):
+        # Calculate energy and forces
+        forces = self.geometry.forces
+        energy = self.geometry.energy
+        self.forces.append(forces)
+        self.energies.append(energy)
+
+        if not self.is_cos:
+            self.log(f"      Energy: {energy: >12.6f} au")
+        self.log(f"norm(forces): {np.linalg.norm(forces): >12.6f} au / bohr (rad)")
+        self.log(f" rms(forces): {np.sqrt(np.mean(forces**2)): >12.6f} au / bohr (rad)")
+
+        return {
+            "energy": energy,
+            "forces": forces,
+        }
 
     def update_image_step(self, image_index, prefix=""):
         """Calculate a new step for an image in a COS using another Optimizer.
@@ -957,12 +983,14 @@ class Optimizer(metaclass=abc.ABCMeta):
             if reset_flag:
                 self.reset()
 
+            """
             # Coordinates may be updated here.
             if self.reparam_when == "before" and hasattr(
                 self.geometry, "reparametrize"
             ):
                 # This call actually returns a bool, but right now we just drop it.
                 self.geometry.reparametrize()
+            """
 
             if self.is_cos and self.align and self.is_cart_opt:
                 # Try to use fit_rigid() of the optimizer class, if implemented;
@@ -991,8 +1019,10 @@ class Optimizer(metaclass=abc.ABCMeta):
             #  Actual step calculation in the Optimizer subclass is done here!  #
             #  The step is not yet taken in the underlying Geometry/COS object. #
             #####################################################################
-            print(f"@ Calculating step for cycle={self.cur_cycle}")
-            step = self.get_step()
+
+            # Calculate step
+            get_step_kwargs = self.housekeeping()
+            step = self.get_step(**get_step_kwargs)
 
             try:
                 ts_image_indices = self.geometry.get_ts_image_indices()

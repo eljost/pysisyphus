@@ -8,8 +8,8 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
 class RSIRFOptimizer(TSHessianOptimizer):
-    def optimize(self):
-        energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
+    def get_step(self, energy, forces, hessian, eigvals, eigvecs, resetted):
+        gradient = -forces
         self.update_ts_mode(eigvals, eigvecs)
 
         self.log(
@@ -21,7 +21,7 @@ class RSIRFOptimizer(TSHessianOptimizer):
         for root in self.roots:
             trans_vec = eigvecs[:, root]
             P -= 2 * np.outer(trans_vec, trans_vec)
-        H_star = P.dot(H)
+        H_star = P.dot(hessian)
         eigvals_, eigvecs_ = np.linalg.eigh(H_star)
         # Neglect small eigenvalues
         eigvals_, eigvecs_ = self.filter_small_eigvals(eigvals_, eigvecs_)

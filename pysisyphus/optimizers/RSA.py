@@ -9,13 +9,12 @@ from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 class RSA(HessianOptimizer):
     """The Importance of Step Control in Optimization Methods, del Campo, 2009."""
 
-    def get_step(self):
-        energy, gradient, H, big_eigvals, big_eigvecs, resetted = self.housekeeping()
-
-        assert big_eigvals.argmin() == 0
-        min_eigval = big_eigvals[0]
+    def get_step(self, energy, forces, hessian, eigvals, eigvecs, resetted):
+        gradient = -forces
+        assert eigvals.argmin() == 0
+        min_eigval = eigvals[0]
         pos_definite = min_eigval > 0.0
-        gradient_trans = big_eigvecs.T.dot(gradient)
+        gradient_trans = eigvecs.T.dot(gradient)
         # This will be also be True when we come close to a minimizer,
         # but then the Hessian will also be positive definite and a
         # simple Newton step will be used.
@@ -25,7 +24,7 @@ class RSA(HessianOptimizer):
         self.log(f"Hard case: {hard_case}")
 
         def get_step(lambda_):
-            return -gradient_trans / (big_eigvals + lambda_)
+            return -gradient_trans / (eigvals + lambda_)
 
         # Unshifted Newton step
         newton_step = get_step(0.0)
@@ -39,8 +38,8 @@ class RSA(HessianOptimizer):
 
         def finalize_step(lambda_):
             step = get_step(lambda_)
-            step = big_eigvecs.dot(step)
-            predicted_change = step.dot(gradient) + 0.5 * step.dot(H).dot(step)
+            step = eigvecs.dot(step)
+            predicted_change = step.dot(gradient) + 0.5 * step.dot(hessian).dot(step)
             self.predicted_energy_changes.append(predicted_change)
             return step
 
@@ -90,10 +89,10 @@ class RSA(HessianOptimizer):
         # a suitable length, but the (shifted) Hessian would have an incorrect
         # eigenvalue spectrum (not positive definite). To solve this we use a
         # different formula to calculate the step.
-        without_first = gradient_trans[1:] / (big_eigvals[1:] - min_eigval)
+        without_first = gradient_trans[1:] / (eigvals[1:] - min_eigval)
         tau = sqrt(self.trust_radius**2 - (without_first**2).sum())
         step_trans = [tau] + -without_first.tolist()
-        step = big_eigvecs.dot(step_trans)
-        predicted_change = step.dot(gradient) + 0.5 * step.dot(H).dot(step)
+        step = eigvecs.dot(step_trans)
+        predicted_change = step.dot(gradient) + 0.5 * step.dot(hessian).dot(step)
         self.predicted_energy_changes.append(predicted_change)
         return step
