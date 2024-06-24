@@ -35,12 +35,12 @@ class QuickMin(Optimizer):
             self.prepare_opt()
         self.log("Resetted optimizer")
 
-    def optimize(self):
-        if self.align and self.is_cos:
-            (self.velocities[-1],), _, _ = self.fit_rigid(
-                vectors=(self.velocities[-1],)
-            )
+    def fit_rigid(self):
+        (self.velocities[-1],), _, _ = super()._fit_rigid(
+            vectors=(self.velocities[-1],)
+        )
 
+    def optimize(self):
         prev_velocities = self.velocities[-1]
         cur_forces = self.geometry.forces
         self.forces.append(cur_forces)

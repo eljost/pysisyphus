@@ -413,6 +413,7 @@ class GrowingString(GrowingChainOfStates):
             self.log(
                 f"Checking frontier node convergence, threshold={self.perp_thresh:.6f}"
             )
+
             # We can add a new node if the norm/rms of the perpendicular force is below
             # the threshold.
             def converged(i):
@@ -473,6 +474,7 @@ class GrowingString(GrowingChainOfStates):
             elif self.coord_type == "dlc":
                 self.reparam_dlc(desired_param_density, thresh=self.reparam_tol)
             else:
+                # TODO: fix GSM for coord_type 'cartesian'
                 raise Exception("How did you get here?")
 
             self.reparam_in = (
