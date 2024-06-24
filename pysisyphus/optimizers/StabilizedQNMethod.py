@@ -158,7 +158,7 @@ class StabilizedQNMethod(Optimizer):
         proj_dg = np.einsum("ki,jk->ji", hess_v, grad_diffs_sub)
 
         residuals = np.linalg.norm(proj_dg - hess_w * proj_v, axis=0)
-        eigvals_mod = np.sqrt(hess_w ** 2 + residuals ** 2)
+        eigvals_mod = np.sqrt(hess_w**2 + residuals**2)
 
         # precon_grad = np.einsum("i,j,ij,ij->i", cur_grad, 1/eigvals_mod, proj_v, proj_v)
         precon_grad = np.einsum(
@@ -176,7 +176,7 @@ class StabilizedQNMethod(Optimizer):
         tot_precon_gradient = precon_grad + self.alpha * perp_grad
         return tot_precon_gradient
 
-    def optimize(self):
+    def get_step(self):
         gradient = self.geometry.gradient
         energy = self.geometry.energy
         self.forces.append(-gradient)

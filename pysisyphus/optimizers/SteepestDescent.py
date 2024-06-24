@@ -5,8 +5,7 @@ class SteepestDescent(BacktrackingOptimizer):
     def __init__(self, geometry, alpha=0.1, **kwargs):
         super().__init__(geometry, alpha=alpha, **kwargs)
 
-    def optimize(self):
-
+    def get_step(self):
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)
 

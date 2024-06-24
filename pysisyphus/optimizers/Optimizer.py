@@ -749,7 +749,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def optimize(self):
+    def get_step(self):
         pass
 
     def update_image_step(self, image_index, prefix=""):
@@ -983,7 +983,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             #  The step is not yet taken in the underlying Geometry/COS object. #
             #####################################################################
             print(f"@ Calculating step for cycle={self.cur_cycle}")
-            step = self.optimize()
+            step = self.get_step()
 
             try:
                 ts_image_indices = self.geometry.get_ts_image_indices()

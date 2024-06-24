@@ -310,7 +310,7 @@ class LayerOpt(Optimizer):
         """
         return self.layers.opt_getters[-1](None)
 
-    def optimize(self) -> None:
+    def get_step(self) -> None:
         coords3d_org = self.geometry.coords3d.copy()
         coords3d_cur = coords3d_org.copy()
         cur_micro_cycles = list()
@@ -358,7 +358,7 @@ class LayerOpt(Optimizer):
 
         # Calculate one step
         opt.cur_cycle = self.cur_cycle
-        int_step = opt.optimize()
+        int_step = opt.get_step()
         opt.steps.append(int_step)
         try:
             geom.coords = geom.coords + int_step

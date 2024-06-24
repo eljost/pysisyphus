@@ -129,7 +129,7 @@ class LBFGS(Optimizer):
         self.coord_diffs = rot_coord_diffs
         self.grad_diffs = rot_grad_diffs
 
-    def optimize(self):
+    def get_step(self):
         forces = self.geometry.forces
         self.forces.append(forces)
         energy = self.geometry.energy
