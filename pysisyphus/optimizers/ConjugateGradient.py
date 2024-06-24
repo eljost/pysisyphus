@@ -1,3 +1,5 @@
+from typing import Literal
+
 import numpy as np
 
 from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
@@ -6,18 +8,18 @@ from pysisyphus.optimizers.BacktrackingOptimizer import BacktrackingOptimizer
 
 
 class ConjugateGradient(BacktrackingOptimizer):
-    def __init__(self, geometry, alpha=0.1, formula="FR", dont_skip=True, **kwargs):
+    def __init__(
+        self,
+        geometry,
+        alpha=0.1,
+        formula: Literal["FR", "PR"] = "FR",
+        dont_skip=True,
+        **kwargs,
+    ):
         super().__init__(geometry, alpha=alpha, **kwargs)
 
         self.formula = formula
         self.dont_skip = dont_skip
-
-    def prepare_opt(self):
-        if self.is_cos and self.align:
-            self.procrustes()
-        # Calculate initial forces before the first iteration
-        self.coords.append(self.geometry.coords)
-        self.forces.append(self.geometry.forces)
 
     def reset(self):
         super().reset()
@@ -49,50 +51,36 @@ class ConjugateGradient(BacktrackingOptimizer):
         return beta
 
     def optimize(self):
-        cur_forces = self.forces[-1]
+        forces = self.geometry.forces
+        energy = self.geometry.energy
 
-        if not self.resetted and self.cur_cycle > 0:
-            prev_forces = self.forces[-2]
-            beta = self.get_beta(cur_forces, prev_forces)
-            self.log(f"beta = {beta:.06f}")
-            if np.isinf(beta):
-                beta = 1.0
-            step = cur_forces + beta * self.steps[-1]
-        else:
-            # Start with steepest descent in the first iteration
-            step = cur_forces
-            self.resetted = False
+        self.forces.append(forces)
+        self.energies.append(energy)
 
-        step = self.alpha * step
-        step = self.scale_by_max_step(step)
-
-        cur_coords = self.geometry.coords
-        new_coords = cur_coords + step
-        self.geometry.coords = new_coords
-
-        new_forces = self.geometry.forces
-        new_energy = self.geometry.energy
-
+        if self.cur_cycle > 0:
+            self.skip = self.backtrack(self.forces[-1], self.forces[-2])
+        """
+        # TODO: do sth. with skip?!
         skip = self.backtrack(new_forces, cur_forces)
         # Imho backtracking gives bad results here, so only use it if
         # explicitly requested (self.dont_skip == False).
         if (not self.dont_skip) and skip:
             self.geometry.coords = cur_coords
             return None
+        """
 
-        if self.align and self.is_cos:
-            (new_forces, cur_forces, step), _, _ = self.fit_rigid(
-                vectors=(new_forces, cur_forces, step),
-            )
-            # Minus step???
-            new_coords = self.geometry.coords - step
-            self.geometry.coords = new_coords
-            # Set the calculated properties on the rotated geometries
-            self.geometry.energy = new_energy
-            self.geometry.forces = new_forces
+        if not self.resetted and self.cur_cycle > 0:
+            prev_forces = self.forces[-1]
+            beta = self.get_beta(forces, prev_forces)
+            self.log(f"beta = {beta:.06f}")
+            if np.isinf(beta):
+                beta = 1.0
+            step = forces + beta * self.steps[-1]
+        else:
+            # Start with steepest descent in the first iteration
+            step = forces
+            self.resetted = False
 
-        self.forces[-1] = cur_forces
-        self.forces.append(new_forces)
-        self.energies.append(new_energy)
-
+        step = self.alpha * step
+        step = self.scale_by_max_step(step)
         return step

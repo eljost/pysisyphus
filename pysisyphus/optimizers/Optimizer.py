@@ -621,8 +621,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 desired_eigval_structure = (
                     # Acutally all eigenvalues would have to be checked, but
                     # currently they are not stored anywhere.
-                    self.ts_mode_eigvals
-                    < self.small_eigval_thresh
+                    self.ts_mode_eigvals < self.small_eigval_thresh
                 ).sum() == len(self.roots)
             except AttributeError:
                 self.log(
@@ -706,16 +705,34 @@ class Optimizer(metaclass=abc.ABCMeta):
         except AttributeError:
             pass
 
-    def fit_rigid(self, *, vectors=None, vector_lists=None, hessian=None):
-        return fit_rigid(
+    @property
+    def is_cart_opt(self):
+        return self.geometry.coord_type in ("cart", "cartesian", "mw_cartesian")
+
+    def _fit_rigid(self, *, vectors=None, vector_lists=None, hessian=None):
+        if vector_lists is None:
+            vector_lists = list()
+
+        # Always rotate cartesian coordinates and forces
+        base_vector_lists = [self.cart_coords, self.forces, self.steps]
+        vector_lists = base_vector_lists + vector_lists
+        (
+            rot_vecs,
+            (rot_cart_coords, rot_forces, rot_steps, *rot_vec_lists),
+            rot_hessian,
+        ) = fit_rigid(
             self.geometry,
             vectors=vectors,
             vector_lists=vector_lists,
             hessian=hessian,
             align_factor=self.align_factor,
         )
+        self.cart_coords = rot_cart_coords
+        self.forces = rot_forces
+        self.steps = rot_steps
+        return rot_vecs, rot_vec_lists, rot_hessian
 
-    def procrustes(self):
+    def _procrustes(self):
         """Wrapper for procrustes that passes additional arguments along."""
         procrustes(self.geometry, self.align_factor)
 
@@ -875,7 +892,9 @@ class Optimizer(metaclass=abc.ABCMeta):
         if not self.restarted:
             prep_start_time = time.time()
             # Set up the optimizer in prepare_opt, e.g., prepare initial Hessiane etc.
+            print("@ Calling prepare_opt()")
             self.prepare_opt()
+            print("@ Done w/ prepare_opt()")
             self.log(f"{self.geometry.coords.size} degrees of freedom.")
             prep_end_time = time.time()
             prep_time = prep_end_time - prep_start_time
@@ -936,18 +955,25 @@ class Optimizer(metaclass=abc.ABCMeta):
                 # This call actually returns a bool, but right now we just drop it.
                 self.geometry.reparametrize()
 
+            if self.is_cos and self.align and self.is_cart_opt:
+                # Try to use fit_rigid() of the optimizer class, if implemented;
+                # fall back to the generic _fit_rigid() method else.
+                try:
+                    self.fit_rigid()
+                except AttributeError:
+                    self._fit_rigid()
+
             self.coords.append(self.geometry.coords.copy())
             self.cart_coords.append(self.geometry.cart_coords.copy())
 
             # Determine and store number of currenctly actively optimized images.
-            # In non-COS optimizations we store some dummy values [0, ] and 1.
+            # In non-COS optimizations we store some dummy values [0] and 1, resembling
+            # a COS with one image.
             try:
                 image_inds = self.geometry.image_inds
                 image_num = len(image_inds)
             except AttributeError:
-                image_inds = [
-                    0,
-                ]
+                image_inds = [0]
                 image_num = 1
             self.image_inds.append(image_inds)
             self.image_nums.append(image_num)
@@ -956,6 +982,7 @@ class Optimizer(metaclass=abc.ABCMeta):
             #  Actual step calculation in the Optimizer subclass is done here!  #
             #  The step is not yet taken in the underlying Geometry/COS object. #
             #####################################################################
+            print(f"@ Calculating step for cycle={self.cur_cycle}")
             step = self.optimize()
 
             try:
@@ -1125,6 +1152,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         #############################################
 
         self.print("")
+        print("@ Finished optimization; doing final summary")
         if self.dump:
             self.out_trj_handle.close()
 

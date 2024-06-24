@@ -54,7 +54,7 @@ def assert_cos_opt(opt, ref_cycle):
     [
         (SteepestDescent, {}, {}, 30, 5),
         (SteepestDescent, {}, {}, 32, 10),
-        (ConjugateGradient, {}, {}, 44, 5),
+        (ConjugateGradient, {}, {}, 30, 5),
         (QuickMin, {"dt": 0.1}, {}, 27, 5),
         (FIRE, {"dt_max": 0.2}, {}, 42, 5),
         (LBFGS, {"gamma_mult": True}, {}, 12, 5),
@@ -238,7 +238,8 @@ def test_stiff_neb_nfk():
     # plt.show()
 
 
-@pytest.mark.parametrize("climb, ref_cycles", ((True, 217), ("one", 101), (False, 120)))
+# @pytest.mark.parametrize("climb, ref_cycles", ((True, 217), ("one", 101), (False, 120)))
+@pytest.mark.parametrize("climb, ref_cycles", ((True, 211), ("one", 81), (False, 94)))
 def test_neb_climb(climb, ref_cycles):
     geoms = get_geoms()
 
@@ -299,7 +300,7 @@ def test_cos_image_ts_opt():
     H = ts_hessian_from_cos(cos, cos.get_hei_index())
     w, _ = np.linalg.eigh(H)
     w_min = w[0]
-    assert w_min == pytest.approx(-9.45998968)
+    assert w_min == pytest.approx(-3.02485303)
 
     # animate(opt, show=True)
 
@@ -307,13 +308,12 @@ def test_cos_image_ts_opt():
 
 
 def test_serpentine_pot():
-
     pot = SerpentinePot()
     geoms = pot.get_path(20)
     cos = NEB(geoms)
     opt = LBFGS(cos)
     opt.run()
-    pot.anim_cos_coords(opt.coords, show=True)
+    # pot.anim_cos_coords(opt.coords, show=True)
 
     ref_coords = np.array([-0.42986693, 0.38809609, 0.0])
     cur_coords = cos.images[cos.get_hei_index()].coords

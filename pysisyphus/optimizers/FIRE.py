@@ -67,10 +67,10 @@ class FIRE(Optimizer):
     def reset(self):
         pass
 
-    def optimize(self):
-        if self.is_cos and self.align:
-            (self.v,), _, _ = self.fit_rigid(vectors=(self.v,))
+    def fit_rigid(self):
+        (self.v,), _, _ = super()._fit_rigid(vectors=(self.v,))
 
+    def optimize(self):
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)
         forces = self.forces[-1]
