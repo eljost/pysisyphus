@@ -12,7 +12,7 @@ from pysisyphus.testing import using
     (
         "tden",
         # "top",
-        "wf",
+        pytest.param("wf", marks=using("wfoverlap")),
     ),
 )
 @pytest.mark.parametrize(
@@ -92,7 +92,7 @@ def test_ucis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
     (
         "tden",
         "top",
-        "wf",
+        pytest.param("wf", marks=using("wfoverlap")),
     ),
 )
 @pytest.mark.parametrize(
@@ -168,7 +168,7 @@ def test_rcis_es_tracking(calc_cls, calc_kwargs, ovlp_type):
     "ovlp_type",
     (
         "tden",
-        "wf",
+        pytest.param("wf", marks=using("wfoverlap")),
         "nto",
     ),
 )

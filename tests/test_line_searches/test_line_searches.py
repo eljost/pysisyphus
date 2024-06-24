@@ -22,13 +22,9 @@ class CGDescent(Optimizer):
         forces = self.geometry.forces
         self.step_direction = forces / np.linalg.norm(forces)
 
-    def optimize(self):
-        forces = self.geometry.forces
-        energy = self.geometry.energy
-
-        self.forces.append(forces)
-        self.energies.append(self.geometry.energy)
-
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         try:
             f_prev = self.energies[-2]
         except IndexError:
