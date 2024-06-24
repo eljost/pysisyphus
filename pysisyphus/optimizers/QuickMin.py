@@ -40,7 +40,7 @@ class QuickMin(Optimizer):
             vectors=(self.velocities[-1],)
         )
 
-    def optimize(self):
+    def get_step(self):
         prev_velocities = self.velocities[-1]
         cur_forces = self.geometry.forces
         self.forces.append(cur_forces)

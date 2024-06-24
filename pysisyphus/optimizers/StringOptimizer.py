@@ -95,7 +95,7 @@ class StringOptimizer(Optimizer):
         # full_stop will take precedence when True.
         return full_stop or (fully_grown and converged), conv_info
 
-    def optimize(self):
+    def get_step(self):
         new_image_inds = self.geometry.new_image_inds
         string_size_changed = len(new_image_inds) > 0
 

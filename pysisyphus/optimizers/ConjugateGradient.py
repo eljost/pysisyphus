@@ -50,7 +50,7 @@ class ConjugateGradient(BacktrackingOptimizer):
                 beta = 0
         return beta
 
-    def optimize(self):
+    def get_step(self):
         forces = self.geometry.forces
         energy = self.geometry.energy
 

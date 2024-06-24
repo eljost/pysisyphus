@@ -18,7 +18,7 @@ class CubicNewton(HessianOptimizer):
 
         self.line_search_cycles = 0
 
-    def optimize(self):
+    def get_step(self):
         energy, gradient, hessian, *_ = self.housekeeping()
 
         if self.cur_cycle == 0:
@@ -58,7 +58,7 @@ class CubicNewton(HessianOptimizer):
                 np.linalg.norm(trial_gradient) <= 2 * lambda_ * trial_step_norm
             )
             sufficient_energy_lowering = (
-                trial_energy <= energy - 2 / 3 * lambda_ * trial_step_norm ** 2
+                trial_energy <= energy - 2 / 3 * lambda_ * trial_step_norm**2
             )
 
             if trial_gradient_small_enough and sufficient_energy_lowering:

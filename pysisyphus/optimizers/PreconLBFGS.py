@@ -181,7 +181,7 @@ class PreconLBFGS(Optimizer):
             step *= max_step_element / max_element
         return step
 
-    def optimize(self):
+    def get_step(self):
         forces = self.geometry.forces
         energy = self.geometry.energy
 

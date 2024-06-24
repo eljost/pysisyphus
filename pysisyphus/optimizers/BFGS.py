@@ -13,12 +13,12 @@ from pysisyphus.optimizers.restrict_step import scale_by_max_step
 
 
 class BFGS(Optimizer):
-
     def __init__(self, geometry, *args, update="bfgs", **kwargs):
         super().__init__(geometry, *args, **kwargs)
 
-        assert self.align == False, \
-            "align=True does not work with this optimizer! Consider using LBFGS."
+        assert (
+            self.align == False
+        ), "align=True does not work with this optimizer! Consider using LBFGS."
 
         self.update = update
 
@@ -40,8 +40,8 @@ class BFGS(Optimizer):
 
     def bfgs_update(self, s, y):
         rho = 1 / s.dot(y)
-        V = self.eye - rho*np.outer(s, y)
-        self.H = V.dot(self.H).dot(V.T) + rho*np.outer(s, s)
+        V = self.eye - rho * np.outer(s, y)
+        self.H = V.dot(self.H).dot(V.T) + rho * np.outer(s, s)
 
     def double_damped_bfgs_update(self, s, y, mu_1=0.2, mu_2=0.2):
         """Double damped BFGS update of inverse Hessian.
@@ -49,8 +49,7 @@ class BFGS(Optimizer):
         See [3]. Potentially updates s and y."""
 
         # Call using the inverse Hessian 'H'
-        s, y = double_damp(s, y, H=self.H, mu_1=mu_1, mu_2=mu_2,
-                           logger=self.logger)
+        s, y = double_damp(s, y, H=self.H, mu_1=mu_1, mu_2=mu_2, logger=self.logger)
         self.log(f"s·y={s.dot(y):.6f} (damped)")
         self.bfgs_update(s, y)
 
@@ -66,7 +65,7 @@ class BFGS(Optimizer):
         """
         self.double_damped_bfgs_update(s, y, mu_2=None)
 
-    def optimize(self):
+    def get_step(self):
         forces = self.geometry.forces
         energy = self.geometry.energy
         self.forces.append(forces)
