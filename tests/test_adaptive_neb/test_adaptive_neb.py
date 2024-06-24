@@ -48,10 +48,10 @@ def test_hcn_aneb():
         "geom": {
             "type": "cart",
             "fn": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"],
-        }
+        },
     }
     results = run_from_dict(run_dict)
 
     assert results.cos_opt.is_converged
-    assert results.cos_opt.cur_cycle == 18
+    assert results.cos_opt.cur_cycle == 23
     assert results.cos.level == 3

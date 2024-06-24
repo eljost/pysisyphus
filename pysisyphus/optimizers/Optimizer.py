@@ -770,7 +770,7 @@ class Optimizer(metaclass=abc.ABCMeta):
     ):
         pass
 
-    def housekeeping(self):
+    def housekeeping(self) -> dict:
         # Calculate energy and forces
         forces = self.geometry.forces
         energy = self.geometry.energy
@@ -992,6 +992,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.geometry.reparametrize()
             """
 
+            # Align COS images, if requested
             if self.is_cos and self.align and self.is_cart_opt:
                 # Try to use fit_rigid() of the optimizer class, if implemented;
                 # fall back to the generic _fit_rigid() method else.
@@ -1020,8 +1021,9 @@ class Optimizer(metaclass=abc.ABCMeta):
             #  The step is not yet taken in the underlying Geometry/COS object. #
             #####################################################################
 
-            # Calculate step
+            # Calculate energy and its derivatives
             get_step_kwargs = self.housekeeping()
+            # Calculate step
             step = self.get_step(**get_step_kwargs)
 
             try:

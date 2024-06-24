@@ -450,13 +450,13 @@ class HessianOptimizer(Optimizer):
         self.log(f"{pre_str}Hessian has {neg_inds.sum()} negative eigenvalue(s).")
         self.log(f"\t{neg_eigval_str}")
 
-    def housekeeping(self):
+    def housekeeping(self) -> dict:
         """Calculate gradient and energy. Update trust radius and hessian
         if needed. Return energy, gradient and hessian for the current cycle."""
 
         # Calculate forces & energy w/ method of parent class
-        super().housekeeping()
-        forces = self.forces[-1]
+        results = super().housekeeping()
+        forces = results["forces"]
 
         can_update = (
             # Allows gradient differences
@@ -485,15 +485,15 @@ class HessianOptimizer(Optimizer):
         eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
 
         resetted = not can_update
-        energy = self.energies[-1]
-        return {
-            "energy": energy,
-            "forces": forces,
-            "hessian": H,
-            "eigvals": eigvals,
-            "eigvecs": eigvecs,
-            "resetted": resetted,
-        }
+        results.update(
+            {
+                "hessian": H,
+                "eigvals": eigvals,
+                "eigvecs": eigvecs,
+                "resetted": resetted,
+            }
+        )
+        return results
 
     def get_augmented_hessian(self, eigvals, gradient, alpha=1.0):
         dim_ = eigvals.size + 1

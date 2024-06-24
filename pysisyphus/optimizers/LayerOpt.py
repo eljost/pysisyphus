@@ -310,7 +310,7 @@ class LayerOpt(Optimizer):
         """
         return self.layers.opt_getters[-1](None)
 
-    def get_step(self) -> None:
+    def get_step(self, energy, forces, **kwargs) -> None:
         # TODO: It makes no sense for LayerOpt to take full energy & forces
         coords3d_org = self.geometry.coords3d.copy()
         coords3d_cur = coords3d_org.copy()
@@ -359,7 +359,8 @@ class LayerOpt(Optimizer):
 
         # Calculate one step
         opt.cur_cycle = self.cur_cycle
-        int_step = opt.get_step()
+        get_step_kwargs = opt.housekeeping()
+        int_step = opt.get_step(**get_step_kwargs)
         opt.steps.append(int_step)
         try:
             geom.coords = geom.coords + int_step
