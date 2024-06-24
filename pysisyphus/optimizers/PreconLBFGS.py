@@ -181,13 +181,9 @@ class PreconLBFGS(Optimizer):
             step *= max_step_element / max_element
         return step
 
-    def get_step(self):
-        forces = self.geometry.forces
-        energy = self.geometry.energy
-
-        self.forces.append(forces)
-        self.energies.append(energy)
-
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         norm = np.linalg.norm(forces)
         if not self.is_cos:
             fmt = " >12.6f"

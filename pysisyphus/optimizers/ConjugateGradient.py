@@ -50,15 +50,11 @@ class ConjugateGradient(BacktrackingOptimizer):
                 beta = 0
         return beta
 
-    def get_step(self):
-        forces = self.geometry.forces
-        energy = self.geometry.energy
-
-        self.forces.append(forces)
-        self.energies.append(energy)
-
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         if self.cur_cycle > 0:
-            self.skip = self.backtrack(self.forces[-1], self.forces[-2])
+            self.skip = self.backtrack(forces, self.forces[-2])
         """
         # TODO: do sth. with skip?!
         skip = self.backtrack(new_forces, cur_forces)
@@ -70,8 +66,7 @@ class ConjugateGradient(BacktrackingOptimizer):
         """
 
         if not self.resetted and self.cur_cycle > 0:
-            prev_forces = self.forces[-1]
-            beta = self.get_beta(forces, prev_forces)
+            beta = self.get_beta(forces, self.forces[-2])
             self.log(f"beta = {beta:.06f}")
             if np.isinf(beta):
                 beta = 1.0

@@ -453,18 +453,15 @@ class HessianOptimizer(Optimizer):
     def housekeeping(self):
         """Calculate gradient and energy. Update trust radius and hessian
         if needed. Return energy, gradient and hessian for the current cycle."""
-        gradient = self.geometry.gradient
-        energy = self.geometry.energy
-        self.forces.append(-gradient)
-        self.energies.append(energy)
-        self.log(f"    Energy: {energy: >12.6f} au")
-        self.log(f"norm(grad): {np.linalg.norm(gradient): >12.6f} au / bohr (rad)")
-        self.log(f" rms(grad): {np.sqrt(np.mean(gradient**2)): >12.6f} au / bohr (rad)")
+
+        # Calculate forces & energy w/ method of parent class
+        super().housekeeping()
+        forces = self.forces[-1]
 
         can_update = (
             # Allows gradient differences
             len(self.forces) > 1
-            and (self.forces[-2].shape == gradient.shape)
+            and (self.forces[-2].shape == forces.shape)
             and len(self.coords) > 1
             # Coordinates may have been rebuilt. Take care of that.
             and (self.coords[-2].shape == self.coords[1].shape)
@@ -488,7 +485,15 @@ class HessianOptimizer(Optimizer):
         eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
 
         resetted = not can_update
-        return energy, gradient, H, eigvals, eigvecs, resetted
+        energy = self.energies[-1]
+        return {
+            "energy": energy,
+            "forces": forces,
+            "hessian": H,
+            "eigvals": eigvals,
+            "eigvecs": eigvecs,
+            "resetted": resetted,
+        }
 
     def get_augmented_hessian(self, eigvals, gradient, alpha=1.0):
         dim_ = eigvals.size + 1
@@ -510,9 +515,7 @@ class HessianOptimizer(Optimizer):
         dstep2_dalpha = 2 * rfo_eigval / (1 + step_norm**2 * cur_alpha) * quot
         self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
         # Update alpha
-        alpha_step = (
-            2 * (self.trust_radius * step_norm - step_norm**2) / dstep2_dalpha
-        )
+        alpha_step = 2 * (self.trust_radius * step_norm - step_norm**2) / dstep2_dalpha
         self.log(f"alpha_step={alpha_step:.4f}")
         assert (cur_alpha + alpha_step) > 0, "alpha must not be negative!"
         return alpha_step

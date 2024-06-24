@@ -18,9 +18,8 @@ class CubicNewton(HessianOptimizer):
 
         self.line_search_cycles = 0
 
-    def get_step(self):
-        energy, gradient, hessian, *_ = self.housekeeping()
-
+    def get_step(self, energy, forces, hessian, eigvals, eigvecs, resetted):
+        gradient = -forces
         if self.cur_cycle == 0:
             # Initial Lipschitz constant estimate; line 2 in algorithm 2 in [1]
             trial_step_length = 0.1

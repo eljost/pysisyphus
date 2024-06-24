@@ -176,11 +176,10 @@ class StabilizedQNMethod(Optimizer):
         tot_precon_gradient = precon_grad + self.alpha * perp_grad
         return tot_precon_gradient
 
-    def get_step(self):
-        gradient = self.geometry.gradient
-        energy = self.geometry.energy
-        self.forces.append(-gradient)
-        self.energies.append(energy)
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
+        gradient = -forces
         self.log(f"norm(forces)={np.linalg.norm(gradient):.4e}")
 
         if self.bio:
