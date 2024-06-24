@@ -70,10 +70,9 @@ class FIRE(Optimizer):
     def fit_rigid(self):
         (self.v,), _, _ = super()._fit_rigid(vectors=(self.v,))
 
-    def get_step(self):
-        self.forces.append(self.geometry.forces)
-        self.energies.append(self.geometry.energy)
-        forces = self.forces[-1]
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         mixed_v = (
             # As 'a' gets bigger we keep less old v.
             (1.0 - self.a) * self.v

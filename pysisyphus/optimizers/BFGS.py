@@ -65,12 +65,9 @@ class BFGS(Optimizer):
         """
         self.double_damped_bfgs_update(s, y, mu_2=None)
 
-    def get_step(self):
-        forces = self.geometry.forces
-        energy = self.geometry.energy
-        self.forces.append(forces)
-        self.energies.append(energy)
-
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         if self.cur_cycle > 0:
             # Gradient difference
             y = self.forces[-2] - forces

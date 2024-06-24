@@ -55,6 +55,14 @@ class StringOptimizer(Optimizer):
         self.inds = list()
         self.procs = list()
 
+    @property
+    def new_image_inds(self):
+        try:
+            new_image_inds = self.geometry.new_image_inds
+        except AttributeError:
+            new_image_inds = list()
+        return new_image_inds
+
     def fit_rigid(self):
         """For now this mimics the old behaviour, before the fit_rigid-refactoring.
 
@@ -64,8 +72,7 @@ class StringOptimizer(Optimizer):
         If fully growin, a more elaborate alignment could be carried out, including
         self.s_list and self.y_list.
         """
-        new_image_inds = self.geometry.new_image_inds
-        string_size_changed = len(new_image_inds) > 0
+        string_size_changed = len(self.new_image_inds) > 0
         if string_size_changed:
             self._procrustes()
 
@@ -95,13 +102,11 @@ class StringOptimizer(Optimizer):
         # full_stop will take precedence when True.
         return full_stop or (fully_grown and converged), conv_info
 
-    def get_step(self):
-        new_image_inds = self.geometry.new_image_inds
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
+        new_image_inds = self.new_image_inds
         string_size_changed = len(new_image_inds) > 0
-
-        forces = self.geometry.forces
-        self.energies.append(self.geometry.energy)
-        self.forces.append(forces)
 
         cur_size = self.geometry.string_size
         add_to_list = (

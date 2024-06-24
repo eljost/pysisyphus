@@ -311,6 +311,7 @@ class LayerOpt(Optimizer):
         return self.layers.opt_getters[-1](None)
 
     def get_step(self) -> None:
+        # TODO: It makes no sense for LayerOpt to take full energy & forces
         coords3d_org = self.geometry.coords3d.copy()
         coords3d_cur = coords3d_org.copy()
         cur_micro_cycles = list()
