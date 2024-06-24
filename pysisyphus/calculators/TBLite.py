@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 
 try:
@@ -12,7 +14,6 @@ from pysisyphus.elem_data import ATOMIC_NUMBERS
 
 
 class TBLite(Calculator):
-
     def __init__(
         self,
         *args,
@@ -20,9 +21,16 @@ class TBLite(Calculator):
         acc: float = 0.1,
         verbosity: int = 0,
         keep_calculator: bool = False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
+
+        warnings.warn(
+            f"TBLite calculator (currently?) does not respect {self.pal=}! "
+            "Please set the number of desired threads via OMP_NUM_THREADS!\n"
+            "TBLite will probably use all available threads by default, "
+            "which may not be desired!"
+        )
 
         self.gfn = str(gfn)
         self.acc = float(acc)
@@ -61,12 +69,7 @@ class TBLite(Calculator):
         return calc
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
-        calc = self.get_calculator(atoms, coords)
-        xtb_result = calc.singlepoint(copy=True)
-        results = {
-            "energy": xtb_result.get("energy"),
-        }
-        return results
+        return self.get_forces(atoms, coords, **prepare_kwargs)
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
         calc = self.get_calculator(atoms, coords)
