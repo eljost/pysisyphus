@@ -70,7 +70,7 @@ class FIRE(Optimizer):
     def fit_rigid(self):
         (self.v,), _, _ = super()._fit_rigid(vectors=(self.v,))
 
-    def optimize(self):
+    def get_step(self):
         self.forces.append(self.geometry.forces)
         self.energies.append(self.geometry.energy)
         forces = self.forces[-1]

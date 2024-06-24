@@ -70,7 +70,7 @@ class RFOptimizer(HessianOptimizer):
         self.successful_gdiis = 0
         self.successful_line_search = 0
 
-    def optimize(self):
+    def get_step(self):
         energy, gradient, H, big_eigvals, big_eigvecs, resetted = self.housekeeping()
         step_func, pred_func = self.get_step_func(big_eigvals, gradient)
 

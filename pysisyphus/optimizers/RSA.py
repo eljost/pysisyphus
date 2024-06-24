@@ -9,7 +9,7 @@ from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
 class RSA(HessianOptimizer):
     """The Importance of Step Control in Optimization Methods, del Campo, 2009."""
 
-    def optimize(self):
+    def get_step(self):
         energy, gradient, H, big_eigvals, big_eigvecs, resetted = self.housekeeping()
 
         assert big_eigvals.argmin() == 0
@@ -91,7 +91,7 @@ class RSA(HessianOptimizer):
         # eigenvalue spectrum (not positive definite). To solve this we use a
         # different formula to calculate the step.
         without_first = gradient_trans[1:] / (big_eigvals[1:] - min_eigval)
-        tau = sqrt(self.trust_radius ** 2 - (without_first ** 2).sum())
+        tau = sqrt(self.trust_radius**2 - (without_first**2).sum())
         step_trans = [tau] + -without_first.tolist()
         step = big_eigvecs.dot(step_trans)
         predicted_change = step.dot(gradient) + 0.5 * step.dot(H).dot(step)
