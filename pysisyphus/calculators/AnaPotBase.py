@@ -71,8 +71,9 @@ class AnaPotBase(Calculator):
         self.fig = None
         self.ax = None
 
-    def get_energy(self, atoms, coords):
-        self.energy_calcs += 1
+    def get_energy(self, atoms, coords, increase_counter=True):
+        if increase_counter:
+            self.energy_calcs += 1
         x, y, z = coords
         energy = self.scale * self.V(x, y)
         return {
@@ -89,7 +90,9 @@ class AnaPotBase(Calculator):
         results = {
             "forces": forces,
         }
-        results.update(self.get_energy(atoms, coords))
+        # Don't increase the energy counter to mimic the fact, that a QM force
+        # calculation also produces an energy.
+        results.update(self.get_energy(atoms, coords, increase_counter=False))
         return results
 
     def get_hessian(self, atoms, coords):
@@ -104,13 +107,17 @@ class AnaPotBase(Calculator):
         results = {
             "hessian": hessian,
         }
-        results.update(self.get_energy(atoms, coords))
+        # Don't increase the energy counter to mimic the fact, that a QM Hessian
+        # calculation also produces an energy.
+        results.update(self.get_energy(atoms, coords, increase_counter=False))
         return results
 
     def statistics(self):
         return (
-            f"Energy calculations: {self.energy_calcs}, Force calculations: "
-            f"{self.forces_calcs}, Hessian calculations: {self.hessian_calcs}"
+            # f"Energy calculations: {self.energy_calcs}, Force calculations: "
+            # f"{self.forces_calcs}, Hessian calculations: {self.hessian_calcs}"
+            f"Energy evals: {self.energy_calcs}, force evals: {self.forces_calcs}, "
+            f"Hessian evals: {self.hessian_calcs}"
         )
 
     def plot(self, levels=None, show=False, **figkwargs):
@@ -277,7 +284,7 @@ class AnaPotBase(Calculator):
         if show:
             plt.show()
 
-    def anim_cos_coords(self, coords, interval=50, show=False, title_func=None):
+    def anim_cos_coords(self, coords, interval=50, show=False):
         self.plot()
         nsteps = len(coords)
         steps = range(nsteps)
@@ -290,6 +297,7 @@ class AnaPotBase(Calculator):
             curx, cury = coords[frame].T
             lines.set_xdata(curx)
             lines.set_ydata(cury)
+            self.ax.set_title(f"Frame {frame}")
 
         self.animation = animation.FuncAnimation(
             self.fig, func, frames=steps, interval=interval
@@ -315,6 +323,7 @@ class AnaPotBase(Calculator):
 
     def get_path(self, num, minima_inds=None):
         between = num - 2
+        assert between >= 0
 
         inds = 0, 1
         if minima_inds is not None:
