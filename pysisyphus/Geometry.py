@@ -826,7 +826,7 @@ class Geometry:
 
     def reparametrize(self):
         # Currently, self.calculator.get_coords is only implemented by the
-        # IPIPServer, but it is deactivated there.
+        # IPServer, but it is deactivated there.
         try:
             # TODO: allow skipping the update
             results = self.calculator.get_coords(self.atoms, self.cart_coords)
@@ -1157,8 +1157,13 @@ class Geometry:
         else:
             return proj_hessian
 
+    def calc_energy(self):
+        """Force energy calculation at the current coordinates."""
+        results = self.calculator.get_energy(self.atoms, self.cart_coords)
+        self.set_results(results)
+
     def calc_energy_and_forces(self):
-        """Force a calculation of the current energy and forces."""
+        """Force energy and forces calculation at the current coordinates."""
         results = self.calculator.get_forces(self.atoms, self.cart_coords)
         self.set_results(results)
 
