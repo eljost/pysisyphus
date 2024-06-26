@@ -57,6 +57,7 @@ class GrowingChainOfStates(ChainOfStates):
         return new_node
 
     def prepare_opt_cycle(self, *args, **kwargs):
+        # Call same method on parent
         parent_result, parent_messages = super().prepare_opt_cycle(*args, **kwargs)
 
         # Compare size of coords arrays to determine if new nodes

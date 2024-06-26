@@ -41,15 +41,15 @@ class NEB(ChainOfStates):
         self.delta_k = self.k_max - self.k_min
         self.k = list()
 
-    def update_springs(self):
+    def update_springs(self, image_energies):
         # Check if there are enough springs
         if len(self.k) != len(self.images) - 1:
             self.k = np.full(len(self.images) - 1, self.k_min)
         if self.variable_springs:
-            self.set_variable_springs()
+            self.set_variable_springs(image_energies)
 
-    def set_variable_springs(self):
-        shifted_energies = self.energy - self.energy.min()
+    def set_variable_springs(self, energies):
+        shifted_energies = energies - energies.min()
         energy_max = max(shifted_energies)
         energy_ref = 0.85 * energy_max
         for i in range(len(self.k)):
@@ -91,15 +91,14 @@ class NEB(ChainOfStates):
         )
         return spring_forces
 
-    def get_quenched_dneb_forces(self, i):
+    def get_quenched_dneb_forces(self, i, image_forces, tangents):
         """See [3], Sec. VI and [4] Sec. D."""
         if not self.perp_spring_forces or (i not in self.moving_indices):
             return self.zero_vec.copy()
-        forces = self.images[i].forces
-        tangent = self.get_tangent(i)
+        forces = image_forces[i]
+        tangent = tangents[i]
         perp_forces = forces - forces.dot(tangent) * tangent
         spring_forces = self.get_spring_forces(i)
-        tangent = self.get_tangent(i)
         perp_spring_forces = spring_forces - spring_forces.dot(tangent) * tangent
         dneb_forces = (
             perp_spring_forces - perp_spring_forces.dot(perp_forces) * perp_forces
@@ -126,15 +125,17 @@ class NEB(ChainOfStates):
 
         return dneb_forces_quenched
 
-    def get_parallel_forces(self, i):
+    def get_parallel_forces(self, i, tangents):
         if i not in self.moving_indices:
             return self.zero_vec.copy()
+
+        tangent = tangents[i]
 
         if (i == 0) or (i == len(self.images) - 1):
             # We can't use the last image index because there is one
             # spring less than there are images.
             spring_index = min(i, len(self.images) - 2)
-            return self.k[spring_index] * self.get_tangent(i)
+            return self.k[spring_index] * tangents
 
         prev_coords = self.images[i - 1].coords
         ith_coords = self.images[i].coords
@@ -145,43 +146,57 @@ class NEB(ChainOfStates):
                 np.linalg.norm(next_coords - ith_coords)
                 - np.linalg.norm(ith_coords - prev_coords)
             )
-            * self.get_tangent(i)
+            * tangent
         )
 
-    # See https://stackoverflow.com/a/15786149
-    # This way we can reuse the parents setter.
+    def calculate_parallel_forces(self, tangents):
+        parallel_forces = np.zeros((self.nimages, self.coords_length))
+        for j, _ in enumerate(self.image_inds):
+            if j not in self.moving_indices:
+                continue
+            parallel_forces[j] = self.get_parallel_forces(j, tangents)
+        return parallel_forces
+
+    def calculate_quenched_dneb_forces(self, image_forces, tangents):
+        quenched_dneb_forces = np.zeros((self.nimages, self.coords_length))
+        for j, _ in enumerate(self.image_inds):
+            if j not in self.moving_indices:
+                continue
+            quenched_dneb_forces[j] = self.get_quenched_dneb_forces(
+                j, image_forces, tangents
+            )
+        return quenched_dneb_forces
+
     @ChainOfStates.forces.getter
     def forces(self):
-        if self._forces is not None:
-            return self._forces
-
-        org_results = self.calculate_forces()
-        self.update_springs()
-        indices = range(len(self.images))
-        total_forces = np.array(
-            [
-                self.get_parallel_forces(i)
-                + self.get_perpendicular_forces(i)
-                + self.get_quenched_dneb_forces(i)
-                for i in indices
-            ]
-        )
-        total_forces = self.set_climbing_forces(total_forces)
-        if self.bandwidth is not None:
-            stiff_stress = get_stiff_stress(
-                bandwidth=self.bandwidth,
-                kappa=self.k,
-                image_coords=self.image_coords,
-                tangents=self.get_tangents(),
+        if self._forces is None:
+            image_forces = self.image_forces
+            image_energies = self.image_energies
+            self.update_springs(image_energies)
+            # Tangents are required for the projection
+            tangents = self.tangents
+            self.perpendicular_forces = self.calculate_perpendicular_forces(
+                image_forces, tangents
             )
-            total_forces = total_forces + stiff_stress
-        total_forces[self.org_forces_indices] = org_results["forces"][
-            self.org_forces_indices
-        ]
-        if self.org_forces_indices:
-            self.log(
-                f"Returning unrpojected original forces for image(s): {self.org_forces_indices}."
+            self.perp_forces_list.append(self.perpendicular_forces.copy())
+            parallel_forces = self.calculate_parallel_forces(tangents)
+            quenched_dneb_forces = self.calculate_quenched_dneb_forces(
+                image_forces, tangents
             )
-        self._forces = total_forces.flatten()
+            forces = self.perpendicular_forces + parallel_forces + quenched_dneb_forces
 
+            if self.bandwidth is not None:
+                stiff_stress = get_stiff_stress(
+                    bandwidth=self.bandwidth,
+                    kappa=self.k,
+                    image_coords=self.image_coords,
+                    tangents=tangents,
+                )
+                forces = forces + stiff_stress
+
+            self.update_with_climbing_forces(
+                forces, tangents, image_energies, image_forces
+            )
+            # TODO: Implement org_forces_indices-related logic
+            self.forces = forces.flatten()
         return self._forces

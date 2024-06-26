@@ -244,6 +244,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             if the coordinates did not change significantly.
         reparam_check_rms
             Whether to check for (too) similar coordinates after reparametrization.
+            Especially for the optimization of analytical potentials it can be important
+            to disable this check, or to pick a very small value for 'reparam_thresh.'
         reparam_when
             Reparametrize before or after calculating the step. Can also be turned
             off by setting it to None.
@@ -550,10 +552,14 @@ class Optimizer(metaclass=abc.ABCMeta):
         if overachieve_factor is None:
             overachieve_factor = self.overachieve_factor
 
-        # When using a ChainOfStates method convergence depends on the
-        # perpendicular component of the force along the MEP.
+        # When using a ChainOfStates method, we check convergence based on the perpendicular
+        # component of the total force. This ignores any component along the path, e.g., from
+        # an uneven distribution of images in a NEB, or a climbing image that did not yet reach
+        # the transition state.
+        # This is choice is justified, as images on a minimum energy path
+        # (MEP) will still have a remaining gradient, but it will only act parallel to the MEP.
         if self.is_cos:
-            forces = self.geometry.perpendicular_forces
+            forces = self.geometry.pure_perpendicular_forces
         elif len(self.modified_forces) == len(self.forces):
             self.log("Using modified forces to determine convergence!")
             forces = self.modified_forces[-1]
@@ -709,7 +715,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         )
         try:
             # Geometries/ChainOfStates objects can also do some printing.
-            add_info = self.geometry.get_additional_print()
+            add_info = self.geometry.get_additional_print(self.energies[-1])
             if add_info:
                 self.table.print(add_info)
         except AttributeError:
@@ -720,6 +726,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         return self.geometry.coord_type in ("cart", "cartesian", "mw_cartesian")
 
     def _fit_rigid(self, *, vectors=None, vector_lists=None, hessian=None):
+        # TODO: also rotate COS tangents, if present
         if vector_lists is None:
             vector_lists = list()
 
@@ -965,24 +972,20 @@ class Optimizer(metaclass=abc.ABCMeta):
                     self.print(f"Dumped latest coordinates to '{sim_fn}'.")
                     break
 
-            # Check if something considerably changed in the optimization, e.g.,
-            # new images were added/interpolated. Then the optimizer should be reset.
+            # Check if the number of coordinates to be optimized changed compared
+            # to the previous cycle. This happens when new images were added in a
+            # growing COS optimization.
+            # Will raise IndexError in the first cycle
             reset_flag = False
-            if self.cur_cycle > 0 and self.is_cos:
-                reset_flag, messages = self.geometry.prepare_opt_cycle(
-                    self.coords[-1], self.energies[-1], self.forces[-1]
-                )
-                if messages:
-                    self.print("\n".join(messages))
-            # Reset when number of coordinates changed, compared to the previous cycle.
-            elif self.cur_cycle > 0:
-                reset_flag = reset_flag or (
-                    self.geometry.coords.size != self.coords[-1].size
-                )
+            try:
+                reset_flag = self.geometry.coords.size != self.coords[-1].size
+            except IndexError:
+                reset_flag = False
 
             if reset_flag:
                 self.reset()
 
+            # TODO: remove 'reparam: before'
             """
             # Coordinates may be updated here.
             if self.reparam_when == "before" and hasattr(
@@ -994,8 +997,8 @@ class Optimizer(metaclass=abc.ABCMeta):
 
             # Align COS images, if requested
             if self.is_cos and self.align and self.is_cart_opt:
-                # Try to use fit_rigid() of the optimizer class, if implemented;
-                # fall back to the generic _fit_rigid() method else.
+                # Try to use fit_rigid() of the childclass. If not implemented, fall back to
+                # the generic self._fit_rigid().
                 try:
                     self.fit_rigid()
                 except AttributeError:
@@ -1016,14 +1019,31 @@ class Optimizer(metaclass=abc.ABCMeta):
             self.image_inds.append(image_inds)
             self.image_nums.append(image_num)
 
+            #########################################
+            #  Calculate energy and its derivatives #
+            #########################################
+
+            get_step_kwargs = self.housekeeping()
+
+            # After the call to self.housekeeping() we have up-to-date energies and
+            # forces, which we'll pass to self.geometry.prepare_opt_cycle. There,
+            # checks for when to convert an image to a climbing image etc. will
+            # be carried out. When one COS image is converted to a climbing image,
+            # the optimizer must be reset.
+            if self.is_cos:
+                reset_flag, messages = self.geometry.prepare_opt_cycle(
+                    self.coords[-1], self.energies[-1], self.forces[-1]
+                )
+                if reset_flag:
+                    self.reset()
+                if messages:
+                    self.print("\n".join(messages))
+
             #####################################################################
             #  Actual step calculation in the Optimizer subclass is done here!  #
             #  The step is not yet taken in the underlying Geometry/COS object. #
             #####################################################################
 
-            # Calculate energy and its derivatives
-            get_step_kwargs = self.housekeeping()
-            # Calculate step
             step = self.get_step(**get_step_kwargs)
 
             try:
@@ -1057,11 +1077,12 @@ class Optimizer(metaclass=abc.ABCMeta):
                 continue
 
             if self.is_cos:
-                self.tangents.append(self.geometry.get_tangents().flatten())
+                self.tangents.append(self.geometry.tangents.flatten())
 
             self.steps.append(step)
 
-            # Convergence check
+            # A check for convergence is done before the step applied. That is
+            # energies & forces should still be set on the Geometry object.
             self.is_converged, conv_info = self.check_convergence()
 
             end_time = time.time()
@@ -1097,7 +1118,10 @@ class Optimizer(metaclass=abc.ABCMeta):
             elif self.assert_min_step and (step_norm <= self.min_step_norm):
                 raise ZeroStepLength
 
-            # Now actually apply the step to the stored Geometry/ChainOfStates object.
+            ############################################################################
+            # Now actually apply the step to the stored Geometry/ChainOfStates object. #
+            ############################################################################
+
             new_coords = self.geometry.coords.copy() + step
             try:
                 self.geometry.coords = new_coords
@@ -1132,7 +1156,8 @@ class Optimizer(metaclass=abc.ABCMeta):
             if (self.reparam_when == "after") and hasattr(
                 self.geometry, "reparametrize"
             ):
-                reparametrized = self.geometry.reparametrize()
+                # Reparametirze w/ latest energies. The energies
+                reparametrized = self.geometry.reparametrize(self.energies[-1])
             else:
                 reparametrized = False
 

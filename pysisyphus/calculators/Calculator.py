@@ -154,6 +154,8 @@ class Calculator:
         if force_num_hess:
             self.force_num_hessian()
 
+        self.run_call_counts = dict()
+
     def get_cmd(self, key="cmd"):
         assert self.conf_key, "'conf_key'-attribute is missing for this calculator!"
 
@@ -478,6 +480,10 @@ class Calculator:
             like the energy, a forces vector and/or excited state energies
             from TDDFT.
         """
+        # print(
+        # f"@ In Calculator.run({calc=}) w/ {self.base_name=}, {self.calc_number=: >2d}, "
+        # f"{self.calc_counter=: >05d}"
+        # )
 
         self.backup_dir = None
         path = self.prepare(inp)
@@ -525,6 +531,8 @@ class Calculator:
             # Do at least one cycle. When retries are disabled retry_calc == 0
             # and range(0+1) will result in one cycle
             added_retry_args = False
+            self.run_call_counts.setdefault(calc, 0)
+            self.run_call_counts[calc] += 1
             for retry in range(self.retry_calc + 1):
                 result = subprocess.Popen(
                     args,

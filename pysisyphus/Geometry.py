@@ -824,7 +824,7 @@ class Geometry:
             if aligned:
                 break
 
-    def reparametrize(self):
+    def reparametrize(self, energy):
         # Currently, self.calculator.get_coords is only implemented by the
         # IPServer, but it is deactivated there.
         try:
