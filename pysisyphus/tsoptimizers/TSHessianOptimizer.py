@@ -134,14 +134,14 @@ class TSHessianOptimizer(HessianOptimizer):
                 f"Shape of reference Hessian {shape} doesn't match the expected "
                 f"shape {expected_shape} of the Hessian for the current coordinates!"
             )
-        except OSError as err:
+        except OSError:
             self.log(
                 f"Tried to load reference Hessian from '{self.hessian_ref}' "
                 "but the file could not be found."
             )
             self.hessian_ref = None
-        except (ValueError, TypeError) as err:
-            self.log(f"No reference Hessian provided.")
+        except (ValueError, TypeError):
+            self.log("No reference Hessian provided.")
 
         # Select initial root according to highest contribution of 'prim_coord'
         if prim_coord is not None:
@@ -243,7 +243,7 @@ class TSHessianOptimizer(HessianOptimizer):
             ovlp_str = np.array2string(overlaps, precision=4)
             self.log(
                 "Overlaps between eigenvectors of current Hessian "
-                f"TS mode from reference Hessian:"
+                "TS mode from reference Hessian:"
             )
             self.log(f"\t{ovlp_str}")
 
@@ -259,7 +259,7 @@ class TSHessianOptimizer(HessianOptimizer):
         # Construct an approximate initial mode according to user input
         # and calculate overlaps with the current eigenvectors.
         elif self.rx_modes is not None:
-            self.log(f"Constructing reference mode, according to user input")
+            self.log("Constructing reference mode, according to user input")
             assert self.geometry.coord_type != "cart"
             int_ = self.geometry.internal
             modes = list()

@@ -34,6 +34,7 @@ __all__ = [
     "Turbomole",
     "TransTorque",
     "XTB",
+    "PWHardSphere",
 ]
 
 

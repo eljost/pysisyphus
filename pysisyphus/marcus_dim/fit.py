@@ -38,7 +38,6 @@ from pysisyphus.helpers_pure import (
     highlight_text,
     rms,
 )
-from pysisyphus.linalg import are_collinear
 from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.wavefunction.pop_analysis import (
     iao_charges,

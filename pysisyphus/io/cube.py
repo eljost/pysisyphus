@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import functools
-import itertools as it
 from math import ceil
 import tempfile
 from typing import Tuple

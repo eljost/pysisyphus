@@ -33,7 +33,7 @@ class OpenMolcas(Calculator):
         super(OpenMolcas, self).__init__(**kwargs)
 
         env = os.environ
-        if not ("MOLCAS" in env):
+        if "MOLCAS" not in env:
             warnings.warn(
                 "$MOLCAS environment variable is not set! Couldn't find it in the "
                 "environment!"
@@ -202,7 +202,7 @@ class OpenMolcas(Calculator):
         inp = self.prepare_input(atoms, coords, calc_type)
         add_args = ("-clean", "-oe", self.out_fn)
         env_copy = self.get_pal_env()
-        env_copy["MOLCAS_PROJECT"] = f"openmolcas"
+        env_copy["MOLCAS_PROJECT"] = "openmolcas"
         env_copy["MOLCAS_WORKDIR"] = str(path)
         kwargs = {
             "calc": calc_type,

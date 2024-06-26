@@ -719,7 +719,7 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
         )
         en_ax.axvline(peak_xs[highest], c="k", ls="--")
         forces_ax.axvline(peak_xs[highest], c="k", ls="--")
-    except ValueError as err:
+    except ValueError:
         print("Peak-detection failed!")
 
     # fig.legend(loc="upper right")

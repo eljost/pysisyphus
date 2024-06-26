@@ -933,7 +933,6 @@ class ChainOfStates:
         RMS force (rms_force) or from a multiple of the
         RMS force convergence threshold (rms_multiple, default).
         """
-        print(f"@@@ In compare_image_rms_forces")
         # TODO:: del me; this starts force calculations if forces are not set
         # TODO: self.perpendicular_forces is not a property anymore ...
         rms_forces = rms(self.perpendicular_forces)
@@ -945,7 +944,6 @@ class ChainOfStates:
         except AttributeError:
             fully_grown = True
         start_climbing = (rms_forces <= ref_rms) and fully_grown
-        print(f"@@@ Leaving compare_image_rms_forces")
         return start_climbing
 
     def get_climbing_indices(self, image_energies):

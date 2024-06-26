@@ -9,7 +9,6 @@ import h5py
 import numpy as np
 from scipy.optimize import bisect
 
-from pysisyphus.constants import AU2KJPERMOL
 
 
 def get_curv_vec(H, Gv, v0, w0):

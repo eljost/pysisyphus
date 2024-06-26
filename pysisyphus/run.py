@@ -246,7 +246,7 @@ def run_tsopt_from_cos(
     ovlp_thresh=0.4,
     coordinate_union="bonds",
 ):
-    print(highlight_text(f"Running TS-optimization from COS"))
+    print(highlight_text("Running TS-optimization from COS"))
 
     # Later want a Cartesian HEI tangent, so if not already present we create
     # a Cartesian COS object to obtain the tangent from.
@@ -498,7 +498,7 @@ def run_tsopt_from_cos(
     if tsopt_key == "dimer":
         ts_geom.set_calculator(ts_calc)
 
-    print(f"Optimized TS coords:")
+    print("Optimized TS coords:")
     print(ts_geom.as_xyz())
     # Include ts_ prefix
     ts_opt_fn = ts_opt.get_path_for_fn("opt.xyz")
@@ -668,7 +668,7 @@ def run_stocastic(stoc):
 
 
 def run_md(geom, calc_getter, md_kwargs):
-    print(highlight_text(f"Running Molecular Dynamics"))
+    print(highlight_text("Running Molecular Dynamics"))
 
     calc = calc_getter()
     geom.set_calculator(calc)
@@ -800,7 +800,7 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
         with open("relaxed_scan.trj", "w") as handle:
             handle.write(trj)
         scan_data = np.stack((scan_vals, scan_energies), axis=1)
-        np.savetxt(f"relaxed_scan.dat", scan_data)
+        np.savetxt("relaxed_scan.dat", scan_data)
     return scan_geoms, scan_vals, scan_energies
 
 
@@ -840,7 +840,7 @@ def run_preopt(first_geom, last_geom, calc_getter, preopt_key, preopt_kwargs):
             print(f"Problem in preoptimization of {key}. Exiting!")
             sys.exit()
         print(f"Preoptimization of {key} geometry converged!")
-        opt_fn = opt.get_path_for_fn(f"opt.xyz")
+        opt_fn = opt.get_path_for_fn("opt.xyz")
         shutil.move(opt.final_fn, opt_fn)
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
 
@@ -852,7 +852,7 @@ def run_preopt(first_geom, last_geom, calc_getter, preopt_key, preopt_kwargs):
 
 
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
-    print(highlight_text(f"Running IRC") + "\n")
+    print(highlight_text("Running IRC") + "\n")
 
     calc = calc_getter()
     calc.base_name = "irc"
@@ -892,7 +892,7 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
 
     max_len = max(len(s) for s in xyz)
 
-    print(highlight_text(f"RMSDs After End Optimizations"))
+    print(highlight_text("RMSDs After End Optimizations"))
     print()
 
     start_cbms = [get_bond_mat(geom) for geom in geoms]
@@ -923,7 +923,7 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
 
 
 def run_endopt(irc, endopt_key, endopt_kwargs, calc_getter):
-    print(highlight_text(f"Optimizing reaction path ends"))
+    print(highlight_text("Optimizing reaction path ends"))
 
     # Gather geometries that shall be optimized and appropriate keys.
     to_opt = list()
@@ -1088,7 +1088,7 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, dest_and_add_cp, new_yaml_fn=Non
     print("Copying:")
     # Copy geometries
     # When newlines are present we have an inline xyz formatted string
-    if not "\n" in xyzs:
+    if "\n" not in xyzs:
         if isinstance(xyzs, str):
             xyzs = [
                 xyzs,
@@ -1738,7 +1738,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
 
 
 def check_asserts(results, run_dict):
-    print(highlight_text(f"Asserting results"))
+    print(highlight_text("Asserting results"))
 
     assert_ = run_dict["assert"]
     keys = list(assert_.keys())

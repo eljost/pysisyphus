@@ -157,7 +157,7 @@ def jacobi_sweeps(
 
     P_prev = np.nan
 
-    logger.info(f"Starting Jacobi sweeps.")
+    logger.info("Starting Jacobi sweeps.")
     for i in range(max_cycles):
         # Calculate the target cost function we want to maximize/minimize.
         P = cost_func(C)

@@ -1,7 +1,6 @@
 import argparse
 import copy
 import itertools as it
-from pathlib import Path
 import re
 import sys
 
@@ -478,7 +477,7 @@ def sample(geoms, samplen):
     max_ind = ngeoms - 1
     assert (
         0 < samplen <= ngeoms
-    ), f"Can't sample more geometries as there are in the given path.!"
+    ), "Can't sample more geometries as there are in the given path.!"
     float_indices = np.linspace(0, 1, num=samplen) * max_ind
     indices = np.empty_like(float_indices, dtype=int)
     prev_ind = None

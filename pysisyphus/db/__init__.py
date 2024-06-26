@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-from pysisyphus.db.level import LEVELS
-from pysisyphus.db.molecules import MOLECULES
+from pysisyphus.db.level import LEVELS as LEVELS
+from pysisyphus.db.molecules import MOLECULES as MOLECULES
 
 
 THIS_DIR = Path(os.path.dirname(os.path.realpath(__file__)))

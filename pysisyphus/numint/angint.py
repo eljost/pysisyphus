@@ -25,7 +25,7 @@ def get_lebedev_grid(n):
     by 4π!
     """
     # Try to lookup grid in the dict
-    if not n in _LEBEDEV_GRIDS:
+    if n not in _LEBEDEV_GRIDS:
         # Weights already include factor of 4π
         grids = np.load(NUMINT_DIR / "lebedev_grids_4pi.npz")
         # Grids are stored with string-keys in the file

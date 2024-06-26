@@ -13,6 +13,12 @@ __all__ = [
     "geoms_from_molden",
     "save_hessian",
     "save_third_deriv",
+    "geom_to_crd_str",
+    "Cube",
+    "parse_cube",
+    "geoms_from_inline_xyz",
+    "parse_xyz",
+    "geom_from_zmat_fn",
 ]
 
 
