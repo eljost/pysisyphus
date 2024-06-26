@@ -74,9 +74,6 @@ class GrowingString(GrowingChainOfStates):
 
         self.reparam_in = reparam_every
         self._tangents = None
-        self.tangent_list = list()
-        self.perp_forces_list = list()
-        self.coords_list = list()
 
         left_frontier = self.get_new_image(self.lf_ind)
         self.left_string.append(left_frontier)
@@ -274,7 +271,7 @@ class GrowingString(GrowingChainOfStates):
         )
         return tcks, us
 
-    def reparam_cart(self, desired_param_density):
+    def reparam_cart(self, desired_param_density, image_energies):
         tcks, us = self.spline()
         # Reparametrize mesh
         new_points = np.vstack([splev(desired_param_density, tck) for tck in tcks])
@@ -282,15 +279,15 @@ class GrowingString(GrowingChainOfStates):
         new_points = new_points.reshape(-1, len(self.images)).T
         # With a climbing image we ignore the just splined coordinates for the CI
         # and restore its original coordinates.
-        for index in self.get_climbing_indices():
+        for index in self.get_climbing_indices(image_energies):
             new_points[index] = self.images[index].coords
             self.log(f"Skipped reparametrization of climbing image with index {index}")
         self.coords = new_points.flatten()
         # In contrast to self.reparam_dlc() we don't check if the reparametrization
         # succeeded because it can't fail ;)
 
-    def reparam_dlc(self, desired_param_density, thresh=1e-3):
-        climbing_indices = self.get_climbing_indices()
+    def reparam_dlc(self, desired_param_density, image_energies, thresh=1e-3):
+        climbing_indices = self.get_climbing_indices(image_energies)
         # Reparametrization will take place along the tangent between two
         # images. The index of the tangent image depends on wether the image
         # is above or below the desired param_density on the normalized arc.
@@ -369,33 +366,18 @@ class GrowingString(GrowingChainOfStates):
         elif self.reset_dlc:
             self.log("Skipping creation of new DLCs, as string is already fully grown.")
 
-    def get_tangent(self, i):
-        # Simple tangent, pointing at each other, for the frontier images.
+    def get_tangent(self, i: int, *args, **kwargs):
+        # Return a simple normalized coordinate difference for the frontier images.
         if not self.fully_grown and i in (self.lf_ind, self.rf_ind):
             next_ind = i + 1 if (i <= self.lf_ind) else i - 1
             tangent = self.images[next_ind] - self.images[i]
             tangent /= np.linalg.norm(tangent)
         else:
-            tangent = super().get_tangent(i, kind="upwinding")
-
+            # Use whathever kind else
+            tangent = super().get_tangent(i, *args, **kwargs)
         return tangent
 
-    @ChainOfStates.forces.getter
-    def forces(self):
-        if self._forces is None:
-            self.calculate_forces()
-        indices = range(len(self.images))
-        # In constrast to NEB calculations we only use the perpendicular component
-        # of the force, without any spring forces. A desired image distribution is
-        # achieved via periodic reparametrization.
-        perp_forces = np.array([self.get_perpendicular_forces(i) for i in indices])
-        self.perp_forces_list.append(perp_forces.copy().flatten())
-        # Add climbing forces
-        total_forces = self.set_climbing_forces(perp_forces)
-        self._forces = total_forces.flatten()
-        return self._forces
-
-    def reparametrize(self):
+    def reparametrize(self, image_energies):
         reparametrized = False
         # If this counter reaches 0 reparametrization will occur.
         self.reparam_in -= 1
@@ -470,9 +452,11 @@ class GrowingString(GrowingChainOfStates):
 
             # Reparametrize images.
             if self.coord_type == "cart":
-                self.reparam_cart(desired_param_density)
+                self.reparam_cart(desired_param_density, image_energies)
             elif self.coord_type == "dlc":
-                self.reparam_dlc(desired_param_density, thresh=self.reparam_tol)
+                self.reparam_dlc(
+                    desired_param_density, image_energies, thresh=self.reparam_tol
+                )
             else:
                 # TODO: fix GSM for coord_type 'cartesian'
                 raise Exception("How did you get here?")
@@ -488,12 +472,11 @@ class GrowingString(GrowingChainOfStates):
 
         return reparametrized
 
-    def get_additional_print(self):
+    def get_additional_print(self, energies):
         size_str = f"{self.left_size}+{self.right_size}"
         if self.fully_grown:
             size_str = " Full"
         size_info = f"String={size_str: >5s}"
-        energies = np.array(self.all_energies[-1])
         barrier = (energies.max() - energies[0]) * AU2KJPERMOL
         barrier_info = f"(E_hei-E_0)={barrier:6.1f} kJ/mol"
         hei_ind = energies.argmax()

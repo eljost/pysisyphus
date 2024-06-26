@@ -384,7 +384,7 @@ def ts_hessian_from_cos(cos: ChainOfStates, ts_image_index: int) -> np.ndarray:
             f"Calculated curvature={C:.6f} image {ts_image_index} is not negative!"
         )
 
-    tangent = cos.get_tangent(ts_image_index)
+    tangent = cos.get_tangent(ts_image_index, energies=energies)
     # Update that introduces transition vector with negative curvature.
     dH, _ = curvature_tangent_update(H0, C, tangent)
     H = H0 + dH

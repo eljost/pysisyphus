@@ -6,6 +6,7 @@
 from copy import copy
 import logging
 import sys
+from typing import Literal, Optional
 
 from distributed import Client, LocalCluster
 import numpy as np
@@ -16,7 +17,6 @@ from pysisyphus.helpers import align_coords, get_coords_diffs
 from pysisyphus.helpers_pure import hash_arr, rms
 from pysisyphus.modefollow import geom_lanczos
 
-# from pysisyphus.calculators.parallel import distributed_calculations
 from pysisyphus.cos.distributed import distributed_calculations
 
 
@@ -56,6 +56,8 @@ class ChainOfStates:
         self.climb = climb
         self.climb_rms = climb_rms
         self.climb_lanczos = climb_lanczos
+        # Must not be bigger than climb_rms, so Lanczos tangent is NOT activated
+        # before a climbing image is assigned.
         self.climb_lanczos_rms = min(self.climb_rms, climb_lanczos_rms)
         self.ts_opt = ts_opt
         self.ts_opt_rms = ts_opt_rms
@@ -64,7 +66,6 @@ class ChainOfStates:
         # flips between multiple images.
         self.climb_fixed = climb_fixed
         self.energy_min_mix = energy_min_mix
-        # Must not be lower than climb_rms
         self.scheduler = scheduler
         # Providing only cluster_kwargs also enables dask
         self._cluster = bool(cluster) or (cluster_kwargs is not None)
@@ -89,12 +90,19 @@ class ChainOfStates:
         self.cluster_kwargs = _cluster_kwargs
         self.progress = progress
 
-        # Can't call self.log before counter is initialized ...
         self._external_scheduler = scheduler is not None
-        self.counter = 0
+        # Can't call self.log before eval counter are initialized ...
+        self.image_energy_evals = 0
+        self.image_force_evals = 0
+
         self._coords = None
-        self._forces = None
+        self._image_energies = None
         self._energy = None
+        self._image_forces = None
+        self._perpendicular_forces = None
+        self._forces = None
+        self._tangents = None
+
         self.coords_length = self.images[0].coords.size
         self.cart_coords_length = self.images[0].cart_coords.size
         self.zero_vec = np.zeros(self.coords_length)
@@ -118,6 +126,7 @@ class ChainOfStates:
         # coords_list & force_list are updated in prepare_opt_cycle
         self.coords_list = list()
         self.forces_list = list()
+        self.perp_forces_list = list()
         # all_energies & all_true_forces are updated in calculate_forces()
         self.all_energies = list()
         self.all_true_forces = list()
@@ -154,6 +163,12 @@ class ChainOfStates:
             self.typed_prims = img0.internal.typed_prims
         except AttributeError:
             self.typed_prims = None
+
+    def has_tangents(self):
+        return self._tangents != None
+
+    def has_image_forces(self):
+        return self._image_forces != None
 
     @property
     def nimages(self) -> int:
@@ -273,7 +288,10 @@ class ChainOfStates:
         return ia2d
 
     def log(self, message):
-        self.logger.debug(f"Counter {self.counter+1:03d}, {message}")
+        self.logger.debug(
+            f"Evals: (energies, {self.image_energy_evals}), "
+            f"(forces, {self.image_force_evals}); {message}"
+        )
 
     def get_fixed_indices(self):
         fixed = list()
@@ -296,8 +314,7 @@ class ChainOfStates:
     def init_dask(self):
         # Return dummy when scheduler address is already present or dask is disabled.
         if self._external_scheduler or not self._cluster:
-            # cluster = ClusterDummy(self.scheduler)
-            cluster = ClusterDummy()  # self.scheduler)
+            cluster = ClusterDummy()
         # Create LocalCluster and return it if dask is enabled but no scheduler address
         # is set.
         # It seems like we can't save the LocalCluster object in the ChainOfStates object,
@@ -346,22 +363,13 @@ class ChainOfStates:
         return vector
 
     def clear(self):
+        self._image_energies = None
         self._energy = None
+        self._image_forces = None
+        self._perpendicular_forces = None
         self._forces = None
         self._hessian = None
-        try:
-            self._tangents = None
-        except AttributeError:
-            # TODO: move this to another logging level?!
-            self.log("There are no tangents to reset.")
-
-    # @property
-    # def freeze_atoms(self):
-    # image_freeze_atoms = [image.freeze_atoms for image in self.images]
-    # lens = [len(fa) for fa in image_freeze_atoms]
-    # len0 = lens[0]
-    # assert all([len_ == len0 for len_ in lens])
-    # return image_freeze_atoms[0]
+        self._tangents = None
 
     @property
     def atoms(self):
@@ -425,29 +433,39 @@ class ChainOfStates:
 
     @property
     def energy(self):
-        self._energy = np.array([image.energy for image in self.images])
+        """Currently, ChainOfStates.energy and ChainOfStates.image_energies are the same."""
+        if self._energy is None:
+            self._energy = self.image_energies
         return self._energy
 
     @energy.setter
     def energy(self, energies):
-        """This is needed for some optimizers like CG and BFGS."""
+        """This is needed for some optimizers like CG and BFGS, when they skip a step
+        and reset the Geometry."""
         assert len(self.images) == len(energies)
+        # We do not allow setting the energy of a fixed image
         for i in self.moving_indices:
             self.images[i].energy = energies[i]
 
         self._energy = energies
 
-    def par_image_calc(self, image):
+    def calc_image_energy(self, image):
+        image.calc_energy()
+        return image
+
+    def calc_image_energy_and_forces(self, image):
         image.calc_energy_and_forces()
         return image
 
-    def concurrent_force_calcs(self, images_to_calculate, image_indices):
+    def concurrent_image_calcs(
+        self, method, images_to_calculate, image_indices, calc_kind: str
+    ):
         client = self.get_dask_client()
-        self.log(f"Doing concurrent force calculations using {client}")
+        self.log(f"Doing concurrent {calc_kind} calculations using {client}")
         calculated_images = distributed_calculations(
             client,
             images_to_calculate,
-            self.par_image_calc,
+            method,
             logger=self.logger,
         )
         # Set calculated images
@@ -455,21 +473,83 @@ class ChainOfStates:
             self.images[ind] = image
         client.close()
 
-    def calculate_forces(self):
+    def concurrent_energy_calcs(self, images_to_calculate, image_indices):
+        return self.concurrent_image_calcs(
+            self.calc_image_energy,
+            images_to_calculate,
+            image_indices,
+            "energy",
+        )
+
+    def concurrent_force_calcs(self, images_to_calculate, image_indices):
+        return self.concurrent_image_calcs(
+            self.calc_image_energy_and_forces,
+            images_to_calculate,
+            image_indices,
+            "forces",
+        )
+
+    def get_images_to_calculate(self, image_indices=None):
         # Determine the number of images for which we have to do calculations.
         # There may also be calculations for fixed images, as they need an
-        # energy value. But every fixed image only needs a calculation once.
-        images_to_calculate = self.moving_images
-        image_indices = self.moving_indices
-        if self.fix_first and (self.images[0]._energy is None):
-            images_to_calculate = [self.images[0]] + images_to_calculate
-            image_indices = [0] + list(image_indices)
-        if self.fix_last and (self.images[-1]._energy is None):
-            images_to_calculate = images_to_calculate + [self.images[-1]]
-            image_indices = list(image_indices) + [-1]
-        assert len(images_to_calculate) <= len(self.images)
+        # energy value for an upwinding tangent calculation.
+        # But in principle, every fixed image needs only an energy calculation once.
+        if image_indices is None:
+            images_to_calculate = self.moving_images
+            image_indices = self.moving_indices
+            if self.fix_first and (self.images[0]._energy is None):
+                images_to_calculate = [self.images[0]] + images_to_calculate
+                image_indices = [0] + list(image_indices)
+            if self.fix_last and (self.images[-1]._energy is None):
+                images_to_calculate = images_to_calculate + [self.images[-1]]
+                image_indices = list(image_indices) + [-1]
+            assert len(images_to_calculate) <= len(self.images)
+        else:
+            images_to_calculate = [self.images[i] for i in image_indices]
+        return images_to_calculate, image_indices
+
+    def calculate_image_energies(self, image_indices=None):
+        images_to_calculate, image_indices = self.get_images_to_calculate(image_indices)
 
         # Parallel calculation with dask
+        if self.use_dask:
+            self.concurrent_energy_calcs(images_to_calculate, image_indices)
+        # Serial calculation
+        else:
+            for image in images_to_calculate:
+                image.calc_energy()
+                # Poor mans progress bar ;)
+                if self.progress:
+                    print(".", end="")
+                    sys.stdout.flush()
+            if self.progress:
+                print("\r", end="")
+        self.image_energy_evals += 1
+
+        energies = np.array([image.energy for image in self.images])
+        return {
+            "energies": energies,
+        }
+
+    @property
+    def image_energies(self):
+        if self._image_energies is None:
+            image_results = self.calculate_image_energies()
+            self._image_energies = image_results["energies"]
+        return self._image_energies
+
+    # We probably should not allow setting the energies of the underlying images.
+    # @image_energies.setter
+    # def image_energies(self, image_energies):
+    # assert image_energies.size == self.nimages
+    # # TODO: handle setting of fixed images
+    # # At the least the calculation of fixed image energies seems to be already
+    # # handled in calculate_image_energies/calculate_image_forces.
+    # self._image_energies = image_energies
+
+    def calculate_image_forces(self, image_indices=None):
+        images_to_calculate, image_indices = self.get_images_to_calculate(image_indices)
+
         if self.use_dask:
             self.concurrent_force_calcs(images_to_calculate, image_indices)
         # Serial calculation
@@ -483,38 +563,9 @@ class ChainOfStates:
             if self.progress:
                 print("\r", end="")
         self.set_zero_forces_for_fixed_images()
-        self.counter += 1
+        self.image_force_evals += 1
 
-        # EnergyMin calculator carries out multiple calculations at the same
-        # geometry, e.g., in different spin states or different electronic states
-        # and picks the one with the lowest energy.
-        if self.energy_min_mix:
-            # Will be None for calculators that already mix
-            all_energies = np.array([image.all_energies for image in self.images])
-            energy_diffs = np.diff(all_energies, axis=1).flatten()
-            calc_inds = all_energies.argmin(axis=1)
-            mix_at = []
-            for i, calc_ind in enumerate(calc_inds[:-1]):
-                next_ind = calc_inds[i + 1]
-                if (
-                    (calc_ind != next_ind)
-                    and (i not in self.org_forces_indices)
-                    and (i + 1 not in self.org_forces_indices)
-                ):
-                    min_diff_offset = energy_diffs[[i, i + 1]].argmin()
-                    mix_at.append(i + min_diff_offset)
-
-            for ind in mix_at:
-                self.images[ind].calculator.mix = True
-                # Recalculate correct energy and forces
-                print(
-                    f"Switch after calc_ind={calc_ind} at index {ind}. Recalculating."
-                )
-                self.images[ind].calc_energy_and_forces()
-                self.org_forces_indices.append(ind)
-                calc_ind = calc_inds[ind]
-
-        energies = [image.energy for image in self.images]
+        energies = np.array([image.energy for image in self.images])
         forces = np.array([image.forces for image in self.images])
         self.all_energies.append(energies)
         self.all_true_forces.append(forces.copy())
@@ -526,36 +577,68 @@ class ChainOfStates:
         }
 
     @property
+    def image_forces(self):
+        if self._image_forces is None:
+            image_results = self.calculate_image_forces()
+            self._image_energies = image_results["energies"]
+            self._image_forces = image_results["forces"]
+        return self._image_forces
+
+    # We probably should not allow setting the forces of the underlying images.
+    # @image_forces.setter
+    # def image_forces(self, image_forces):
+    # # TODO: handle setting of fixed images
+    # # At the least the calculation of fixed image energies seems to be already
+    # # handled in calculate_image_energies/calculate_image_forces.
+    # self._image_forces = image_forces
+
+    @property
     def forces(self):
-        self.set_zero_forces_for_fixed_images()
-        forces = [image.forces for image in self.images]
-        self._forces = np.concatenate(forces)
-        self.counter += 1
+        # TODO: check for self._perpendicular_forces?!
+        if self._forces is None:
+            image_forces = self.image_forces
+            image_energies = self.image_energies
+            # Tangents are required for the projection
+            tangents = self.tangents
+            self.perpendicular_forces = self.calculate_perpendicular_forces(
+                image_forces, tangents
+            )
+            self.perp_forces_list.append(self.perpendicular_forces.copy())
+            forces = self.perpendicular_forces.copy()  # .reshape(self.nimages, -1)
+            self.update_with_climbing_forces(
+                forces, tangents, image_energies, image_forces
+            )
+            self.forces = forces.flatten()
         return self._forces
 
     @forces.setter
     def forces(self, forces):
-        self.set_vector("forces", forces)
+        # TODO: zero forces for fixed images
+        self._forces = forces
+
+    def calculate_perpendicular_forces(self, image_forces, tangents):
+        """[1] Eq. 12"""
+        perp_forces = np.zeros((self.nimages, self.coords_length))
+        for j, _ in enumerate(self.image_inds):
+            if j not in self.moving_indices:
+                continue
+            fi = image_forces[j]
+            ti = tangents[j]
+            perp_forces[j] = fi - fi.dot(ti) * ti
+        return perp_forces
 
     @property
     def perpendicular_forces(self):
-        indices = range(len(self.images))
-        perp_forces = [self.get_perpendicular_forces(i) for i in indices]
-        return np.array(perp_forces).flatten()
+        return self._perpendicular_forces
 
-    def get_perpendicular_forces(self, i):
-        """[1] Eq. 12"""
-        # Our goal in optimizing a ChainOfStates is minimizing the
-        # perpendicular force. Always return zero perpendicular
-        # forces for fixed images, so that they don't interfere
-        # with the convergence check.
-        if i not in self.moving_indices:
-            return self.zero_vec
+    @perpendicular_forces.setter
+    def perpendicular_forces(self, perpendicular_forces):
+        self._perpendicular_forces = perpendicular_forces
 
-        forces = self.images[i].forces
-        tangent = self.get_tangent(i)
-        perp_forces = forces - forces.dot(tangent) * tangent
-        return perp_forces
+    @property
+    def pure_perpendicular_forces(self):
+        assert self.has_image_forces and self.has_tangents
+        return self.perpendicular_forces
 
     @property
     def gradient(self):
@@ -592,9 +675,23 @@ class ChainOfStates:
             self.log("Zeroed forces on fixed last image.")
 
     def get_tangent(
-        self, i, kind="upwinding", lanczos_guess=None, disable_lanczos=False
+        self,
+        i: int,
+        kind: Literal["upwinding", "bisect", "simple", "lanczos"] = "upwinding",
+        lanczos_guess: Optional[np.ndarray] = None,
+        disable_lanczos: bool = False,
+        energies: Optional[np.ndarray] = None,
     ):
-        """[1] Equations (8) - (11)"""
+        """[1] Equations (8) - (11).
+
+        To avoid any calculations when using upwinding tangents energies must be passed
+        explicitly for this kind. The Lanczos tangent will lead to additional calculations
+        nonetheless.
+        """
+        if kind == "upwinding":
+            assert energies is not None and (
+                len(energies) == self.nimages
+            ), "'upwinding'-tangents require energies!"
 
         # Converge to lowest curvature mode at the climbing image.
         # In the current implementation the given kind may be overwritten when
@@ -638,9 +735,11 @@ class ChainOfStates:
             tangent = first_term + sec_term
         # Upwinding tangent from [1] Eq. (8) and so on
         elif kind == "upwinding":
-            prev_energy = prev_image.energy
-            ith_energy = ith_image.energy
-            next_energy = next_image.energy
+            # If no energies are present at the energies accessing the energy
+            # attribute will initiate an energy calculation. As
+            prev_energy = energies[prev_index]
+            ith_energy = energies[i]
+            next_energy = energies[next_index]
 
             next_energy_diff = abs(next_energy - ith_energy)
             prev_energy_diff = abs(prev_energy - ith_energy)
@@ -687,21 +786,45 @@ class ChainOfStates:
                         f"Using tangent with hash={self.prev_lanczos_hash} "
                         "as initial guess for Lanczos algorithm."
                     )
-                w_min, tangent, _ = geom_lanczos(
-                    ith_image, guess=guess, logger=self.logger
-                )
+                # Drop the eigenvalue
+                _, tangent, _ = geom_lanczos(ith_image, guess=guess, logger=self.logger)
                 self.lanczos_tangents[cur_hash] = tangent
                 # Update hash
                 self.prev_lanczos_hash = cur_hash
+        else:
+            raise Exception(f"Unknown tangent kind '{kind}' requested!")
 
         tangent /= np.linalg.norm(tangent)
         return tangent
 
-    def get_tangents(self):
-        return np.array([self.get_tangent(i) for i in range(len(self.images))])
+    @property
+    def tangents(self):
+        if self._tangents is None:
+            image_energies = self.image_energies
+            # Besides kind="lanczos" tangent caluculation is basically free
+            self.tangents = np.array(
+                [
+                    self.get_tangent(i, energies=image_energies)
+                    for i in range(len(self.images))
+                ]
+            )
+        return self._tangents
+
+    @tangents.setter
+    def tangents(self, tangents):
+        assert tangents.shape == (self.nimages, self.coords_length)
+        self._tangents = tangents
 
     def as_xyz(self, comments=None):
-        return "\n".join([image.as_xyz() for image in self.images])
+        if comments is None:
+            comments = [""] * self.nimages
+        assert len(comments) == self.nimages
+        return "\n".join(
+            [
+                image.as_xyz(comment=comment)
+                for image, comment in zip(self.images, comments)
+            ]
+        )
 
     def get_dask_client(self):
         return Client(self.scheduler)
@@ -749,11 +872,19 @@ class ChainOfStates:
         self.coords_list.append(last_coords)
         self.forces_list.append(last_forces)
 
+        # print("@ Calculating forces in prepare_opt_cycle!")
+        # self.forces
+
         messages = list()
         # Check if we can start climbing.
         already_climbing = self.started_climbing
+        # TODO: use provided forces here to decided whether we want to climb
+        # Currently, new forces are calculated here when deciding if we want to climb ...
         if self.climb and not already_climbing:
-            self.started_climbing = self.compare_image_rms_forces(self.climb_rms)
+            # last_image_forces = last_forces.reshape(self.nimages, -1)
+            self.started_climbing = self.compare_image_rms_forces(
+                self.climb_rms,  # last_image_forces
+            )
             if self.started_climbing:
                 msg = "Will use climbing image(s) in next cycle."
                 self.log(msg)
@@ -802,6 +933,9 @@ class ChainOfStates:
         RMS force (rms_force) or from a multiple of the
         RMS force convergence threshold (rms_multiple, default).
         """
+        print(f"@@@ In compare_image_rms_forces")
+        # TODO:: del me; this starts force calculations if forces are not set
+        # TODO: self.perpendicular_forces is not a property anymore ...
         rms_forces = rms(self.perpendicular_forces)
         # Only start climbing when the COS is fully grown. This
         # attribute may not be defined in all subclasses, so it
@@ -811,11 +945,12 @@ class ChainOfStates:
         except AttributeError:
             fully_grown = True
         start_climbing = (rms_forces <= ref_rms) and fully_grown
+        print(f"@@@ Leaving compare_image_rms_forces")
         return start_climbing
 
-    def get_climbing_indices(self):
+    def get_climbing_indices(self, image_energies):
         # Index of the highest energy image (HEI)
-        hei_index = self.get_hei_index()
+        hei_index = self.get_hei_index(image_energies)
 
         move_inds = self.moving_indices
         # Don't climb if not yet enabled or requested.
@@ -841,26 +976,23 @@ class ChainOfStates:
         # self.log(f"Climbing indices: {climb_indices}")
         return climb_indices
 
-    def get_climbing_forces(self, ind):
-        climbing_image = self.images[ind]
-        ci_forces = climbing_image.forces
-        tangent = self.get_tangent(ind)
-        climbing_forces = ci_forces - 2 * ci_forces.dot(tangent) * tangent
-
-        return climbing_forces, climbing_image.energy
-
-    def set_climbing_forces(self, forces):
-        # Avoids calling the other methods with their logging output etc.
+    def update_with_climbing_forces(
+        self, forces, tangents, image_energies, image_forces
+    ):
         if not (self.climb and self.started_climbing):
             return forces
 
-        for i in self.get_climbing_indices():
-            climb_forces, climb_en = self.get_climbing_forces(i)
-            forces[i] = climb_forces
-            norm = np.linalg.norm(climb_forces)
+        for i in self.get_climbing_indices(image_energies):
+            # Energy and forces vector of climbing image
+            ienergy = image_energies[i]
+            iforces = image_forces[i]
+            tangent = tangents[i]
+            climbing_forces = iforces - 2 * iforces.dot(tangent) * tangent
+            # Updated original forces w/ forces reversed along tangent
+            forces[i] = climbing_forces
+            norm = np.linalg.norm(climbing_forces)
             self.log(
-                f"Climbing with image {i}, E = {climb_en:.6f} au, "
-                f"norm(forces)={norm:.6f}"
+                f"Climbing with image {i}, E = {ienergy:.6f} au, norm(forces)={norm:.6f}"
             )
         return forces
 

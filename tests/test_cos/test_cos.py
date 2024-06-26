@@ -80,10 +80,10 @@ def test_anapot_neb(opt_cls, opt_kwargs_, neb_kwargs_, ref_cycle, between):
 @pytest.mark.parametrize(
     "between, param, ref_cycle",
     [
-        (5, "equal", 49),
-        (10, "equal", 49),
-        (5, "energy", 41),
-        (10, "energy", 46),
+        (5, "equal", 31),
+        (10, "equal", 31),
+        (5, "energy", 30),
+        (10, "energy", 28),
     ],
 )
 def test_anapot_szts(between, param, ref_cycle):
@@ -93,9 +93,9 @@ def test_anapot_szts(between, param, ref_cycle):
         "param": param,
     }
 
-    opt_cls = SteepestDescent
     opt_kwargs = {
         "max_cycles": 100,
+        "reparam_check_rms": False,
     }
     opt = run_cos_opt(
         geoms, between, AnaPot, SimpleZTS, szts_kwargs, SteepestDescent, opt_kwargs

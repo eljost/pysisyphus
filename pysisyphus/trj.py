@@ -446,7 +446,9 @@ def align(geoms):
 def spline_redistribute(geoms):
     szts = SimpleZTS.SimpleZTS(geoms)
     pre_diffs = get_coords_diffs([image.coords for image in szts.images])
-    szts.reparametrize()
+    # As there are no energies available we can only evenly distribute the images
+    dummy_ens = None
+    szts.reparametrize(dummy_ens)
     post_diffs = get_coords_diffs([image.coords for image in szts.images])
     cds_str = lambda cds: " ".join([f"{cd:.2f}" for cd in cds])
     print("Normalized path segments before splining:")
