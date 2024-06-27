@@ -201,7 +201,7 @@ def get_calc_closure(base_name, calc_key, calc_kwargs, iter_dict=None, index=Non
         # calc1/calc2 are used for ConicalIntersection and EnergyMin.
         "calculator1": "calculator1",
         "calc1": "calculator1",  # shortcut for 'calculator1'
-        "calcualtor2": "calculator2",
+        "calculator2": "calculator2",
         "calc2": "calculator2",  # shortcut for 'calculator2'
     }
 
