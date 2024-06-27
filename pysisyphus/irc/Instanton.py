@@ -287,6 +287,6 @@ class Instanton:
         length = coord_diffs.sum()
         return length
 
-    def get_additional_print(self):
+    def get_additional_print(self, energies):
         length = self.path_length
         return f"\t\tInstanton length={length:.2f} √a̅m̅u̅·au"

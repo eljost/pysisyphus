@@ -376,7 +376,7 @@ class GrowingString(GrowingChainOfStates):
             tangent = super().get_tangent(i, *args, **kwargs)
         return tangent
 
-    def reparametrize(self, image_energies):
+    def reparametrize(self, image_energies, forces):
         reparametrized = False
         # If this counter reaches 0 reparametrization will occur.
         self.reparam_in -= 1

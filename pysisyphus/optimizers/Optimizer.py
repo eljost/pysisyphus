@@ -637,7 +637,8 @@ class Optimizer(metaclass=abc.ABCMeta):
                 desired_eigval_structure = (
                     # Acutally all eigenvalues would have to be checked, but
                     # currently they are not stored anywhere.
-                    self.ts_mode_eigvals < self.small_eigval_thresh
+                    self.ts_mode_eigvals
+                    < self.small_eigval_thresh
                 ).sum() == len(self.roots)
             except AttributeError:
                 self.log(
@@ -1157,7 +1158,9 @@ class Optimizer(metaclass=abc.ABCMeta):
                 self.geometry, "reparametrize"
             ):
                 # Reparametirze w/ latest energies. The energies
-                reparametrized = self.geometry.reparametrize(self.energies[-1])
+                reparametrized = self.geometry.reparametrize(
+                    self.energies[-1], self.forces[-1]
+                )
             else:
                 reparametrized = False
 

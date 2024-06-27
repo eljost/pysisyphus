@@ -11,7 +11,7 @@ class SimpleZTS(ChainOfStates):
         self.param = param
         super(SimpleZTS, self).__init__(images, **kwargs)
 
-    def reparametrize(self, energies):
+    def reparametrize(self, energies, forces):
         def weight_function(mean_energies):
             mean_energies = np.abs(mean_energies)
             weights = mean_energies / mean_energies.max()
