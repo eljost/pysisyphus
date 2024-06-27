@@ -69,20 +69,16 @@ class AdaptiveNEB(NEB):
 
     @NEB.forces.getter
     def forces(self):
-        # """See Eq. (7) in [2]."""
-
         forces = super().forces
-        forces_size = self.images[-1].forces.size
+        coords_length = self.coords_length
 
         if self.free_ends and (not self.fix_first):
-            # mod_forces = self.get_perpendicular_forces(0)
             mod_forces = self.perpendicular_forces[0]
-            forces[:forces_size] = mod_forces
+            forces[:coords_length] = mod_forces
 
         if self.free_ends and (not self.fix_last):
-            # mod_forces = self.get_perpendicular_forces(self.last_index)
             mod_forces = self.perpendicular_forces[self.last_index]
-            forces[-forces_size:] = mod_forces
+            forces[-coords_length:] = mod_forces
 
         self._forces = forces
         return self._forces
