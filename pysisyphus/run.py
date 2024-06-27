@@ -248,6 +248,8 @@ def run_tsopt_from_cos(
 ):
     print(highlight_text("Running TS-optimization from COS"))
 
+    energies = [image.energy for image in cos.images]
+
     # Later want a Cartesian HEI tangent, so if not already present we create
     # a Cartesian COS object to obtain the tangent from.
     atoms = cos.images[0].atoms
@@ -268,7 +270,7 @@ def run_tsopt_from_cos(
         hei_index = cos.get_hei_index()
         hei_image = cos.images[hei_index]
         # Select the Cartesian tangent from the COS
-        cart_hei_tangent = cart_cos.get_tangent(hei_index)
+        cart_hei_tangent = cart_cos.get_tangent(hei_index, energies=energies)
     # Use splined HEI
     elif hei_kind == "splined":
         # The splined HEI tangent is usually very bady for the purpose of
@@ -290,8 +292,8 @@ def run_tsopt_from_cos(
         # Indices of the two nearest images with integer indices.
         floor = int(floor)
         ceil = floor + 1
-        floor_tangent = cart_cos.get_tangent(floor)
-        ceil_tangent = cart_cos.get_tangent(ceil)
+        floor_tangent = cart_cos.get_tangent(floor, energies=energies)
+        ceil_tangent = cart_cos.get_tangent(ceil, energies=energies)
         print(f"Creating mixed HEI tangent, using tangents at images {(floor, ceil)}.")
         print("Overlap of splined HEI tangent with these tangents:")
         for ind, tang in ((floor, floor_tangent), (ceil, ceil_tangent)):

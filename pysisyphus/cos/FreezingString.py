@@ -82,7 +82,7 @@ class FreezingString:
         self.log(f"Create new image; insert it before index {index}.")
         return new_image
 
-    def reparametrize(self, energy):
+    def reparametrize(self, energy, forces):
         self.opt_steps_left -= 1
 
         if not self.fully_grown and self.opt_steps_left == 0:

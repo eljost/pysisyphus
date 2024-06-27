@@ -199,7 +199,7 @@ class GrowingNT:
         self.passed_min = False
         self.passed_ts = False
 
-    def reparametrize(self, image_energies):
+    def reparametrize(self, image_energies, _forces):
         """Check if GNT can be grown."""
 
         # Real, unprojected, forces of the underlying geometry

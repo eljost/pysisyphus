@@ -1,3 +1,5 @@
+import pytest
+
 from pysisyphus.calculators.AnaPot import AnaPot
 from pysisyphus.cos.AdaptiveNEB import AdaptiveNEB
 from pysisyphus.optimizers.ConjugateGradient import ConjugateGradient
@@ -19,12 +21,21 @@ def test_anapot_aneb():
     # ap = calc.anim_opt(opt, show=True)
 
     assert opt.is_converged
-    assert opt.cur_cycle == 21
+    assert opt.cur_cycle == 28
 
 
 @using("pyscf")
 def test_hcn_aneb():
     run_dict = {
+        "geom": {
+            "type": "cart",
+            "fn": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"],
+        },
+        "calc": {
+            "type": "pyscf",
+            "pal": 2,
+            "basis": "321g",
+        },
         "preopt": {
             "max_cycles": 3,
         },
@@ -40,18 +51,14 @@ def test_hcn_aneb():
             "max_cycles": 25,
             "align": True,
         },
-        "calc": {
-            "type": "pyscf",
-            "pal": 2,
-            "basis": "321g",
-        },
-        "geom": {
-            "type": "cart",
-            "fn": ["lib:hcn.xyz", "lib:hcn_iso_ts.xyz", "lib:nhc.xyz"],
+        "tsopt": {
+            "thresh": "gau",
+            "do_hess": True,
         },
     }
     results = run_from_dict(run_dict)
 
     assert results.cos_opt.is_converged
-    assert results.cos_opt.cur_cycle == 23
+    assert results.cos_opt.cur_cycle == 18
     assert results.cos.level == 3
+    assert results.ts_geom.energy == pytest.approx(-92.246043)

@@ -135,7 +135,7 @@ class NEB(ChainOfStates):
             # We can't use the last image index because there is one
             # spring less than there are images.
             spring_index = min(i, len(self.images) - 2)
-            return self.k[spring_index] * tangents
+            return self.k[spring_index] * tangent
 
         prev_coords = self.images[i - 1].coords
         ith_coords = self.images[i].coords
