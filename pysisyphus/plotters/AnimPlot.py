@@ -9,6 +9,33 @@ from pysisyphus.helpers import get_coords_diffs
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
 
+def augment_variable_size_arrays(inp_list, as_array=True):
+    max_len = 0
+    for array in inp_list:
+        max_len = max(max_len, len(array))
+
+    aug_list = list()
+    for array in inp_list:
+        assert array.ndim in (1, 2)
+        if len(array) == max_len:
+            aug_arr = array
+        # Repeat first item
+        else:
+            assert len(array) > 0
+            missing_entries = max_len - len(array)
+            if array.ndim == 1:
+                new_entries = np.repeat(array[0], missing_entries)
+                aug_arr = np.concatenate((new_entries, array))
+            else:
+                new_entries = np.tile(array[0], missing_entries)
+                new_entries = new_entries.reshape(-1, len(array[0]))
+                aug_arr = np.concatenate((new_entries, array), axis=0)
+        aug_list.append(aug_arr)
+    if as_array:
+        aug_list = np.array(aug_list)
+    return aug_list
+
+
 class AnimPlot:
     def __init__(
         self,
@@ -53,10 +80,28 @@ class AnimPlot:
         self.tight_layout = tight_layout
 
         self.growing = isinstance(self.optimizer.geometry, GrowingChainOfStates)
+
         self.coords = [c.reshape(-1, 3) for c in self.optimizer.coords]
         self.forces = [f.reshape((-1, 3)) for f in self.optimizer.forces]
         self.energies = self.optimizer.energies
         self.tangents = [t.reshape((-1, 3)) for t in self.optimizer.tangents]
+
+        # Some dummy-Geometries like AdaptiveNeb comprise a varying number of images
+        # along the optimization. For the animation we plot the first cycle, save the
+        # resulting (lines, ...) objects on the AnimPlot object and update them.
+        #
+        # Given an AdaptiveNeb to animate we may start with 10 images, that shrink
+        # to 5 after the first adaption. This would mess up the animation as the code
+        # would try to update 10 points with the information of only 5.
+        #
+        # To solve this issue we determine the maximum length of any array in the four
+        # lists below (self.coords, self.forces, self.tangents, self.energies) and augment
+        # all shorter lists by repeating the first element/row enough times. This way all
+        # lists will have the same length and can be used for animations.
+        self.coords = augment_variable_size_arrays(self.coords, as_array=True)
+        self.forces = augment_variable_size_arrays(self.forces, as_array=True)
+        self.tangents = augment_variable_size_arrays(self.tangents, as_array=True)
+        self.energies = augment_variable_size_arrays(self.energies, as_array=True)
 
         # ax: the contour plot
         # ax1: energy along the path

@@ -69,17 +69,19 @@ class AdaptiveNEB(NEB):
 
     @NEB.forces.getter
     def forces(self):
-        """See Eq. (7) in [2]."""
+        # """See Eq. (7) in [2]."""
 
         forces = super().forces
         forces_size = self.images[-1].forces.size
 
         if self.free_ends and (not self.fix_first):
-            mod_forces = self.get_perpendicular_forces(0)
+            # mod_forces = self.get_perpendicular_forces(0)
+            mod_forces = self.perpendicular_forces[0]
             forces[:forces_size] = mod_forces
 
         if self.free_ends and (not self.fix_last):
-            mod_forces = self.get_perpendicular_forces(self.last_index)
+            # mod_forces = self.get_perpendicular_forces(self.last_index)
+            mod_forces = self.perpendicular_forces[self.last_index]
             forces[-forces_size:] = mod_forces
 
         self._forces = forces
@@ -135,14 +137,14 @@ class AdaptiveNEB(NEB):
         )
         return adapt
 
-    def prepare_opt_cycle(self, *args, **kwargs):
+    def reparametrize(self, image_energies, forces):
         """Check for adaption and adapt if needed.
 
         See ChainOfStates.prepare_opt_cycle for a complete docstring.
         """
-        base_reset, base_messages = super().prepare_opt_cycle(*args, **kwargs)
+        # Return early when adaption is disabled
         if not self.adapt:
-            return base_reset, base_messages
+            return False
 
         # Transferring Calculators including WFOWrapper objects
         # in excited state calculations may be problematic.
@@ -151,7 +153,7 @@ class AdaptiveNEB(NEB):
         # image? Additionally we probably would have to shift around the
         # iterations stored in the WFOWrapper.
         img0 = self.images[0]
-        if hasattr(img0, "track") and (img0.track == True):
+        if hasattr(img0, "track") and img0.track:
             raise Exception(
                 "track = True and interpolating new images "
                 "may give problems with excited state tracking, so this "
@@ -160,23 +162,22 @@ class AdaptiveNEB(NEB):
 
         # Initialize adapt_thresh
         if not self.adapt_thresh:
-            self.update_adapt_thresh(self.forces_list[-1])
+            # self.update_adapt_thresh(self.forces_list[-1])
+            self.update_adapt_thresh(forces)
 
-        if not self.adapt_this_cycle(self.forces_list[-1]):
-            return base_reset, base_messages
+        if not self.adapt_this_cycle(forces):
+            return False
 
-        #
         # Adapation from here on
         #
         # Backup coords if we have to step back
         self.coords_backup.append(self.coords)
-        messages = base_messages
         # Determine highest energy index and image (HEI)
         hei_index = self.get_hei_index(self.all_energies[-1])
         self.log(f"Index of highest energy image is {hei_index}")
         if (hei_index == 0) or (hei_index == len(self.images) - 1):
             self.log("Cant adapt, HEI is first or last!")
-            return base_reset
+            return False
         else:
             self.fix_first = False
             self.fix_last = False
@@ -220,7 +221,12 @@ class AdaptiveNEB(NEB):
         )
         self.level += 1
 
-        messages.append(
+        # TODO: reenable this message
+        # messages.append(
+        # f"Adapted images! New number of images is {len(all_new_images)}. "
+        # f"Current level is {self.level}."
+        # )
+        print(
             f"Adapted images! New number of images is {len(all_new_images)}. "
             f"Current level is {self.level}."
         )
@@ -241,4 +247,4 @@ class AdaptiveNEB(NEB):
         # Reset adapt_thresh so it will be set again in the beginning
         # of the next iteration.
         self.adapt_thresh = None
-        return True, messages
+        return True

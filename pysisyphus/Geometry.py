@@ -424,9 +424,7 @@ class Geometry:
     def del_atoms(self, inds, **kwargs):
         atoms = [atom for i, atom in enumerate(self.atoms) if i not in inds]
         c3d = self.coords3d
-        coords3d = np.array(
-            [c3d[i] for i, _ in enumerate(self.atoms) if i not in inds]
-        )
+        coords3d = np.array([c3d[i] for i, _ in enumerate(self.atoms) if i not in inds])
         return Geometry(atoms, coords3d.flatten(), **kwargs)
 
     def set_calculator(self, calculator, clear=True):
@@ -824,7 +822,7 @@ class Geometry:
             if aligned:
                 break
 
-    def reparametrize(self, energy):
+    def reparametrize(self, energy, forces):
         # Currently, self.calculator.get_coords is only implemented by the
         # IPServer, but it is deactivated there.
         try:
