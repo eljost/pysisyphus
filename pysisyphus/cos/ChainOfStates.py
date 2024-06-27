@@ -146,6 +146,7 @@ class ChainOfStates:
         if self.started_ts_opt:
             self.log("Will use TS image(s) immediately.")
         self.fixed_climb_indices = None
+        self.started_energy_min_mixing = False
         self.fixed_ts_indices = None
         # Use original forces for these images
         self.org_forces_indices = list()
@@ -288,10 +289,7 @@ class ChainOfStates:
         return ia2d
 
     def log(self, message):
-        self.logger.debug(
-            f"Evals: (energies, {self.image_energy_evals}), "
-            f"(forces, {self.image_force_evals}); {message}"
-        )
+        self.logger.debug(message)
 
     def get_fixed_indices(self):
         fixed = list()
@@ -592,23 +590,31 @@ class ChainOfStates:
     # # handled in calculate_image_energies/calculate_image_forces.
     # self._image_forces = image_forces
 
+    def prepare_forces(self):
+        image_forces = self.image_forces
+
+        # Tangents are required for the projection
+        tangents = self.tangents
+        self.perpendicular_forces = self.calculate_perpendicular_forces(
+            image_forces, tangents
+        )
+        self.perp_forces_list.append(self.perpendicular_forces.copy())
+        forces = self.perpendicular_forces.copy()
+        return forces
+
+    def finalize_forces(self, forces):
+        image_forces = self.image_forces
+        image_energies = self.image_energies
+        tangents = self.tangents
+        self.update_with_climbing_forces(forces, tangents, image_energies, image_forces)
+        self.update_with_org_forces(forces, self.org_forces_indices, image_forces)
+        self.forces = forces.flatten()
+
     @property
     def forces(self):
-        # TODO: check for self._perpendicular_forces?!
         if self._forces is None:
-            image_forces = self.image_forces
-            image_energies = self.image_energies
-            # Tangents are required for the projection
-            tangents = self.tangents
-            self.perpendicular_forces = self.calculate_perpendicular_forces(
-                image_forces, tangents
-            )
-            self.perp_forces_list.append(self.perpendicular_forces.copy())
-            forces = self.perpendicular_forces.copy()  # .reshape(self.nimages, -1)
-            self.update_with_climbing_forces(
-                forces, tangents, image_energies, image_forces
-            )
-            self.forces = forces.flatten()
+            forces = self.prepare_forces()
+            self.finalize_forces(forces)
         return self._forces
 
     @forces.setter
@@ -872,9 +878,6 @@ class ChainOfStates:
         self.coords_list.append(last_coords)
         self.forces_list.append(last_forces)
 
-        # print("@ Calculating forces in prepare_opt_cycle!")
-        # self.forces
-
         messages = list()
         # Check if we can start climbing.
         already_climbing = self.started_climbing
@@ -908,6 +911,31 @@ class ChainOfStates:
                 msg = "Will use Lanczos algorithm for HEI tangent in next cycle."
                 self.log(msg)
                 messages.append(msg)
+
+        # Check for mixing images
+        if self.energy_min_mix and not self.started_energy_min_mixing:
+            assert all([image.has_all_energies for image in self.images])
+            all_energies = np.array([image.all_energies for image in self.images])
+            assert all_energies.shape[1] == 2  # Force two states/energies
+            energy_diffs = np.diff(all_energies, axis=1).flatten()
+            calc_inds = all_energies.argmin(axis=1)
+
+            mix_at = []
+            for i, calc_ind in enumerate(calc_inds[:-1]):
+                next_ind = calc_inds[i + 1]
+                if (
+                    (calc_ind != next_ind)
+                    and (i not in self.org_forces_indices)
+                    and (i + 1 not in self.org_forces_indices)
+                ):
+                    min_diff_offset = energy_diffs[[i, i + 1]].argmin()
+                    mix_at.append(i + min_diff_offset)
+
+            for ind in mix_at:
+                self.images[ind].calculator.mix = True
+                self.org_forces_indices.append(ind)
+                self.log(f"Enable energy mixing for  calculator of image {ind}.")
+            self.started_energy_min_mixing = True
 
         # Starting TS optimization does not influence the return value. Expand on this?!
         if self.ts_opt and not self.started_ts_opt:
@@ -993,6 +1021,10 @@ class ChainOfStates:
                 f"Climbing with image {i}, E = {ienergy:.6f} au, norm(forces)={norm:.6f}"
             )
         return forces
+
+    def update_with_org_forces(self, forces, indices, image_forces):
+        for ind in indices:
+            forces[ind] = image_forces[ind]
 
     def get_ts_image_indices(self):
         if not self.started_ts_opt:

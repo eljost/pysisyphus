@@ -167,36 +167,25 @@ class NEB(ChainOfStates):
             )
         return quenched_dneb_forces
 
-    @ChainOfStates.forces.getter
-    def forces(self):
-        if self._forces is None:
-            image_forces = self.image_forces
-            image_energies = self.image_energies
-            self.update_springs(image_energies)
-            # Tangents are required for the projection
-            tangents = self.tangents
-            self.perpendicular_forces = self.calculate_perpendicular_forces(
-                image_forces, tangents
-            )
-            self.perp_forces_list.append(self.perpendicular_forces.copy())
-            parallel_forces = self.calculate_parallel_forces(tangents)
-            quenched_dneb_forces = self.calculate_quenched_dneb_forces(
-                image_forces, tangents
-            )
-            forces = self.perpendicular_forces + parallel_forces + quenched_dneb_forces
+    def prepare_forces(self):
+        forces = super().prepare_forces()
+        image_forces = self.image_forces
+        image_energies = self.image_energies
+        tangents = self.tangents
 
-            if self.bandwidth is not None:
-                stiff_stress = get_stiff_stress(
-                    bandwidth=self.bandwidth,
-                    kappa=self.k,
-                    image_coords=self.image_coords,
-                    tangents=tangents,
-                )
-                forces = forces + stiff_stress
-
-            self.update_with_climbing_forces(
-                forces, tangents, image_energies, image_forces
+        self.update_springs(image_energies)
+        parallel_forces = self.calculate_parallel_forces(tangents)
+        quenched_dneb_forces = self.calculate_quenched_dneb_forces(
+            image_forces, tangents
+        )
+        if self.bandwidth is not None:
+            stiff_stress = get_stiff_stress(
+                bandwidth=self.bandwidth,
+                kappa=self.k,
+                image_coords=self.image_coords,
+                tangents=tangents,
             )
-            # TODO: Implement org_forces_indices-related logic
-            self.forces = forces.flatten()
-        return self._forces
+        else:
+            stiff_stress = np.zeros_like(forces)
+        forces = forces + parallel_forces + quenched_dneb_forces + stiff_stress
+        return forces

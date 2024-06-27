@@ -628,8 +628,7 @@ class Optimizer(metaclass=abc.ABCMeta):
                 desired_eigval_structure = (
                     # Acutally all eigenvalues would have to be checked, but
                     # currently they are not stored anywhere.
-                    self.ts_mode_eigvals
-                    < self.small_eigval_thresh
+                    self.ts_mode_eigvals < self.small_eigval_thresh
                 ).sum() == len(self.roots)
             except AttributeError:
                 self.log(
@@ -926,9 +925,7 @@ class Optimizer(metaclass=abc.ABCMeta):
         if not self.restarted:
             prep_start_time = time.time()
             # Set up the optimizer in prepare_opt, e.g., prepare initial Hessiane etc.
-            print("@ Calling prepare_opt()")
             self.prepare_opt()
-            print("@ Done w/ prepare_opt()")
             self.log(f"{self.geometry.coords.size} degrees of freedom.")
             prep_end_time = time.time()
             prep_time = prep_end_time - prep_start_time
@@ -1212,7 +1209,6 @@ class Optimizer(metaclass=abc.ABCMeta):
         #############################################
 
         self.print("")
-        print("@ Finished optimization; doing final summary")
         if self.dump:
             self.out_trj_handle.close()
 

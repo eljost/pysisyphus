@@ -41,7 +41,6 @@ class EnergyMin(Calculator):
         mix
             Enable mixing of both forces, according to the approach outlined
             in [2]. Can be used to optimize guesses for MECPs.
-            Pass
         alpha
             Smoothing parameter in Hartree. See [2] for a discussion.
         sigma
@@ -49,15 +48,15 @@ class EnergyMin(Calculator):
             smaller for bigga sigmas. Has to be adapted for each case. See
             [2] for a discussion (p. 407 right column and p. 408 left column.)
         min_energy_diff
-            Energy difference in Hartree. When set to a value != 0 and the
-            energy difference between both
+            Energy difference in Hartree.
+            When set to a value != 0 and the energy difference between both
             calculators drops below this value, execution of both calculations
-            is diabled for 'check_after' cycles. In these cycles the calculator choice
-            remains fixed. After 'check_after' cycles, both energies
-            will be calculated and it is checked, if the previous calculator
-            choice remains valid.
+            is diabled for 'check_after' cycles. In these cycles the calculator
+            choice remains fixed, that is only one state is calculated. After
+            'check_after' cycles, both energies will be calculated again and it
+            is checked, if the previous calculator choice is still valid.
             In conjunction with 'check_after' both arguments can be used to
-            save computational ressources.
+            save computational ressources and to speed up the calculations.
         check_after
             Amount of cycles in which the calculator choice remains fixed.
 
@@ -175,8 +174,7 @@ class EnergyMin(Calculator):
             # When the actual difference is above to minimum differences
             # or
             # no calculator is fixed yet
-            (energy_diff > self.min_energy_diff)
-            or (self.fixed_calc is None)
+            (energy_diff > self.min_energy_diff) or (self.fixed_calc is None)
         ):
             self.fixed_calc = (self.calc1, self.calc2)[min_ind]
             self.recalc_in = self.check_after
