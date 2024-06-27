@@ -151,7 +151,7 @@ def run_opt(
             print("Propagating chkfiles along COS")
             for j, image in enumerate(geom.images):
                 image.energy
-                print("\tcalculated wavefunction for image {j:03d}")
+                print(f"\tCalculated wavefunction for image {j:03d}")
                 cur_calc = image.calculator
                 try:
                     next_calc = geom.images[j + 1].calculator
@@ -159,7 +159,7 @@ def run_opt(
                     pass
                 try:
                     next_calc.set_chkfiles(cur_calc.get_chkfiles())
-                    print("\tset wavefunction of image {j:03d} on image {j+1:03d}")
+                    print(f"\tSet wavefunction of image {j:03d} on image {j+1:03d}")
                 except AttributeError:
                     break
                 sys.stdout.flush()
