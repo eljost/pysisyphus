@@ -208,3 +208,4 @@ version.py
 !tests/test_turbomole/make_dens/*
 !pysisyphus/wf_library/*
 !pysisyphus/numint/lebedev_grids_4pi.npz
+!pysisyphus/test_cos/multi_state_inp.npz
