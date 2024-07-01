@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 from typing import Callable, Dict, Optional, Tuple
 import sys
+import time
 
 import numpy as np
 
@@ -150,8 +151,12 @@ def run_opt(
         if propagate and is_cos:
             print("Propagating chkfiles along COS")
             for j, image in enumerate(geom.images):
+                prop_dur = time.time()
                 image.energy
-                print(f"\tCalculated wavefunction for image {j:03d}")
+                prop_dur = time.time() - prop_dur
+                print(
+                    f"\tCalculated wavefunction for image {j:03d} in {prop_dur: >8.2f} s"
+                )
                 cur_calc = image.calculator
                 try:
                     next_calc = geom.images[j + 1].calculator
