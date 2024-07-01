@@ -18,6 +18,7 @@ from pysisyphus.helpers_pure import hash_arr, rms
 from pysisyphus.modefollow import geom_lanczos
 
 from pysisyphus.cos.distributed import distributed_calculations
+from pysisyphus.cos import multi_state
 
 
 class ClusterDummy:
@@ -917,19 +918,8 @@ class ChainOfStates:
             assert all([image.has_all_energies for image in self.images])
             all_energies = np.array([image.all_energies for image in self.images])
             assert all_energies.shape[1] == 2  # Force two states/energies
-            energy_diffs = np.diff(all_energies, axis=1).flatten()
-            calc_inds = all_energies.argmin(axis=1)
 
-            mix_at = []
-            for i, calc_ind in enumerate(calc_inds[:-1]):
-                next_ind = calc_inds[i + 1]
-                if (
-                    (calc_ind != next_ind)
-                    and (i not in self.org_forces_indices)
-                    and (i + 1 not in self.org_forces_indices)
-                ):
-                    min_diff_offset = energy_diffs[[i, i + 1]].argmin()
-                    mix_at.append(i + min_diff_offset)
+            mix_at = multi_state.determine_meisc_images(all_energies)
 
             for ind in mix_at:
                 self.images[ind].calculator.mix = True
