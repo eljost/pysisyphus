@@ -49,6 +49,9 @@ def parse_mol2(text):
             "xyz"
         )
         + pp.Word(pp.printables).set_results_name("atom_type")
+        # TODO: fix this parser, as it breaks when the optional values are not provided.
+        # If subst_id is missing the atom_id is on the next line is mistaken for it, so
+        # a fix would be to restrict parsing of this token to one line.
         + pp.Optional(pp.common.integer.set_results_name("subst_id"))
         + pp.Optional(pp.Word(pp.printables).set_results_name("subst_name"))
         + pp.Optional(pp.common.real.set_results_name("charge"))
@@ -74,6 +77,7 @@ def parse_mol2(text):
     parser.ignore(pp.helpers.python_style_comment)
 
     result = parser.parseString(text)
+
     return result
 
 
