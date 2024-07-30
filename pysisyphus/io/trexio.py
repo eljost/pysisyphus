@@ -90,6 +90,8 @@ def wavefunction_from_trexio(fn: str | Path, **kwargs):
     mult = int(2 * Stot + 1)
     charge = sum(charges) - up_num - dn_num
 
+    ecp_electrons = trexio.read_ecp_z_core(tf)
+
     # ao_num, mo_num
     C_tio = trexio.read_mo_coefficient(tf).T
     mo_spin = trexio.read_mo_spin(tf)
@@ -112,7 +114,6 @@ def wavefunction_from_trexio(fn: str | Path, **kwargs):
     bf_type = (
         BFType.CARTESIAN if trexio.read_ao_cartesian(tf) else BFType.PURE_SPHERICAL
     )
-    ecp_electrons = None
     # Construct shells
     shells = shells_from_trexio(handle=tf, **shell_kwargs)
     tf.close()
@@ -154,7 +155,6 @@ def wavefunction_to_trexio(
     #   2.1 Nucleus group
     nucleus_num = len(wf.atoms)
     trexio.write_nucleus_num(tf, nucleus_num)
-    # TODO: ECP core electrons?!
     trexio.write_nucleus_charge(tf, wf.nuc_charges)
     trexio.write_nucleus_label(tf, wf.atoms)
     trexio.write_nucleus_point_group(tf, point_group)
@@ -167,6 +167,10 @@ def wavefunction_to_trexio(
     trexio.write_electron_num(tf, num)
     trexio.write_electron_up_num(tf, up_num)
     trexio.write_electron_dn_num(tf, dn_num)
+
+    # 3. Basis functions
+    #   3.2 Effective Core Potentials
+    trexio.write_ecp_z_core(tf, wf.ecp_electrons)
 
     Ca, Cb = wf.C
     ao_num, mo_num = Ca.shape

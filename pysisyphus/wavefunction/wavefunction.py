@@ -90,7 +90,7 @@ class Wavefunction:
                 _ecp_electrons[k] = v
             ecp_electrons = _ecp_electrons
         self.ecp_electrons = np.array(ecp_electrons, dtype=int)
-        self.charge = charge
+        self.charge = int(charge)
         if abs(self.charge) > warn_charge:
             warnings.warn(
                 f"Encountered charge={self.charge} with high absolute value!\n"
