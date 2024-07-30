@@ -30,20 +30,20 @@ DensityType = Enum("DensityType", ["UNRELAXED", "RELAXED"])
 class Wavefunction:
     def __init__(
         self,
-        atoms: Tuple[str],
-        coords: NDArray[float],
+        atoms: tuple[str, ...],
+        coords: np.ndarray,
         charge: int,
         mult: int,
         unrestricted: bool,
-        occ: Tuple[int],
-        C: NDArray[float],
+        occ: tuple[int, int],
+        C: np.ndarray,
         bf_type: BFType,
         # TODO: make shells mandataory ...
         shells: Optional[Shells] = None,
         ecp_electrons=None,
-        mo_ens=None,
-        strict=True,
-        warn_charge=4,
+        mo_ens: Optional[np.ndarray] = None,
+        strict: bool = True,
+        warn_charge: int = 4,
     ):
         self.atoms = atoms
         self.coords = np.array(coords).flatten()
@@ -68,7 +68,7 @@ class Wavefunction:
         self.shells = shells
         self.mo_ens = mo_ens
         # Reorder MO-coefficients & energies, if requested
-        if self.shells.ordering == "pysis":
+        if self.has_shells and self.shells.ordering == "pysis":
             P = self.get_permut_matrix_native()
             C = self.C.copy()
             # Loop over alpha and beta MOs
@@ -107,8 +107,12 @@ class Wavefunction:
             self._current_density_key: self.P,
         }
 
-        if strict and self.shells is not None:
+        if strict and self.has_shells:
             self.check_sanity()
+
+    @property
+    def has_shells(self):
+        return self.shells is not None
 
     def check_sanity(self):
         assert self.shells is not None
@@ -190,6 +194,7 @@ class Wavefunction:
             ".fchk": Wavefunction.from_fchk,
             ".json": Wavefunction.from_orca_json,
             ".molden": Wavefunction.from_molden,
+            ".trexio": Wavefunction.from_trexio,
         }
         from_funcs_for_line = (
             # Molden format
@@ -273,6 +278,12 @@ class Wavefunction:
         from pysisyphus.io.aomix import wavefunction_from_aomix
 
         return wavefunction_from_aomix(text, **kwargs)
+
+    @staticmethod
+    def from_trexio(fn, **kwargs):
+        from pysisyphus.io.trexio import wavefunction_from_trexio
+
+        return wavefunction_from_trexio(fn, **kwargs)
 
     @property
     def C_occ(self):

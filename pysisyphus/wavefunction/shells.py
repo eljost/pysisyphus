@@ -504,6 +504,11 @@ class Shells:
             shell_data, centers, coefficients, exponents
         )
 
+    @classmethod
+    def from_shells(cls, other, **kwargs):
+        shells = other.shells
+        return cls(shells, **kwargs)
+
     @staticmethod
     def from_pyscf_mol(mol, **kwargs):
         from pysisyphus.calculators.PySCF import from_pyscf_mol
