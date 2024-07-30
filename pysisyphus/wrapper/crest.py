@@ -52,6 +52,7 @@ def run_crest(
     pal=1,
     cluster: Optional[int] = None,
     zip_fn: Optional[PathLike] = None,
+    gfn: Literal["ff", "0", "1", "2"] = "ff",
 ) -> CrestResult:
     inp = Path(fn)
     crest_cmd = get_cmd("crest")
@@ -70,6 +71,14 @@ def run_crest(
     # Clustering of conformers
     if cluster is not None:
         add_arg(f"-cluster {cluster}")
+    # Level of theory
+    gfn_arg = {
+        "ff": "-gfnff",
+        "0": "-gfn0",
+        "1": "-gfn1",
+        "2": "-gfn2",
+    }[gfn]
+    add_arg(gfn_arg)
 
     cmd = " ".join(args)
     # Run command like
