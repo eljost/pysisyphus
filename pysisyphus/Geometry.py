@@ -1365,7 +1365,7 @@ class Geometry:
         with open(fn, "w") as handle:
             handle.write(self.as_xyz(cart_coords=cart_coords, **kwargs))
 
-    def get_subgeom(self, indices, coord_type="cart", sort=False):
+    def get_subgeom(self, indices, coord_type="cart", sort=False, cart_coords=None):
         """Return a Geometry containing a subset of the current Geometry.
 
         Parameters
@@ -1374,17 +1374,23 @@ class Geometry:
             Atomic indices that the define the subset of the current Geometry.
         coord_type : str, ("cart", "redund"), optional
             Coordinate system of the new Geometry.
+        cart_coords
+            Optional 1d array of Cartesian coordinates of shape (3*natoms, ).
 
         Returns
         -------
         sub_geom : Geometry
             Subset of the current Geometry.
         """
+        if cart_coords is not None:
+            coords3d = cart_coords.reshape(-1, 3)
+        else:
+            coords3d = self.coords3d
         if sort:
             indices = sorted(indices)
         ind_list = list(indices)
         sub_atoms = [self.atoms[i] for i in ind_list]
-        sub_coords = self.coords3d[ind_list]
+        sub_coords = coords3d[ind_list]
         sub_geom = Geometry(sub_atoms, sub_coords.flatten(), coord_type=coord_type)
         return sub_geom
 
