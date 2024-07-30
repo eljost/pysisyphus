@@ -285,6 +285,11 @@ class Wavefunction:
 
         return wavefunction_from_trexio(fn, **kwargs)
 
+    def to_trexio(self, fn, **kwargs):
+        from pysisyphus.io.trexio import wavefunction_to_trexio
+
+        return wavefunction_to_trexio(self, fn, **kwargs)
+
     @property
     def C_occ(self):
         occ_a, occ_b = self.occ
