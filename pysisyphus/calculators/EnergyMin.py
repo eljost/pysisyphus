@@ -117,6 +117,16 @@ class EnergyMin(Calculator):
         energy2 = results2["energy"]
         all_energies = np.array((energy1, energy2))
 
+        min_ind = [1, 0][int(energy1 < energy2)]
+        en1_or_en2 = ("calc1", "calc2")[min_ind]
+        energy_diff = energy1 - energy2
+        energy_diff_kJ = abs(energy_diff) * AU2KJPERMOL
+
+        self.log(
+            f"@ energy_calc1={energy1:.6f} au, energy_calc2={energy2:.6f} au, "
+            f"|ΔE|={energy_diff_kJ: >10.2f} kJ mol⁻¹."
+        )
+
         # Mixed forces to optimize crossing points
         if self.mix:
             # Must be positive, so substract lower energy from higher energy.
@@ -166,9 +176,6 @@ class EnergyMin(Calculator):
             return results
         # Mixed forces end
 
-        min_ind = [1, 0][int(energy1 < energy2)]
-        en1_or_en2 = ("calc1", "calc2")[min_ind]
-        energy_diff = energy1 - energy2
         # Try to fix calculator, if requested
         if (self.min_energy_diff and self.check_after) and (
             # When the actual difference is above to minimum differences
@@ -183,11 +190,9 @@ class EnergyMin(Calculator):
             )
         results = (results1, results2)[min_ind]
         results["all_energies"] = all_energies
-        energy_diff_kJ = abs(energy_diff) * AU2KJPERMOL
 
         self.log(
-            f"energy_calc1={energy1:.6f} au, energy_calc2={energy2:.6f} au, returning "
-            f"results for {en1_or_en2}, {energy_diff_kJ: >10.2f} kJ mol⁻¹ lower."
+            f"Returning results for {en1_or_en2}, ({energy_diff_kJ: >10.2f} kJ mol⁻¹ lower)."
         )
         self.calc_counter += 1
         return results
