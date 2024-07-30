@@ -9,7 +9,7 @@ def make_xyz_str(atoms, coords, comment=""):
     assert len(atoms) == len(coords)
     atoms = [a.capitalize() for a in atoms]
 
-    coord_fmt = "{: 03.8f}"
+    coord_fmt = "{: 14.8f}"
     line_fmt = "{:>3s} " + " ".join(
         [
             coord_fmt,
@@ -73,7 +73,7 @@ def split_xyz_str(xyz_str):
     """
     float_ = r"([\+\d\-\.]+)"
     header_re = re.compile(r"(\d+)")
-    coord_re = re.compile(fr"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
+    coord_re = re.compile(rf"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
 
     lines = [l.strip() for l in xyz_str.strip().split("\n")]
 
@@ -126,8 +126,9 @@ def parse_xyz_str(xyz_str, with_comment):
     # Only consider the first four items on a line
     atom_num = int(xyz_lines[0])
     atoms_present = len(xyz_lines) - 2
-    assert len(xyz_lines) == atom_num + 2, \
-        f"Expected {atom_num} atoms, but found only {atoms_present}!"
+    assert (
+        len(xyz_lines) == atom_num + 2
+    ), f"Expected {atom_num} atoms, but found only {atoms_present}!"
     atoms_coords = [
         line.strip().split()[:4] for line in xyz_str.strip().split("\n")[2:]
     ]
