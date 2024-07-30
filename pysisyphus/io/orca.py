@@ -8,6 +8,7 @@ import json
 import numpy as np
 
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus import elem_data
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.io import bson
 from pysisyphus.io import molden
@@ -77,11 +78,18 @@ def wavefunction_from_json_dict(data, **kwargs):
     mult = mol["Multiplicity"]
     atoms = list()
     coords = list()
+    nuc_charges = list()
     for atom in mol["Atoms"]:
         atom_label = atom["ElementLabel"]
         atom_coords = atom["Coords"]
+        nuc_charge = atom["NuclearCharge"]
         atoms.append(atom_label)
         coords.append(atom_coords)
+        nuc_charges.append(nuc_charge)
+    # Compare present nuclear charges with actual nuclear charges to determine
+    # number of electrons covered by and ECP.
+    actual_nuc_charges = elem_data.nuc_charges_for_atoms(atoms)
+    ecp_electrons = actual_nuc_charges - nuc_charges
 
     coords = np.array(coords) * coord_factor
 
@@ -135,6 +143,7 @@ def wavefunction_from_json_dict(data, **kwargs):
         C=C,
         bf_type=BFType.PURE_SPHERICAL,
         shells=shells,
+        ecp_electrons=ecp_electrons,
         mo_ens=mo_ens,
         **kwargs,
     )
