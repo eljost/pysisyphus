@@ -20,6 +20,7 @@ PREFACTOR = (  # Prefactor in eq. (5) of [1]
     np.sqrt(np.pi) * NA * Q_E_ESU**2 / (1e3 * np.log(10) * C_CM**2 * M_E_G)
 ) / NM2CM
 _04EV = 0.4 / AU2EV  # in Hartree
+_1EV = 1.0 / AU2EV  # in Hartree
 
 
 @dataclasses.dataclass
@@ -54,6 +55,10 @@ class Spectrum:
         exc_ens, fosc = get_exc_ens_fosc(wf_fn, cis_fn, log_fn)
         return spectrum_from_ens_fosc(exc_ens, fosc, **kwargs)
 
+    def report(self):
+        for i, (f, en) in enumerate(zip(self.fosc, self.exc_ens_nm)):
+            print(f"{i: >4d}: {f=: >12.6f} ΔE={en: >8.2f} nm")
+
 
 def get_grid(resolution, exc_ens, padding, min_, max_):
     from_ = max(min_, int(exc_ens.min() - padding))
@@ -76,7 +81,11 @@ def homogeneous_broadening(
     extinction coefficients in l mol cm⁻¹."""
     exc_ens_nm = _1OVER_AU2NM / exc_ens
     if from_to is None:
-        from_to = (exc_ens_nm[0], exc_ens_nm[-1])
+        exc_en_lowest = exc_ens[0]
+        lower_energy_bound = max(exc_en_lowest - _1EV, 0.03)
+        exc_en_highest = exc_ens[-1]
+        upper_energy_bound = exc_en_highest + _1EV
+        from_to = _1OVER_AU2NM / np.array((lower_energy_bound, upper_energy_bound))
     if grid_kwargs is None:
         grid_kwargs = {}
     _grid_kwargs = {
@@ -84,7 +93,7 @@ def homogeneous_broadening(
     }
     _grid_kwargs.update(grid_kwargs)
     from_to = np.array(from_to)
-    nm = get_grid(resolution, from_to, min_=100, max_=900, **_grid_kwargs)
+    nm = get_grid(resolution, from_to, min_=25, max_=1500, **_grid_kwargs)
     stddev_nm = _1OVER_AU2NM / stddev
 
     quot = stddev_nm * (1 / nm[None, :] - (1 / exc_ens_nm[:, None]))
@@ -94,7 +103,7 @@ def homogeneous_broadening(
     return nm, epsilon
 
 
-def spectrum_from_ens_fosc(exc_ens, fosc, **kwargs):
+def spectrum_from_ens_fosc(exc_ens, fosc, **kwargs) -> Spectrum:
     exc_ens_nm = _1OVER_AU2NM / exc_ens
     nm, epsilon = homogeneous_broadening(exc_ens, fosc, **kwargs)
     spectrum = Spectrum(
@@ -105,6 +114,14 @@ def spectrum_from_ens_fosc(exc_ens, fosc, **kwargs):
         epsilon=epsilon,
     )
     return spectrum
+
+
+def spectrum_from_wf_tdms_ens(wf, Xa, Ya, Xb, Yb, all_energies, **kwargs) -> Spectrum:
+    gs_en, *exc_ens = all_energies
+    exc_ens = exc_ens - gs_en
+    trans_dip_moms = wf.get_transition_dipole_moment(Xa + Ya, Xb + Yb)
+    fosc = wf.oscillator_strength(exc_ens, trans_dip_moms)
+    return spectrum_from_ens_fosc(exc_ens, fosc, **kwargs)
 
 
 def homogeneous_broadening_eV(
@@ -151,18 +168,21 @@ def homogeneous_broadening_eV(
 
 def plot_spectrum(nm, epsilon, exc_ens_nm=None, fosc=None, show=False):
     fig, ax = plt.subplots()
-    ax.plot(nm, epsilon)
+    ax.plot(nm, epsilon, label="broadened")
     ax.set_ylabel(r"$\epsilon$")
     ax.set_xlabel(r"$\lambda$ / nm")
+    # ax.legend(loc="upper left")
     axs = [
         ax,
     ]
 
     if (exc_ens_nm is not None) and (fosc is not None):
         ax2 = ax.twinx()
-        ax2.stem(exc_ens_nm, fosc, "r", markerfmt=" ", basefmt=" ")
+        ax2.stem(exc_ens_nm, fosc, "r", markerfmt=" ", basefmt=" ", label="fosc")
         ax2.set_ylabel("fosc")
         axs.append(ax2)
+        # ax2.legend(loc="upper right")
+
     fig.tight_layout()
     if show:
         plt.show()
