@@ -6,7 +6,6 @@ Based on code given by Emőd Kovács in
     Rotation about an arbitrary axis and reflection through an arbitrary plane
 """
 
-
 import numpy as np
 
 
@@ -148,4 +147,29 @@ def rotation_matrix_for_vec_align(
     quot = 1 / (1 + cosine)
     # Identity matrix was already assigned before to R
     R = R + vx + vx @ vx * quot
+    return R
+
+
+def rotation_matrix_for_rot_around_vec(vec: np.ndarray, deg: float) -> np.ndarray:
+    """Get rotation matrix for rotation of 'deg' degrees around vector 'vec'.
+
+    Parameters
+    ----------
+    vec
+        Array of shape (3, ) containing the rotation vector.
+    deg
+        Degrees controlling extent of rotation.
+
+    Returns
+    -------
+    R
+        2d array of shape (3, 3) containing the rotation matrix.
+    """
+    ux, uy, uz = vec / np.linalg.norm(vec)
+    W = np.array(((0, -uz, uy), (uz, 0, -ux), (-uy, ux, 0)))
+    W2 = W @ W
+    rad = np.deg2rad(deg)
+    sin = np.sin(rad)
+    cos = np.cos(rad)
+    R = np.eye(3) + sin * W + (1 - cos) * W2
     return R
