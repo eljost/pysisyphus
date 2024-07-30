@@ -28,6 +28,22 @@ def get_lmn_factors(L: int):
     return lmn_factors
 
 
+def norm_pgto(exponent: float, L: int) -> np.ndarray:
+    prim_norms = get_lmn_factors(L)
+    for i, (l, m, n) in enumerate(canonical_order(L)):
+        x0 = l / 2
+        x1 = m / 2
+        x2 = n / 2
+        prim_norms[i] *= (
+            2**x0
+            * 2**x1
+            * 2**x2
+            * (1 / (2 * exponent)) ** (-x0 - x1 - x2 - 3 / 4)
+            / (np.pi ** (3 / 4))
+        )
+    return prim_norms
+
+
 def norm_cgto_lmn(coeffs: NDArray[float], exps: NDArray[float], L: int):
     N = 0.0
     for i, expi in enumerate(exps):
