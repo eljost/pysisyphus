@@ -2,13 +2,15 @@
 
 import dataclasses
 from pathlib import Path
-from typing import Tuple
+from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
 from pysisyphus.constants import _1OVER_AU2NM, C, M_E, NA, AU2EV
+from pysisyphus.config import T_DEFAULT
+from pysisyphus.drivers import boltzmann
 
 
 # Computation of prefactor from Gaussian whitepaper
@@ -19,17 +21,24 @@ NM2CM = 1e7  # Nanometer to centimeter
 PREFACTOR = (  # Prefactor in eq. (5) of [1]
     np.sqrt(np.pi) * NA * Q_E_ESU**2 / (1e3 * np.log(10) * C_CM**2 * M_E_G)
 ) / NM2CM
-_04EV = 0.4 / AU2EV  # in Hartree
-_1EV = 1.0 / AU2EV  # in Hartree
+# in Hartree
+_04EV = 0.4 / AU2EV
+_1EV = 1.0 / AU2EV
+_2EV = 2.0 / AU2EV
 
 
 @dataclasses.dataclass
 class Spectrum:
-    exc_ens: NDArray[float]
-    exc_ens_nm: NDArray[float]
-    fosc: NDArray[float]
-    nm: NDArray[float]
-    epsilon: NDArray[float]
+    all_energies: np.ndarray
+    fosc: np.ndarray
+    nm: np.ndarray
+    epsilon: np.ndarray
+
+    def __post_init__(self):
+        self.gs_en, *exc_ens = self.all_energies
+
+        self.exc_ens = np.array(exc_ens) - self.gs_en
+        self.exc_ens_nm = _1OVER_AU2NM / self.exc_ens
 
     def plot(self, **kwargs):
         return plot_spectrum(
@@ -67,13 +76,13 @@ def get_grid(resolution, exc_ens, padding, min_, max_):
 
 
 def homogeneous_broadening(
-    exc_ens: NDArray[float],
-    osc_strengths: NDArray[float],
+    exc_ens: np.ndarray,
+    osc_strengths: np.ndarray,
     resolution: float = 0.5,
     stddev: float = _04EV,
     from_to=None,
     grid_kwargs=None,
-) -> Tuple[NDArray[float], NDArray[float]]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Homogeneous broadening of stick spectra as outlined in Gaussian
     whitepaper [1].
 
@@ -84,7 +93,7 @@ def homogeneous_broadening(
         exc_en_lowest = exc_ens[0]
         lower_energy_bound = max(exc_en_lowest - _1EV, 0.03)
         exc_en_highest = exc_ens[-1]
-        upper_energy_bound = exc_en_highest + _1EV
+        upper_energy_bound = exc_en_highest + _2EV
         from_to = _1OVER_AU2NM / np.array((lower_energy_bound, upper_energy_bound))
     if grid_kwargs is None:
         grid_kwargs = {}
@@ -103,34 +112,34 @@ def homogeneous_broadening(
     return nm, epsilon
 
 
-def spectrum_from_ens_fosc(exc_ens, fosc, **kwargs) -> Spectrum:
+def homogeneous_broadening_on_grid(
+    exc_ens: np.ndarray,
+    osc_strengths: np.ndarray,
+    grid: np.ndarray,
+    stddev: float = _04EV,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Homogeneous broadening of stick spectra as outlined in Gaussian
+    whitepaper [1].
+
+    σ = 0.0147 au corresponds to about 0.4 eV. The function yields molar
+    extinction coefficients in l mol cm⁻¹."""
     exc_ens_nm = _1OVER_AU2NM / exc_ens
-    nm, epsilon = homogeneous_broadening(exc_ens, fosc, **kwargs)
-    spectrum = Spectrum(
-        exc_ens=exc_ens,
-        exc_ens_nm=exc_ens_nm,
-        fosc=fosc,
-        nm=nm,
-        epsilon=epsilon,
-    )
-    return spectrum
+    stddev_nm = _1OVER_AU2NM / stddev
 
-
-def spectrum_from_wf_tdms_ens(wf, Xa, Ya, Xb, Yb, all_energies, **kwargs) -> Spectrum:
-    gs_en, *exc_ens = all_energies
-    exc_ens = exc_ens - gs_en
-    trans_dip_moms = wf.get_transition_dipole_moment(Xa + Ya, Xb + Yb)
-    fosc = wf.oscillator_strength(exc_ens, trans_dip_moms)
-    return spectrum_from_ens_fosc(exc_ens, fosc, **kwargs)
+    quot = stddev_nm * (1 / grid[None, :] - (1 / exc_ens_nm[:, None]))
+    exp_ = np.exp(-(quot**2))
+    epsilon = PREFACTOR * osc_strengths[:, None] * stddev_nm * exp_
+    epsilon = epsilon.sum(axis=0)
+    return epsilon
 
 
 def homogeneous_broadening_eV(
-    exc_ens: NDArray[float],
-    osc_strengths: NDArray[float],
+    exc_ens: np.ndarray,
+    osc_strengths: np.ndarray,
     resolution: float = 0.05,
     stddev: float = 0.4,
     from_to=None,
-) -> NDArray[float]:
+) -> np.ndarray:
     """
     Homogeneous broadening of stick spectra as outlined in eq. (5) and (6)
     of https://doi.org/10.1063/1.4948471.
@@ -166,6 +175,27 @@ def homogeneous_broadening_eV(
     return eV, epsilon
 
 
+def spectrum_from_ens_fosc(all_energies, fosc, **kwargs) -> Spectrum:
+    gs_en, *exc_ens = all_energies
+    exc_ens = np.array(exc_ens) - gs_en
+    nm, epsilon = homogeneous_broadening(exc_ens, fosc, **kwargs)
+    spectrum = Spectrum(
+        all_energies=all_energies,
+        fosc=fosc,
+        nm=nm,
+        epsilon=epsilon,
+    )
+    return spectrum
+
+
+def spectrum_from_wf_tdms_ens(wf, Xa, Ya, Xb, Yb, all_energies, **kwargs) -> Spectrum:
+    gs_en, *exc_ens = all_energies
+    exc_ens = exc_ens - gs_en
+    trans_dip_moms = wf.get_transition_dipole_moment(Xa + Ya, Xb + Yb)
+    fosc = wf.oscillator_strength(exc_ens, trans_dip_moms)
+    return spectrum_from_ens_fosc(all_energies, fosc, **kwargs)
+
+
 def plot_spectrum(nm, epsilon, exc_ens_nm=None, fosc=None, show=False):
     fig, ax = plt.subplots()
     ax.plot(nm, epsilon, label="broadened")
@@ -188,3 +218,86 @@ def plot_spectrum(nm, epsilon, exc_ens_nm=None, fosc=None, show=False):
         plt.show()
 
     return fig, axs
+
+
+def plot_ensemble_spectrum(
+    all_energies,
+    fosc,
+    labels,
+    temperature=T_DEFAULT,
+    annotate_states=True,
+    annotate_thresh=0.75,
+    show=False,
+):
+    nspectra, nstates = all_energies.shape
+    assert fosc.shape == (nspectra, nstates - 1)
+    # all_energies0 = spectra[0].all_energies
+    gs_energies = all_energies[:, 0]
+    weights = boltzmann.boltzmann_weights(gs_energies, T=temperature)
+    max_weight = weights.max()
+    if max_weight < annotate_thresh:
+        annotate_thresh = 0.95 * max_weight
+    fosc_weighted = fosc * weights[:, None]
+
+    # exc_ens = np.array([spectrum.exc_ens for spectrum in spectra])
+    exc_ens = all_energies[:, 1:] - gs_energies[:, None]
+    exc_ens_nm = _1OVER_AU2NM / exc_ens
+
+    exc_en_lowest = exc_ens.min()
+    exc_en_highest = exc_ens.max()
+
+    lower_energy_bound = max(exc_en_lowest - _1EV, 0.03)
+    upper_energy_bound = exc_en_highest + _2EV
+    from_to = _1OVER_AU2NM / np.array((upper_energy_bound, lower_energy_bound))
+    grid = np.arange(*from_to.astype(int), step=0.05)
+
+    broadened = np.zeros((nspectra, grid.size))
+    for i in range(nspectra):
+        broadened[i] = homogeneous_broadening_on_grid(exc_ens[i], fosc[i], grid=grid)
+    broadened_weighted = broadened * weights[:, None]
+    fin = broadened_weighted.sum(axis=0)
+
+    fig, ax = plt.subplots()
+    ax.plot(grid, fin)
+    ax2 = ax.twinx()
+
+    inds_sorted = weights.argsort()[::-1]
+    # Go from conformers with high weights to conformers with low weights
+    for i in inds_sorted:
+        bw = broadened_weighted[i]
+        kws = {}
+        weight = weights[i]
+        foscw = fosc_weighted[i]
+        if (label := labels[i]) is not None and weight > 0.03:
+            kws["label"] = f"{label} ({weight: >5.1%})"
+        alpha = weight
+        (lines,) = ax.plot(grid, bw, ":", alpha=alpha, **kws)
+        color = lines.get_color()
+        _, stem_lines, _ = ax2.stem(
+            exc_ens_nm[i],
+            foscw,
+            linefmt=color,
+            markerfmt=" ",
+            basefmt=" ",
+        )
+        if annotate_states and weight > annotate_thresh:
+            # TODO: support threshold for fosc?
+            for j, foscw_j in enumerate(foscw):
+                shift = min(0.1 * foscw_j, 0.025)
+                xy = (exc_ens_nm[i, j], foscw_j + shift)
+                text = str(j + 1)
+                ax2.annotate(text, xy, ha="center", fontsize=6, color=color)
+        plt.setp(stem_lines, "alpha", alpha)
+
+    ax.set_xlim(grid[0], grid[-1])
+    for ax_ in (ax, ax2):
+        ax_.set_ylim(0)
+
+    ax.set_ylabel(r"$\epsilon$")
+    ax.set_xlabel(r"$\lambda$ / nm")
+    ax2.set_ylabel("weighted oscillator strength")
+    ax.legend()
+
+    if show:
+        plt.show()
+    return fig, ax
