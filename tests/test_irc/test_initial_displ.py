@@ -37,7 +37,7 @@ def test_irc_cubic_displ(displ, anapot_ts):
     irc = EulerPC(anapot_ts, **irc_kwargs)
     irc.run()
 
-    # calc = anapot_ts.calculator.plot_irc(irc, show=True)
+    # anapot_ts.calculator.plot_irc(irc, show=True)
 
 
 @using("pyscf")
@@ -50,6 +50,7 @@ def test_hcn_initial_displ(displ):
 
 
 def plot_quadratic_cubic_displacement():
+    import mymplrc
     import matplotlib.pyplot as plt
 
     from pysisyphus.irc.initial_displ import get_curv_vec
@@ -66,7 +67,7 @@ def plot_quadratic_cubic_displacement():
     v1 = get_curv_vec(H, res.G_vec, v0, w0)
 
     def step(ds):
-        return ds * v0 + ds ** 2 * v1 / 2
+        return ds * v0 + ds**2 * v1 / 2
 
     lim = 1.5
     x0 = geom.mw_coords
@@ -74,10 +75,35 @@ def plot_quadratic_cubic_displacement():
     third_steps = np.array([step(ds) for ds in np.linspace(-lim, lim)]) + x0
 
     calc = geom.calculator
-    calc.plot()
+    calc.plot(figsize=(8, 4.5))
+    fig = calc.fig
     ax = calc.ax
+
+    ax.scatter(*ts_coords[:2], s=50, c="red", label="TS", zorder=5)
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title(
+        "$V(x, y) = 4 + 4.5x - 4y + x^2 + 2y^2-2xy + x^4 - 2x^2 y$",
+    )
+
+    i = 0
+
+    def save():
+        nonlocal i
+        ax.legend()
+        fig.savefig(f"initial_displ_{i:03d}.png")
+        i += 1
+
+    fig.tight_layout()
+    # fig.savefig("init_displ_000.pdf")
+    save()
     ax.plot(*quad_steps.T[:2], lw=3, label="2nd derivs.")
+    save()
     ax.plot(*third_steps.T[:2], lw=3, label="3rd derivs.")
-    ax.legend()
-    calc.fig.savefig("third_derivs.pdf")
-    plt.show()
+    save()
+
+    # plt.show()
+
+
+if __name__ == "__main__":
+    plot_quadratic_cubic_displacement()
