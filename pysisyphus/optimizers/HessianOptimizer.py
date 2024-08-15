@@ -217,7 +217,7 @@ class HessianOptimizer(Optimizer):
         if self.geometry.is_analytical_2d:
             return
 
-        h5_fn = self.get_path_for_fn(f"hess_calc_cyc_{self.cur_cycle}.h5")
+        h5_fn = self.get_path_for_fn(f"hess_calc_cyc_{self.cur_cycle:03d}.h5")
         # Save the cartesian hessian, as it is independent of the
         # actual coordinate system that is used.
         save_hessian(
