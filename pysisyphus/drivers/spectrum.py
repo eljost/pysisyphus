@@ -88,6 +88,7 @@ def homogeneous_broadening(
 
     σ = 0.0147 au corresponds to about 0.4 eV. The function yields molar
     extinction coefficients in l mol cm⁻¹."""
+    assert len(exc_ens) == len(osc_strengths)
     exc_ens_nm = _1OVER_AU2NM / exc_ens
     if from_to is None:
         exc_en_lowest = exc_ens[0]

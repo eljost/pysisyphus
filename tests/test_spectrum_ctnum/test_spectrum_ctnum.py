@@ -22,10 +22,14 @@ def test_spectrum_ctnum(this_dir):
     nfrags = int(nfrags2**0.5)
     ct_numbers = omegas.reshape(nstates, nfrags, nfrags)
     states = np.loadtxt(data_dir / "states")
+    nstates = len(states)
 
-    exc_ens = states[:, 1] * NU2AU  # from wavenumbers to atomic units
+    # exc_ens = states[:, 1] * NU2AU  # from wavenumbers to atomic units
+    gs_energy = -1368.40370329
+    all_energies = np.full(nstates + 1, gs_energy)
+    all_energies[1:] += states[:, 1] * NU2AU  # from wavenumbers to atomic units
     foscs = states[:, 3]  # Oscillator strengths
-    fig = ct_number_plot(geom.atoms, geom.cart_coords, exc_ens, foscs, ct_numbers)
+    fig = ct_number_plot(geom.atoms, geom.cart_coords, all_energies, foscs, ct_numbers)
     # import matplotlib.pyplot as plt
 
     # plt.show()
