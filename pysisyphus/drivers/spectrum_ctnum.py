@@ -271,7 +271,7 @@ def get_annotate_state(ax, exc_ens, foscs):
 
 
 def ct_number_plot(
-    atoms, coords, exc_ens, foscs, ct_numbers, bond_inds=None, frags=None
+    atoms, coords, all_energies, foscs, ct_numbers, bond_inds=None, frags=None
 ):
     if bond_inds is None:
         # Bond indices without interfragment bonds and/or hydrogen bonds
@@ -281,9 +281,9 @@ def ct_number_plot(
         frags = get_frags_noh(atoms, coords, bond_inds)
 
     nfrags = len(frags)
-    nexcs = len(exc_ens)
+    nexcs = len(all_energies) - 1
     assert ct_numbers.shape == (nexcs, nfrags, nfrags)
-    spectrum = spectrum_from_ens_fosc(exc_ens, foscs)
+    spectrum = spectrum_from_ens_fosc(all_energies, foscs)
 
     exc_ens = spectrum.exc_ens
     exc_ens_nm = spectrum.exc_ens_nm
