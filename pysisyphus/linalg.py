@@ -10,6 +10,8 @@ from pysisyphus.finite_diffs import finite_difference_hessian
 
 
 def gram_schmidt(vecs, thresh=1e-8):
+    """For historical reasons, this operates on rows ..."""
+
     def proj(v1, v2):
         return v1.dot(v2) / v1.dot(v1)
 

@@ -3,6 +3,8 @@
 #     optimization.
 #     Baker, 1996
 
+import warnings
+
 import numpy as np
 
 from pysisyphus.intcoords import RedundantCoords
@@ -30,6 +32,10 @@ class DLC(RedundantCoords):
 
     @constraints.setter
     def constraints(self, constraints):
+        warnings.warn(
+            "Currently, constraints are only applied when set via this setter, "
+            "but they are not re-enforced after coordinate rebuilding!"
+        )
         self.U = self.U_unconstrained.copy()
         constraints = np.array(constraints)
         constraints.flags.writeable = False
@@ -37,13 +43,7 @@ class DLC(RedundantCoords):
         assert constraints.shape[0] == self.U.shape[0]
         self._constraints = constraints
         U_constrained = self.get_constrained_U(self._constraints)
-
-        # # Replace the constraint-columns with zeros vectors, so the total
-        # # number of coords doesn't change. This also zeros any force components
-        # # that belong to the constraints.
-        # zero_arr = np.zeros_like(constraints)
-        # self.U = np.concatenate((zero_arr, U_constrained), axis=1)
-        U_constrained = np.concatenate((constraints, U_constrained), axis=1)
+        # Constrained coordinates are now dropped
         self.U = U_constrained
 
     def reset_constraints(self):
@@ -111,7 +111,7 @@ class DLC(RedundantCoords):
             #
             # To stay consistent with the SVD, we derive the eigenvalue threshold from
             # the SVD threshold.
-            inv_thresh = self.svd_inv_thresh ** 2
+            inv_thresh = self.svd_inv_thresh**2
 
         if self.full_set:
             use_inds = np.full_like(eigvals, False, dtype=bool)
@@ -142,21 +142,31 @@ class DLC(RedundantCoords):
         c_proj /= np.linalg.norm(c_proj)
         return c_proj
 
-    def get_constrained_U(self, constraint_vecs):
+    def get_constrained_U(self, C, thresh=1e-7):
         # Constraints are organized in columns
-        constr_num = constraint_vecs.shape[1]
-        V = np.concatenate((constraint_vecs, self.U), axis=1)
-        orthonormalized = gram_schmidt(V.T).T
+        nconstraints = C.shape[1]
+
+        U = self.U_unconstrained
+        # See [1], p. 10 (200), right column).
+        # Project constraint vectors into DLC active space
+        C_proj = U.T @ C
+        C_proj = np.einsum("kn,ik->in", C_proj, U, optimize="greedy")
+        # Normalize projected constraint vectors
+        C_proj = C_proj / np.linalg.norm(C_proj, axis=0)[None, :]
+        # Create new array with projected constraint vectors in front
+        V = np.concatenate((C_proj, U), axis=1)
+
+        # Double transpose because at one point I seemed to think it
+        # is a good idea for the Gram-Schmidt function to work on rows,
+        # instead of columns.
+        orthonormalized = gram_schmidt(V.T, thresh=thresh).T
+        # orthonormalized = gram_schmidt(V.T).T
         # During Gram-Schmidt a number of columns of U should have
         # dropped out. They are replaced by the constraint_vecs, so
-        # the total shape of should not change.
+        # the total shape of U should not change.
         assert orthonormalized.shape[1] == self.original_U_shape[1]
-        # Remove constraint vectors
-        # [1] states that we somehow have to keep the constraint vectors
-        # (or the corresponding unit vectors) for the iterative
-        # back-transformation. Right now I don't understand why we would
-        # have to do this ([1], p. 10 (200), right column).
-        U_proj = orthonormalized[:, constr_num:]
+        # Drop constraint vectors that are in front
+        U_proj = orthonormalized[:, nconstraints:]
         return U_proj
 
     def freeze_primitives(self, typed_prims):
