@@ -3,10 +3,12 @@ import copy
 import itertools as it
 import re
 import sys
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import rmsd as rmsd
+from scipy import interpolate as spi
 
 from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.cos import *
@@ -156,6 +158,14 @@ def parse_args(args):
         help="Convert given geometry to PDB with automatic fragment detection.",
     )
 
+    spline_group = parser.add_argument_group()
+    spline_group.add_argument(
+        "--ngeoms",
+        type=int,
+        default=None,
+        help="Number of geometries along the splined path.",
+    )
+
     shake_group = parser.add_argument_group()
     shake_group.add_argument(
         "--scale", type=float, default=0.1, help="Scales the displacement in --shake."
@@ -233,7 +243,7 @@ def parse_args(args):
         "e.g. [[10,30],[1,2,3],[4,5,6,7]].",
     )
 
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
 def read_geoms(
@@ -448,19 +458,51 @@ def align(geoms):
     return [geom for geom in cos.images]
 
 
-def spline_redistribute(geoms):
-    szts = SimpleZTS.SimpleZTS(geoms)
-    pre_diffs = get_coords_diffs([image.coords for image in szts.images])
-    # As there are no energies available we can only evenly distribute the images
-    dummy_ens = None
-    szts.reparametrize(dummy_ens)
-    post_diffs = get_coords_diffs([image.coords for image in szts.images])
-    cds_str = lambda cds: " ".join([f"{cd:.2f}" for cd in cds])
+def reparametrize(image_coords, nimages=None):
+    assert image_coords.ndim == 2
+    if nimages is None:
+        nimages = len(image_coords)
+
+    # To use splprep we have to transpose the coords.
+    transp_coords = image_coords.T
+
+    u = None
+    # Use chunks of 9 dimension because splprep can handle at max
+    # 11 dimensions (as of scipy 1.0.0). Every atoms already yields
+    # three dimensions (the coordinates X, Y, Z).
+    #
+    # For dim <= 11 it would go like this:
+    #
+    # tck, u = splprep(transp_coords, u=u, s=0)
+    # uniform_mesh = np.linspace(0, 1, num=len(self.images))
+    # new_points = np.array(splev(uniform_mesh, tck))
+    tcks, us = zip(
+        *[
+            spi.splprep(transp_coords[i : i + 9], u=u, s=0)
+            for i in range(0, len(transp_coords), 9)
+        ]
+    )
+    uniform_mesh = np.linspace(0, 1, num=nimages)
+    # Reparametrize mesh
+    splined_coords = np.vstack([spi.splev(uniform_mesh, tck) for tck in tcks])
+    # Flatten along first dimension.
+    splined_coords = splined_coords.reshape(-1, nimages).T
+    return splined_coords
+
+
+def spline_redistribute(geoms, ngeoms: Optional[int] = None):
+    pre_diffs = get_coords_diffs([image.coords for image in geoms])
+    image_coords = np.array([geom.cart_coords for geom in geoms])
+    splined_coords = reparametrize(image_coords, ngeoms)
+    atoms = geoms[0].atoms
+    splined_images = [Geometry(atoms, coords) for coords in splined_coords]
+    post_diffs = get_coords_diffs([image.coords for image in splined_images])
+    cds_str = lambda cds: " ".join([f"{cd:.3f}" for cd in cds])
     print("Normalized path segments before splining:")
     print(cds_str(pre_diffs))
     print("Normalized path segments after redistribution along spline:")
     print(cds_str(post_diffs))
-    return szts.images
+    return splined_images
 
 
 def every(geoms, every_nth):
@@ -799,7 +841,7 @@ def run():
         fn_base = "first"
         trj_infix = f"_{args.first}"
     elif args.spline:
-        to_dump = spline_redistribute(geoms)
+        to_dump = spline_redistribute(geoms, args.ngeoms)
         fn_base = "splined"
     elif args.every:
         to_dump = every(geoms, args.every)
