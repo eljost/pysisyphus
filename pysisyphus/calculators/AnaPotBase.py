@@ -160,10 +160,13 @@ class AnaPotBase(Calculator):
         nan_above=None,
         init_view=None,
         colorbar=False,
+        computed_zorder=True,
         **figkwargs,
     ):
         self.fig = plt.figure(**figkwargs)
-        self.ax = self.fig.add_subplot(111, projection="3d")
+        self.ax = self.fig.add_subplot(
+            111, projection="3d", computed_zorder=computed_zorder
+        )
         x = np.linspace(*self.xlim, resolution)
         y = np.linspace(*self.ylim, resolution)
         X, Y = np.meshgrid(x, y)
