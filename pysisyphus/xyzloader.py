@@ -73,7 +73,8 @@ def split_xyz_str(xyz_str):
     """
     float_ = r"([\+\d\-\.]+)"
     header_re = re.compile(r"(\d+)")
-    coord_re = re.compile(rf"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
+    # Also allow numbers instead of element symbols
+    coord_re = re.compile(rf"[0-9a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
 
     lines = [l.strip() for l in xyz_str.strip().split("\n")]
 
