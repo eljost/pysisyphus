@@ -345,9 +345,9 @@ def run_tsopt_from_cos(
         union_msg = "No coordinate union."
     print(union_msg)
 
-    ts_geom_kwargs = tsopt_kwargs.pop("geom")
-    ts_coord_type = ts_geom_kwargs.pop("type")
-    if ts_coord_type != "cart":
+    ts_geom_kwargs = tsopt_kwargs.pop("geom", dict())
+    ts_coord_type = ts_geom_kwargs.pop("type", "cartesian")
+    if ts_coord_type not in ("cart", "cartesian"):
         ts_geom_kwargs["coord_kwargs"].update(coord_kwargs)
 
     ts_geom = Geometry(
