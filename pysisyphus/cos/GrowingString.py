@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from scipy.interpolate import splprep, splev
 
@@ -30,12 +32,22 @@ class GrowingString(GrowingChainOfStates):
         max_micro_cycles=5,
         reset_dlc=True,
         climb=False,
+        left_images: Optional[int] = None,
+        right_images: Optional[int] = None,
         **kwargs,
     ):
-        assert len(images) >= 2, "Need at least 2 images for GrowingString."
-        if len(images) > 2:
-            images = [images[0], images[-1]]
-            print("More than 2 images given. Will only use first and last image!")
+        nimages = len(images)
+        assert (
+            nimages >= 2
+        ), f"Need at least 2 images for GrowingString, but got only {nimages}!."
+
+        # When more than two images were given, 'left_images' and 'right_images' must
+        # also be given. In principle one of both values would be enough but right now
+        # we require both inputs, so the user must really make up its mind about it ;)
+        if nimages > 2:
+            assert left_images is not None and left_images > 0
+            assert right_images is not None and right_images > 0
+            assert left_images + right_images == nimages
         if climb:
             climb = "one"
         super().__init__(images, calc_getter, climb=climb, **kwargs)
@@ -58,14 +70,17 @@ class GrowingString(GrowingChainOfStates):
         self.max_micro_cycles = int(max_micro_cycles)
         self.reset_dlc = bool(reset_dlc)
 
-        left_img, right_img = self.images
-
-        self.left_string = [
-            left_img,
-        ]
-        self.right_string = [
-            right_img,
-        ]
+        if grow_in_first_cycle := nimages == 2:
+            left_img, right_img = self.images
+            self.left_string = [
+                left_img,
+            ]
+            self.right_string = [
+                right_img,
+            ]
+        else:
+            self.left_string = images[:left_images]
+            self.right_string = images[left_images:]
 
         # The desired spacing of the nodes in the final string on the
         # normalized arclength.
@@ -74,10 +89,11 @@ class GrowingString(GrowingChainOfStates):
         self.reparam_in = reparam_every
         self._tangents = None
 
-        left_frontier = self.get_new_image(self.lf_ind)
-        self.left_string.append(left_frontier)
-        right_frontier = self.get_new_image(self.rf_ind)
-        self.right_string.append(right_frontier)
+        if grow_in_first_cycle:
+            left_frontier = self.get_new_image(self.lf_ind)
+            self.left_string.append(left_frontier)
+            right_frontier = self.get_new_image(self.rf_ind)
+            self.right_string.append(right_frontier)
         self.new_image_inds = list()
 
     def get_cur_param_density(self, kind=None):
@@ -450,7 +466,7 @@ class GrowingString(GrowingChainOfStates):
             self.log(f"Desired param density: {pd_str}")
 
             # Reparametrize images.
-            if self.coord_type == "cart":
+            if self.coord_type in ("cart", "cartesian"):
                 self.reparam_cart(desired_param_density, image_energies)
             elif self.coord_type == "dlc":
                 self.reparam_dlc(
