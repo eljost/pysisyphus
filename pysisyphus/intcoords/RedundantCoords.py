@@ -604,7 +604,7 @@ class RedundantCoords:
 
     def print_typed_prims(self):
         for i, tp in enumerate(self.typed_prims):
-            print(i, tp)
+            print(f"{i:04d} {tp}")
 
     def __str__(self):
         bonds = len(self.bond_indices)

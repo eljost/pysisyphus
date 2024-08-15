@@ -1075,20 +1075,8 @@ class ChainOfStates:
         # to the actual imaginary mode. The Cartesian upwinding tangent is usually
         # much much better. In 'run_tsopt_from_cos' we actually mix two "normal" tangents
         # to obtain the HEI tangent.
-        hei_tangent = np.vstack(
-            [
-                # WTF, Black? This looks horrible.
-                splev(
-                    [
-                        hei_x,
-                    ],
-                    tck,
-                    der=1,
-                )
-                for tck in tcks
-            ]
-        ).T
-        hei_tangent = hei_tangent.flatten()
+        hei_tangent = np.vstack([splev([hei_x], tck, der=1) for tck in tcks])
+        hei_tangent = hei_tangent.T.flatten()
         hei_tangent /= np.linalg.norm(hei_tangent)
         return hei_coords, hei_energy, hei_tangent, hei_frac_index
 
