@@ -170,6 +170,9 @@ def run_opt(
                 sys.stdout.flush()
 
         opt.run()
+        # Update reference to geom, as the geometry may have been recreated inside the
+        # Optimizer, e.g., when using 'augment_bonds: True'.
+        geom = opt.geometry
 
         # Only do 1 cycle in non-iterative optimizations
         if not is_iterative:
