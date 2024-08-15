@@ -358,17 +358,10 @@ class TSHessianOptimizer(HessianOptimizer):
         poly_fit_kwargs = {
             "e0": e0,
             "e1": e1,
-            "g0": g0,
-            "g1": g1,
+            "g0": prev_step.dot(g0),
+            "g1": prev_step.dot(g1),
             "maximize": maximize,
         }
-        if not maximize:
-            poly_fit_kwargs.update(
-                {
-                    "g0": prev_step.dot(g0),
-                    "g1": prev_step.dot(g1),
-                }
-            )
         prefix = "Max" if maximize else "Min"
 
         fit_result = poly_fit.quartic_fit(**poly_fit_kwargs)
@@ -394,19 +387,21 @@ class TSHessianOptimizer(HessianOptimizer):
         ip_step = np.zeros_like(gradient_trans)
         ip_gradient_trans = gradient_trans.copy()
 
-        if self.max_line_search and self.cur_cycle > 0:
-            prev_energy = self.energies[-2]
-            prev_gradient = -self.forces[-2]
-            try:
-                prev_gradient_trans = eigvecs.T.dot(prev_gradient)
-                prev_step = self.steps[-1]
-                prev_step_trans = eigvecs.T.dot(prev_step)
-            # Will be raised when coordinates were rebuilt and the array shapes differe.
-            except ValueError:
-                return ip_step, ip_gradient_trans
+        if self.cur_cycle == 0:
+            return ip_step, ip_gradient_trans
 
+        prev_energy = self.energies[-2]
+        prev_gradient = -self.forces[-2]
+        try:
+            prev_gradient_trans = eigvecs.T.dot(prev_gradient)
+            prev_step = self.steps[-1]
+            prev_step_trans = eigvecs.T.dot(prev_step)
+        # Will be raised when coordinates were rebuilt and the array shapes differe.
+        except ValueError:
+            return ip_step, ip_gradient_trans
+
+        if self.max_line_search:
             # Max subspace
-            # max_energy, max_gradient, max_step = self.do_max_line_search(
             max_energy, max_gradient, max_step = self.do_line_search(
                 prev_energy,
                 energy,
@@ -422,7 +417,6 @@ class TSHessianOptimizer(HessianOptimizer):
 
         if self.min_line_search and self.cur_cycle > 0:
             # Min subspace
-            # min_energy, min_gradient, min_step = self.do_min_line_search(
             min_energy, min_gradient, min_step = self.do_line_search(
                 prev_energy,
                 energy,
