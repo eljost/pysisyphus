@@ -123,6 +123,14 @@ class GrowingNT:
         return self.geom.atoms
 
     @property
+    def moving_atoms(self):
+        return self.geom.moving_atoms
+
+    @property
+    def freeze_atoms(self):
+        return self.geom.freeze_atoms
+
+    @property
     def coords(self):
         return self.geom.coords
 
