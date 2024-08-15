@@ -1,32 +1,35 @@
 geom:
- type: cart
+ type: cartesian
  fn: diels_alder.trj
 calc:
  type: xtb
  charge: 0
  mult: 1
- pal: 4
+ pal: 6
+ acc: 0.01
 preopt:
- max_cycles: 5
 interpol:
  type: redund
- between: 10
+ between: 12
 cos:
  type: neb
+ climb: True
+ climb_lanczos: True
+ cluster: True
 opt:
- type: bfgs
- align: False
- rms_force: 0.01
- max_step: 0.2
+ type: lbfgs
+ align: True
+ rms_force_only: True
 tsopt:
- type: rsirfo
  do_hess: True
- max_cycles: 75
- thresh: gau_tight
- hessian_recalc: 10
+ thresh: gau
+ hessian_recalc: 5
 irc:
- type: eulerpc
  rms_grad_thresh: 0.0005 
+ hessian_recalc: 5
+endopt:
+  fragments: True
+  do_hess: True
 assert:
  ts_geom.energy: -17.81225938
- ts_opt.cur_cycle: 12
+ #ts_opt.cur_cycle: 12
