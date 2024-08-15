@@ -253,3 +253,18 @@ def cubic_displ_for_geom(geom, dE=-5e-4):
     Gv, third_deriv_res = third_deriv_fd(geom, v0)
     step_plus, step_minus = cubic_displ(H, v0, w0, Gv, dE=dE)
     return step_plus, step_minus, third_deriv_res
+
+
+def taylor_closure_for_geom(geom):
+    H = geom.mw_hessian
+    # Only project for multi-atomic geometries.
+    if geom.coords.size > 3:
+        H = geom.eckart_projection(H)
+    w, v = np.linalg.eigh(H)
+    # Transition vector (imaginary mode) and corresponding eigenvalue
+    v0 = v[:, 0]
+    w0 = w[0]
+    Gv, third_deriv_res = third_deriv_fd(geom, v0)
+    v1 = get_curv_vec(H, Gv, v0, w0)
+    E_taylor = taylor_closure(H, Gv, v0, v1, w0)
+    return E_taylor
