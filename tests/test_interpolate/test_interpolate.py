@@ -6,6 +6,7 @@ from pysisyphus.interpolate.Interpolator import Interpolator
 from pysisyphus.interpolate.LST import LST
 from pysisyphus.interpolate.IDPP import IDPP
 from pysisyphus.interpolate.Redund import Redund
+from pysisyphus.interpolate.Geodesic import Geodesic
 
 
 def test_idpp():
@@ -27,6 +28,7 @@ def test_idpp():
         LST,
         IDPP,
         Redund,
+        Geodesic,
     ]
 )
 def test_ala_dipeptide_interpol(interpol_cls):
