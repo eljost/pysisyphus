@@ -24,7 +24,12 @@ from pysisyphus.helpers_pure import log, sort_by_central, merge_sets
 from pysisyphus.elem_data import VDW_RADII, COVALENT_RADII as CR
 from pysisyphus.intcoords import Stretch, Bend, LinearBend, Torsion
 from pysisyphus.intcoords.setup_fast import find_bonds as find_bonds_fast
-from pysisyphus.intcoords.PrimTypes import PrimTypes, PrimMap, Rotations
+from pysisyphus.intcoords.PrimTypes import (
+    Bonds as PTBonds,
+    PrimTypes,
+    PrimMap,
+    Rotations,
+)
 from pysisyphus.intcoords.valid import bend_valid, dihedral_valid
 
 
@@ -79,7 +84,7 @@ def get_fragments(
     coords3d = coords.reshape(-1, 3)
     if ignore_atom_inds is None:
         ignore_atom_inds = list()
-    if ignore_bonds  is None:
+    if ignore_bonds is None:
         ignore_bonds = set()
     ignore_bonds = set([frozenset(ib) for ib in ignore_bonds])
     ignore_atom_inds = set(ignore_atom_inds)
@@ -89,8 +94,11 @@ def get_fragments(
         bond_inds = get_bond_sets(atoms, coords3d, bond_factor=bond_factor)
 
     bond_ind_sets = [frozenset(bi) for bi in bond_inds]
-    bond_ind_sets = [bi for bi in bond_ind_sets
-                     if (not bi & ignore_atom_inds) and (bi not in ignore_bonds)]
+    bond_ind_sets = [
+        bi
+        for bi in bond_ind_sets
+        if (not bi & ignore_atom_inds) and (bi not in ignore_bonds)
+    ]
     fragments = merge_sets(bond_ind_sets)
 
     # Also add single-atom fragments for unconnected atoms that don't participate
@@ -768,6 +776,14 @@ def setup_redundant(
         return_cdm=True,
         return_cbm=True,
     )
+    # Determine which bonds were added via define_prims. These will be removed
+    # from the list and are already added here to the automatically defined bonds.
+    defined_bonds = [(pt, *inds) for pt, *inds in define_prims if pt == PrimTypes.BOND]
+    if defined_bonds:
+        # Update define_prims and remove the bonds
+        define_prims = [tp for tp in define_prims if tp not in defined_bonds]
+        defined_bond_inds = [[from_, to_] for _, from_, to_ in defined_bonds]
+        bonds = np.concatenate((bonds, defined_bond_inds), axis=0)
     if internals_with_frozen:
         bonds = [bond for bond in bonds if len(set(bond) & freeze_atom_set) <= 1]
     bonds = [tuple(bond) for bond in bonds]
