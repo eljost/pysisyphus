@@ -638,7 +638,12 @@ def run_calculations(
                 print(f"Dumped hessian to '{h5_fn}'.")
 
             all_results.append(results)
+            # See if we can propagate chkfiles to the next calculator if this is implemented
+            # in the calculator and the atom order matches.
             if i < (len(geoms) - 1):
+                atoms_compatible = geom.atoms == geoms[i + 1].atoms
+                if not atoms_compatible:
+                    continue
                 try:
                     cur_calculator = geom.calculator
                     next_calculator = geoms[i + 1].calculator
