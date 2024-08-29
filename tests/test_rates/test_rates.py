@@ -3,7 +3,6 @@ import pytest
 from pysisyphus.constants import AU2KJPERMOL, C
 from pysisyphus.drivers import (
     eyring_rate,
-    harmonic_tst_rate,
     bell_corr,
     eckart_corr,
     eckart_corr_brown,
@@ -19,16 +18,8 @@ BARRIER = 104.5 / AU2KJPERMOL  # about 25 kcal mol⁻¹
 
 
 def test_eyring():
-    rate = eyring_rate(BARRIER, temperature=T)
+    rate = eyring_rate(BARRIER, temperature=T, molecularity=1, pressure=1e5)
     assert rate == pytest.approx(3.059526e-06)
-
-
-@pytest.mark.parametrize(
-    "rs_part_func, ts_part_func, ref_rate", ((1.0, 1.0, 3.059526e-6),)
-)
-def test_harmonic_tst(rs_part_func, ts_part_func, ref_rate):
-    rate = harmonic_tst_rate(BARRIER, T, rs_part_func, ts_part_func)
-    assert rate == pytest.approx(ref_rate)
 
 
 def test_wigner_corr():
@@ -94,6 +85,7 @@ def test_rx_rates(with_product, this_dir):
     else:
         product_geoms = tuple()
 
-    rx_rates = get_rates_for_geoms(T, reactant_geoms, ts_geom, product_geoms)
-    for rxr in rx_rates:
-        print(render_rx_rates(rxr))
+    rx_rates = get_rates_for_geoms(
+        T, reactant_geoms, ts_geom, degen=3, product_geoms=product_geoms
+    )
+    print(render_rx_rates(rx_rates))

@@ -21,6 +21,7 @@ def parse_args(args):
         action="store_true",
         help="Output in kcal mol⁻¹ instead of kJ mol⁻¹.",
     )
+    parser.add_argument("--kind", default="qrrho", choices=("qrrho", "rrho"))
 
     return parser.parse_args(args)
 
@@ -41,5 +42,8 @@ def run_thermo():
     p = args.p
     point_group = args.pg
     unit = "calorie" if args.calorie else "joule"
-    thermo = get_thermoanalysis_from_hess_h5(hess_h5, T=T, p=p, point_group=point_group)
+    kind = args.kind
+    thermo = get_thermoanalysis_from_hess_h5(
+        hess_h5, T=T, p=p, point_group=point_group, kind=kind
+    )
     print_thermoanalysis(thermo, unit=unit)
