@@ -77,8 +77,8 @@ Transition vector:
        Wavenumber: {{ "{: >18.2f}".format(rxr.imag_wavenumber) }} cm⁻¹
         Frequency: {{ "{: >18.6e}".format(rxr.imag_frequency|abs) }} s⁻¹
 
- Type        kappa        rate / s⁻¹     rate / h⁻¹       comment
- -------  ------------ -------------- -------------- ------------------
+ Type        kappa       rate / {{ "%13s"|format(unit) }}       comment
+ -------  ------------ ----------------------- ------------------
  {{ rate_line("Eyring", rxr.kappa_eyring, rxr.rate_eyring) }}
 {%- if rxr.rate_wigner %}
  {{ rate_line("Wigner", rxr.kappa_wigner, rxr.rate_wigner, "1d tunnel corr.") }}
@@ -92,14 +92,13 @@ Transition vector:
 {%- if rxr.rate_eckart_brown %}
  {{ rate_line("Eckart'", rxr.kappa_eckart_brown, rxr.rate_eckart_brown, "1d tunnel corr.") }}
 {%- endif %}
- -------  ------------ -------------- -------------- ------------------
+ -------  ------------ ----------------------- ------------------
 """
 
 
 def render_rx_rates(rx_rates: ReactionRates) -> str:
     def rate_line(name, kappa, rate, comment=""):
-        rate_h = rate * 3600
-        return f"{name: <12s} {kappa: >8.4f} {rate: >12.8e} {rate_h: >12.8e} {comment: >18s}"
+        return f"{name: <12s} {kappa: >8.4f} {rate: >23.8e} {comment: >18s}"
 
     env = jinja2.Environment()
     env.filters["f2"] = lambda _: f"{_:.2f}"
@@ -109,7 +108,7 @@ def render_rx_rates(rx_rates: ReactionRates) -> str:
 
     tpl = env.from_string(RX_RATES_TPL)
 
-    rendered = tpl.render(rxr=rx_rates, rate_line=rate_line)
+    rendered = tpl.render(rxr=rx_rates, rate_line=rate_line, unit=rx_rates.unit)
     return rendered
 
 
