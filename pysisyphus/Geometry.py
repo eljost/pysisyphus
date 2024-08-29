@@ -666,7 +666,7 @@ class Geometry:
         self._comment = new_comment
 
     @property
-    def masses(self):
+    def masses(self) -> np.ndarray:
         if self._masses is None:
             # Lookup tabuled masses in internal database
             masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
