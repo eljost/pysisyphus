@@ -25,6 +25,7 @@ class OpenMolcas(Calculator):
         gateway=None,
         mcpdft=None,
         rassi=None,
+        caspt2=None,
         nprocs=1,
         track=True,
         omp_var="OMP_NUM_THREADS",
@@ -54,6 +55,12 @@ class OpenMolcas(Calculator):
         if rassi is None:
             rassi = {}
         self.rassi = rassi
+        if caspt2 is None:
+            caspt2 = {}
+        self.caspt2 = caspt2
+
+        # They can't be enabled at the same time
+        assert not all((self.caspt2, self.mcpdft)), "Choose either mcpdft or caspt2!"
 
         self.nprocs = nprocs
         self.omp_var = omp_var
@@ -100,6 +107,8 @@ class OpenMolcas(Calculator):
          fileorb
           $Project.rasscf.{inporb_ext}
          {rasscf_kwargs}
+
+        {caspt2}
 
         {mcpdft}
 
@@ -164,6 +173,12 @@ class OpenMolcas(Calculator):
         mcpdft_kwargs = self.build_str_from_dict(self.mcpdft)
         return f"&mcpdft\n{mcpdft_kwargs}"
 
+    def build_caspt2_str(self):
+        if not self.caspt2:
+            return ""
+        caspt2_kwargs = self.build_str_from_dict(self.caspt2)
+        return f"&caspt2\n{caspt2_kwargs}"
+
     def get_pal_env(self):
         env_copy = os.environ.copy()
         env_copy["MOLCAS_NPROCS"] = str(self.nprocs)
@@ -193,6 +208,7 @@ class OpenMolcas(Calculator):
             rasscf_kwargs=self.build_rasscf_str(),
             mcpdft=self.build_mcpdft_str(),
             rassi=self.build_rassi_str(),
+            caspt2=self.build_caspt2_str(),
             alaska=alaska_str,
         )
         return inp
