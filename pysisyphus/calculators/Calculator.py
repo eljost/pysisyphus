@@ -207,6 +207,8 @@ class Calculator:
 
     def get_num_hessian(self, atoms, coords, **prepare_kwargs):
         self.log("Calculating numerical Hessian.")
+        # Calculate energy here so a converged wavefunction is available for the
+        # parallel Hessian calculation.
         results = self.get_energy(atoms, coords, **prepare_kwargs)
 
         def grad_func(coords):
