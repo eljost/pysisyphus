@@ -75,8 +75,8 @@ class Orientation:
         np.testing.assert_allclose(tmp, self.coords3d_org, atol=1e-10)
 
     def rotate_gradient(self, gradient):
-        gradient_rot = np.einsum("ij,kj->ki", self.rot_mat, gradient)
-        return gradient_rot
+        gradient3d_rot = np.einsum("ij,kj->ki", self.rot_mat, gradient.reshape(-1, 3))
+        return gradient3d_rot.flatten()
 
 
 def get_unit_orientation(coords3d, masses) -> Orientation:

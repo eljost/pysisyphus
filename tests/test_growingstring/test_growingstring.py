@@ -8,13 +8,14 @@ from pysisyphus.tsoptimizers.RSIRFOptimizer import RSIRFOptimizer
 
 
 @pytest.mark.parametrize(
-    "keep_last, ref_cycle", [
+    "keep_last, ref_cycle",
+    [
         (0, 9),
         (2, 11),
         (4, 13),
         (6, 15),
         (8, 17),
-    ]
+    ],
 )
 def test_anapot_growing_string(keep_last, ref_cycle):
     initial = AnaPot.get_geom((-1.05274, 1.02776, 0))
@@ -42,10 +43,18 @@ def test_anapot_growing_string(keep_last, ref_cycle):
 
 
 @pytest.mark.parametrize(
-    "gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle", [
-        ({"climb": True, "climb_rms": 0.5, }, 22, 4),
+    "gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle",
+    [
+        (
+            {
+                "climb": True,
+                "climb_rms": 0.5,
+            },
+            22,
+            4,
+        ),
         ({}, 22, 5),
-    ]
+    ],
 )
 def test_growing_string_climbing(gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle):
     calc = AnaPot()
@@ -80,14 +89,15 @@ def test_growing_string_climbing(gs_kwargs_, opt_ref_cycle, tsopt_ref_cycle):
 
 
 @pytest.mark.parametrize(
-    "double_damp, ref_cycle", [
+    "double_damp, ref_cycle",
+    [
         pytest.param(False, 67, marks=pytest.mark.xfail),
         (True, 67),
-    ]
+    ],
 )
 def test_mullerbrown_string(double_damp, ref_cycle):
     calc = MullerBrownPot()
-    geoms = calc.get_path(num=17)
+    geoms = calc.get_path(num=2)
 
     gs_kwargs = {
         "perp_thresh": 5.0,
@@ -115,14 +125,15 @@ def test_mullerbrown_string(double_damp, ref_cycle):
 
 
 @pytest.mark.parametrize(
-    "double_damp, ref_cycle", [
+    "double_damp, ref_cycle",
+    [
         (False, 75),
         (True, 48),
-    ]
+    ],
 )
 def test_energy_reparametrization(double_damp, ref_cycle):
     calc = MullerBrownPot()
-    geoms = calc.get_path(num=17)
+    geoms = calc.get_path(num=2)
 
     gs_kwargs = {
         "perp_thresh": 2.5,
@@ -139,7 +150,7 @@ def test_energy_reparametrization(double_damp, ref_cycle):
         "max_cycles": 200,
         "rms_force": 7.5,
         "rms_force_only": True,
-        "double_damp": double_damp
+        "double_damp": double_damp,
     }
     opt = StringOptimizer(gs, **opt_kwargs)
     opt.run()

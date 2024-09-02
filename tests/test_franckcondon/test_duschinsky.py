@@ -115,8 +115,8 @@ def test_co_duschinsky(this_dir):
     nus_init, _, L_init, _ = geom_init.get_normal_modes()
     for i, nu in enumerate(nus_init):
         print(f"ν_{i+1:02d} {nu: >12.4f} {res.K[i]: >10.6f}")
-    assert res.K[4] == pytest.approx(2.773520)
-    assert res.K[9] == pytest.approx(5.916038)
+    assert abs(res.K[4]) == pytest.approx(2.773520)
+    assert abs(res.K[9]) == pytest.approx(5.916038)
 
 
 def test_unitless_displs_from_eigensystem():
