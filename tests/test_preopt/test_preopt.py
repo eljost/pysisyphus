@@ -11,7 +11,7 @@ def test_preopt(coord_type, cos_type, this_dir):
     run_dict = {
         "geom": {
             "type": coord_type,
-            "fn": "lib:xtb_rx/00_c2no2.trj",
+            "fn": "lib:xtb_rx_00_c2no2_endpoints.trj",
         },
         "calc": {
             "type": "pyscf",
