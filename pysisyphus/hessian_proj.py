@@ -41,6 +41,28 @@ def inertia_tensor(coords3d, masses):
 
 @dataclasses.dataclass
 class Orientation:
+    """Orientation store, e.g., for a standard orientation.
+
+    After instantiation the object performs a quick consistency check
+    by trying to backtransform the re-oriented coordinates.
+
+    Parameters
+    ----------
+    coords3d
+        2d-array of shape (N, 3) holding re-oriented coordinates, e.g.,
+        in standard orientation.
+    com
+        (Original) center-of-mass to restore original coordinates
+        from coords3d.
+    rot_mat
+        2d-array of shape (3, 3) that was used to rotate the shifted
+        original coordinates into the chosen orientation.
+    coords3d_org
+        2d-array of shape (N, 3) holding the original Cartesian coordinates.
+    masses
+        1d-arary of shape (N, ) holding atomic masses in amu.
+    """
+
     coords3d: np.ndarray
     com: np.ndarray
     rot_mat: np.ndarray
@@ -57,7 +79,7 @@ class Orientation:
         return gradient_rot
 
 
-def get_dummy_orientation(coords3d, masses):
+def get_unit_orientation(coords3d, masses) -> Orientation:
     return Orientation(
         coords3d=coords3d.copy(),
         com=np.zeros(3),
@@ -158,9 +180,15 @@ def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-5):
 
     trans_vecs = list(get_trans_vecs())
     rot_vecs = np.array(get_rot_vecs())
-    # Drop vectors with vanishing norms
-    rot_vecs = rot_vecs[np.linalg.norm(rot_vecs, axis=1) > rot_thresh]
+    # Drop vectors with vanishing norms/very small entries. Previous versions
+    # tested the norm of these vectors. This was/is a bad idea, as the size of these
+    # vectors grows with the number of atoms. Now we use the rms value instead.
+    rot_vec_rms = np.sqrt(np.mean(rot_vecs**2, axis=1))
+    mask = rot_vec_rms > rot_thresh
+    rot_vecs = rot_vecs[mask]
+    # Vectors are in rows after concatenate call
     tr_vecs = np.concatenate((trans_vecs, rot_vecs), axis=0)
+    # Orthonormalize vectors
     tr_vecs = np.linalg.qr(tr_vecs.T)[0].T
     return tr_vecs
 
@@ -212,7 +240,7 @@ def get_hessian_projector(
         Boolean flag that controls the use of a (temporary) standard orientation.
         If set to False linear molecules can lack a vibration.
     """
-    orient_func = get_standard_orientation if use_std_orient else get_dummy_orientation
+    orient_func = get_standard_orientation if use_std_orient else get_unit_orientation
     orient = orient_func(cart_coords.reshape(-1, 3), masses)
     # Continue with (possibly) re-oriented coordinates
     cart_coords = orient.coords3d.flatten()
@@ -245,18 +273,17 @@ def get_hessian_projector(
                 ),
                 axis=0,
             )
-    # Bring vectors back into original orientation
-    natoms = len(masses)
-    eye = np.eye(natoms)
-    # Please not the transposed rotation matrix, to restore the original orientation
-    # from the standard orientation.
-    vecs = vecs @ np.kron(eye, orient.rot_mat.T)
-
     if full:
         P = get_projector(vecs)
     else:
         U, s, _ = np.linalg.svd(vecs.T)
         P = U[:, s.size :].T
+    # Bring vectors back into original orientation. Note the transposed rotation matrix,
+    # to restore the original orientation.
+    natoms = len(masses)
+    eye = np.eye(natoms)
+    rot_mat = np.kron(eye, orient.rot_mat.T)
+    P = (rot_mat @ P.T).T
     return P
 
 
