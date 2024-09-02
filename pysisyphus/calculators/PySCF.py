@@ -3,7 +3,7 @@ import shutil
 
 import numpy as np
 import pyscf
-from pyscf import gto, grad, lib, hessian, tddft, qmmm
+from pyscf import gto, lib, qmmm
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.helpers import geom_loader
@@ -47,6 +47,7 @@ class PySCF(OverlapCalculator):
         unrestricted=None,
         grid_level=3,
         pruning="nwchem",
+        use_gpu=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -79,6 +80,8 @@ class PySCF(OverlapCalculator):
         self.chkfile = None
         self.out_fn = "pyscf.out"
 
+        self.use_gpu = use_gpu
+
         lib.num_threads(self.pal)
 
     @staticmethod
@@ -98,7 +101,10 @@ class PySCF(OverlapCalculator):
 
     def prepare_mf(self, mf):
         # Method can be overriden in a subclass to modify the mf object.
-        return mf
+        if self.use_gpu:
+            return mf.to_gpu()
+        else:
+            return mf
 
     def get_driver(self, step, mol=None, mf=None):
         def _get_driver():
@@ -244,7 +250,7 @@ class PySCF(OverlapCalculator):
                         f"Using '{self.chkfile}' as initial guess for {step} calculation."
                     )
                 if self.auxbasis:
-                    mf.density_fit(auxbasis=self.auxbasis)
+                    mf = mf.density_fit(auxbasis=self.auxbasis)
                     self.log(f"Using density fitting with auxbasis {self.auxbasis}.")
 
                 if point_charges is not None:
