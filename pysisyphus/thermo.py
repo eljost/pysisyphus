@@ -85,7 +85,7 @@ Expected {{ nexpected }} real wavenumbers, got {{ nused }}.
 Imaginary modes present:
 {%- for nu_below in nus_below %}
 {{ "\t%04d" % loop.index }}: {{ fmt_nu(nu_below) }}
-{% endfor %}
+{%- endfor %}
 {%- endif %}
 {{ sep }}
 

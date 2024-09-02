@@ -667,7 +667,7 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
             inds_str = ", ".join([f"{atoms[i]: >2s}{i: <4d}" for i in inds])
             inds_str = f"[{inds_str}]"
             print(
-                f"{j:04d}: {pt: >20} {prim_counter:03d} {inds_str} {val: >10.4f}"
+                f"{j:04d}: {pt: >24} {prim_counter:04d} {inds_str} {val: >12.6f}"
                 f"{unit}"
             )
             prim_counter += 1
