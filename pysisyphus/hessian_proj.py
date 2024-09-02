@@ -11,6 +11,8 @@
 #     Neugebauer, Reiher, Hess, 2002
 
 
+import dataclasses
+from typing import Optional
 import warnings
 
 import numpy as np
@@ -35,6 +37,63 @@ def inertia_tensor(coords3d, masses):
     I_yz = -np.sum(masses * y * z)
     I = np.array(((I_xx, I_xy, I_xz), (I_xy, I_yy, I_yz), (I_xz, I_yz, I_zz)))
     return I
+
+
+@dataclasses.dataclass
+class Orientation:
+    coords3d: np.ndarray
+    com: np.ndarray
+    rot_mat: np.ndarray
+    coords3d_org: np.ndarray
+    masses: np.ndarray
+
+    def __post_init__(self):
+        # Quick sanity check
+        tmp = np.einsum("ij,kj->ki", self.rot_mat.T, self.coords3d) + self.com
+        np.testing.assert_allclose(tmp, self.coords3d_org, atol=1e-10)
+
+    def rotate_gradient(self, gradient):
+        gradient_rot = np.einsum("ij,kj->ki", self.rot_mat, gradient)
+        return gradient_rot
+
+
+def get_dummy_orientation(coords3d, masses):
+    return Orientation(
+        coords3d=coords3d.copy(),
+        com=np.zeros(3),
+        rot_mat=np.eye(3),
+        coords3d_org=coords3d.copy(),
+        masses=masses,
+    )
+
+
+def get_standard_orientation(coords3d, masses) -> Orientation:
+    coords3d = coords3d.reshape(-1, 3)
+    assert len(coords3d) == len(masses)
+    # Center-of-mass
+    com = 1 / masses.sum() * np.sum(coords3d * masses[:, None], axis=0)
+
+    # Translate center of mass to origin
+    coords3d_com = coords3d - com
+    coords3d_aligned = coords3d_com.copy()
+    rot_mat = np.eye(3)
+    for _ in range(5):
+        I = inertia_tensor(coords3d_aligned, masses)
+        _, v = np.linalg.eigh(I)
+        # Leave loop when principal axis are aligned
+        if np.allclose(v, np.eye(3)):
+            break
+        # Otherwise align coordinates and updated rotation matrix
+        coords3d_aligned = np.einsum("ij,kj->ki", v.T, coords3d_aligned)
+        rot_mat = v.T @ rot_mat
+    std_orient = Orientation(
+        coords3d=coords3d_aligned,
+        com=com,
+        rot_mat=rot_mat,
+        coords3d_org=coords3d.copy(),
+        masses=masses,
+    )
+    return std_orient
 
 
 def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-5):
@@ -119,14 +178,48 @@ def get_projector(vecs):
 
 
 def get_hessian_projector(
-    cart_coords,
-    masses,
-    cart_gradient=None,
-    full=False,
+    cart_coords: np.ndarray,
+    masses: np.ndarray,
+    cart_gradient: Optional[np.ndarray] = None,
+    full: bool = False,
     # These thresholds correspond to the 'gau' threshold
-    max_grad_thresh=4.5e-4,
-    rms_grad_thresh=3e-4,
+    max_grad_thresh: float = 4.5e-4,
+    rms_grad_thresh: float = 3e-4,
+    use_std_orient: bool = True,
 ):
+    """Get matrix to project translation and rotation from the Hessian.
+
+    Parameters
+    ----------
+    cart_coords
+        1d array of shape (3N, ) holding Cartesian coordinates.
+    masses
+        1d arary of shape (N, ) holding atomic masses.
+    cart_gradient
+        Optional 1d array of shape (3N, ) containing a Cartesian gradient
+        that will also be projected out of the Hessian.
+    full
+        Boolean flag that controls the shape of the projector. If true,
+        the projector will be of shape (3N, 3N), otherwise it will be of
+        shape (3N - 6 (5), 3N - 6 (5)).
+    max_grad_thresh
+        Positive floating point number. Criterion used to determine if we are
+        at a stationary point. If we are at a statioanry point, the gradient
+        direction won't be included in the projector.
+    rms_grad_thresh
+        See max_grad_thresh.
+    use_std_orient
+        Boolean flag that controls the use of a (temporary) standard orientation.
+        If set to False linear molecules can lack a vibration.
+    """
+    orient_func = get_standard_orientation if use_std_orient else get_dummy_orientation
+    orient = orient_func(cart_coords.reshape(-1, 3), masses)
+    # Continue with (possibly) re-oriented coordinates
+    cart_coords = orient.coords3d.flatten()
+    if cart_gradient is not None:
+        cart_gradient = orient.rotate_gradient(cart_gradient)
+
+    # Calculate vectors to project out translation and rotation
     tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
     vecs = tr_vecs
 
@@ -152,6 +245,13 @@ def get_hessian_projector(
                 ),
                 axis=0,
             )
+    # Bring vectors back into original orientation
+    natoms = len(masses)
+    eye = np.eye(natoms)
+    # Please not the transposed rotation matrix, to restore the original orientation
+    # from the standard orientation.
+    vecs = vecs @ np.kron(eye, orient.rot_mat.T)
+
     if full:
         P = get_projector(vecs)
     else:
