@@ -37,7 +37,7 @@ def test_preopt(coord_type, cos_type, this_dir):
     if cos_type == "neb":
         run_dict["interpol"] = {
             "type": "redund",
-            "between": 1,
+            "between": 3,
         }
     results = run_from_dict(run_dict)
 
