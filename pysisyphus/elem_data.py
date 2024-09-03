@@ -3560,6 +3560,10 @@ VALID_ATOMS = set(ATOMIC_NUMBERS.keys())
 INV_ATOMIC_NUMBERS = {num: elem for elem, num in ATOMIC_NUMBERS.items()}
 
 
+def masses_for_atoms(atoms):
+    return np.array([MASS_DICT[atom.lower()] for atom in atoms])
+
+
 def nuc_charges_for_atoms(atoms):
     return np.array([ATOMIC_NUMBERS[atom.lower()] for atom in atoms], dtype=int)
 
