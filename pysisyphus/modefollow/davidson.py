@@ -49,7 +49,7 @@ def block_davidson(
     msqrt = np.sqrt(masses_rep)
 
     # Projector to remove translation and rotation
-    P = get_hessian_projector(cart_coords, masses, full=True)
+    P = get_hessian_projector(cart_coords, masses, full=True, use_std_orient=False)
     guess_modes = [
         NormalMode(P.dot(mode.l_mw) / msqrt, masses_rep) for mode in guess_modes
     ]
