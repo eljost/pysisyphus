@@ -869,6 +869,11 @@ def plot_irc_h5(h5, title=None):
         except KeyError:
             ts_index = None
 
+        try:
+            coordinate = handle["lengths"][:]
+        except KeyError:
+            coordinate = None
+
     sizes = [dataset.shape[0] for dataset in (mw_coords, energies, gradients)]
     size0 = sizes[0]
     assert all([size == size0 for size in sizes])
@@ -878,7 +883,12 @@ def plot_irc_h5(h5, title=None):
     energies -= energies[0]
     energies *= en_conv
 
-    cds = np.linalg.norm(mw_coords - mw_coords[0], axis=1)
+    if coordinate is None:
+        assert ts_index is not None
+        ts_mw_coords = mw_coords[ts_index]
+        signs = np.ones(size0)
+        signs[ts_index:] *= -1
+        coordinate = signs * np.linalg.norm(ts_mw_coords - mw_coords, axis=1)
     rms_grads = np.sqrt(np.mean(gradients**2, axis=1))
     max_grads = np.abs(gradients).max(axis=1)
 
@@ -889,22 +899,22 @@ def plot_irc_h5(h5, title=None):
         "marker": "o",
     }
 
-    ax0.plot(cds, energies, **plt_kwargs)
+    ax0.plot(coordinate, energies, **plt_kwargs)
     ax0.set_title("energy change")
     ax0.set_ylabel(DE_LABEL)
 
-    ax1.plot(cds, rms_grads, **plt_kwargs)
+    ax1.plot(coordinate, rms_grads, **plt_kwargs)
     ax1.axhline(rms_grad_thresh, linestyle="--", color="k")
     ax1.set_title("rms(gradient)")
     ax1.set_ylabel("$E_h$ Bohr⁻¹")
 
-    ax2.plot(cds, max_grads, **plt_kwargs)
+    ax2.plot(coordinate, max_grads, **plt_kwargs)
     ax2.set_title("max(gradient)")
     ax2.set_xlabel("IRC / amu$^{\\frac{1}{2}}$ Bohr")
     ax2.set_ylabel("$E_h$ Bohr⁻¹")
 
     if ts_index:
-        x = cds[ts_index]
+        x = coordinate[ts_index]
         for ax, arr in ((ax0, energies), (ax1, rms_grads), (ax2, max_grads)):
             xy = (x, arr[ts_index])
             ax.annotate("TS", xy, fontsize=12, fontweight="bold")
