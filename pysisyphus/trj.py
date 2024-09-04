@@ -29,6 +29,7 @@ INTERPOLATE = {
     "lst": LST.LST,
     "linear": Interpolator.Interpolator,
     "redund": Redund.Redund,
+    "geodesic": Geodesic.Geodesic,
 }
 
 
@@ -100,7 +101,7 @@ def parse_args(args):
         "--hsmerge",
         action="store_true",
         help="Merge two input geometries into one, while avoiding overlapping atoms "
-        "via hardsphere-optimization."
+        "via hardsphere-optimization.",
     )
     action_group.add_argument(
         "--join",
@@ -173,6 +174,11 @@ def parse_args(args):
     )
     interpolate_group.add_argument(
         "--redund", action="store_true", help="Interpolate in internal coordinates."
+    )
+    interpolate_group.add_argument(
+        "--geodesic",
+        action="store_true",
+        help="Geodesic interpolation. Requires the geodesic-interpolate package.",
     )
     parser.add_argument(
         "--extrapolate",
@@ -492,7 +498,9 @@ def append(geoms):
 def hardsphere_merge(geoms):
     assert len(geoms) == 2
     union = hardsphere_merge_driver(*geoms)
-    return [union, ]
+    return [
+        union,
+    ]
 
 
 def match(ref_geom, geom_to_match):
@@ -693,6 +701,8 @@ def run():
         interpol_type = "lst"
     elif args.redund:
         interpol_type = "redund"
+    elif args.geodesic:
+        interpol_type = "geodesic"
     elif args.between:
         interpol_type = "linear"
     else:
