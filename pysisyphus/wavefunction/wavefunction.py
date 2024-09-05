@@ -496,6 +496,7 @@ class Wavefunction:
     ) -> NDArray[float]:
         if origin is None:
             origin = self.get_origin(kind=kind)
+        origin = np.array(origin)
 
         dipole_ints = {
             BFType.CARTESIAN: lambda *args: self.shells.get_dipole_ints_cart(*args),
@@ -508,6 +509,7 @@ class Wavefunction:
     ) -> NDArray[float]:
         if origin is None:
             origin = self.get_origin(kind=kind)
+        origin = np.array(origin)
 
         quadrupole_ints = {
             BFType.CARTESIAN: lambda *args: self.shells.get_quadrupole_ints_cart(*args),

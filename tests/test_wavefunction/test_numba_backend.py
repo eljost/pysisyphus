@@ -45,6 +45,7 @@ def py_wf():
     return Wavefunction.from_file(
         "lib:01_ch4_tzvp.json",
         shell_kwargs={
+            "backend": "python",
             "ordering": "pysis",
         },
     )

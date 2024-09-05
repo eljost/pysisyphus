@@ -175,7 +175,7 @@ def test_quadrupole_moment():
 
 def test_one_el_terms():
     fn = WF_LIB_DIR / "orca_ch4_sto3g.json"
-    wf = Wavefunction.from_orca_json(fn)
+    wf = Wavefunction.from_orca_json(fn, shell_kwargs={"backend": "python"})
     shells = wf.shells
     T = shells.T_sph
     V = shells.V_sph
@@ -188,7 +188,9 @@ def test_one_el_terms():
 
 
 def test_eval_esp():
-    wf = Wavefunction.from_file(WF_LIB_DIR / "orca_lih_ccpvdz.molden.input")
+    wf = Wavefunction.from_file(
+        WF_LIB_DIR / "orca_lih_ccpvdz.molden.input", shell_kwargs={"backend": "python"}
+    )
     coords3d = np.array(
         (
             (0.0, 0.0, 1.0),

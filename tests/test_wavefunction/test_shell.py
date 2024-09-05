@@ -57,7 +57,7 @@ def test_quadrupole_ints():
     origin = _charge_center(mol)
     with mol.with_common_orig(origin):
         quad = mol.intor("int1e_rr").reshape(3, 3, nao, nao)
-    shells = Shells.from_pyscf_mol(mol)
+    shells = Shells.from_pyscf_mol(mol, backend="python")
     pysis_quad = shells.get_quadrupole_ints_sph(origin)
     np.testing.assert_allclose(pysis_quad, quad, atol=1e-14)
 
@@ -112,7 +112,7 @@ def test_2c2e(mol_auxmol):
     N_aux = 1 / np.diag(S_aux) ** 0.5
     NaNa = N_aux[:, None] * N_aux[None, :]
 
-    aux_shells = Shells.from_pyscf_mol(auxmol)
+    aux_shells = Shells.from_pyscf_mol(auxmol, backend="python")
     integrals = aux_shells.get_2c2el_ints_cart()
 
     np.testing.assert_allclose(integrals, int2c * NaNa)
@@ -122,7 +122,7 @@ def test_3c2e(mol_auxmol):
     mol, auxmol = mol_auxmol
     int3c = df.incore.aux_e2(mol, auxmol, "int3c2e_sph")
 
-    shells = Shells.from_pyscf_mol(mol)
+    shells = Shells.from_pyscf_mol(mol, backend="python")
     aux_shells = Shells.from_pyscf_mol(auxmol)
     integrals = shells.get_3c2el_ints_sph(aux_shells)
 
