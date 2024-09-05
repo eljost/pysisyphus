@@ -57,6 +57,9 @@ jobs:
     - name: Install thermoanalysis
       run: |
         pip install git+https://github.com/eljost/thermoanalysis.git
+    - name: Install geodesic-interpolate
+      run: |
+        pip install git+https://github.com/virtualzx-nad/geodesic-interpolate.git
     - name: Test with pytest
       run: >
         pytest -v

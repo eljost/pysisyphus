@@ -30,6 +30,7 @@ IMPORT_DICT = {
     "thermoanalysis": "thermoanalysis",
     "pyxtb": "xtb.interface",
     "obabel": "openbabel.openbabel",
+    "geodesic": "geodesic_interpolate",
 }
 
 
@@ -48,9 +49,8 @@ def module_available(calculator):
 
 
 class DummyMark:
-
     def __init__(self, available):
-        self.args = (available, )
+        self.args = (available,)
 
 
 def using(calculator, set_pytest_mark=True):
