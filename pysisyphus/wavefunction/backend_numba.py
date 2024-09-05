@@ -237,7 +237,7 @@ def get_1el_ints_cart(
 ):
     org_components = components
     components = max(1, components)
-    symmetric = shells_b == None
+    symmetric = shells_b is None
     if symmetric:
         shells_b = shells_a
 

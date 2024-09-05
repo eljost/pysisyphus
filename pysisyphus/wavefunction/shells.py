@@ -8,7 +8,7 @@ import itertools as it
 from math import sqrt, log, pi
 from pathlib import Path
 import textwrap
-from typing import List, Literal, Union
+from typing import List, Literal, Optional, Union
 import warnings
 
 
@@ -49,15 +49,15 @@ class Shell:
     def __init__(
         self,
         L: int,
-        center: NDArray[float],
-        coeffs: NDArray[float],
-        exps: NDArray[float],
+        center: np.ndarray,
+        coeffs: np.ndarray,
+        exps: np.ndarray,
         center_ind: int,
-        atomic_num=None,
+        atomic_num: Optional[int] = None,
         # TODO: sph_index and cart_index?!
-        shell_index=None,
-        index=None,
-        sph_index=None,
+        shell_index: Optional[int] = None,
+        index: Optional[int] = None,
+        sph_index: Optional[int] = None,
         # min_coeff: float = 1e-8,
     ):
         self.L = get_l(L)
@@ -195,7 +195,7 @@ class Shell:
 
 Ordering = Literal["native", "pysis"]
 
-IntegralBackend = Enum("IntegralBackend", ["PYTHON", "NUMBA"])
+IntegralBackend = Enum("IntegralBackend", ["PYTHON", "NUMBA", "NUMBA_MULTIPOLE"])
 _backend_modules = {
     IntegralBackend.PYTHON: backend_python,
 }
@@ -225,6 +225,7 @@ class Shells:
         # ValueError is raised when backend is a string, not an Enum
         except ValueError:
             self.backend = IntegralBackend[backend.upper()]
+
         # Only ever import (and compile) numba backend when actually requested,
         # as the compilation/setup takes quite some time.
         if self.backend == IntegralBackend.NUMBA:
@@ -238,6 +239,20 @@ class Shells:
                     "not installed!.\n Falling back to python backend."
                 )
                 self.backend = IntegralBackend.PYTHON
+        elif self.backend == IntegralBackend.NUMBA_MULTIPOLE:
+            try:
+                from pysisyphus.wavefunction import backend_numba_multipole
+
+                _backend_modules[IntegralBackend.NUMBA_MULTIPOLE] = (
+                    backend_numba_multipole
+                )
+            except ModuleNotFoundError:
+                print(
+                    "numba integral backend was requested but numba package is "
+                    "not installed!.\n Falling back to python backend."
+                )
+                self.backend = IntegralBackend.PYTHON
+
         # Pick the actual backend module
         self.backend_module = _backend_modules[self.backend]
         # End integral backend setup
@@ -284,6 +299,7 @@ class Shells:
             self.get_1el_ints_sph = self.memory.cache(self.get_1el_ints_sph)
 
         self._numba_shells = None
+        self._numba_shellstructs = None
 
     @property
     def nprims(self):
@@ -314,6 +330,12 @@ class Shells:
         from pysisyphus.wavefunction import backend_numba
 
         return backend_numba.to_numba_shells(self)
+
+    @property
+    def numba_shellstructs(self):
+        if self._numba_shellstructs is None:
+            self._numba_shellstructs = self.as_numba_shellstructs()
+        return self._numba_shellstructs
 
     def as_numba_shellstructs(self):
         from pysisyphus.wavefunction import backend_numba
@@ -685,6 +707,11 @@ class Shells:
             shells = self.numba_shells
             if other is not None:
                 other = other.numba_shells
+        elif self.backend == IntegralBackend.NUMBA_MULTIPOLE:
+            shells = self.numba_shellstructs
+            if other is not None:
+                other = other.numba_shellstructs
+
         return self.backend_module.get_1el_ints_cart(
             shells,
             func_dict,
