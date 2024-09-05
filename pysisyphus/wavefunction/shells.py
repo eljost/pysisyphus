@@ -466,29 +466,29 @@ class Shells:
 
     @staticmethod
     @file_or_str(".in")
-    def from_aomix(text):
+    def from_aomix(text, **kwargs):
         # import here, to avoid cyclic imports
         from pysisyphus.io.aomix import shells_from_aomix
 
-        shells = shells_from_aomix(text)
+        shells = shells_from_aomix(text, **kwargs)
         return shells
 
     @staticmethod
     @file_or_str(".json")
-    def from_orca_json(text):
+    def from_orca_json(text, **kwargs):
         # import here, to avoid cyclic imports
         from pysisyphus.io.orca import shells_from_json
 
-        shells = shells_from_json(text)
+        shells = shells_from_json(text, **kwargs)
         return shells
 
     @staticmethod
     @file_or_str(".fchk")
-    def from_fchk(text):
+    def from_fchk(text, **kwargs):
         # import here, to avoid cyclic imports
         from pysisyphus.io.fchk import shells_from_fchk
 
-        shells = shells_from_fchk(text)
+        shells = shells_from_fchk(text, **kwargs)
         return shells
 
     @staticmethod
@@ -504,7 +504,7 @@ class Shells:
         return Shells(shells, **kwargs)
 
     @staticmethod
-    def from_sympleints_h5(h5_fn, group_name="shells"):
+    def from_sympleints_h5(h5_fn, group_name="shells", **kwargs):
         with h5py.File(h5_fn, "r") as handle:
             group = handle[group_name]
             shell_data = group["shell_data"][:]
@@ -512,7 +512,7 @@ class Shells:
             coefficients = group["coefficients"][:]
             exponents = group["exponents"][:]
         return Shells.from_sympleints_arrays(
-            shell_data, centers, coefficients, exponents
+            shell_data, centers, coefficients, exponents, **kwargs
         )
 
     @classmethod
@@ -689,29 +689,52 @@ class Shells:
         **kwargs,
     ):
         # Dispatch to external backend
-        func_dict, components = self.backend_module.get_func_data(key)
-        if self.backend == IntegralBackend.PYTHON:
-            shells = self
-        elif self.backend == IntegralBackend.NUMBA:
-            shells = self.numba_shells
-            if other is not None:
-                other = other.numba_shells
-        elif self.backend == IntegralBackend.NUMBA_MULTIPOLE:
-            shells = self.numba_shellstructs
-            if other is not None:
-                other = other.numba_shellstructs
+        func_dict, org_components = self.backend_module.get_func_data(key)
 
-        return self.backend_module.get_1el_ints_cart(
-            shells,
+        components = max(org_components, 1)
+
+        act_shells = self
+        act_other = other
+        if self.backend == IntegralBackend.NUMBA:
+            act_shells = self.numba_shells
+            if other is not None:
+                act_other = other.numba_shells
+        elif self.backend == IntegralBackend.NUMBA_MULTIPOLE:
+            act_shells = self.numba_shellstructs
+            if other is not None:
+                act_other = other.numba_shellstructs
+
+        integrals = self.backend_module.get_1el_ints_cart(
+            act_shells,
             func_dict,
-            shells_b=other,
-            can_reorder=can_reorder,
-            ordering=self.ordering,
             components=components,
+            shells_b=act_other,
+            # can_reorder=can_reorder,
+            # ordering=self.ordering,
             screen_func=screen_func,
             screen=self.screen,
             **kwargs,
         )
+
+        # Return plain 2d array when components is 0.
+        # TODO: update this when #312 is resolved.
+        if org_components == 0:
+            integrals = np.squeeze(integrals, axis=0)
+
+        # Reordering will be disabled, when spherical integrals are desired. They
+        # are reordered outside of this function. Reordering them already here
+        # would mess up the results after the 2nd reordering.
+        if can_reorder and self.ordering == "native":
+            if other is None:
+                other = self
+            integrals = np.einsum(
+                "ij,...jk,kl->...il",
+                self.P_cart,
+                integrals,
+                other.P_cart.T,
+                optimize="greedy",
+            )
+        return integrals
 
     def get_1el_ints_sph(
         self,

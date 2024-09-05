@@ -264,12 +264,10 @@ def get_multipole_ints_cart(
     # (shellsa, shellsb, multipoles), as this is more efficient.
     # See issue #312 on Github.
     integrals = np.transpose(integrals, axes=(2, 0, 1))
-    if integrals.shape[0] == 1:
-        integrals = np.squeeze(integrals, axis=0)
     return integrals
 
 
-def get_1el_ints_cart(shells, func_dict, shells_b, **kwargs):
+def get_1el_ints_cart(shells, func_dict, components, shells_b, **kwargs):
     R = kwargs.get("R", np.zeros(3))
     Le = func_dict
     return get_multipole_ints_cart(Le, R, shells, shells_b)
