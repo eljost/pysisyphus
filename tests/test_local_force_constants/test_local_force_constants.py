@@ -169,7 +169,7 @@ def test_local_force_constants(water_geom):
             ind2 = geom_redund.internal.get_index_of_typed_prim((PT.BOND, *bond_2_inds))
             bond_length_1 = geom_redund.coords[ind1]
             bond_length_2 = geom_redund.coords[ind2]
-            prod = np.product(1 / (bond_length_1 * bond_length_2))
+            prod = np.prod(1 / (bond_length_1 * bond_length_2))
             ki *= prod
             kcomp *= prod
         print(

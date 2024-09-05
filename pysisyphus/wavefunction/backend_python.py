@@ -33,10 +33,10 @@ def get_func_data(key):
 def get_1el_ints_cart(
     shells_a,
     func_dict,
+    components,
     shells_b=None,
-    can_reorder=True,
-    ordering="native",
-    components=0,
+    # can_reorder=True,
+    # ordering="native",
     screen=False,
     screen_func=None,
     # R=np.zeros(3),
@@ -48,8 +48,8 @@ def get_1el_ints_cart(
     cart_bf_num_b = shells_b.cart_bf_num
 
     # components = 0 indicates, that a plain 2d matrix is desired.
-    if is_2d := (components == 0):
-        components = 1
+    # if is_2d := (components == 0):
+    # components = 1
 
     # Preallocate empty matrices and directly assign the calculated values
     integrals = np.zeros((components, cart_bf_num_a, cart_bf_num_b))
@@ -92,6 +92,8 @@ def get_1el_ints_cart(
                 integrals[:, b_slice, a_slice] = np.transpose(
                     integrals[:, a_slice, b_slice], axes=(0, 2, 1)
                 )
+
+    return integrals
 
     # Return plain 2d array if components is set to 0, i.e., remove first axis.
     if is_2d:

@@ -230,18 +230,16 @@ def to_numba_shellstructs(shells):
 def get_1el_ints_cart(
     shells_a,
     func_dict,
+    components,
     shells_b=None,
-    components=0,
     R=np.zeros(3),
     **kwargs,
 ):
-    org_components = components
-    components = max(1, components)
     symmetric = shells_b is None
     if symmetric:
         shells_b = shells_a
 
-    integrals = get_2c_ints_cart(
+    return get_2c_ints_cart(
         shells_a,
         shells_b,
         func_dict,
@@ -249,6 +247,3 @@ def get_1el_ints_cart(
         symmetric=symmetric,
         R=R,
     )
-    if org_components == 0:
-        integrals = np.squeeze(integrals, axis=0)
-    return integrals
