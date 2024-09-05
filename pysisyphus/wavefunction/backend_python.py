@@ -47,10 +47,6 @@ def get_1el_ints_cart(
     cart_bf_num_a = shells_a.cart_bf_num
     cart_bf_num_b = shells_b.cart_bf_num
 
-    # components = 0 indicates, that a plain 2d matrix is desired.
-    # if is_2d := (components == 0):
-    # components = 1
-
     # Preallocate empty matrices and directly assign the calculated values
     integrals = np.zeros((components, cart_bf_num_a, cart_bf_num_b))
 
@@ -94,24 +90,6 @@ def get_1el_ints_cart(
                 )
 
     return integrals
-
-    # Return plain 2d array if components is set to 0, i.e., remove first axis.
-    if is_2d:
-        integrals = np.squeeze(integrals, axis=0)
-
-    # Reordering will be disabled, when spherical integrals are desired. They
-    # are reordered outside of this function. Reordering them already here
-    # would mess up the results after the 2nd reordering.
-    if can_reorder and ordering == "native":
-        integrals = np.einsum(
-            "ij,...jk,kl->...il",
-            shells_a.P_cart,
-            integrals,
-            shells_b.P_cart.T,
-            optimize="greedy",
-        )
-    return integrals
-
 
 def get_3c2el_ints_cart(shells_a, shells_aux):
     """Cartesian 3-center-2-electron integrals.
