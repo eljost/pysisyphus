@@ -208,7 +208,7 @@ class Shells:
         shells: List[Shell],
         screen: bool = False,
         ordering: Ordering = "native",
-        backend: Union[str, IntegralBackend] = IntegralBackend.PYTHON,
+        backend: Union[str, IntegralBackend] = IntegralBackend.NUMBA_MULTIPOLE,
     ):
         self.shells = shells
         self.ordering = ordering

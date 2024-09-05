@@ -202,7 +202,7 @@ def get_multipole_ints_cart_numba(
     shells_b,
     symmetric,
 ):
-    components = 2 * Le + 1
+    components = (Le + 2) * (Le + 1) // 2
 
     tot_size_a = 0
     for shell in shells_a:
@@ -214,7 +214,6 @@ def get_multipole_ints_cart_numba(
 
     # Allocate final integral array
     integrals = np.zeros((tot_size_a, tot_size_b, components))
-    shells_b = shells_a
     nshells_a = len(shells_a)
     nshells_b = len(shells_b)
 
@@ -261,8 +260,12 @@ def get_multipole_ints_cart(
         shellstructs_b,
         symmetric,
     )
-    if integrals.shape[2] == 1:
-        integrals = np.squeeze(integrals, axis=2)
+    # TODO: Drop the transpose and restructure the code to handle
+    # (shellsa, shellsb, multipoles), as this is more efficient.
+    # See issue #312 on Github.
+    integrals = np.transpose(integrals, axes=(2, 0, 1))
+    if integrals.shape[0] == 1:
+        integrals = np.squeeze(integrals, axis=0)
     return integrals
 
 
