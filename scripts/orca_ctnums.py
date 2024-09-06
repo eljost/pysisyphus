@@ -117,7 +117,7 @@ def run():
 
     atoms = data["atoms"]
     coords = data["coords"]
-    exc_ens = data["exc_ens"]
+    all_energies = data["all_ens"]
     foscs = data["foscs"]
     ct_numbers = data["ct_numbers"]
     homogenous_frags = data["frags"]
@@ -131,7 +131,7 @@ def run():
             cur_frag.append(atom_ind)
         frags.append(cur_frag)
 
-    fig = ct_number_plot(atoms, coords, exc_ens, foscs, ct_numbers, frags=frags)
+    fig = ct_number_plot(atoms, coords, all_energies, foscs, ct_numbers, frags=frags)
     plt.show()
 
 
