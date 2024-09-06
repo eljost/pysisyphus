@@ -5,6 +5,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 write_to = "pysisyphus/version.py"
 
+[tool.ruff]
+# E741: ambiguous variable name
+ignore = ["E741"]
+
 [tool.ruff.lint]
 extend-select = ["NPY201"]
 preview = true
