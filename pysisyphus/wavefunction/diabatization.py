@@ -356,10 +356,12 @@ DiaResultTemplate = Template(
 # DIABATIZATION REPORT #
 ########################
 
+Kind: {{ kind }}
+
 All energies are given in {{ unit }}.
 
-Every column of the rotation matrix U describes the composition of a
-diabatic state in terms of (possibly various) adiabatic states.
+Every column of the rotation matrix U describes the composition of
+a diabatic state in terms of (possibly various) adiabatic states.
 
 Adiabatic energy matrix V
 -------------------------
@@ -401,6 +403,7 @@ Unique absolute diabatic couplings
 
 @dataclasses.dataclass
 class DiabatizationResult:
+    kind: str
     U: np.ndarray
     adia_ens: np.ndarray
     # U and adia_ens should be enough ... the rest should be optional.
@@ -494,6 +497,7 @@ class DiabatizationResult:
                 flat_couplings.append((key, couplings[(from_, to_)]))
 
         rendered = DiaResultTemplate.render(
+            kind=self.kind,
             unit=unit,
             adia_mat=self.adia_mat,
             U=U,
@@ -508,13 +512,14 @@ class DiabatizationResult:
 
 
 def dia_result_from_jac_result(
-    adia_ens: np.ndarray, jac_res: JacobiSweepResult, **property_tensors
+    kind, adia_ens: np.ndarray, jac_res: JacobiSweepResult, **property_tensors
 ) -> DiabatizationResult:
     U = jac_res.C
     adia_mat = np.diag(adia_ens)
     dia_mat = U.T @ adia_mat @ U
     dia_ens = np.diag(dia_mat)
     dia_result = DiabatizationResult(
+        kind=kind,
         U=U,
         adia_ens=adia_ens,
         dia_ens=dia_ens,
@@ -561,8 +566,9 @@ def dq_diabatization(
         diabatic-transformation matrix.
     """
     jac_res = dq_jacobi_sweeps(dip_moms, quad_moms=quad_moms, epots=epots, **kwargs)
+    kind = "dq"
     return dia_result_from_jac_result(
-        adia_ens, jac_res, dip_moms=dip_moms, quad_moms=quad_moms, epots=epots
+        kind, adia_ens, jac_res, dip_moms=dip_moms, quad_moms=quad_moms, epots=epots
     )
 
 
@@ -589,7 +595,9 @@ def edmiston_ruedenberg_diabatization_jacobi(
         diabatic-transformation matrix.
     """
     jac_res = edmiston_ruedenberg_jacobi_sweeps(R_tensor, **kwargs)
+    kind = "Edmiston-Ruedenberg"
     return dia_result_from_jac_result(
+        kind,
         adia_ens,
         jac_res,
         R_tensor=R_tensor,
@@ -675,7 +683,9 @@ def edmiston_ruedenberg_diabatization_df(
             f"Run {max_ind} has the maximum cost function value, but the optimization "
             f"did not converge after {max_cycles} cycles!"
         )
+    kind = "Edmiston-Ruedenberg"
     return dia_result_from_jac_result(
+        kind,
         adia_ens,
         best_jac_res,
         L_tensor=df_tensor,

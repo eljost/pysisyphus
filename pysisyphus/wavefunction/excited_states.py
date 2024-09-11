@@ -14,6 +14,11 @@
 #     Analysis of Electronic Transitions as the Difference
 #     of Electron Attachment and Detachment Densities
 #     Head-Gordon, Grana, Maurice, White, 1995
+# [5] https://doi.org/10.1039/C9CP03127H
+#     Multistate hybrid time-dependent density functional theory
+#     with surface hopping accurately captures
+#     ultrafast thymine photodeactivation
+#     Parker, Roy, Furche, 2019
 
 import itertools as it
 from functools import partial
@@ -76,6 +81,12 @@ def get_state_to_state_transition_density(
     T_a: NDArray[float], T_b: NDArray[float]
 ) -> NDArray[float]:
     """State-to-state transition density.
+
+    See eq. (17) in [5], which is a simplification of eq. (15) in [5].
+    For TD-DFT with a potentially non-vanishing Y vector this function
+    can be called two times. First with X[a] and X[b], and then Y[a] and Y[b].
+    Finally both matrices can be added to yield the matrix on the RHS of eq. (17)
+    in [5].
 
     Parameters
     ----------
