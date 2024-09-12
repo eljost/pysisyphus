@@ -132,6 +132,22 @@ class GroundStateContext:
             pass
 
 
+def get_sao_from_mo_coeffs(C):
+    """Recover AO overlaps from given MO coefficients.
+
+    For MOs in the columns of mo_coeffs:
+
+        S_AO = C⁻¹^T C⁻¹
+        S_AO C = C⁻¹^T
+        (S_AO C)^T = C⁻¹
+        C^T S_AO^T = C⁻¹
+        C^T S_AO C = I
+    """
+    C_inv = np.linalg.pinv(C, rcond=1e-8)
+    S_AO = C_inv.T @ C_inv
+    return S_AO
+
+
 def get_tden_overlaps(Ca1, Cb1, Xa1, Ya1, Xb1, Yb1, Ca2, Cb2, Xa2, Ya2, Xb2, Yb2, S_AO):
     XpYa1 = Xa1 + Ya1
     XpYa2 = Xa2 + Ya2
@@ -727,19 +743,7 @@ class OverlapCalculator(Calculator):
 
     @staticmethod
     def get_sao_from_mo_coeffs(C):
-        """Recover AO overlaps from given MO coefficients.
-
-        For MOs in the columns of mo_coeffs:
-
-            S_AO = C⁻¹^T C⁻¹
-            S_AO C = C⁻¹^T
-            (S_AO C)^T = C⁻¹
-            C^T S_AO^T = C⁻¹
-            C^T S_AO C = I
-        """
-        C_inv = np.linalg.pinv(C, rcond=1e-8)
-        S_AO = C_inv.T @ C_inv
-        return S_AO
+        return get_sao_from_mo_coeffs(C)
 
     def get_wf_overlaps(self, indices=None, S_AO=None):
         Ca_ref, Cb_ref, Ca_cur, Cb_cur, S_AO = self.get_orbital_matrices(indices, S_AO)
