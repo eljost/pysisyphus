@@ -1,11 +1,13 @@
 import pytest
 
-from pysisyphus.xyzloader import write_geoms_to_trj
+# from pysisyphus.xyzloader import write_geoms_to_trj
 from pysisyphus.helpers import geom_loader
 from pysisyphus.interpolate.Interpolator import Interpolator
 from pysisyphus.interpolate.LST import LST
 from pysisyphus.interpolate.IDPP import IDPP
 from pysisyphus.interpolate.Redund import Redund
+from pysisyphus.interpolate.Geodesic import Geodesic
+from pysisyphus.testing import using
 
 
 def test_idpp():
@@ -27,7 +29,8 @@ def test_idpp():
         LST,
         IDPP,
         Redund,
-    ]
+        pytest.param(Geodesic, marks=using("geodesic")),
+    ],
 )
 def test_ala_dipeptide_interpol(interpol_cls):
     initial = geom_loader("lib:dipeptide_init.xyz")

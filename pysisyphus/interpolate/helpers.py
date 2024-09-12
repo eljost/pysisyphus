@@ -1,4 +1,4 @@
-from pysisyphus.interpolate import IDPP, LST, Interpolator, Redund
+from pysisyphus.interpolate import IDPP, LST, Interpolator, Redund, Geodesic
 
 
 INTERPOLATE = {
@@ -6,6 +6,7 @@ INTERPOLATE = {
     "lst": LST.LST,
     "redund": Redund.Redund,
     "linear": Interpolator.Interpolator,
+    "geodesic": Geodesic.Geodesic,
 }
 
 
