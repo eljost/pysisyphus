@@ -39,6 +39,8 @@ JOULE2EV = AU2EV / AU2J
 NU2AU = spc.h * C * 1e2 / AU2J
 # Hartree to Wavenumber
 AU2NU = 1 / NU2AU
+# Electronvolt to Wavenumber
+EV2NU = AU2NU / AU2EV
 # eV/Å -> Hartree/Bohr
 EVANG2AUBOHR = 1 / AU2EV / ANG2BOHR
 # Boltzman constant, (m² kg s⁻² K⁻¹) or just (J / K)

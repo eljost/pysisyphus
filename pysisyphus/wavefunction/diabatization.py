@@ -30,6 +30,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import special_ortho_group
 
+from pysisyphus.constants import EV2NU
 from pysisyphus.helpers_pure import highlight_text, to_subscript_num
 from pysisyphus.wavefunction import logger
 from pysisyphus.wavefunction.localization import (
@@ -396,6 +397,7 @@ Unique absolute diabatic couplings
 ----------------------------------
 {%- for key, coupling in couplings %}
 |{{ key }}| = {{ "%.5f"|format(coupling) }} {{ unit }}
+{%- if unit == "eV" %}, ({{ "%8.2f"|format(coupling * EV2NU) }} cm⁻¹){% endif %}
 {%- endfor %}
 """
 )
@@ -406,16 +408,11 @@ class DiabatizationResult:
     kind: str
     U: np.ndarray
     adia_ens: np.ndarray
-    # U and adia_ens should be enough ... the rest should be optional.
-    # dia_ens can be calculated by rotationg the adiabatic energy matrix,
-    # which is just a diagonal matrix containing the adiabatic energies.
-    dia_ens: np.ndarray
-    adia_mat: np.ndarray
-    dia_mat: np.ndarray
     is_converged: bool
     cur_cycle: int
     P: float
-    # TODO: store rotated/mixed properties instead of original ones?
+    # Adiabatic properties
+    #
     # Dipole moments
     dip_moms: Optional[np.ndarray] = None
     # Quadrupole moments
@@ -428,6 +425,18 @@ class DiabatizationResult:
     L_tensor: Optional[np.ndarray] = None
     # TODO: add adiabatic labels and use them in the report
 
+    def __post_init__(self):
+        self.adia_mat = np.diag(self.adia_ens)
+        self.dia_mat = self.U.T @ self.adia_mat @ self.U
+        self.dia_ens = np.diag(self.dia_mat)
+
+    def sort(self):
+        inds = self.dia_ens.argsort()
+        Usort = self.U[:, inds]
+        kwargs = dataclasses.asdict(self)
+        kwargs["U"] = Usort
+        return DiabatizationResult(**kwargs)
+
     def savez(self, fn):
         kwargs = dataclasses.asdict(self)
         np.savez(fn, **kwargs)
@@ -435,11 +444,6 @@ class DiabatizationResult:
     @property
     def nstates(self):
         return len(self.adia_ens)
-
-    def __post_init__(self):
-        assert len(self.adia_ens) == len(self.dia_ens)
-        quad_shape = (self.nstates, self.nstates)
-        assert self.U.shape == self.adia_mat.shape == self.dia_mat.shape == quad_shape
 
     @property
     def couplings(self):
@@ -496,40 +500,81 @@ class DiabatizationResult:
                 key = f"D{subscripts[from_]}{subscripts[to_]}"
                 flat_couplings.append((key, couplings[(from_, to_)]))
 
+        def fmta(arr, fmt):
+            return np.array2string(
+                arr,
+                formatter={"float": lambda f: f"{f:{fmt}}"},
+                max_line_width=200,
+                # suppress_small=True,
+            )
+
+        def fmtu(arr):
+            """For U/U2"""
+            return fmta(arr, "8.4f")
+
+        def fmten(arr):
+            """For adia_mat/dia_mat"""
+            return fmta(arr, "10.6f")
+
         rendered = DiaResultTemplate.render(
             kind=self.kind,
             unit=unit,
-            adia_mat=self.adia_mat,
-            U=U,
+            adia_mat=fmten(self.adia_mat),
+            U=fmtu(U),
             det=det,
-            dia_mat=self.dia_mat,
+            dia_mat=fmten(self.dia_mat),
             dia_states_sorted=dia_states_sorted,
             dia_compositions=dia_compositions,
-            U2=U2,
+            U2=fmtu(U2),
             couplings=flat_couplings,
+            EV2NU=EV2NU,
         )
         return rendered
 
 
 def dia_result_from_jac_result(
-    kind, adia_ens: np.ndarray, jac_res: JacobiSweepResult, **property_tensors
+    kind: str,
+    adia_ens: np.ndarray,
+    jac_res: JacobiSweepResult,
+    sort: bool = True,
+    **property_tensors,
 ) -> DiabatizationResult:
+    """DiabatizationResult construction wrapper.
+
+    Parameter
+    ---------
+    kind
+        String label containing the name of the diabatization algorithm,
+        e.g., 'er' or 'boys'.
+    adia_ens
+        1d array of shape (nstates, ) holding the electronic energies of
+        the adiabatic states.
+    jac_res
+        JacobiSweepResult from the diabatiatzion function.
+    sort
+        Boolean flag that indicates whether the diabatic states will be
+        sorted by their energies. If true, the columns of U will be reorderd.
+    property_tesonrs
+        Various property tensors of varying shape containing e.g., the Coulomb
+        tensor or multipole moments.
+
+    Returns
+    -------
+    dia_result
+        DiabatizationResult.
+    """
     U = jac_res.C
-    adia_mat = np.diag(adia_ens)
-    dia_mat = U.T @ adia_mat @ U
-    dia_ens = np.diag(dia_mat)
     dia_result = DiabatizationResult(
         kind=kind,
         U=U,
         adia_ens=adia_ens,
-        dia_ens=dia_ens,
-        adia_mat=adia_mat,
-        dia_mat=dia_mat,
         is_converged=jac_res.is_converged,
         cur_cycle=jac_res.cur_cycle,
         P=jac_res.P,
         **property_tensors,
     )
+    if sort:
+        dia_result = dia_result.sort()
     return dia_result
 
 
