@@ -1,6 +1,9 @@
+import hashlib
 import sys
 import time
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence
+
+import numpy as np
 
 from pysisyphus.exceptions import (
     CalculationFailedException,
@@ -11,15 +14,61 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import (
     recursive_extract,
     highlight_text,
+    json_to_results,
     results_to_json,
 )
 from pysisyphus.io import save_hessian
 from pysisyphus import timing
 
 
-def calc_wrapper(geom, func_name):
+def hash_atoms_and_coords(
+    atoms: Sequence[str],
+    coords: np.ndarray,
+    precision: int,
+    charge: Optional[int] = None,
+    mult: Optional[int] = None,
+    hash_func=hashlib.md5,
+) -> str:
+    """Wrapper function that returns a hash for given atoms and coordinates."""
+
+    # Truncate coordinates to selected precision. No rounding is done.
+    coords_trunc = np.trunc(coords.flatten() * 10**precision).astype(int)
+    coords_str = "".join(map(str, coords_trunc))
+
+    # Normalize atom symbols to lowercase
+    atom_symbols = [symbol.lower() for symbol in atoms]
+    atom_str = "".join(atom_symbols)
+
+    hash_inp = atom_str + coords_str
+    if charge is not None:
+        hash_inp += str(charge)
+    if mult is not None:
+        hash_inp += str(mult)
+    hash_obj = hash_func(hash_inp.encode("utf-8"))
+    hash_hex = hash_obj.hexdigest()
+    return hash_hex
+
+
+def calc_wrapper(geom: Geometry, func_name: str, skip_existing: bool = False):
+    calc = geom.calculator
+    # Unfortunately, this neglects most of the calculator details...
+    cur_hash = hash_atoms_and_coords(
+        geom.atoms, geom.cart_coords, precision=8, charge=calc.charge, mult=calc.mult
+    )
+    hash_fn = (calc.out_dir / cur_hash).with_suffix(".json")
+    # Check if results are already present; if so, skip the calculation.
+    if skip_existing and hash_fn.exists():
+        with open(hash_fn) as handle:
+            results = json_to_results(handle.read())
+        print(
+            f"Found matching hash '{cur_hash}'!\n"
+            f"Returning results from '{hash_fn}'."
+        )
+        return results
+    # Otherwise, do the calculation.
     try:
         results = getattr(geom.calculator, func_name)(geom.atoms, geom.cart_coords)
+        hash_fn.touch()
     except (
         CalculationFailedException,
         RunAfterCalculationFailedException,
@@ -34,14 +83,16 @@ def calc_wrapper(geom, func_name):
         calc = geom.calculator
         # Decrease counter, because it will be increased by 1, w.r.t to the
         # calculation.
-        json_fn = calc.make_fn("results", counter=calc.calc_counter - 1)
-        with open(json_fn, "w") as handle:
+        with open(hash_fn, "w") as handle:
             handle.write(as_json)
-        msg = f"Dumped JSON results to '{json_fn}'."
+        json_fn = calc.make_fn("results.json", counter=calc.calc_counter - 1)
+        json_fn.symlink_to(hash_fn)
+        msg = f"Dumped JSON results to '{hash_fn}'."
     except KeyError:
         msg = "Skipped JSON dump of calculation results!"
     print(msg)
 
+    # Check if Hessians were calculated; if so, save them to HDF5 files.
     hessian_results = recursive_extract(results, "hessian")
     energy_results = recursive_extract(results, "energy")
     for (*rest, _), hessian in hessian_results.items():
@@ -65,6 +116,7 @@ def run_calculations(
     run_func: Optional[str] = None,
     one_calculator: bool = False,
     rmsd_thresh: float = 0.75,
+    skip_existing: bool = True,
 ) -> tuple[list[Geometry], list[dict]]:
     """Run calculations for all given geometries.
 
@@ -92,6 +144,9 @@ def run_calculations(
     rmsd_thresh
         RMSD threshold in Bohr. Postive floating point number that is used to determine,
         if two geometries are similar enough for propagating chkfiles.
+    skip_existing
+        Whether calculations for which results already exist should be carried out again,
+        or not. If enabled, calculations results will be read from dumped JSON files.
 
     Returns
     -------
@@ -127,7 +182,7 @@ def run_calculations(
         print(geom)
 
         dur = time.time()
-        results = calc_wrapper(geom, func_name)
+        results = calc_wrapper(geom, func_name, skip_existing=skip_existing)
         dur = time.time() - dur
         # When a calculation failed results will be None
         if results is None:
