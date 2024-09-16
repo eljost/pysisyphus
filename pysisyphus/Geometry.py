@@ -21,6 +21,7 @@ except ModuleNotFoundError:
 
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.exceptions import DifferentAtomOrdering
 
 from pysisyphus.wavefunction.excited_states import norm_ci_coeffs
 from pysisyphus.hessian_proj import get_hessian_projector, inertia_tensor
@@ -1398,10 +1399,15 @@ class Geometry:
         with_indices = [ind for ind, _ in enumerate(self.atoms) if ind not in indices]
         return self.get_subgeom(with_indices, **kwargs)
 
-    def rmsd(self, geom):
-        return rmsd.kabsch_rmsd(
-            self.coords3d - self.centroid, geom.coords3d - geom.centroid
-        )
+    def rmsd(self, geom, align=True):
+        if not self.atoms == geom.atoms:
+            raise DifferentAtomOrdering
+        if align:
+            return rmsd.kabsch_rmsd(
+                self.coords3d - self.centroid, geom.coords3d - geom.centroid
+            )
+        else:
+            return np.sqrt(np.mean((self.cart_coords - geom.cart_coords) ** 2))
 
     def as_g98_list(self):
         """Returns data for fake Gaussian98 standard orientation output.
