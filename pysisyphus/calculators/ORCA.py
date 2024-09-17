@@ -901,6 +901,8 @@ class ORCA(OverlapCalculator):
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         """Basically some kind of dummy method that can be called
         to execute ORCA with the stored cmd of this calculator."""
+        if self.do_stable:
+            self.get_stable_wavefunction(atoms, coords)
         inp = self.prepare_input(atoms, coords, "noparse", **prepare_kwargs)
         kwargs = {
             "calc": "energy",
