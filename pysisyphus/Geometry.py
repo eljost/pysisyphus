@@ -1,6 +1,7 @@
 from collections import Counter, namedtuple
 import copy
 import itertools as it
+from pathlib import Path
 import re
 import subprocess
 import tempfile
@@ -1365,6 +1366,17 @@ class Geometry:
             fn = fn + ".xyz"
         with open(fn, "w") as handle:
             handle.write(self.as_xyz(cart_coords=cart_coords, **kwargs))
+
+    def dump_trj(self, fn, trj_cart_coords, **kwargs):
+        fn = Path(fn).with_suffix(".trj")
+        xyzs = list()
+        for cart_coords in trj_cart_coords:
+            xyz = self.as_xyz(cart_coords=cart_coords, **kwargs)
+            xyzs.append(xyz)
+        trj = "\n".join(xyzs)
+        with open(fn, "w") as handle:
+            handle.write(trj)
+        return fn
 
     def get_subgeom(self, indices, coord_type="cart", sort=False, cart_coords=None):
         """Return a Geometry containing a subset of the current Geometry.
