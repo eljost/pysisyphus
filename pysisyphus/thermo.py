@@ -162,7 +162,7 @@ def print_thermoanalysis(
         return f"{key:<18}: {Q: >16.8e}"
 
     # Separator
-    sep = "+-----------------------------------------------------------------+"
+    sep = "+-------------------------------------------------------------------+"
 
     sub_modes = 5 if thermo.linear else 6
     # Expect one real mode less if it is a TS
