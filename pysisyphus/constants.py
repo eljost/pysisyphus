@@ -20,7 +20,7 @@ BOHR2M = spc.value("Bohr radius")
 BOHR2ANG = BOHR2M * 1e10
 # Å -> Bohr conversion factor
 ANG2BOHR = 1 / BOHR2ANG
-# Hartree to J
+# Hartree to Joule
 AU2J = spc.value("Hartree energy")
 # Hartree to kJ / mol
 AU2KJPERMOL = AU2J / 1000 * spc.Avogadro
