@@ -33,17 +33,28 @@ type_ = (
 fparser = (
     start
     + pp.Optional(alignment)("alignment")
-    + pp.Optional(sign)
+    + pp.Optional(sign)("sign")
     + pp.Optional(width)
     + pp.Optional(precision)
-    + pp.Optional(type_)
+    + pp.Optional(type_)("type")
     + end
 )
 
 
-def parse_fstring(fstr):
+def parse_fstring(fstr) -> dict:
     result = fparser.parse_string(fstr)
     return result.as_dict()
+
+
+def res_to_fstring(res: dict):
+    alignment = res.get("alignment", "")
+    sign = res.get("sign", "")
+    width = res.get("width", "")
+    precision = res.get("precision", "")
+    if precision:
+        precision = f".{precision}"
+    type_ = res["type"]
+    return f"{{:{alignment}{sign}{width}{precision}{type_}}}"
 
 
 def center(string, width):
@@ -106,8 +117,8 @@ class TablePrinter:
         fmts = list()
         alignments = list()
         widths = list()
-        for col_fmt in self.col_fmts:
-            # Frist, try to look up the format in our prepopulated
+        for i, col_fmt in enumerate(self.col_fmts):
+            # First, try to look up the format in our prepopulated
             # dictionary.
             try:
                 fmt = self.fmts[col_fmt]
@@ -120,7 +131,12 @@ class TablePrinter:
             res = parse_fstring(fmt)
             alignment = res.get("alignment", "<")
             alignments.append(alignment)
-            width = res.get("width", self.width)
+            # Check if header is longer than the desired width.
+            header_width = len(self.header[i])
+            width = max(res.get("width", self.width), header_width)
+            # Update the fstring with the (possibly) new width and reconstruct it
+            res["width"] = width
+            fmt = res_to_fstring(res)
             widths.append(width)
             fmts.append(fmt)
 
