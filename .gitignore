@@ -206,6 +206,7 @@ version.py
 !tests/test_wavefunction/bases/*
 !tests/test_so_coupling/data/*
 !tests/test_turbomole/make_dens/*
+!tests/test_numerov/03_h2_scan_qz.dat
 !pysisyphus/wf_library/*
 !pysisyphus/numint/lebedev_grids_4pi.npz
 !pysisyphus/test_cos/multi_state_inp.npz
