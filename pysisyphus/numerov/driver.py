@@ -5,6 +5,10 @@
 # [2] https://doi.org/10.1119/1.4748813
 #     Matrix Numerov method for solving Schrödinger’s equation
 #     Pillai, Goglio, Walker, 2012
+# [3] https://doi.org/10.1016/j.cplett.2019.04.016
+#     A periodic Numerov approach applied to the torsional tunneling splitting
+#     in hydrogen peroxide, aliphatic alcohols and phenol
+#     Kuenzer, Hofer, 2019
 
 
 from typing import Callable, Literal
@@ -87,6 +91,11 @@ STENCILS = {
 def get_A(n: int, d: float, coeffs: np.ndarray) -> np.ndarray:
     """Dense A-build.
 
+    TODO: given the fact how simple the code for the sparse build
+    is maybe we should just use it and convert the sparse matrix
+    to a dense matrix, if desired. Then we could also delete
+    off_diag_indices.
+
     Parameter
     ---------
     n
@@ -121,6 +130,8 @@ def get_A_sparse(n: int, d: float, coeffs: np.ndarray) -> sp.sparse.dia_array:
         Step size.
     stencil
         Finite-differences stencil.
+    periodic
+        Whether periodic boundary calculations are used or not.
 
     Returns
     -------
@@ -134,12 +145,68 @@ def get_A_sparse(n: int, d: float, coeffs: np.ndarray) -> sp.sparse.dia_array:
     return sp.sparse.dia_array((data, offsets), shape=(n, n))
 
 
+def get_A_periodic(n: int, d: float, coeffs: np.ndarray) -> np.ndarray:
+    """Dense A-build for a periodic potential.
+
+    Parameter
+    ---------
+    n
+        Number of rows & columns in A.
+    d
+        Step size.
+    stencil
+        Finite-differences stencil.
+
+    Returns
+    -------
+    A
+        Dense A matrix of improved Numerov method and a periodic potential.
+    """
+    ncoeffs = len(coeffs)
+    assert ncoeffs % 2 == 1
+    coeffs = coeffs / d**2
+    mid = ncoeffs // 2
+    stencil = np.arange(-mid, mid + 1, dtype=int)
+
+    A = np.zeros((n, n))
+    for i in range(n):
+        stencil_i = stencil + i
+        stencil_i[stencil_i >= n] %= n
+        A[i, stencil_i] = coeffs
+    return A
+
+
+def get_A_periodic_sparse(n: int, d: float, coeffs: np.ndarray) -> sp.sparse.dia_array:
+    """Sparse A-build for a periodic potential w/ DIAgonal storage.
+
+    Parameter
+    ---------
+    n
+        Number of rows & columns in A.
+    d
+        Step size.
+    stencil
+        Finite-differences stencil.
+    periodic
+        Whether periodic boundary calculations are used or not.
+
+    Returns
+    -------
+    A
+        Sparse A matrix of improved Numerov method with DIAgonal storage and a
+        periodic potential.
+    """
+    A = sp.sparse.lil_array(get_A_periodic(n, d, coeffs))
+    return A
+
+
 def run(
     grid: np.ndarray,
     energy_getter: Callable[[int, float], float],
     mass: float,
     nstates: int,
     accuracy: Literal[2, 4, 6, 8, 10] = 10,
+    periodic: bool = False,
     normalize=True,
 ):
     """Improved 1d-Numerov method.
@@ -160,6 +227,8 @@ def run(
         Number of desired eigenstates to be calculated.
     accuracy
         Kind of stencil used for the improved Numerov-method. Must be one of
+    periodic
+        Boolean flag that indicates whether the potential is periodic or not.
     normalize
         Whether the returned eigenvectors are normalized so that |ψ|² integrates
         to 1.0. If set to False, than the Euclidian norm of the eigenvetors will
@@ -180,7 +249,9 @@ def run(
 
     # Number of grid points
     n = len(grid)
-    Asp = get_A_sparse(n, d, stencil)
+
+    get_A_func = get_A_periodic_sparse if periodic else get_A_sparse
+    Asp = get_A_func(n, d, stencil)
     # Calculate potential energy on grid
     V_dia = np.zeros_like(grid)
     for i in range(n):

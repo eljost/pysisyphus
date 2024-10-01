@@ -12,6 +12,7 @@ import scipy as sp
 import pysisyphus.numerov as numerov
 from pysisyphus.constants import (
     ANG2BOHR,
+    AU2NU,
     KCALPERMOLPERANG2,
     AU2KCALPERMOL,
     AMU2AU,
@@ -153,4 +154,49 @@ def test_hydrogen(this_dir):
     # ax.legend()
     ax.set_xlabel("x / Å")
     ax.set_ylabel("ΔE / kcal mol⁻¹")
+    # plt.show()
+
+
+def test_periodic_numerov(this_dir):
+    # ORCA B3LYP/def2-TZVP tightscf 36 points, 10° / step
+    # Very coarse, but nice results ;)
+    #
+    # Something seems off w/ the potential provided in the SI of
+    # the periodic Numerov paper.
+    pot = np.loadtxt(this_dir / "relaxed_scan_cut.dat")
+    xs, energies = pot.T
+
+    energies -= energies.min()
+
+    def energy_getter(i, x):
+        return energies[i]
+
+    mass_h = 1.007825032 * AMU2AU
+    # I'm also a bit lost regarding the mass ... 2 * m_H seems
+    # to provide good results.
+    mass = 2 * mass_h
+
+    w, v = numerov.run(
+        xs,
+        energy_getter,
+        mass,
+        nstates=13,
+        accuracy=10,
+        periodic=True,
+    )
+    ts = (w[1] - w[0]) * AU2NU
+    print(f"Tunnel splitting: {ts: >10.2f} cm⁻¹")
+    assert ts == pytest.approx(11.01, abs=1e-2)
+
+    # fig, ax = plt.subplots()
+    # energies_kcal = energies * AU2KCALPERMOL
+    # w_kcal = w * AU2KCALPERMOL
+    # ax.plot(xs, energies_kcal)
+    # for i, state in enumerate(v.T):
+    # color = "red" if i % 2 == 0 else "blue"
+    # ax.axhline(w_kcal[i], c="k", ls=":")
+    # ax.plot(xs, w_kcal[i] + (0.375 * state), color=color)
+    # ax.set_xlabel("Torsion / rad")
+    # ax.set_ylabel("ΔE / kcal mol⁻¹")
+    # ax.set_title(f"tunnel splitting: {ts: >10.4} cm⁻¹")
     # plt.show()
