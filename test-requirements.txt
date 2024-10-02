@@ -4,15 +4,17 @@
 #
 #    pip-compile --extra=test --output-file=test-requirements.txt
 #
-annotated-types==0.6.0
+annotated-types==0.7.0
     # via pydantic
+appdirs==1.4.4
+    # via pint
 ase==3.23.0
     # via pysisyphus (pyproject.toml)
-autograd==1.6.2
+autograd==1.7.0
     # via pysisyphus (pyproject.toml)
-bcrypt==4.1.2
+bcrypt==4.2.0
     # via paramiko
-cffi==1.16.0
+cffi==1.17.1
     # via
     #   cryptography
     #   pynacl
@@ -24,15 +26,15 @@ cloudpickle==3.0.0
     # via
     #   dask
     #   distributed
-contourpy==1.2.0
+contourpy==1.3.0
     # via matplotlib
-coverage[toml]==7.4.1
+coverage[toml]==7.6.1
     # via pytest-cov
 cryptography==44.0.1
     # via paramiko
 cycler==0.12.1
     # via matplotlib
-dask==2024.1.1
+dask==2024.8.2
     # via
     #   distributed
     #   pysisyphus (pyproject.toml)
@@ -40,22 +42,22 @@ decorator==5.1.1
     # via fabric
 deprecated==1.2.14
     # via fabric
-distributed==2024.1.1
+distributed==2024.8.2
     # via pysisyphus (pyproject.toml)
 fabric==3.2.2
     # via pysisyphus (pyproject.toml)
-fonttools==4.47.2
+flexcache==0.3
+    # via pint
+flexparser==0.3.1
+    # via pint
+fonttools==4.53.1
     # via matplotlib
-fsspec==2024.2.0
+fsspec==2024.9.0
     # via dask
-future==0.18.3
-    # via autograd
-h5py==3.10.0
+h5py==3.11.0
     # via
     #   pyscf
     #   pysisyphus (pyproject.toml)
-importlib-metadata==7.0.1
-    # via dask
 iniconfig==2.0.0
     # via pytest
 invoke==2.2.0
@@ -64,13 +66,11 @@ jinja2==3.1.6
     # via
     #   distributed
     #   pysisyphus (pyproject.toml)
-joblib==1.3.2
-    # via
-    #   pysisyphus (pyproject.toml)
-    #   scikit-learn
-kiwisolver==1.4.5
+joblib==1.4.2
+    # via scikit-learn
+kiwisolver==1.4.7
     # via matplotlib
-llvmlite==0.42.0
+llvmlite==0.43.0
     # via numba
 locket==1.0.0
     # via
@@ -78,21 +78,21 @@ locket==1.0.0
     #   partd
 markupsafe==2.1.5
     # via jinja2
-matplotlib==3.8.2
+matplotlib==3.9.2
     # via
     #   ase
     #   pysisyphus (pyproject.toml)
 mpmath==1.3.0
     # via sympy
-msgpack==1.0.7
+msgpack==1.0.8
     # via distributed
 natsort==8.4.0
     # via pysisyphus (pyproject.toml)
 networkx==3.3
     # via pysisyphus (pyproject.toml)
-numba==0.59.0
+numba==0.60.0
     # via pysisyphus (pyproject.toml)
-numpy==1.26.4
+numpy==2.0.2
     # via
     #   ase
     #   autograd
@@ -106,66 +106,66 @@ numpy==1.26.4
     #   rmsd
     #   scikit-learn
     #   scipy
-packaging==23.2
+packaging==24.1
     # via
     #   dask
     #   distributed
     #   matplotlib
     #   pytest
-paramiko==3.4.0
+paramiko==3.4.1
     # via fabric
-partd==1.4.1
+partd==1.4.2
     # via dask
-pillow==10.3.0
+pillow==10.4.0
     # via matplotlib
-pint==0.23
+pint==0.24.3
     # via qcelemental
-pluggy==1.4.0
+pluggy==1.5.0
     # via pytest
-psutil==5.9.8
+psutil==6.0.0
     # via
     #   distributed
     #   pysisyphus (pyproject.toml)
     #   qcengine
 py-cpuinfo==9.0.0
     # via qcengine
-pycparser==2.21
+pycparser==2.22
     # via cffi
-pydantic==2.6.1
+pydantic==2.8.2
     # via
     #   qcelemental
     #   qcengine
-pydantic-core==2.16.2
+pydantic-core==2.20.1
     # via pydantic
 pynacl==1.5.0
     # via paramiko
-pyparsing==3.1.1
+pyparsing==3.1.4
     # via matplotlib
-pyscf==2.5.0
+pyscf==2.6.2
     # via pysisyphus (pyproject.toml)
-pytest==8.0.0
+pytest==8.3.2
     # via
     #   pysisyphus (pyproject.toml)
     #   pytest-cov
-pytest-cov==4.1.0
+pytest-cov==5.0.0
     # via pysisyphus (pyproject.toml)
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via matplotlib
-pyyaml==6.0.1
+pyyaml==6.0.2
     # via
     #   dask
     #   distributed
     #   pysisyphus (pyproject.toml)
     #   qcengine
-qcelemental==0.27.1
+qcelemental==0.28.0
     # via qcengine
-qcengine==0.29.0
+qcengine==0.30.0
     # via pysisyphus (pyproject.toml)
 rmsd==1.5.1
     # via pysisyphus (pyproject.toml)
-scikit-learn==1.4.0
+scikit-learn==1.5.1
     # via pysisyphus (pyproject.toml)
-scipy==1.12.0
+scipy==1.14.1
     # via
     #   ase
     #   pyscf
@@ -176,11 +176,11 @@ six==1.16.0
     # via python-dateutil
 sortedcontainers==2.4.0
     # via distributed
-sympy==1.12
+sympy==1.13.2
     # via pysisyphus (pyproject.toml)
 tblib==3.0.0
     # via distributed
-threadpoolctl==3.2.0
+threadpoolctl==3.5.0
     # via scikit-learn
 toolz==0.12.1
     # via
@@ -189,8 +189,10 @@ toolz==0.12.1
     #   partd
 tornado==6.5.1
     # via distributed
-typing-extensions==4.9.0
+typing-extensions==4.12.2
     # via
+    #   flexcache
+    #   flexparser
     #   pint
     #   pydantic
 urllib3==2.5.0
@@ -199,7 +201,6 @@ wrapt==1.16.0
     # via deprecated
 zict==3.0.0
     # via distributed
-zipp==3.19.1
-    # via
-    #   importlib-metadata
-    #   importlib-resources
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools
