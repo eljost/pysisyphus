@@ -14,7 +14,6 @@ import warnings
 
 import h5py
 from jinja2 import Template
-from joblib import Memory
 import numpy as np
 from numpy.typing import NDArray
 import scipy as sp
@@ -208,16 +207,12 @@ class Shells:
         self,
         shells: List[Shell],
         screen: bool = False,
-        cache: bool = False,
-        cache_path: str = "./cache",
         ordering: Ordering = "native",
         backend: Union[str, IntegralBackend] = IntegralBackend.PYTHON,
     ):
         self.shells = shells
         self.ordering = ordering
         self.screen = screen
-        self.cache = cache
-        self.cache_path = Path(cache_path)
 
         # Start integral backend setup
         try:
@@ -291,12 +286,6 @@ class Shells:
         # Precontract & store coefficients for reordering spherical basis functions
         # and converting them from Cartesian basis functions.
         self.reorder_c2s_coeffs = self.P_sph @ self.cart2sph_coeffs
-
-        # Enable disk cache for 1el-integrals
-        if self.cache:
-            self.memory = Memory(self.cache_path, verbose=0)
-            self.get_1el_ints_cart = self.memory.cache(self.get_1el_ints_cart)
-            self.get_1el_ints_sph = self.memory.cache(self.get_1el_ints_sph)
 
         self._numba_shells = None
         self._numba_shellstructs = None
