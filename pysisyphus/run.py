@@ -32,15 +32,15 @@ from pysisyphus.dynamics import (
     Gaussian,
 )
 from pysisyphus.drivers import (
-    relaxed_1d_scan,
     run_afir_paths,
     run_opt,
     run_precontr,
     run_perf,
     print_perf_results,
 )
-from pysisyphus.drivers.calculations import run_calculations
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
+from pysisyphus.drivers.calculations import run_calculations
+from pysisyphus.drivers import scan
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (
@@ -616,7 +616,7 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
     opt_key = opt_kwargs.pop("type")
 
     def wrapper(geom, start, step_size, steps, pref=None):
-        return relaxed_1d_scan(
+        return scan.relaxed_1d_scan(
             geom,
             calc_getter,
             [
@@ -632,33 +632,36 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
         )
 
     if not symmetric:
-        scan_geoms, scan_vals, scan_energies = wrapper(geom, start, step_size, steps)
+        tot_result = wrapper(geom, start, step_size, steps)
     else:
         # Negative direction
         print(highlight_text("Negative direction", level=1) + "\n")
-        minus_geoms, minus_vals, minus_energies = wrapper(
-            geom, start, -step_size, steps, pref="minus"
-        )
-        init_geom = minus_geoms[0].copy()
+        minus_result = wrapper(geom, start, -step_size, steps, pref="minus")
+        scan.print_summary(minus_result)
+
+        init_geom = minus_result.geoms[0].copy()
+
         # Positive direction. Compared to the negative direction we start at a
         # displaced geometry and reduce the number of steps by 1.
         print(highlight_text("Positive direction", level=1) + "\n")
         plus_start = start + step_size
         # Do one step less, as we already start from the optimized geometry
         plus_steps = steps - 1
-        plus_geoms, plus_vals, plus_energies = wrapper(
-            init_geom, plus_start, step_size, plus_steps, pref="plus"
-        )
-        scan_geoms = minus_geoms[::-1] + plus_geoms
-        scan_vals = np.concatenate((minus_vals[::-1], plus_vals))
-        scan_energies = np.concatenate((minus_energies[::-1], plus_energies))
+        plus_result = wrapper(init_geom, plus_start, step_size, plus_steps, pref="plus")
+        scan.print_summary(plus_result)
 
-        trj = "\n".join([geom.as_xyz() for geom in scan_geoms])
-        with open("relaxed_scan.trj", "w") as handle:
-            handle.write(trj)
-        scan_data = np.stack((scan_vals, scan_energies), axis=1)
-        np.savetxt("relaxed_scan.dat", scan_data)
-    return scan_geoms, scan_vals, scan_energies
+        # Combine the two scan results in both directions into one total ScanResult
+        tot_result = minus_result.reverse_and_add(plus_result, name="Total")
+    print()
+    # The line below also prints the summary for a non-symmetric scan in only one direction
+    scan.print_summary(tot_result)
+
+    trj = "\n".join([geom.as_xyz() for geom in tot_result.geoms])
+    with open("relaxed_scan.trj", "w") as handle:
+        handle.write(trj)
+    scan_data = np.stack((tot_result.vals, tot_result.energies), axis=1)
+    np.savetxt("relaxed_scan.dat", scan_data)
+    return tot_result
 
 
 def run_preopt(first_geom, last_geom, calc_getter, preopt_key, preopt_kwargs):
@@ -1391,7 +1394,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         run_md(geom, calc_getter, md_kwargs)
     elif run_dict["scan"]:
         scan_kwargs = run_dict["scan"]
-        scan_geoms, scan_vals, scan_energies = run_scan(geom, calc_getter, scan_kwargs)
+        scan_result = run_scan(geom, calc_getter, scan_kwargs)
+        scan_geoms = scan_result.geoms
+        scan_vals = scan_result.vals
+        scan_energies = scan_result.energies
     elif run_dict["perf"]:
         perf_results = run_perf(geom, calc_getter, **run_dict["perf"])
         print_perf_results(perf_results)

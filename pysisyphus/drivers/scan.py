@@ -1,7 +1,13 @@
+import dataclasses
+import functools
+from typing import Optional
+
 import h5py
 import numpy as np
 
+from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.drivers.opt import run_opt
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
 from pysisyphus.TablePrinter import TablePrinter
@@ -112,6 +118,31 @@ def relaxed_scan(
     return scan_geom, scan_cart_coords, scan_energies
 
 
+def concat(self, other):
+    return np.concatenate((self[::-1], other))
+
+
+@dataclasses.dataclass
+class ScanResult:
+    vals: np.ndarray
+    energies: np.ndarray
+    target_vals: np.ndarray
+    geoms: list[Geometry]
+    unit: str
+    name: Optional[str] = None
+
+    def reverse_and_add(self, other, name: Optional[str] = None):
+        assert self.unit == other.unit
+        return ScanResult(
+            vals=concat(self.vals, other.vals),
+            energies=concat(self.energies, other.energies),
+            target_vals=concat(self.target_vals, other.target_vals),
+            geoms=self.geoms[::-1] + other.geoms,
+            unit=self.unit,
+            name=name,
+        )
+
+
 def relaxed_1d_scan(
     geom,
     calc_getter,
@@ -125,6 +156,7 @@ def relaxed_1d_scan(
     callback=None,
 ):
     assert geom.coord_type == "redund", "'coord_type: redund' is required!"
+    pref_org = pref
     if pref is None:
         pref = ""
     else:
@@ -141,11 +173,13 @@ def relaxed_1d_scan(
     constr_geom = geom.copy(**copy_kwargs)
     constr_ind = constr_geom.internal.get_index_of_typed_prim(constrain_prims[0])
     calc = calc_getter()
+
     # Always return same calculator, so orbitals can be reused etc.
     def _calc_getter():
         return calc
 
     # Drop PrimType at index 0
+    # TODO: just to check for number of indices does not seem very robust ...
     unit = "au" if len(constr_prim[1:]) == 2 else "rad"
 
     org_val = constr_geom.coords[constr_ind]
@@ -165,13 +199,12 @@ def relaxed_1d_scan(
     scan_energies = list()
     scan_xyzs = list()
 
+    # Start of scan loop
     for cycle, cur_val in enumerate(target_scan_vals):
         opt_kwargs_ = opt_kwargs.copy()
         name = f"{pref}relaxed_scan_{cycle:04d}"
         opt_kwargs_["prefix"] = name
         opt_kwargs_["h5_group_name"] = name
-        # Keep a copy
-        scan_geoms.append(constr_geom.copy())
 
         # Update constrained coordinate
         new_coords = constr_geom.coords
@@ -184,29 +217,81 @@ def relaxed_1d_scan(
         )
         if callback is not None:
             callback(opt_result)
+        # Continue w/ updated geometry
+        constr_geom = opt_result.geom
+        # Keep (copy of) optimized XYZ coordinates, energy and geometry
         scan_xyzs.append(constr_geom.as_xyz())
         scan_vals.append(constr_geom.coords[constr_ind])
         scan_energies.append(constr_geom.energy)
+        scan_geoms.append(constr_geom.copy())
+
+        # This will rewrite the data in every cycle, but this is not a problem
+        # as the amount of data is very limited.
+        scan_data = np.stack((scan_vals, scan_energies), axis=1)
+        np.savetxt(f"{pref}relaxed_scan.dat", scan_data)
 
         if not opt_result.opt.is_converged:
             print(f"Step {cycle} did not converge. Breaking!")
             break
+    # End of scan loop
 
     with open(f"{pref}relaxed_scan.trj", "w") as handle:
         handle.write("\n".join(scan_xyzs))
 
-    scan_data = np.stack((scan_vals, scan_energies), axis=1)
-    np.savetxt(f"{pref}relaxed_scan.dat", scan_data)
     scan_vals, scan_energies = scan_data.T
+    scan_res = ScanResult(
+        vals=scan_vals,
+        energies=scan_energies,
+        target_vals=target_scan_vals,
+        geoms=scan_geoms,
+        unit=unit,
+        name=pref_org,
+    )
+    return scan_res
 
-    print(highlight_text("Scan summary", level=1))
-    col_fmts = "int float float float float".split()
-    header = ("Step", f"Target / {unit}", f"Actual / {unit}", f"Δ / {unit}", "E / au")
-    table = TablePrinter(header, col_fmts, width=14)
+
+@functools.singledispatch
+def print_summary(
+    target_scan_vals: np.ndarray,
+    scan_vals,
+    scan_energies,
+    unit,
+    name: Optional[str] = None,
+):
+    if name is None:
+        name = ""
+    else:
+        name += " "
+
+    scan_energies_rel = scan_energies - scan_energies.min()
+    scan_energies_rel *= AU2KJPERMOL
+
+    print(highlight_text(f"{name}scan summary", level=1))
+    header = (
+        "Step",
+        f"Target / {unit}",
+        f"Actual / {unit}",
+        f"Δ / {unit}",
+        "E / au",
+        "ΔE / kJ mol⁻¹",
+    )
+    col_fmts = ("{:3d}", "float", "float", "{: >12.4e}", "float", "float")
+    table = TablePrinter(header, col_fmts, width=15)
     table.print_header()
-    for step, (target, act, en) in enumerate(
-        zip(target_scan_vals, scan_vals, scan_energies)
+
+    for step, (target, act, en, en_rel) in enumerate(
+        zip(target_scan_vals, scan_vals, scan_energies, scan_energies_rel)
     ):
         delta = target - act
-        table.print_row((step, target, act, delta, en))
-    return scan_geoms, scan_vals, scan_energies
+        table.print_row((step, target, act, delta, en, en_rel))
+
+
+@print_summary.register
+def _(scan_result: ScanResult):
+    print_summary(
+        scan_result.target_vals,
+        scan_result.vals,
+        scan_result.energies,
+        scan_result.unit,
+        scan_result.name,
+    )

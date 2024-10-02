@@ -927,6 +927,7 @@ def plot_irc_h5(h5, title=None):
     return fig, (ax0, ax1, ax2)
 
 
+"""
 def plot_scan(h5_fn="scan.h5"):
     with h5py.File(h5_fn, "r") as handle:
         groups = list()
@@ -946,6 +947,33 @@ def plot_scan(h5_fn="scan.h5"):
         ax.set_xlabel("Scan point")
         ax.set_ylabel(DE_LABEL)
         ax.set_title(group)
+    plt.show()
+"""
+
+
+def plot_scan(dat_fn=None):
+    if dat_fn is None:
+        dat_fns = Path(".").glob("*relaxed_scan.dat")
+    else:
+        dat_fns = (dat_fn,)
+
+    en_conv, _ = get_en_conv()
+
+    for fn in dat_fns:
+        data = np.loadtxt(fn)
+        print(f"Found {len(data)} scan points on '{fn}'.")
+        vals, energies = data.T
+        energies -= energies.min()
+        energies *= en_conv
+        fig, ax = plt.subplots()
+        ax.plot(vals, energies, "o-")
+        ax.set_xlabel("Scanned coordinate")
+        for ind in (0, [-1]):
+            ax.axhline(energies[ind], c="k", ls=":")
+        ax.set_ylabel(DE_LABEL)
+        ax.set_title(fn.name)
+        fig.tight_layout()
+        print(f"Created plot for '{fn}'")
     plt.show()
 
 
