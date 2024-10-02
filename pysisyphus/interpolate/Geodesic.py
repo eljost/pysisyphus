@@ -13,7 +13,7 @@ try:
     from geodesic_interpolate.geodesic import Geodesic as Geo
 
     can_geodesic = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     can_geodesic = False
 
 

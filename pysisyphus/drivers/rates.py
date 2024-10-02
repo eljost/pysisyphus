@@ -29,8 +29,13 @@ import numpy as np
 import numpy.typing as npt
 import scipy.integrate as integrate
 
-from thermoanalysis.QCData import QCData
-from thermoanalysis.thermo import thermochemistry
+try:
+    from thermoanalysis.QCData import QCData
+    from thermoanalysis.thermo import thermochemistry
+
+    can_rates = True
+except (ImportError, ModuleNotFoundError):
+    can_rates = False
 
 from pysisyphus.constants import (
     AU2KJPERMOL,
@@ -618,6 +623,12 @@ def get_rates_for_rate_inputs(
     zpe_scale
         Scale factor for the zero point energy.
     """
+
+    if not can_rates:
+        raise ModuleNotFoundError(
+            "get_rates_for_rate_inputs() requires the thermoanalysis packages "
+            "(https://github.com/eljost/thermoanalysis)"
+        )
 
     assert min(temperatures) > 0
     assert degen >= 1
