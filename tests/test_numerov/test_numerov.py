@@ -172,9 +172,11 @@ def test_periodic_numerov(this_dir):
         return energies[i]
 
     mass_h = 1.007825032 * AMU2AU
+    mass_d = 2.01410174 * AMU2AU
     # I'm also a bit lost regarding the mass ... 2 * m_H seems
     # to provide good results.
-    mass = 2 * mass_h
+    # mass = mass_d + mass_d
+    mass = mass_h + mass_h
 
     w, v = numerov.run(
         xs,
@@ -192,10 +194,12 @@ def test_periodic_numerov(this_dir):
     # energies_kcal = energies * AU2KCALPERMOL
     # w_kcal = w * AU2KCALPERMOL
     # ax.plot(xs, energies_kcal)
+
     # for i, state in enumerate(v.T):
     # color = "red" if i % 2 == 0 else "blue"
     # ax.axhline(w_kcal[i], c="k", ls=":")
     # ax.plot(xs, w_kcal[i] + (0.375 * state), color=color)
+
     # ax.set_xlabel("Torsion / rad")
     # ax.set_ylabel("ΔE / kcal mol⁻¹")
     # ax.set_title(f"tunnel splitting: {ts: >10.4} cm⁻¹")
