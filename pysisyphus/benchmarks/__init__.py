@@ -1,1 +1,1 @@
-from pysisyphus.benchmarks.Benchmark import Benchmark
+from pysisyphus.benchmarks.Benchmark import Benchmark as Benchmark

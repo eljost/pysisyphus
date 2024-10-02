@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
-from pysisyphus.constants import AU2J, _1OVER_AU2NM, C, M_E, NA, PLANCK, AU2EV
+from pysisyphus.constants import _1OVER_AU2NM, C, M_E, NA, AU2EV
 
 
 # Computation of prefactor from Gaussian whitepaper

@@ -5,7 +5,6 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
-from typing import Optional
 import warnings
 
 from jinja2 import Template
@@ -560,7 +559,7 @@ class Turbomole(OverlapCalculator):
                     self.root = int(re.search(exopt_re, text)[1])
                 except TypeError:
                     self.log(
-                        f"Couldn't parse root from $exopt and no explicit root was given!"
+                        "Couldn't parse root from $exopt and no explicit root was given!"
                     )
             second_cmd = "egrad"
             self.prepare_td(text)

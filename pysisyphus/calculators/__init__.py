@@ -3,6 +3,7 @@ import logging
 __all__ = [
     "AFIR",
     "AtomAtomTransTorque",
+    "CFOUR",
     "Composite",
     "ConicalIntersection",
     "DFTBp",
@@ -27,6 +28,7 @@ __all__ = [
     "ORCA5",
     "Psi4",
     "PyPsi4",
+    "PWHardSphere",
     "Remote",
     "RobinDayClass2",
     "TBLite",
@@ -34,7 +36,6 @@ __all__ = [
     "Turbomole",
     "TransTorque",
     "XTB",
-    "CFOUR",
 ]
 
 

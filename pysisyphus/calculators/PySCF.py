@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 import pyscf
-from pyscf import grad, gto, lib, hessian, qmmm, tddft
+from pyscf import gto, lib, qmmm, tddft as tddft, grad as grad, hessian as hessian
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.elem_data import ATOMIC_NUMBERS
@@ -370,27 +370,6 @@ class PySCF(OverlapCalculator):
         else:
             energy = all_energies[0]
         return energy
-
-    def prepare_overlap_data(self, path):
-        gs_mf = self.mf._scf
-        exc_mf = self.mf
-
-        C = gs_mf.mo_coeff
-
-        first_Y = exc_mf.xy[0][1]
-        # In TDA calculations Y is just the integer 0.
-        if isinstance(first_Y, int) and (first_Y == 0):
-            X = np.array([state[0] for state in exc_mf.xy])
-            Y = np.zeros_like(X)
-        # In TD-DFT calculations the Y vectors is also present
-        else:
-            # Shape = (nstates, 2 (X,Y), occ, virt)
-            ci_coeffs = np.array(exc_mf.xy)
-            X = ci_coeffs[:, 0]
-            Y = ci_coeffs[:, 1]
-
-        all_energies = self.parse_all_energies(exc_mf)
-        return C, X, Y, all_energies
 
     def prepare_overlap_data(self, path):
         gs_mf = self.mf._scf

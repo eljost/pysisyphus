@@ -1,5 +1,4 @@
 from collections import namedtuple
-import logging
 from math import sqrt
 from pprint import pprint
 

@@ -117,7 +117,7 @@ def parse_pdb(text):
         master_fields = master_parse(master_line)
     except UnboundLocalError:
         master_fields = None
-        print(f"Warning! No MASTER line found in PDB!")
+        print("Warning! No MASTER line found in PDB!")
 
     atoms = list()
     coords = list()
@@ -134,7 +134,7 @@ def parse_pdb(text):
 
         xyz = np.array(fields[8:11], dtype=float)
         atom = fields[13].strip()
-        if not atom.lower() in KNOWN_ATOMS:
+        if atom.lower() not in KNOWN_ATOMS:
             name = fields[2]
             atom = parse_atom_name(name)
         atoms.append(atom)

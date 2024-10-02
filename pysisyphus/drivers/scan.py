@@ -199,7 +199,7 @@ def relaxed_1d_scan(
     np.savetxt(f"{pref}relaxed_scan.dat", scan_data)
     scan_vals, scan_energies = scan_data.T
 
-    print(highlight_text(f"Scan summary", level=1))
+    print(highlight_text("Scan summary", level=1))
     col_fmts = "int float float float float".split()
     header = ("Step", f"Target / {unit}", f"Actual / {unit}", f"Δ / {unit}", "E / au")
     table = TablePrinter(header, col_fmts, width=14)

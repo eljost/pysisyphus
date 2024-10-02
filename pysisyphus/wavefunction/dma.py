@@ -24,10 +24,10 @@ import jinja2
 import numpy as np
 from scipy.special import binom
 
-from pysisyphus.constants import ANG2BOHR, BOHR2ANG
+from pysisyphus.constants import BOHR2ANG
 from pysisyphus.elem_data import ATOMIC_NUMBERS, nuc_charges_for_atoms
 from pysisyphus.helpers_pure import highlight_text
-from pysisyphus.numint import get_mol_grid, get_gdma_atomic_grid
+from pysisyphus.numint import get_mol_grid
 from pysisyphus.wavefunction import gdma_int
 from pysisyphus.wavefunction import Wavefunction
 from pysisyphus.wavefunction.ints.multipole3d_sph import multipole3d_sph

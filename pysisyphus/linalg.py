@@ -1,5 +1,5 @@
 from math import cos, sin, sqrt
-from typing import Callable, Literal, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
