@@ -30,6 +30,7 @@ __all__ = [
     "TRIC",
     "TMTRIC",
     "HybridRedundantCoords",
+    "BondedFragment",
 ]
 
 from pysisyphus.intcoords.exceptions import PrimitiveNotDefinedException

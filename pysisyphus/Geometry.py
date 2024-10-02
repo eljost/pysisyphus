@@ -422,10 +422,10 @@ class Geometry:
         return layers
 
     def del_atoms(self, inds, **kwargs):
-        atoms = [atom for i, atom in enumerate(self.atoms) if not (i in inds)]
+        atoms = [atom for i, atom in enumerate(self.atoms) if i not in inds]
         c3d = self.coords3d
         coords3d = np.array(
-            [c3d[i] for i, _ in enumerate(self.atoms) if not (i in inds)]
+            [c3d[i] for i, _ in enumerate(self.atoms) if i not in inds]
         )
         return Geometry(atoms, coords3d.flatten(), **kwargs)
 

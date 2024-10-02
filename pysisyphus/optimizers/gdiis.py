@@ -13,7 +13,6 @@
 from dataclasses import dataclass
 from collections import namedtuple
 import functools
-import logging
 import warnings
 
 import autograd.numpy as anp
@@ -230,14 +229,14 @@ def gediis(coords, energies, forces, hessian=None, max_vecs=3, logger=None):
     if res.success:
         coeffs = x2c(res.x)
         en_ = res.fun
-    log(f"\tOptimization converged!")
+    log("\tOptimization converged!")
     coeff_str = np.array2string(coeffs, precision=4)
     log(f"\tCoefficients: {coeff_str}")
     # en_ = (E * coeffs).sum()
     # import pdb; pdb.set_trace()
     if (hessian is None) and (en_ >= E[0]):
         warnings.warn(
-            f"GEDIIS converged, but proposed energy is above current energy! Returning None"
+            "GEDIIS converged, but proposed energy is above current energy! Returning None"
         )
         return None
     result = diis_result(coeffs, coords, forces, energy=en_, prefix="GE")

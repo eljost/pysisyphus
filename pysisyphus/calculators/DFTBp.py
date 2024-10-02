@@ -1,4 +1,3 @@
-import itertools as it
 from math import ceil
 from pathlib import Path
 import re

@@ -7,7 +7,6 @@ from pysisyphus.intcoords.exceptions import (
     DifferentPrimitivesException,
     RebuiltInternalsException,
 )
-from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
 

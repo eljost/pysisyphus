@@ -3,7 +3,9 @@ __all__ = [
     "IDPP",
     "LST",
     "Redund",
-    "Geodesic"
+    "Geodesic",
+    "interpolate",
+    "interpolate_all",
 ]
 
 from pysisyphus.interpolate.helpers import interpolate, interpolate_all
