@@ -7,8 +7,6 @@ on:
             - "examples/**"
             - "scripts/**"
             - "nix/**"
-            - "tests_staging/**"
-            - "deprecated/**"
     workflow_dispatch:
     schedule:
         - cron: '0 */12 * * *'
@@ -32,15 +30,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/cache@v3
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.9.15
+        python-version: "3.12"
     - name: Upgrade pip
       run: |
         python -m pip install --upgrade pip
@@ -69,7 +67,9 @@ jobs:
         -m "not benchmark and not skip_ci"
         tests
     - name: Upload coverage to codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: unittests
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
