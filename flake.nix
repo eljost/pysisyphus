@@ -12,6 +12,10 @@
     flake-utils.url = "github:numtide/flake-utils";
 
     nixBundlers.url = "github:NixOS/bundlers/master";
+
+    pysisyphus-addons.url = "github:eljost/pysisyphus-addons";
+
+    sympleints.url = "github:eljost/sympleints";
   };
 
   nixConfig = {
@@ -20,13 +24,18 @@
     extra-subtituters = [ "https://pysisyphus.cachix.org" ];
   };
 
-  outputs = { self, qchem, flake-utils, nixBundlers, ... }:
+  outputs = { self, qchem, sympleints, pysisyphus-addons, flake-utils, nixBundlers, ... }:
     flake-utils.lib.eachSystem [ "x86_64-linux" ]
       (system:
         let
           pkgs = import qchem.inputs.nixpkgs {
             inherit system;
-            overlays = [ qchem.overlays.default (import ./nix/overlay.nix) ];
+            overlays = [
+              sympleints.overlays.default
+              pysisyphus-addons.overlays.default
+              qchem.overlays.default
+              (import ./nix/overlay.nix)
+            ];
             config = {
               allowUnfree = true;
               qchem-config = {

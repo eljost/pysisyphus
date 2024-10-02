@@ -7,6 +7,7 @@
 , pytestCheckHook
 , nix-gitignore
   # Python dependencies
+, pysisyphus-addons
 , setuptools-scm
 , autograd
 , dask
@@ -25,9 +26,9 @@
 , psutils
 , qcengine
 , ase
-, xtb-python
 , openbabel-bindings
 , pyscf
+, numba
   # Runtime dependencies
 , runtimeShell
 , jmol
@@ -36,6 +37,8 @@
 , enableMultiwfn ? true
 , xtb
 , enableXtb ? true
+, tblite
+, enableTblite ? true
 , molcas
 , enableMolcas ? true
 , psi4
@@ -93,6 +96,7 @@ let
     ++ lib.optional enableJmol jmol
     ++ lib.optional enableMultiwfn multiwfn
     ++ lib.optional enableXtb xtb
+    ++ lib.optional enableTblite tblite
     ++ lib.optional enableMolcas molcas
     ++ lib.optional enablePsi4 psi4
     ++ lib.optional enableWfoverlap wfoverlap
@@ -110,13 +114,13 @@ buildPythonPackage rec {
   pname = "pysisyphus";
   version = "0.8.0b0";
 
-  nativeBuildInputs = [
+  build-system = [
     makeWrapper
     setuptools-scm
-    mpiCheckPhaseHook
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
+    pysisyphus-addons
     autograd
     dask
     distributed
@@ -137,9 +141,10 @@ buildPythonPackage rec {
     openbabel-bindings
     openssh
     pyscf
+    numba
   ] # Syscalls
-  ++ lib.optional enableXtb xtb-python
   ++ lib.optional enableXtb xtb
+  ++ lib.optional enableTblite tblite
   ++ lib.optional enableJmol jmol
   ++ lib.optional enableMultiwfn multiwfn
   ++ lib.optional enableMolcas molcas
@@ -160,7 +165,7 @@ buildPythonPackage rec {
 
   preBuild = "export SETUPTOOLS_SCM_PRETEND_VERSION=${version}";
 
-  checkInputs = [ openssh pytestCheckHook ];
+  checkInputs = [ openssh pytestCheckHook mpiCheckPhaseHook ];
 
   preCheck = ''
     export PYSISRC=${pysisrc}
