@@ -7,6 +7,10 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 
 
+def optional_on_line(pattern):
+    return pp.Optional(~pp.LineEnd() + pattern)
+
+
 @file_or_str(".mol2")
 def parse_mol2(text):
     def get_line_word(*args):
@@ -49,10 +53,13 @@ def parse_mol2(text):
             "xyz"
         )
         + pp.Word(pp.printables).set_results_name("atom_type")
-        + pp.Optional(pp.common.integer.set_results_name("subst_id"))
-        + pp.Optional(pp.Word(pp.printables).set_results_name("subst_name"))
-        + pp.Optional(pp.common.real.set_results_name("charge"))
-        + pp.Optional(get_line_word(pp.printables).set_results_name("status_bit"))
+        # TODO: fix this parser, as it breaks when the optional values are not provided.
+        # If subst_id is missing the atom_id is on the next line is mistaken for it, so
+        # a fix would be to restrict parsing of this token to one line.
+        + optional_on_line(pp.common.integer.set_results_name("subst_id"))
+        + optional_on_line(pp.Word(pp.printables).set_results_name("subst_name"))
+        + optional_on_line(pp.common.real.set_results_name("charge"))
+        + optional_on_line(get_line_word(pp.printables).set_results_name("status_bit"))
     )
     atom = pp.CaselessLiteral("@<TRIPOS>ATOM") + pp.OneOrMore(
         atom_data_line
@@ -74,6 +81,7 @@ def parse_mol2(text):
     parser.ignore(pp.helpers.python_style_comment)
 
     result = parser.parseString(text)
+
     return result
 
 

@@ -21,7 +21,7 @@ def test_multi_run():
     neb_opt.run()
 
     # GrowingString
-    geoms = AnaPot().get_path(10)
+    geoms = AnaPot().get_path(2)
     gsm = GrowingString(geoms, calc_getter=AnaPot, perp_thresh=0.25)
     gsm_kwargs = {
         "dump": True,

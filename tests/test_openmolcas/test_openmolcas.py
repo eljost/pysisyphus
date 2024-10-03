@@ -11,7 +11,7 @@ from pysisyphus.testing import using
 @using("openmolcas")
 def test_openmolcas_s1_opt(this_dir):
     geom = geom_loader(this_dir / "trans_butadien.xyz", coord_type="redund")
-    inporb_fn = this_dir / "butadien_vdzp.RasOrb"
+    inporb_fn = this_dir / "butadien_vdzp.rasscf.h5"
 
     kwargs = {
         "basis": "ano-rcc-vdzp",
@@ -42,6 +42,6 @@ def test_cmspdft(this_dir):
     with open(this_dir / "cms_pdft_opt.yaml") as handle:
         run_dict = yaml.safe_load(handle)
     # Overwrite hardcoded path in yaml with path to test directory
-    run_dict["calc"]["inporb"] = this_dir / "cms_pdft.RasOrb"
+    run_dict["calc"]["inporb"] = this_dir / "cms_pdft.rasscf.h5"
     results = run_from_dict(run_dict)
     assert results.opt_geom.energy == pytest.approx(-437.1389)

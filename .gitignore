@@ -169,6 +169,9 @@ pysisyphus/wavefunction/devel_ints/*
 version.py
 
 !tests/test_barriers/*.h5
+!tests/test_dma/data/*
+!tests/test_es_capabilities/control_path_mult_*
+!tests/test_exc_densities/data/*
 !tests/test_franckcondon/*.h5
 !tests/test_franckcondon/naphthalene_gradient
 !tests/test_hessian_updates/*.h5
@@ -182,6 +185,8 @@ version.py
 !tests/test_orca/orca_tddft_triplets.out
 !tests/test_orca/fail_term.orca.out
 !tests/test_orca/orca_tddft_triplets.out
+!tests/test_orca/restricted.gbw
+!tests/test_orca/unrestricted.gbw
 !tests/test_openmolcas/cms_pdft_opt.yaml
 !tests/test_openmolcas/cms_pdft_opt.RasOrb
 !tests/test_point_charges/methane_control_path/*
@@ -197,5 +202,12 @@ version.py
 !tests/test_wavefunction/pyrrole/*
 !tests/test_psf/step1_pdbreader.psf
 !tests/test_overlap_calculator/benzene/*
+!tests/test_local_force_constants/bf3_ccsd_t_ccpvdz.h5
 !tests/test_wavefunction/bases/*
+!tests/test_so_coupling/data/*
+!tests/test_turbomole/make_dens/*
+!tests/test_numerov/*.dat
+!tests/test_partfuncs/ts_final_hessian_xtb.h5
 !pysisyphus/wf_library/*
+!pysisyphus/numint/lebedev_grids_4pi.npz
+!pysisyphus/test_cos/multi_state_inp.npz

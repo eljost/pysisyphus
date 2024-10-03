@@ -2,7 +2,9 @@ import sys
 import time
 
 from pysisyphus.calculators.Calculator import Calculator
+from pysisyphus.calculators import pyscf_lazy
 from pysisyphus.calculators import ORCA, ORCA5, Turbomole, XTB
+
 
 CALC_CLASSES = {
     "orca": ORCA.ORCA,
@@ -10,13 +12,6 @@ CALC_CLASSES = {
     "turbomole": Turbomole.Turbomole,
     "xtb": XTB.XTB,
 }
-
-try:
-    from pysisyphus.calculators import PySCF
-
-    CALC_CLASSES["pyscf"] = PySCF.PySCF
-except ModuleNotFoundError:
-    pass
 
 
 def calcs_from_dict(calc_dict, base_name, calc_number, charge, mult, pal, mem):
@@ -38,6 +33,8 @@ def calcs_from_dict(calc_dict, base_name, calc_number, charge, mult, pal, mem):
         kwargs = kwargs.copy()
         type_ = kwargs.pop("type")
         calc_kwargs.update(**kwargs)
+        if type_ == "pyscf":
+            pyscf_lazy.add_pyscf_to_dict(CALC_CLASSES)
         calc_cls = CALC_CLASSES[type_]
         keys_calcs[key] = calc_cls(**calc_kwargs)
     return keys_calcs

@@ -41,7 +41,6 @@ class EnergyMin(Calculator):
         mix
             Enable mixing of both forces, according to the approach outlined
             in [2]. Can be used to optimize guesses for MECPs.
-            Pass
         alpha
             Smoothing parameter in Hartree. See [2] for a discussion.
         sigma
@@ -49,15 +48,15 @@ class EnergyMin(Calculator):
             smaller for bigga sigmas. Has to be adapted for each case. See
             [2] for a discussion (p. 407 right column and p. 408 left column.)
         min_energy_diff
-            Energy difference in Hartree. When set to a value != 0 and the
-            energy difference between both
+            Energy difference in Hartree.
+            When set to a value != 0 and the energy difference between both
             calculators drops below this value, execution of both calculations
-            is diabled for 'check_after' cycles. In these cycles the calculator choice
-            remains fixed. After 'check_after' cycles, both energies
-            will be calculated and it is checked, if the previous calculator
-            choice remains valid.
+            is diabled for 'check_after' cycles. In these cycles the calculator
+            choice remains fixed, that is only one state is calculated. After
+            'check_after' cycles, both energies will be calculated again and it
+            is checked, if the previous calculator choice is still valid.
             In conjunction with 'check_after' both arguments can be used to
-            save computational ressources.
+            save computational ressources and to speed up the calculations.
         check_after
             Amount of cycles in which the calculator choice remains fixed.
 
@@ -118,6 +117,16 @@ class EnergyMin(Calculator):
         energy2 = results2["energy"]
         all_energies = np.array((energy1, energy2))
 
+        min_ind = [1, 0][int(energy1 < energy2)]
+        en1_or_en2 = ("calc1", "calc2")[min_ind]
+        energy_diff = energy1 - energy2
+        energy_diff_kJ = abs(energy_diff) * AU2KJPERMOL
+
+        self.log(
+            f"@ energy_calc1={energy1:.6f} au, energy_calc2={energy2:.6f} au, "
+            f"|ΔE|={energy_diff_kJ: >10.2f} kJ mol⁻¹."
+        )
+
         # Mixed forces to optimize crossing points
         if self.mix:
             # Must be positive, so substract lower energy from higher energy.
@@ -167,16 +176,12 @@ class EnergyMin(Calculator):
             return results
         # Mixed forces end
 
-        min_ind = [1, 0][int(energy1 < energy2)]
-        en1_or_en2 = ("calc1", "calc2")[min_ind]
-        energy_diff = energy1 - energy2
         # Try to fix calculator, if requested
         if (self.min_energy_diff and self.check_after) and (
             # When the actual difference is above to minimum differences
             # or
             # no calculator is fixed yet
-            (energy_diff > self.min_energy_diff)
-            or (self.fixed_calc is None)
+            (energy_diff > self.min_energy_diff) or (self.fixed_calc is None)
         ):
             self.fixed_calc = (self.calc1, self.calc2)[min_ind]
             self.recalc_in = self.check_after
@@ -185,11 +190,9 @@ class EnergyMin(Calculator):
             )
         results = (results1, results2)[min_ind]
         results["all_energies"] = all_energies
-        energy_diff_kJ = abs(energy_diff) * AU2KJPERMOL
 
         self.log(
-            f"energy_calc1={energy1:.6f} au, energy_calc2={energy2:.6f} au, returning "
-            f"results for {en1_or_en2}, {energy_diff_kJ: >10.2f} kJ mol⁻¹ lower."
+            f"Returning results for {en1_or_en2}, ({energy_diff_kJ: >10.2f} kJ mol⁻¹ lower)."
         )
         self.calc_counter += 1
         return results

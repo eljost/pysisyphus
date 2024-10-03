@@ -15,17 +15,13 @@ init_logging()
 @pytest.mark.skip
 @using("xtb")
 @pytest.mark.parametrize(
-    "fn, cycles", (
-        ("gbutene.xyz", 6),
-        ("butene.xyz", 6),
-        ("tbutene.xyz", 6),
-        ("pyranose.xyz", 9)
-    )
+    "fn, cycles",
+    (("gbutene.xyz", 6), ("butene.xyz", 6), ("tbutene.xyz", 6), ("pyranose.xyz", 9)),
 )
 def test_ego(fn, cycles):
     def get_act_calc():
-        return ORCA("b3lyp 6-31G*", pal=6)
-        # return XTB(pal=6, quiet=True)
+        # return ORCA("b3lyp 6-31G*", pal=6)
+        return XTB(pal=6, quiet=True)
 
     stem = Path(fn).stem
     org_calc = get_act_calc()
@@ -50,23 +46,29 @@ def test_ego(fn, cycles):
 
         sgo_geom = ego_geom.copy(coord_type="redund")
         sgo_geom.set_calculator(act_calc)
-        sgo_opt = RFOptimizer(sgo_geom, prefix=f"{i}_sgo", dump=True, thresh="gau_tight")
+        sgo_opt = RFOptimizer(
+            sgo_geom, prefix=f"{i}_sgo", dump=True, thresh="gau_tight"
+        )
         sgo_opt.run()
         sgos.append(sgo_geom.copy())
 
-    geoms = [org_geom, ]
-    comments = ["org", ]
+    geoms = [
+        org_geom,
+    ]
+    comments = [
+        "org",
+    ]
     for i in range(cycles):
         geoms.append(egos[i])
         comments.append(f"EGO {i}")
         geoms.append(sgos[i])
         comments.append(f"SGO {i}")
     align_geoms(geoms)
-    trj = "\n".join([geom.as_xyz(comment=comment) for geom, comment in zip(geoms, comments)])
+    trj = "\n".join(
+        [geom.as_xyz(comment=comment) for geom, comment in zip(geoms, comments)]
+    )
     with open(f"{stem}_sego.trj", "w") as handle:
         handle.write(trj)
 
     with open(f"{stem}_sgos.trj", "w") as handle:
-        handle.write(
-            "\n".join([geom.as_xyz() for geom in sgos])
-        )
+        handle.write("\n".join([geom.as_xyz() for geom in sgos]))

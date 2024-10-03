@@ -24,8 +24,8 @@ def this_dir(request):
 def assert_anapot_irc(irc):
     fc = irc.all_coords[0]
     bc = irc.all_coords[-1]
-    forward_ref = np.array((-1.0527, 1.0278,  0.))
-    backward_ref = np.array((1.941, 3.8543, 0.))
+    forward_ref = np.array((-1.0527, 1.0278, 0.0))
+    backward_ref = np.array((1.941, 3.8543, 0.0))
     forward_diff = np.linalg.norm(fc - forward_ref)
     backward_diff = np.linalg.norm(bc - backward_ref)
     assert forward_diff == pytest.approx(0.05, abs=0.1)
@@ -45,18 +45,32 @@ def plot_irc(irc, title=None):
 
 
 @pytest.mark.parametrize(
-    "irc_cls, mod_kwargs, ref", [
-        (DampedVelocityVerlet, {"v0": 0.1, "max_cycles": 400,}, None),
-        (Euler, {"step_length": 0.05,}, None),
+    "irc_cls, mod_kwargs, ref",
+    [
+        (
+            DampedVelocityVerlet,
+            {
+                "v0": 0.1,
+                "max_cycles": 400,
+            },
+            None,
+        ),
+        (
+            Euler,
+            {
+                "step_length": 0.05,
+            },
+            None,
+        ),
         (EulerPC, {}, None),
         (GonzalezSchlegel, {}, None),
         (IMKMod, {}, None),
         (RK4, {}, None),
         (LQA, {}, None),
-    ]
+    ],
 )
 def test_anapot_irc(irc_cls, mod_kwargs, ref):
-    geom = AnaPot().get_geom((0.61173, 1.49297, 0.))
+    geom = AnaPot().get_geom((0.61173, 1.49297, 0.0))
 
     kwargs = {
         "step_length": 0.1,
@@ -72,15 +86,16 @@ def test_anapot_irc(irc_cls, mod_kwargs, ref):
 
 
 @pytest.mark.parametrize(
-    "step_length", [
+    "step_length",
+    [
         (0.1),
         (0.2),
         (0.3),
         (0.4),
-    ]
+    ],
 )
 def test_imk(step_length):
-    geom = AnaPot().get_geom((0.61173, 1.49297, 0.))
+    geom = AnaPot().get_geom((0.61173, 1.49297, 0.0))
 
     irc_kwargs = {
         "step_length": step_length,
@@ -99,20 +114,22 @@ def test_imk(step_length):
 
 
 @pytest.mark.parametrize(
-    "calc_cls, kwargs_", [
-        pytest.param(PySCF,
-            {"basis": "321g", },
-            marks=using("pyscf")
+    "calc_cls, kwargs_",
+    [
+        pytest.param(
+            PySCF,
+            {
+                "basis": "321g",
+            },
+            marks=using("pyscf"),
         ),
-        pytest.param(Gaussian16,
-            {"route": "HF/3-21G"},
-            marks=using("gaussian16")
-        ),
-        pytest.param(Turbomole,
+        pytest.param(Gaussian16, {"route": "HF/3-21G"}, marks=using("gaussian16")),
+        pytest.param(
+            Turbomole,
             {"control_path": "./hf_abstr_control_path", "pal": 1},
-            marks=using("turbomole")
+            marks=using("turbomole"),
         ),
-    ]
+    ],
 )
 def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
     geom = geom_loader("lib:hfabstraction_hf321g_displ_forward.xyz")
@@ -139,7 +156,9 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
     dvv.run()
 
     c3d = geom.coords3d * BOHR2ANG
-    def bond(i,j): return np.linalg.norm(c3d[i]-c3d[j])
+
+    def bond(i, j):
+        return np.linalg.norm(c3d[i] - c3d[j])
 
     assert bond(2, 7) == pytest.approx(0.93, abs=0.01)
     assert bond(4, 7) == pytest.approx(2.42, abs=0.01)
@@ -150,15 +169,23 @@ def test_hf_abstraction_dvv(calc_cls, kwargs_, this_dir):
 @pytest.mark.parametrize(
     "irc_cls, irc_kwargs, fw_cycle, bw_cycle",
     [
-        (EulerPC, {"hessian_recalc": 10, "dump_dwi": False,}, 30, 38),
+        (
+            EulerPC,
+            {
+                "hessian_recalc": 10,
+                "dump_dwi": False,
+            },
+            30,
+            38,
+        ),
         # (EulerPC, {"hessian_recalc": 10, "corr_func": "scipy",}, 19, 23),
-    ]
+    ],
 )
 def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
     geom = geom_loader("lib:hcn_iso_hf_sto3g_ts_opt.xyz")
 
     calc = PySCF(
-            basis="sto3g",
+        basis="sto3g",
     )
     geom.set_calculator(calc)
 
@@ -177,10 +204,10 @@ def test_hcn_irc(irc_cls, irc_kwargs, fw_cycle, bw_cycle):
         (None),
         ("RK45"),
         ("DOP853"),
-    ]
+    ],
 )
 def test_eulerpc_scipy(scipy_method):
-    geom = AnaPot().get_geom((0.61173, 1.49297, 0.))
+    geom = AnaPot().get_geom((0.61173, 1.49297, 0.0))
 
     kwargs = {
         "step_length": 0.2,
@@ -198,14 +225,15 @@ def test_eulerpc_scipy(scipy_method):
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "hessian_init, ref_cycle", [
+    "hessian_init, ref_cycle",
+    [
         ("calc", 28),
         pytest.param("fischer", 0, marks=pytest.mark.xfail),
         pytest.param("unit", 0, marks=pytest.mark.xfail),
         ("lindh", 28),
         ("simple", 28),
         ("swart", 28),
-    ]
+    ],
 )
 def test_downhill_irc_model_hessian(hessian_init, ref_cycle):
     geom = geom_loader("lib:hcn_downhill_model_hessian.xyz")
@@ -228,12 +256,13 @@ def test_downhill_irc_model_hessian(hessian_init, ref_cycle):
 
 # @pytest.mark.skip()
 @pytest.mark.parametrize(
-    "step_length", [
+    "step_length",
+    [
         0.1,
         0.2,
         0.3,
         # 0.4  # requires hessian_recalc=1
-    ]
+    ],
 )
 def test_mb_gs2(step_length):
     calc = MullerBrownPot()
@@ -254,12 +283,13 @@ def test_mb_gs2(step_length):
 
 @using("pyscf")
 @pytest.mark.parametrize(
-    "step_length", [
+    "step_length",
+    [
         0.1,
         0.2,
         0.3,
         # 0.4,  # sometimes fails in the CI
-    ]
+    ],
 )
 def test_hcn_iso_gs2(step_length):
     geom = geom_loader("lib:hcn_iso_hf_sto3g_ts_opt.xyz")
@@ -277,12 +307,13 @@ def test_hcn_iso_gs2(step_length):
 
 
 @pytest.mark.parametrize(
-    "step_length", [
+    "step_length",
+    [
         0.1,
         0.2,
         # 0.3,
         # 0.4,
-    ]
+    ],
 )
 def test_mb_eulerpc(step_length):
     calc = MullerBrownPot()

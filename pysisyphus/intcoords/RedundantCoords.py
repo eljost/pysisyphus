@@ -147,7 +147,9 @@ class RedundantCoords:
         # Use supplied typed_prims
         else:
             unique_typed_prims = set(typed_prims) | set(self.define_prims)
-            self.typed_prims = list(unique_typed_prims)
+            unique_typed_prims = list(unique_typed_prims)
+            unique_typed_prims.sort()
+            self.typed_prims = unique_typed_prims
 
         if self.bonds_only:
             self.typed_prims = self.bond_typed_prims
@@ -604,7 +606,7 @@ class RedundantCoords:
 
     def print_typed_prims(self):
         for i, tp in enumerate(self.typed_prims):
-            print(i, tp)
+            print(f"{i:04d} {tp}")
 
     def __str__(self):
         bonds = len(self.bond_indices)

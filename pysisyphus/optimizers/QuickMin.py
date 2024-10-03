@@ -35,18 +35,17 @@ class QuickMin(Optimizer):
             self.prepare_opt()
         self.log("Resetted optimizer")
 
-    def optimize(self):
-        if self.align and self.is_cos:
-            (self.velocities[-1],), _, _ = self.fit_rigid(
-                vectors=(self.velocities[-1],)
-            )
+    def fit_rigid(self):
+        (self.velocities[-1],), _, _ = super()._fit_rigid(
+            vectors=(self.velocities[-1],)
+        )
 
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         prev_velocities = self.velocities[-1]
-        cur_forces = self.geometry.forces
-        self.forces.append(cur_forces)
-        self.energies.append(self.geometry.energy)
 
-        norm = np.linalg.norm(cur_forces)
+        norm = np.linalg.norm(forces)
         if not self.is_cos:
             self.log(f"Current energy={self.energies[-1]:.6f}")
         self.log(f"norm(forces)={norm:.6f}")
@@ -54,15 +53,15 @@ class QuickMin(Optimizer):
         if self.cur_cycle == 0:
             tmp_velocities = np.zeros_like(prev_velocities)
         else:
-            overlap = prev_velocities.dot(cur_forces)
+            overlap = prev_velocities.dot(forces)
             self.log(f"Overlap of previous and current forces: {overlap:.6f}")
             if overlap > 0:
-                tmp_velocities = overlap * cur_forces / cur_forces.dot(cur_forces)
+                tmp_velocities = overlap * forces / forces.dot(forces)
             else:
                 tmp_velocities = np.zeros_like(prev_velocities)
                 self.log("Zeroed velocities")
 
-        accelerations = cur_forces / self.geometry.masses_rep
+        accelerations = forces / self.geometry.masses_rep
         cur_velocities = tmp_velocities + self.dt * accelerations
         steps = cur_velocities * self.dt + 1 / 2 * accelerations * self.dt**2
         steps = self.scale_by_max_step(steps)

@@ -6,6 +6,7 @@ from math import ceil, log
 import os
 from pathlib import Path
 import sys
+from typing import Literal
 
 import h5py
 import numpy as np
@@ -25,6 +26,9 @@ from pysisyphus.io import save_third_deriv
 from pysisyphus.optimizers.guess_hessians import get_guess_hessian
 from pysisyphus.TablePrinter import TablePrinter
 from pysisyphus.xyzloader import make_trj_str, make_xyz_str
+
+
+IRCDirection = Literal["downhill", "forward", "backward"]
 
 
 class IRC:
@@ -163,6 +167,7 @@ class IRC:
         self.ref_bond_sets = {}
 
         self._m_sqrt = np.sqrt(self.geometry.masses_rep)
+        self.all_lengths = list()
         self.all_energies = list()
         self.all_coords = list()
         self.all_gradients = list()
@@ -221,7 +226,7 @@ class IRC:
     def m_sqrt(self):
         return self._m_sqrt
 
-    def unweight_vec(self, vec):
+    def unweight_mw_grad(self, vec):
         return self.m_sqrt * vec
 
     def mass_weigh_hessian(self, hessian):
@@ -234,6 +239,7 @@ class IRC:
         self.energy_converged = False
         self.past_inflection = not self.force_inflection
 
+        self.irc_lengths = list()
         self.irc_energies = list()
         # Not mass-weighted
         self.irc_coords = list()
@@ -444,7 +450,7 @@ class IRC:
         # the mass-weighted and un-mass-weighted gradients. This takes into account
         # which atoms are actually moving, so it should be a good guess.
         norm_mw_grad = np.linalg.norm(mw_grad)
-        norm_grad = np.linalg.norm(self.unweight_vec(mw_grad))
+        norm_grad = np.linalg.norm(self.unweight_mw_grad(mw_grad))
         conv_fact = norm_grad / norm_mw_grad
         conv_fact = max(min_fact, conv_fact)
         self.log(f"Un-weighted / mass-weighted conversion factor {conv_fact:.4f}")
@@ -463,12 +469,19 @@ class IRC:
         bonds_str = ", ".join(bond_strs)
         self.table.print(f"Bond{plural} {prefix}: {bonds_str}")
 
-    def irc(self, direction):
+    def irc(self, direction: IRCDirection):
+        """Driver for one IRC direction forward/backward/downhill."""
+
         self.log(highlight_text(f"IRC {direction}", level=1))
         self.cur_direction = direction
         self.prepare(direction)
-        # Calculate gradient
+
+        dir_sign = -1 if self.cur_direction == "backward" else 1
+
+        # Calculate gradient at initial point, e.g, after displacment from the TS
         self.gradient
+
+        # Store quantities at initial point
         self.irc_energies.append(self.energy)
         # Non mass-weighted
         self.irc_coords.append(self.coords)
@@ -476,6 +489,9 @@ class IRC:
         # Mass-weighted
         self.irc_mw_coords.append(self.mw_coords)
         self.irc_mw_gradients.append(self.mw_gradient)
+        self.irc_lengths.append(
+            dir_sign * np.linalg.norm(self.ts_mw_coords - self.irc_mw_coords[-1])
+        )
 
         self.table.print_header()
         for self.cur_cycle in range(self.max_cycles):
@@ -513,7 +529,10 @@ class IRC:
                 _ = "" if self.past_inflection else "not yet"
                 self.log(f"(rms(grad) > threshold) {_} fullfilled!")
 
-            irc_length = np.linalg.norm(self.irc_mw_coords[0] - self.irc_mw_coords[-1])
+            irc_length = dir_sign * np.linalg.norm(
+                self.ts_mw_coords - self.irc_mw_coords[-1]
+            )
+            self.irc_lengths.append(irc_length)
             dE = self.irc_energies[-1] - self.irc_energies[-2]
             max_grad = np.abs(self.gradient).max()
 
@@ -567,6 +586,7 @@ class IRC:
 
             if break_msg:
                 self.table.print(break_msg)
+                print(self.direction_summary(direction))
                 break
 
             if check_for_end_sign():
@@ -577,7 +597,10 @@ class IRC:
             print("IRC steps exceeded. Stopping.")
             print()
 
+        # Reverse lists in forward direction. The final order will be:
+        # [forward_first ... forward_last] + [ts] + [backward end ... backward_first]
         if direction == "forward":
+            self.irc_lengths.reverse()
             self.irc_energies.reverse()
             self.irc_coords.reverse()
             self.irc_gradients.reverse()
@@ -591,18 +614,21 @@ class IRC:
         self.trj_handle.close()
 
     def set_data(self, prefix):
+        lengths_name = f"{prefix}_lengths"
         energies_name = f"{prefix}_energies"
         coords_name = f"{prefix}_coords"
         grad_name = f"{prefix}_gradients"
         mw_coords_name = f"{prefix}_mw_coords"
         mw_grad_name = f"{prefix}_mw_gradients"
 
+        setattr(self, lengths_name, self.irc_lengths)
         setattr(self, coords_name, self.irc_coords)
         setattr(self, grad_name, self.irc_gradients)
         setattr(self, mw_coords_name, self.irc_mw_coords)
         setattr(self, mw_grad_name, self.irc_mw_gradients)
         setattr(self, energies_name, self.irc_energies)
 
+        self.all_lengths.extend(getattr(self, lengths_name))
         self.all_energies.extend(getattr(self, energies_name))
         self.all_coords.extend(getattr(self, coords_name))
         self.all_gradients.extend(getattr(self, grad_name))
@@ -675,24 +701,33 @@ class IRC:
             "unweighted coordinates."
         )
 
+        # Run IRC in forward direction from TS
         if self.forward:
             print("\n" + highlight_text("IRC - Forward") + "\n")
             self.irc("forward")
             self.set_data("forward")
 
         # Add TS/starting data
+        self.all_lengths.append(0.0)
         self.all_energies.append(self.ts_energy)
         self.all_coords.append(self.ts_coords)
         self.all_gradients.append(self.ts_gradient)
         self.all_mw_coords.append(self.ts_mw_coords)
         self.all_mw_gradients.append(self.ts_mw_gradient)
+        # The IRC starts in forward direction, followed by the backwards direction.
+        # The lists containing the forward data will be reversed. If 20 points are stored
+        # in forward direction, starting with the TS at index 0, then the TS will be at
+        # index 19 after reversing. This index is calculated below.
         self.ts_index = len(self.all_energies) - 1
 
+        # Run IRC in backward direction from TS
         if self.backward:
             print("\n" + highlight_text("IRC - Backward") + "\n")
             self.irc("backward")
             self.set_data("backward")
+            print(self.final_summary())
 
+        # Run downhill IRC
         if self.downhill:
             print("\n" + highlight_text("IRC - Downhill") + "\n")
             self.irc("downhill")
@@ -718,6 +753,38 @@ class IRC:
         # Right now self.all_mw_coords is still in mass-weighted coordinates.
         # Convert them to un-mass-weighted coordinates.
         self.all_mw_coords_umw = self.all_mw_coords / self.m_sqrt
+
+    def direction_summary(self, direction: IRCDirection) -> str:
+        cart_gradient = self.gradient
+        max_cart_gradient = np.abs(cart_gradient).max()
+        rms_cart_gradient = np.sqrt(np.mean(cart_gradient**2))
+        energy = self.energy
+        en_diff = energy - self.ts_energy
+        en_diff_kJ = en_diff * AU2KJPERMOL
+        summary = f"""
+        Summary afer {direction} IRC:
+        max(gradient,cartesian): {max_cart_gradient: >14.6f} hartree/bohr
+        rms(gradient,cartesian): {rms_cart_gradient: >14.6f} hartree/bohr
+                         energy: {energy: >14.6f} hartree
+                  energy change: {en_diff: >14.6f} hartree ({en_diff_kJ: >14.2f} kJ mol⁻¹)"""
+        return summary
+
+    def final_summary(self):
+        ts_energy = self.ts_energy
+        fin_first = self.all_energies[-1]
+        fin_last = self.all_energies[0]
+        ens = np.array((fin_first, ts_energy, fin_last))
+        ens -= ens[1]  # Set TS energy to 0.0
+        ens *= AU2KJPERMOL
+        en_fmt = ">14.6f"
+        kJ_fmt = ">+14.2f"
+        summary = f"""
+        Final IRC summary:
+         Start (finished_first): {fin_first:{en_fmt}} hartree ({ens[0]:{kJ_fmt}} kJ mol⁻¹)
+                             TS: {ts_energy:{en_fmt}} hartree ({ens[1]:{kJ_fmt}} kJ mol⁻¹)
+            End (finished_last): {fin_last:{en_fmt}} hartree ({ens[2]:{kJ_fmt}} kJ mol⁻¹)
+        """
+        return summary
 
     def postprocess(self):
         pass
@@ -746,6 +813,7 @@ class IRC:
 
     def get_irc_data(self):
         data_dict = {
+            "lengths": np.array(self.irc_lengths, dtype=float),
             "energies": np.array(self.irc_energies, dtype=float),
             "coords": np.array(self.irc_coords, dtype=float),
             "gradients": np.array(self.irc_gradients, dtype=float),
@@ -756,6 +824,7 @@ class IRC:
 
     def get_full_irc_data(self):
         data_dict = {
+            "lengths": np.array(self.all_lengths, dtype=float),
             "energies": np.array(self.all_energies, dtype=float),
             "coords": np.array(self.all_coords, dtype=float),
             "gradients": np.array(self.all_gradients, dtype=float),

@@ -12,9 +12,7 @@ import re
 import shutil
 import sys
 import textwrap
-import time
 
-from distributed import Client
 import numpy as np
 import scipy as sp
 import yaml
@@ -34,7 +32,6 @@ from pysisyphus.dynamics import (
     Gaussian,
 )
 from pysisyphus.drivers import (
-    relaxed_1d_scan,
     run_afir_paths,
     run_opt,
     run_precontr,
@@ -42,6 +39,8 @@ from pysisyphus.drivers import (
     print_perf_results,
 )
 from pysisyphus.drivers.barriers import do_endopt_ts_barriers
+from pysisyphus.drivers.calculations import run_calculations
+from pysisyphus.drivers import scan
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (
@@ -53,6 +52,7 @@ from pysisyphus.helpers import (
 from pysisyphus.helpers_pure import (
     find_closest_sequence,
     merge_sets,
+    recursive_extract,
     recursive_update,
     highlight_text,
     approx_float,
@@ -94,7 +94,7 @@ CALC_DICT = {
     "orca": ORCA,
     "orca5": ORCA5,
     "psi4": Psi4,
-    "pyxtb": PyXTB,
+    "tblite": TBLite,
     "remote": Remote,
     "turbomole": Turbomole,
     "xtb": XTB,
@@ -199,7 +199,7 @@ def get_calc_closure(base_name, calc_key, calc_kwargs, iter_dict=None, index=Non
         # calc1/calc2 are used for ConicalIntersection and EnergyMin.
         "calculator1": "calculator1",
         "calc1": "calculator1",  # shortcut for 'calculator1'
-        "calcualtor2": "calculator2",
+        "calculator2": "calculator2",
         "calc2": "calculator2",  # shortcut for 'calculator2'
     }
 
@@ -244,7 +244,9 @@ def run_tsopt_from_cos(
     ovlp_thresh=0.4,
     coordinate_union="bonds",
 ):
-    print(highlight_text(f"Running TS-optimization from COS"))
+    print(highlight_text("Running TS-optimization from COS"))
+
+    energies = [image.energy for image in cos.images]
 
     # Later want a Cartesian HEI tangent, so if not already present we create
     # a Cartesian COS object to obtain the tangent from.
@@ -266,7 +268,7 @@ def run_tsopt_from_cos(
         hei_index = cos.get_hei_index()
         hei_image = cos.images[hei_index]
         # Select the Cartesian tangent from the COS
-        cart_hei_tangent = cart_cos.get_tangent(hei_index)
+        cart_hei_tangent = cart_cos.get_tangent(hei_index, energies=energies)
     # Use splined HEI
     elif hei_kind == "splined":
         # The splined HEI tangent is usually very bady for the purpose of
@@ -288,8 +290,8 @@ def run_tsopt_from_cos(
         # Indices of the two nearest images with integer indices.
         floor = int(floor)
         ceil = floor + 1
-        floor_tangent = cart_cos.get_tangent(floor)
-        ceil_tangent = cart_cos.get_tangent(ceil)
+        floor_tangent = cart_cos.get_tangent(floor, energies=energies)
+        ceil_tangent = cart_cos.get_tangent(ceil, energies=energies)
         print(f"Creating mixed HEI tangent, using tangents at images {(floor, ceil)}.")
         print("Overlap of splined HEI tangent with these tangents:")
         for ind, tang in ((floor, floor_tangent), (ceil, ceil_tangent)):
@@ -340,9 +342,9 @@ def run_tsopt_from_cos(
         union_msg = "No coordinate union."
     print(union_msg)
 
-    ts_geom_kwargs = tsopt_kwargs.pop("geom")
-    ts_coord_type = ts_geom_kwargs.pop("type")
-    if ts_coord_type != "cart":
+    ts_geom_kwargs = tsopt_kwargs.pop("geom", dict())
+    ts_coord_type = ts_geom_kwargs.pop("type", "cartesian")
+    if ts_coord_type not in ("cart", "cartesian"):
         ts_geom_kwargs["coord_kwargs"].update(coord_kwargs)
 
     ts_geom = Geometry(
@@ -354,9 +356,9 @@ def run_tsopt_from_cos(
 
     # Convert tangent from whatever coordinates to redundant internals.
     # When the HEI was splined the tangent will be in Cartesians.
-    if ts_coord_type == "cart":
+    if ts_coord_type in ("cart", "cartesian"):
         ref_tangent = cart_hei_tangent
-    elif ts_coord_type in ("redund", "dlc"):
+    elif ts_coord_type in ("redund", "dlc", "tric"):
         ref_tangent = ts_geom.internal.B @ cart_hei_tangent
     else:
         raise Exception(f"Invalid coord_type='{ts_coord_type}'!")
@@ -496,7 +498,7 @@ def run_tsopt_from_cos(
     if tsopt_key == "dimer":
         ts_geom.set_calculator(ts_calc)
 
-    print(f"Optimized TS coords:")
+    print("Optimized TS coords:")
     print(ts_geom.as_xyz())
     # Include ts_ prefix
     ts_opt_fn = ts_opt.get_path_for_fn("opt.xyz")
@@ -514,95 +516,6 @@ def run_tsopt_from_cos(
     return opt_result
 
 
-def run_calculations(
-    geoms,
-    calc_getter,
-    scheduler=None,
-    assert_track=False,
-    run_func=None,
-):
-    print(highlight_text("Running calculations"))
-
-    func_name = "run_calculation" if run_func is None else run_func
-
-    def par_calc(geom):
-        return getattr(geom.calculator, func_name)(geom.atoms, geom.coords)
-
-    for geom in geoms:
-        geom.set_calculator(calc_getter())
-
-    if assert_track:
-        assert all(
-            [geom.calculator.track for geom in geoms]
-        ), "'track: True' must be present in calc section."
-
-    if scheduler:
-        client = Client(scheduler, pure=False, silence_logs=False)
-        results_futures = client.map(par_calc, geoms)
-        all_results = client.gather(results_futures)
-    else:
-        all_results = list()
-        i_fmt = "02d"
-        for i, geom in enumerate(geoms):
-            print(highlight_text(f"Calculation {i:{i_fmt}}", level=1))
-
-            start = time.time()
-            print(geom)
-            results = getattr(geom.calculator, func_name)(geom.atoms, geom.cart_coords)
-            # results dict of MultiCalc will contain keys that can be dumped yet. So
-            # we skip the JSON dumping when KeyError is raised.
-            try:
-                as_json = results_to_json(results)
-                calc = geom.calculator
-                # Decrease counter, because it will be increased by 1, w.r.t to the
-                # calculation.
-                json_fn = calc.make_fn("results", counter=calc.calc_counter - 1)
-                with open(json_fn, "w") as handle:
-                    handle.write(as_json)
-            except KeyError:
-                print("Skipped JSON dump of calculation results!")
-
-            hess_keys = [
-                key
-                for key, val in results.items()
-                if isinstance(val, dict) and "hessian" in val
-            ]
-            for hkey in hess_keys:
-                hres = results[hkey]
-                hfn = f"{hkey}_hessian.h5"
-                save_hessian(
-                    hfn,
-                    geom,
-                    cart_hessian=hres["hessian"],
-                    energy=hres["energy"],
-                )
-                print(f"Dumped hessian to '{hfn}'.")
-
-            all_results.append(results)
-            if i < (len(geoms) - 1):
-                try:
-                    cur_calculator = geom.calculator
-                    next_calculator = geoms[i + 1].calculator
-                    next_calculator.set_chkfiles(cur_calculator.get_chkfiles())
-                    msg = f"Set chkfiles of calculator {i:{i_fmt}} on calculator {i+1:{i_fmt}}"
-                except AttributeError:
-                    msg = "Calculator does not support set/get_chkfiles!"
-                print(msg)
-            end = time.time()
-            diff = end - start
-            print(f"Calculation took {diff:.1f} s.\n")
-            sys.stdout.flush()
-    print()
-
-    for geom, results in zip(geoms, all_results):
-        try:
-            geom.set_results(results)
-        except KeyError:
-            pass
-
-    return geoms, all_results
-
-
 def run_stocastic(stoc):
     # Fragment
     stoc.run()
@@ -612,7 +525,7 @@ def run_stocastic(stoc):
 
 
 def run_md(geom, calc_getter, md_kwargs):
-    print(highlight_text(f"Running Molecular Dynamics"))
+    print(highlight_text("Running Molecular Dynamics"))
 
     calc = calc_getter()
     geom.set_calculator(calc)
@@ -703,7 +616,7 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
     opt_key = opt_kwargs.pop("type")
 
     def wrapper(geom, start, step_size, steps, pref=None):
-        return relaxed_1d_scan(
+        return scan.relaxed_1d_scan(
             geom,
             calc_getter,
             [
@@ -719,33 +632,36 @@ def run_scan(geom, calc_getter, scan_kwargs, callback=None):
         )
 
     if not symmetric:
-        scan_geoms, scan_vals, scan_energies = wrapper(geom, start, step_size, steps)
+        tot_result = wrapper(geom, start, step_size, steps)
     else:
         # Negative direction
         print(highlight_text("Negative direction", level=1) + "\n")
-        minus_geoms, minus_vals, minus_energies = wrapper(
-            geom, start, -step_size, steps, pref="minus"
-        )
-        init_geom = minus_geoms[0].copy()
+        minus_result = wrapper(geom, start, -step_size, steps, pref="minus")
+        scan.print_summary(minus_result)
+
+        init_geom = minus_result.geoms[0].copy()
+
         # Positive direction. Compared to the negative direction we start at a
         # displaced geometry and reduce the number of steps by 1.
         print(highlight_text("Positive direction", level=1) + "\n")
         plus_start = start + step_size
         # Do one step less, as we already start from the optimized geometry
         plus_steps = steps - 1
-        plus_geoms, plus_vals, plus_energies = wrapper(
-            init_geom, plus_start, step_size, plus_steps, pref="plus"
-        )
-        scan_geoms = minus_geoms[::-1] + plus_geoms
-        scan_vals = np.concatenate((minus_vals[::-1], plus_vals))
-        scan_energies = np.concatenate((minus_energies[::-1], plus_energies))
+        plus_result = wrapper(init_geom, plus_start, step_size, plus_steps, pref="plus")
+        scan.print_summary(plus_result)
 
-        trj = "\n".join([geom.as_xyz() for geom in scan_geoms])
-        with open("relaxed_scan.trj", "w") as handle:
-            handle.write(trj)
-        scan_data = np.stack((scan_vals, scan_energies), axis=1)
-        np.savetxt(f"relaxed_scan.dat", scan_data)
-    return scan_geoms, scan_vals, scan_energies
+        # Combine the two scan results in both directions into one total ScanResult
+        tot_result = minus_result.reverse_and_add(plus_result, name="Total")
+    print()
+    # The line below also prints the summary for a non-symmetric scan in only one direction
+    scan.print_summary(tot_result)
+
+    trj = "\n".join([geom.as_xyz() for geom in tot_result.geoms])
+    with open("relaxed_scan.trj", "w") as handle:
+        handle.write(trj)
+    scan_data = np.stack((tot_result.vals, tot_result.energies), axis=1)
+    np.savetxt("relaxed_scan.dat", scan_data)
+    return tot_result
 
 
 def run_preopt(first_geom, last_geom, calc_getter, preopt_key, preopt_kwargs):
@@ -784,7 +700,7 @@ def run_preopt(first_geom, last_geom, calc_getter, preopt_key, preopt_kwargs):
             print(f"Problem in preoptimization of {key}. Exiting!")
             sys.exit()
         print(f"Preoptimization of {key} geometry converged!")
-        opt_fn = opt.get_path_for_fn(f"opt.xyz")
+        opt_fn = opt.get_path_for_fn("opt.xyz")
         shutil.move(opt.final_fn, opt_fn)
         print(f"Saved final preoptimized structure to '{opt_fn}'.")
 
@@ -796,7 +712,7 @@ def run_preopt(first_geom, last_geom, calc_getter, preopt_key, preopt_kwargs):
 
 
 def run_irc(geom, irc_key, irc_kwargs, calc_getter):
-    print(highlight_text(f"Running IRC") + "\n")
+    print(highlight_text("Running IRC") + "\n")
 
     calc = calc_getter()
     calc.base_name = "irc"
@@ -836,7 +752,7 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
 
     max_len = max(len(s) for s in xyz)
 
-    print(highlight_text(f"RMSDs After End Optimizations"))
+    print(highlight_text("RMSDs After End Optimizations"))
     print()
 
     start_cbms = [get_bond_mat(geom) for geom in geoms]
@@ -867,7 +783,7 @@ def do_rmsds(xyz, geoms, end_fns, end_geoms, preopt_map=None, similar_thresh=0.2
 
 
 def run_endopt(irc, endopt_key, endopt_kwargs, calc_getter):
-    print(highlight_text(f"Optimizing reaction path ends"))
+    print(highlight_text("Optimizing reaction path ends"))
 
     # Gather geometries that shall be optimized and appropriate keys.
     to_opt = list()
@@ -1032,7 +948,7 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, dest_and_add_cp, new_yaml_fn=Non
     print("Copying:")
     # Copy geometries
     # When newlines are present we have an inline xyz formatted string
-    if not "\n" in xyzs:
+    if "\n" not in xyzs:
         if isinstance(xyzs, str):
             xyzs = [
                 xyzs,
@@ -1321,7 +1237,6 @@ RunResult = namedtuple(
 
 
 def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
-
     # Dump run_dict
     run_dict_copy = run_dict.copy()
     run_dict_copy["version"] = __version__
@@ -1373,6 +1288,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     calc_key = run_dict["calc"].pop("type")
     calc_kwargs = run_dict["calc"]
     calc_run_func = calc_kwargs.pop("run_func", None)
+    calc_one_calc = calc_kwargs.pop("one_calculator", False)
     calc_kwargs["out_dir"] = calc_kwargs.get("out_dir", yaml_dir / OUT_DIR_DEFAULT)
     calc_base_name = calc_kwargs.get("base_name", "calculator")
     if calc_key in ("oniom", "ext"):
@@ -1478,13 +1394,19 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         run_md(geom, calc_getter, md_kwargs)
     elif run_dict["scan"]:
         scan_kwargs = run_dict["scan"]
-        scan_geoms, scan_vals, scan_energies = run_scan(geom, calc_getter, scan_kwargs)
+        scan_result = run_scan(geom, calc_getter, scan_kwargs)
+        scan_geoms = scan_result.geoms
+        scan_vals = scan_result.vals
+        scan_energies = scan_result.energies
     elif run_dict["perf"]:
         perf_results = run_perf(geom, calc_getter, **run_dict["perf"])
         print_perf_results(perf_results)
     elif run_dict["afir"]:
         ts_guesses, afir_paths = run_afir_paths(
-            afir_key, geoms, calc_getter, **afir_kwargs,
+            afir_key,
+            geoms,
+            calc_getter,
+            **afir_kwargs,
         )
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
@@ -1503,7 +1425,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     elif any(
         [run_dict[key] is not None for key in ("opt", "tsopt", "irc", "mdp", "endopt")]
     ):
-
         #######
         # OPT #
         #######
@@ -1584,7 +1505,6 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         # if ran_irc and run_dict["endopt"]:
         if run_dict["endopt"]:
             if not ran_irc:
-
                 _, irc_geom, _ = geoms  # IRC geom should correspond to the TS
 
                 class DummyIRC:
@@ -1665,7 +1585,10 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Fallback when no specific job type was specified
     else:
         calced_geoms, calced_results = run_calculations(
-            geoms, calc_getter, scheduler, run_func=calc_run_func
+            geoms,
+            calc_getter,
+            run_func=calc_run_func,
+            one_calculator=calc_one_calc,
         )
 
     # We can't use locals() in the dict comprehension, as it runs in its own
@@ -1677,7 +1600,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
 
 
 def check_asserts(results, run_dict):
-    print(highlight_text(f"Asserting results"))
+    print(highlight_text("Asserting results"))
 
     assert_ = run_dict["assert"]
     keys = list(assert_.keys())

@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from pysisyphus.calculators import ORCA
+import pysisyphus.calculators.ORCA as ORCA
 from pysisyphus.helpers_pure import highlight_text
 
 
@@ -34,7 +34,7 @@ def run():
 
     assert llogs == lgbws == lciss, f"Different number of {llogs=}, {lgbws=}, {lciss=}!"
 
-    calc = ORCA(keywords="", dump_fn=args.h5)
+    calc = ORCA.ORCA(keywords="", dump_fn=args.h5)
     calc.do_tddft = True
 
     for i, (log, gbw, cis) in enumerate(zip(logs, gbws, ciss)):
@@ -46,7 +46,7 @@ def run():
         calc.root = root
         atoms, coords = calc.parse_atoms_coords(log)
         mo_coeffs, _ = calc.parse_gbw(gbw)
-        X, Y = calc.parse_cis(cis)
+        X, Y, *_ = ORCA.parse_orca_cis(cis)
         with open(log) as handle:
             text = handle.read()
         all_energies = calc.parse_all_energies(text, triplets=triplets)
