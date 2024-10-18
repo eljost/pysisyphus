@@ -17,8 +17,45 @@ import numpy as np
 import scipy as sp
 
 
+STENCILS = {
+    2: np.array((1.0, -2, 1.0)),
+    4: 1.0 / 12.0 * np.array((-1.0, 16.0, -30.0, 16.0, -1.0)),
+    6: 1.0 / 180.0 * np.array((2.0, -27.0, 270.0, -490.0, 270.0, -27.0, 2.0)),
+    8: (
+        1.0
+        / 5040.0
+        * np.array(
+            (-9.0, 128.0, -1008.0, 8064.0, -14350.0, 8064.0, -1008.0, 128.0, -9.0)
+        )
+    ),
+    # There is a typo in the paper ... the central factor w/ subscript 0 must be 5269, not 5296!
+    10: (
+        1.0
+        / 25200.0
+        * np.array(
+            [
+                8.0,
+                -125.0,
+                1000.0,
+                -6000.0,
+                42000.0,
+                -73766.0,
+                42000.0,
+                -6000.0,
+                1000.0,
+                -125.0,
+                8.0,
+            ]
+        )
+    ),
+}
+
+
 def off_diag_indices(n: int, k: int = 0) -> tuple[np.ndarray, np.ndarray]:
     """Return (off-)diagonal indices for a n-by-n matrix.
+
+    To get the indices for a matrix of shape (500, 500) and a stencil size of 5
+    this function must be called as 'off_diag_indices(500, 5)'.
 
     Parameters
     ----------
@@ -52,40 +89,6 @@ def off_diag_indices(n: int, k: int = 0) -> tuple[np.ndarray, np.ndarray]:
         ind[0] += 1
         ind[1] += 1
     return indices[0], indices[1]
-
-
-STENCILS = {
-    2: np.array((1.0, -2, 1.0)),
-    4: 1.0 / 12.0 * np.array((-1.0, 16.0, -30.0, 16.0, -1.0)),
-    6: 1.0 / 180.0 * np.array((2.0, -27.0, 270.0, -490.0, 270.0, -27.0, 2.0)),
-    8: (
-        1.0
-        / 5040.0
-        * np.array(
-            (-9.0, 128.0, -1008.0, 8064.0, -14350.0, 8064.0, -1008.0, 128.0, -9.0)
-        )
-    ),
-    # There is a typo in the paper ... the central factor w/ subscript 0 must be 5269, not 5296!
-    10: (
-        1.0
-        / 25200.0
-        * np.array(
-            [
-                8.0,
-                -125.0,
-                1000.0,
-                -6000.0,
-                42000.0,
-                -73766.0,
-                42000.0,
-                -6000.0,
-                1000.0,
-                -125.0,
-                8.0,
-            ]
-        )
-    ),
-}
 
 
 def get_A(n: int, d: float, coeffs: np.ndarray) -> np.ndarray:
@@ -209,7 +212,7 @@ def run(
     periodic: bool = False,
     normalize=True,
 ):
-    """Improved 1d-Numerov method.
+    """Improved 1d-Numerov method using a sparse matrix diagonalization.
 
     TODO: Normalize eigenvectors already here?
 
@@ -219,8 +222,8 @@ def run(
         1d array containing an evenly spaced grid.
     energy_getter
         Callable that takes two arguments: an integer grid index and the floating point
-        coordinate at this index. The index can be useful when the energies were already
-        precalculated on the grid.
+        coordinate at this index. The index is useful in cases when all energies are
+        already present and only have to be looked up.
     mass
         Mass in atomic units for the kinetic energy calculation.
     nstates

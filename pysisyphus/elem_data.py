@@ -6,6 +6,7 @@ import numpy as np
 # Taken from periodictable-1.5.0
 MASS_DICT = {
     "x": 1.0,  # dummy atom
+    "d": 2.01410175,  # deuterium atom
     "n": 14.0067,
     "h": 1.00794,
     "he": 4.002602,

@@ -3,6 +3,12 @@
 #     Schrödinger's equation: a sparse Numerov approach for one,
 #     two and three dimensional quantum problems
 #     Kuenzer, Soraru, Hofer, 2016
+# [2] https://doi.org/10.1016/j.cplett.2019.04.016
+#     A periodic Numerov approach applied to the
+#     torsional tunneling splitting in hydrogen peroxide,
+#     aliphatic alcohols and phenol
+#     Kuenzer, Hofer, 2019
+
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +24,11 @@ from pysisyphus.constants import (
     AMU2AU,
     NU2AU,
 )
+from pysisyphus.elem_data import MASS_DICT
+
+
+MASS_H = MASS_DICT["h"] * AMU2AU
+MASS_D = MASS_DICT["d"] * AMU2AU
 
 
 def plot_numerov(d, xs, energies, w, v, scale=1.0, show=True):
@@ -157,26 +168,46 @@ def test_hydrogen(this_dir):
     # plt.show()
 
 
-def test_periodic_numerov(this_dir):
-    # ORCA B3LYP/def2-TZVP tightscf 36 points, 10° / step
-    # Very coarse, but nice results ;)
-    #
-    # Something seems off w/ the potential provided in the SI of
-    # the periodic Numerov paper.
-    pot = np.loadtxt(this_dir / "relaxed_scan_cut.dat")
+def red_mass(m1, m2):
+    return m1 * m2 / (m1 + m2)
+
+
+@pytest.mark.parametrize(
+    "mass_1, mass_2, ref",
+    (
+        # Reference values from Table 1 in [2].
+        (MASS_H, MASS_H, 10.50),
+        (MASS_D, MASS_H, 4.72),
+        (MASS_D, MASS_D, 1.22),
+    ),
+)
+def test_h2o2_ref(mass_1, mass_2, ref, this_dir):
+    # Data from the SI of [2]. First column is in Angstrom, second column is in
+    # kcal/mol. The data in the 1st column was (probably) obtained vis the following
+    # procedure:
+    #   1.) Relaxed scan around the O-O bond w/ appropriate spacing, yielding
+    #       torsion angles and energies.
+    #   2.) To convert the torsion angles into a Cartesian coordinate the Cartesian
+    #       coordinate differences between all involved atoms (in this case all four
+    #       atoms) between succesive steps in the scan were calculated and accumulated.
+    #       This yields something like a total Cartesian displacement TOT_DISPL of
+    #       all atoms along the scan.
+    #   3.) Finally, the calculated data was probably splined using the Cartesian
+    #       differences and re-evalualted on an equidistant grid in the interval
+    #       [0, TOT_DISPL] w/ the appropriate number of points.
+    #       The splining is probably necessary as the Cartesian differences are
+    #       probably not constant.
+    pot = np.loadtxt(this_dir / "h2o2_pot.dat")
     xs, energies = pot.T
+    xs *= ANG2BOHR
+    energies /= AU2KCALPERMOL
 
     energies -= energies.min()
 
     def energy_getter(i, x):
         return energies[i]
 
-    mass_h = 1.007825032 * AMU2AU
-    mass_d = 2.01410174 * AMU2AU
-    # I'm also a bit lost regarding the mass ... 2 * m_H seems
-    # to provide good results.
-    # mass = mass_d + mass_d
-    mass = mass_h + mass_h
+    mass = red_mass(mass_1, mass_2)
 
     w, v = numerov.run(
         xs,
@@ -188,7 +219,7 @@ def test_periodic_numerov(this_dir):
     )
     ts = (w[1] - w[0]) * AU2NU
     print(f"Tunnel splitting: {ts: >10.2f} cm⁻¹")
-    assert ts == pytest.approx(11.01, abs=1e-2)
+    assert ts == pytest.approx(ref, abs=6e-3)
 
     # fig, ax = plt.subplots()
     # energies_kcal = energies * AU2KCALPERMOL
