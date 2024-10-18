@@ -21,7 +21,7 @@ from pysisyphus.io import fchk as io_fchk
 
 
 NMO_RE = re.compile(
-    "NBasis=\s+(?P<nbfs>\d+)\s+NAE=\s+(?P<nalpha>\d+)\s+NBE=\s+(?P<nbeta>\d+)"
+    r"NBasis=\s+(?P<nbfs>\d+)\s+NAE=\s+(?P<nalpha>\d+)\s+NBE=\s+(?P<nbeta>\d+)"
 )
 RESTRICTED_RE = re.compile("RHF ground state")
 TRANS_PATTERN = (
