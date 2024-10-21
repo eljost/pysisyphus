@@ -78,6 +78,10 @@ class Orientation:
         gradient3d_rot = np.einsum("ij,kj->ki", self.rot_mat, gradient.reshape(-1, 3))
         return gradient3d_rot.flatten()
 
+    @property
+    def inertia_tensor(self):
+        return inertia_tensor(self.coords3d, self.masses)
+
 
 def get_unit_orientation(coords3d, masses) -> Orientation:
     return Orientation(
