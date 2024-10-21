@@ -10,6 +10,7 @@ from pathlib import Path
 import shutil
 from typing import Callable, Dict, Optional, Tuple
 import sys
+import time
 
 import numpy as np
 
@@ -54,8 +55,8 @@ def opt_davidson(opt, tsopt=True, res_rms_thresh=1e-4):
     H = geom.eckart_projection(geom.mass_weigh_hessian(H))
     w, v = np.linalg.eigh(H)
     inds = [0, 1] if tsopt else [6]
-    # Converge the lowest two modes for TS optimizations; for minimizations the lowest
-    # mode would is enough.
+    # Converge the lowest two modes for TS optimizations, as only one must have a
+    # negative eigenvalue. For minimizations the lowest mode is enough.
     lowest = 2 if tsopt else 1
     guess_modes = [NormalMode(l, masses_rep) for l in v[:, inds].T]
 
@@ -105,6 +106,19 @@ def run_opt(
         for image in geom.images:
             image.set_calculator(calc_getter())
             title = str(geom)
+
+        # Initialize dask cluster, if required
+        cluster = geom.init_dask()
+
+        try:
+            if geom.images[0].calculator.track:
+                print(
+                    "Propagating root information of first image along COS w/ "
+                    "energy calculations."
+                )
+                geom.propagate()
+        except AttributeError:
+            pass
     else:
         geom.set_calculator(calc_getter())
         geom.cart_hessian = cart_hessian
@@ -137,7 +151,12 @@ def run_opt(
         if propagate and is_cos:
             print("Propagating chkfiles along COS")
             for j, image in enumerate(geom.images):
+                prop_dur = time.time()
                 image.energy
+                prop_dur = time.time() - prop_dur
+                print(
+                    f"\tCalculated wavefunction for image {j:03d} in {prop_dur: >8.2f} s"
+                )
                 cur_calc = image.calculator
                 try:
                     next_calc = geom.images[j + 1].calculator
@@ -145,10 +164,15 @@ def run_opt(
                     pass
                 try:
                     next_calc.set_chkfiles(cur_calc.get_chkfiles())
+                    print(f"\tSet wavefunction of image {j:03d} on image {j+1:03d}")
                 except AttributeError:
                     break
+                sys.stdout.flush()
 
         opt.run()
+        # Update reference to geom, as the geometry may have been recreated inside the
+        # Optimizer, e.g., when using 'augment_bonds: True'.
+        geom = opt.geometry
 
         # Only do 1 cycle in non-iterative optimizations
         if not is_iterative:
@@ -230,6 +254,10 @@ def run_opt(
         )
     print()
 
+    if is_cos:
+        # Shutdown dask cluster, if required
+        geom.exit_dask(cluster)
+
     opt_result = OptResult(opt, opt.geometry, opt.final_fn)
     return opt_result
 
@@ -247,7 +275,8 @@ def get_optimal_bias(
     k_thresh: float = 1e-3,
     strict=True,
 ) -> Tuple[OptResult, float, bool]:
-    """Driver to determine optimal bias value k for RMSD restraint.
+    """Driver to determine optimal bias value k for RMSD restraint,
+    as required in single point hessian (SPH) calculations.
 
     Parameters
     ----------
@@ -263,7 +292,7 @@ def get_optimal_bias(
         Optional dict of arguments passed to the optimizer.
     k_max
         Maximum absolute value of bias factor k. Must be a > k_min.
-    k_max
+    k_min
         Minimum absolute value of bias factor k. Must be a positive number >= 0.0.
         Defaults to 0.0.
     rmsd_target

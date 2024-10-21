@@ -7,6 +7,11 @@ from pysisyphus.constants import BOHR2ANG, AU2KCALPERMOL
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.helpers_pure import file_or_str
 
+"""
+TODO: utilize INDO functionality.
+    Useful keywords: CIS/WRTCONF/TDIP
+"""
+
 
 class MOPAC(Calculator):
     """http://openmopac.net/manual/"""

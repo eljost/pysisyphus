@@ -2,6 +2,8 @@
 #     Toward a Systematic Molecular Orbital Theory for Excited States
 #     Foresman, Head-Gordon, Pople, Frisch, 1991
 
+import contextlib
+from enum import Enum
 import operator
 from pathlib import Path
 from typing import Dict, Literal, List, Optional, Tuple
@@ -10,8 +12,8 @@ import warnings
 import numpy as np
 from numpy.typing import NDArray
 
+from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.elem_data import nuc_charges_for_atoms, MASS_DICT
-from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction.helpers import BFType
 from pysisyphus.wavefunction.multipole import (
@@ -22,23 +24,26 @@ from pysisyphus.wavefunction.shells import Shells
 
 
 Center = Literal["coc", "com"]
+DensityType = Enum("DensityType", ["UNRELAXED", "RELAXED"])
 
 
 class Wavefunction:
     def __init__(
         self,
-        atoms: Tuple[str],
-        coords: NDArray[float],
+        atoms: tuple[str, ...],
+        coords: np.ndarray,
         charge: int,
         mult: int,
         unrestricted: bool,
-        occ: Tuple[int],
-        C: NDArray[float],
+        occ: tuple[int, int],
+        C: np.ndarray,
         bf_type: BFType,
+        # TODO: make shells mandataory ...
         shells: Optional[Shells] = None,
         ecp_electrons=None,
-        strict=True,
-        warn_charge=4,
+        mo_ens: Optional[np.ndarray] = None,
+        strict: bool = True,
+        warn_charge: int = 4,
     ):
         self.atoms = atoms
         self.coords = np.array(coords).flatten()
@@ -48,6 +53,7 @@ class Wavefunction:
         if self.mult != 1:
             unrestricted = True
         self.unrestricted = unrestricted
+        self.restricted = not self.unrestricted
         self.occ = occ
         if not self.unrestricted:
             assert self.occ[0] == self.occ[1]
@@ -60,6 +66,22 @@ class Wavefunction:
             self.C = np.array((self.C, self.C.copy()))
         self.bf_type = bf_type
         self.shells = shells
+        self.mo_ens = mo_ens
+        # Reorder MO-coefficients & energies, if requested
+        if self.has_shells and self.shells.ordering == "pysis":
+            P = self.get_permut_matrix_native()
+            C = self.C.copy()
+            # Loop over alpha and beta MOs
+            for i, c in enumerate(C):
+                C[i] = P.T @ c
+            self.C = C
+            # Reorder MO-energies if set
+            if self.mo_ens is not None:
+                mo_ens = self.mo_ens.copy()
+                # Loop over alpha and beta MO energies
+                for i, moe in enumerate(self.mo_ens):
+                    mo_ens[i] = (P.T @ moe[:, None]).flatten()
+                self.mo_ens = mo_ens
         if ecp_electrons is None:
             ecp_electrons = np.zeros(len(self.atoms))
         elif isinstance(ecp_electrons, dict):
@@ -68,7 +90,7 @@ class Wavefunction:
                 _ecp_electrons[k] = v
             ecp_electrons = _ecp_electrons
         self.ecp_electrons = np.array(ecp_electrons, dtype=int)
-        self.charge = charge
+        self.charge = int(charge)
         if abs(self.charge) > warn_charge:
             warnings.warn(
                 f"Encountered charge={self.charge} with high absolute value!\n"
@@ -77,10 +99,20 @@ class Wavefunction:
             )
 
         self._masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
-        self._densities = dict()
 
-        if strict:
+        # Wavefunction must be initialized with the GS density
+        self._current_density_key = (0, DensityType.RELAXED)
+        self._densities = {
+            # self._current_density_key: self.P_tot,
+            self._current_density_key: self.P,
+        }
+
+        if strict and self.has_shells:
             self.check_sanity()
+
+    @property
+    def has_shells(self):
+        return self.shells is not None
 
     def check_sanity(self):
         assert self.shells is not None
@@ -92,7 +124,7 @@ class Wavefunction:
         ]  # Density matrices in MO basis
         calc_occ_a = np.trace(Pa_mo)
         calc_occ_b = np.trace(Pb_mo)
-        assert np.isclose((calc_occ_a, calc_occ_b), self.occ).all()
+        np.testing.assert_allclose((calc_occ_a, calc_occ_b), self.occ)
 
         assert (
             self.ecp_electrons >= 0
@@ -109,6 +141,24 @@ class Wavefunction:
             f"{electrons_missing} electrons are missing! Did you forget to specify "
             "'ecp_electrons' and/or the correct 'charge'?"
         )
+
+    def get_permut_matrix(self):
+        bf_type = self.bf_type
+        if bf_type == BFType.CARTESIAN:
+            return self.shells.P_cart
+        elif bf_type == BFType.PURE_SPHERICAL:
+            return self.shells.P_sph
+        else:
+            raise Exception(f"Unknown {bf_type=}!")
+
+    def get_permut_matrix_native(self):
+        bf_type = self.bf_type
+        if bf_type == BFType.CARTESIAN:
+            return self.shells.P_cart_native
+        elif bf_type == BFType.PURE_SPHERICAL:
+            return self.shells.P_sph_native
+        else:
+            raise Exception(f"Unknown {bf_type=}!")
 
     @property
     def atom_num(self):
@@ -132,32 +182,40 @@ class Wavefunction:
 
     @staticmethod
     def from_file(fn, **kwargs):
+        if str(fn).startswith("lib:"):
+            fn = WF_LIB_DIR / fn[4:]
         path = Path(fn)
 
+        if not path.exists():
+            raise FileNotFoundError(path)
+
         from_funcs = {
-            ".json": Wavefunction.from_orca_json,
+            ".bson": Wavefunction.from_orca_bson,
             ".fchk": Wavefunction.from_fchk,
+            ".json": Wavefunction.from_orca_json,
+            ".molden": Wavefunction.from_molden,
+            ".trexio": Wavefunction.from_trexio,
         }
-        from_funcs_for_str = (
-            # ORCA
-            ("Molden file created by orca_2mkl", Wavefunction.from_orca_molden),
+        from_funcs_for_line = (
+            # Molden format
+            ("[Molden Format]", Wavefunction.from_molden),
+            # AOMix, e.g. from Turbomole
             ("[AOMix Format", Wavefunction.from_aomix),
-            # OpenMolcas
-            # ("[N_Atoms]", Wavefunction.from_molden),  # seems buggy right now
         )
+        # If possible I would advise to stay away from .molden files :)
         try:
-            from_func = from_funcs[path.suffix.lower()]
+            from_func = from_funcs[path.suffix.lower().strip()]
         except KeyError:
-            # Search for certain strings in the file
+            # Try to guess wavefunction kind from first line
             with open(fn) as handle:
-                text = handle.read()
-            for key, func in from_funcs_for_str:
-                if key in text:
+                first_line = handle.readline().strip()
+            for key, func in from_funcs_for_line:
+                if first_line.startswith(key):
                     from_func = func
                     break
             else:
                 raise Exception("Could not determine file format!")
-        return from_func(fn, **kwargs)
+        return from_func(path, **kwargs)
 
     @staticmethod
     @file_or_str(".molden", ".molden.input")
@@ -169,7 +227,7 @@ class Wavefunction:
 
     @staticmethod
     @file_or_str(".json")
-    def from_orca_json(text):
+    def from_orca_json(text, **kwargs):
         """Create wavefunction from ORCA JSON.
 
         As of version 5.0.3 ORCA does not create JSON files for systems
@@ -177,8 +235,18 @@ class Wavefunction:
         args or kwargs in contrast to from_orca_molden."""
         from pysisyphus.io.orca import wavefunction_from_json
 
-        wf = wavefunction_from_json(text)
+        wf = wavefunction_from_json(text, **kwargs)
         return wf
+
+    @staticmethod
+    @file_or_str(".bson", mode="rb")
+    def from_orca_bson(text, **kwargs):
+        """Create wavefunction from ORCA BSON.
+
+        See from_orca_json for further comments."""
+        from pysisyphus.io.orca import wavefunction_from_bson
+
+        return wavefunction_from_bson(text, **kwargs)
 
     @staticmethod
     @file_or_str(".molden", ".molden.input")
@@ -193,26 +261,34 @@ class Wavefunction:
         wavefunction_from_molden will come up with an absurdly high charge.
         """
 
-        from pysisyphus.io.orca import wavefunction_from_molden
+        from pysisyphus.io.orca import wavefunction_from_orca_molden
 
-        wf = wavefunction_from_molden(text, **kwargs)
-        return wf
+        return wavefunction_from_orca_molden(text, **kwargs)
 
     @staticmethod
     @file_or_str(".molden", ".molden.input")
     def from_fchk(text, **kwargs):
         from pysisyphus.io.fchk import wavefunction_from_fchk
 
-        wf = wavefunction_from_fchk(text, **kwargs)
-        return wf
+        return wavefunction_from_fchk(text, **kwargs)
 
     @staticmethod
     @file_or_str(".in")
     def from_aomix(text, **kwargs):
         from pysisyphus.io.aomix import wavefunction_from_aomix
 
-        wf = wavefunction_from_aomix(text, **kwargs)
-        return wf
+        return wavefunction_from_aomix(text, **kwargs)
+
+    @staticmethod
+    def from_trexio(fn, **kwargs):
+        from pysisyphus.io.trexio import wavefunction_from_trexio
+
+        return wavefunction_from_trexio(fn, **kwargs)
+
+    def to_trexio(self, fn, **kwargs):
+        from pysisyphus.io.trexio import wavefunction_to_trexio
+
+        return wavefunction_to_trexio(self, fn, **kwargs)
 
     @property
     def C_occ(self):
@@ -228,17 +304,17 @@ class Wavefunction:
 
     @property
     def P(self):
-        return [C_occ @ C_occ.T for C_occ in self.C_occ]
+        return np.array([C_occ @ C_occ.T for C_occ in self.C_occ])
 
     @property
     def P_tot(self):
         return operator.add(*self.P)
 
-    def P_exc(self, trans_dens):
+    def P_exc(self, trans_dens, transform_ao=True):
         """
         Eqs. (2.25) and (2.26) in [1].
         """
-        trans_dens *= 2**0.5 / 2
+        trans_dens = trans_dens * 2**0.5 / 2
         occ_a, occ_b = self.occ
         assert occ_a == occ_b
         occ = occ_a
@@ -251,11 +327,14 @@ class Wavefunction:
         dP_vv = np.einsum("ia,ic->ac", trans_dens, trans_dens)
         P[:occ, :occ] -= 2 * dP_oo
         P[occ:, occ:] += 2 * dP_vv
-        C, _ = self.C
-        # The density matric is currently still in the MO basis. Transform
-        # it to the AO basis and return.
-        return C @ P @ C.T
+        # The density matric is currently still in the MO basis.
+        # If requested, transform it to the AO basis.
+        if transform_ao:
+            C, _ = self.C
+            P = C @ P @ C.T
+        return P
 
+    """
     def store_density(self, P, name, ao_or_mo="ao"):
         assert P.ndim == 2, "Handling of alpha/beta densities is not yet implemented!"
         if ao_or_mo == "mo":
@@ -267,6 +346,40 @@ class Wavefunction:
 
     def get_density(self, name):
         return self._densities[name]
+    """
+
+    @property
+    def densities(self):
+        return self._densities
+
+    def set_current_density(self, key):
+        self._current_density_key = key
+
+    def get_current_density(self):
+        return self._densities[self._current_density_key]
+
+    @contextlib.contextmanager
+    def current_density(self, key):
+        key_bak = self._current_density_key
+        self.set_current_density(key)
+        try:
+            yield self
+        finally:
+            self.set_current_density(key_bak)
+
+    def get_current_total_density(self):
+        return self._densities[self._current_density_key].sum(axis=0)
+
+    def get_relaxed_density(self, root: int):
+        return self._densities[(root, DensityType.RELAXED)]
+
+    def get_total_relaxed_density(self, root: int):
+        return self.get_relaxed_density(root).sum(axis=0)
+
+    def set_relaxed_density(self, root: int, density: np.ndarray):
+        key = (root, DensityType.RELAXED)
+        self._densities[key] = density
+        return key
 
     def eval_density(self, coords3d, P=None):
         if P is None:
@@ -316,9 +429,6 @@ class Wavefunction:
             ao_center_map.setdefault(aoc, list()).append(i)
         return ao_center_map
 
-    def as_geom(self, **kwargs):
-        return Geometry(self.atoms, self.coords, **kwargs)
-
     @property
     def is_cartesian(self) -> bool:
         return self.bf_type == BFType.CARTESIAN
@@ -334,6 +444,15 @@ class Wavefunction:
             BFType.CARTESIAN: lambda: self.shells.S_cart,
             BFType.PURE_SPHERICAL: lambda: self.shells.S_sph,
         }[self.bf_type]()
+
+    @property
+    def S_from_C(self):
+        """Reconstructed overlap-matrix from 1 = C.T @ S @ C.
+
+        It will have the same BFType as the underlying orbitals!"""
+        C, _ = self.C
+        C_inv = np.linalg.pinv(C, rcond=1e-8)
+        return C_inv.T @ C_inv
 
     def S_with_shells(self, other_shells):
         return {
@@ -377,6 +496,7 @@ class Wavefunction:
     ) -> NDArray[float]:
         if origin is None:
             origin = self.get_origin(kind=kind)
+        origin = np.array(origin)
 
         dipole_ints = {
             BFType.CARTESIAN: lambda *args: self.shells.get_dipole_ints_cart(*args),
@@ -389,6 +509,7 @@ class Wavefunction:
     ) -> NDArray[float]:
         if origin is None:
             origin = self.get_origin(kind=kind)
+        origin = np.array(origin)
 
         quadrupole_ints = {
             BFType.CARTESIAN: lambda *args: self.shells.get_quadrupole_ints_cart(*args),
@@ -407,7 +528,7 @@ class Wavefunction:
         if origin is None:
             origin = self.get_origin(kind=kind)
         if P is None:
-            P = self.P_tot
+            P = self.get_current_total_density()
         dipole_ints = self.dipole_ints(origin)
         return get_multipole_moment(
             1, self.coords3d, origin, dipole_ints, self.nuc_charges, P
@@ -426,7 +547,7 @@ class Wavefunction:
         if origin is None:
             origin = self.get_origin(kind=kind)
         if P is None:
-            P = self.P_tot
+            P = self.get_current_total_density()
         quadrupole_ints = self.quadrupole_ints(origin)
         return get_multipole_moment(
             2, self.coords3d, origin, quadrupole_ints, self.nuc_charges, P
@@ -500,5 +621,5 @@ class Wavefunction:
         is_restricted = "unrestricted" if self.unrestricted else "restricted"
         return (
             f"Wavefunction({self.atom_num} atoms, charge={self.charge}, {is_restricted}, "
-            f"mult={self.mult})"
+            f"mult={self.mult}, {self.bf_type.name})"
         )

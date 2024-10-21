@@ -85,7 +85,7 @@ def test_ts_hessian():
 @pytest.mark.parametrize(
     "tsopt_cls, ref_cycle",
     [
-        (RSPRFOptimizer, 10),
+        (RSPRFOptimizer, 9),
         # (RSIRFOptimizer, 11),
     ],
 )
@@ -101,7 +101,7 @@ def test_ts_hessian_opt(tsopt_cls, ref_cycle):
     opt_kwargs = {
         "hessian_init": "fischer",
         "dump": True,
-        "rx_coords": (("BEND", 2, 1, 0),),
+        "rx_coords": (("BEND", 1, 0, 2),),
         "thresh": "gau_tight",
         "trust_max": 0.3,
     }

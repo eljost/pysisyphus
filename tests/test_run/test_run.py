@@ -37,6 +37,7 @@ def test_diels_alder_growing_string():
             "stop_in_when_full": 5,
         },
         "tsopt": {
+            "thresh": "gau",
             "type": "rsirfo",
             "do_hess": True,
             "hessian_recalc": 5,
@@ -57,7 +58,7 @@ def test_diels_alder_growing_string():
     assert isinstance(results.cos, ChainOfStates)
     assert results.cos_opt.is_converged
     assert results.ts_opt.is_converged
-    assert results.ts_geom._energy == pytest.approx(-17.81191579)
+    assert results.ts_geom._energy == pytest.approx(-17.8122594)
     assert isinstance(results.ts_geom, Geometry)
     assert results.irc.forward_is_converged
     assert results.irc.backward_is_converged

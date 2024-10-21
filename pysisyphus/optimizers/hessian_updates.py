@@ -18,6 +18,9 @@
 #     Bofill, 1998
 # [9] http://dx.doi.org/10.1016/S0166-1280(02)00209-9
 #     Bungay, Poirier
+# [10] https://doi.org/10.1021/ct400319w
+#      Reliable Transition State Searches Integrated with the Growing String Method
+#      Zimmerman, 2013
 
 
 import numpy as np
@@ -51,8 +54,8 @@ def double_damp(
     """Double damped step 's' and gradient differences 'y'.
 
     H is the inverse Hessian!
-    See [6]. Potentially updates s and y. y is only
-    updated if mu_2 is not None.
+
+    See [6]. Potentially updates s and y. y is only updated if mu_2 is not None.
 
     Parameters
     ----------
@@ -207,7 +210,7 @@ def ts_bfgs_update_org(H, dx, dg):
     dxTdx = dx.T @ dx
     # jTj = float(j.T @ j)
     jTj = j.T @ j
-    phi = jTdx ** 2 / dxTdx / jTj
+    phi = jTdx**2 / dxTdx / jTj
     u = phi * dg * dg.T @ dx
     w, v = np.linalg.eigh(H)
     u = u + (1 - phi) * np.abs(w) * v @ (v.T @ dx)
@@ -240,11 +243,79 @@ def ts_bfgs_update_revised(H, dx, dg):
     jTdx = j.T @ dx
     dxTdx = dx.T @ dx
     jTj = j.T @ j
-    phi = jTdx ** 2 / dxTdx / jTj
+    phi = jTdx**2 / dxTdx / jTj
     u = ((1 - phi) * H_pos_dx + a * phi * dgTdx * dg) / (
-        (1 - phi) * dx.T @ H_pos_dx + phi * a * dgTdx ** 2
+        (1 - phi) * dx.T @ H_pos_dx + phi * a * dgTdx**2
     )
 
     juT = j @ u.T
     ts_bfgs_update = juT + juT.T - jTdx * u @ u.T
     return ts_bfgs_update, "TS-BFGS"
+
+
+def curvature_at_image(index: int, energies: np.ndarray, coords: np.ndarray) -> float:
+    """Curvate at given index for given reaction path.
+
+    Eq. (5) in [10]. Can be used to calculate the curvature at the
+    HEI of in COS, to construct a suitable Hessian for a TS optimizatio.
+
+    Parameters
+    ----------
+    index
+        Integer > 0. Index an image in energies & coords array.
+    energies
+        1d array of shape (nimages, ). Contains image energies.
+    coords
+        2d array of shape (nimages, ncoords). Contains the image
+        coordinates, where the energies were calculated.
+    """
+    nimages = len(coords)
+    # TODO: also allow endpoints and leave out one term?
+    assert 0 < index < nimages - 1
+    index_prev = index - 1
+    index_next = index + 1
+
+    en_prev = energies[index_prev]
+    en_index = energies[index]
+    en_next = energies[index_next]
+
+    coords_index = coords[index]
+    dist_prev = np.linalg.norm(coords_index - coords[index_prev])
+    dist_next = np.linalg.norm(coords_index - coords[index_next])
+
+    dist_plus = dist_prev + dist_next
+    term1 = 2 * en_prev / (dist_prev * dist_plus)
+    term2 = 2 * en_index / (dist_prev * dist_next)
+    term3 = 2 * en_next / (dist_next * dist_plus)
+
+    C = term1 - term2 + term3
+    return C
+
+
+def curvature_tangent_update(
+    hessian: np.ndarray, C: float, tangent: np.ndarray
+) -> tuple[np.ndarray, str]:
+    """Introduce a direction with a certain curvature into the Hessian.
+
+    Can be used to construct a suitable starting Hessian for a TS optimization
+    in a COS. See eq. (6) in [10].
+
+    Parameters
+    ----------
+    hessian
+        Cartesian Hessian of shape (3N, 3N), with N denoting the number of atoms.
+    C
+        Curvature.
+    tangent
+        1d array. Tanget vector of shape (3N, ) for which curvature C was calculated.
+
+    Returns
+    -------
+    dH
+        Hessian update.
+    label
+        Kind of update.
+    """
+    factor = C - tangent[None, :] @ hessian @ tangent[:, None]
+    dH = factor * np.outer(tangent, tangent)
+    return dH, "curvature-tangent"

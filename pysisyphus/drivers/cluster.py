@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 import itertools as it
 import pickle
-from typing import Dict, List
+from typing import List
 
 import numpy as np
-from numpy.typing import NDArray
 
 from pysisyphus.Geometry import Geometry
 from pysisyphus.io.pdb import parse_pdb
 from pysisyphus.io.psf import parse_psf
+from pysisyphus.TablePrinter import TablePrinter
 
 
 @dataclass
@@ -21,7 +21,7 @@ class Atom:
     type: str
     charge: float
     mass: float
-    coords: NDArray[float]
+    coords: np.ndarray
     element: str
 
     @staticmethod
@@ -203,8 +203,16 @@ def geom_from_residues(residues):
 
 
 def link_atoms_for_residues(
-    residues, bonds, coords3d, atom_map, link_element="H", g=0.709
+    residues,
+    bonds,
+    coords3d,
+    atom_map,
+    link_element="H",
+    g=0.709,
+    ignore_bonds=None,
 ):
+    if ignore_bonds is None:
+        ignore_bonds = list()
     atom_inds = list(it.chain(*[res.atom_indices for res in residues]))
 
     bond_dict = dict()
@@ -213,6 +221,14 @@ def link_atoms_for_residues(
         bond_dict.setdefault(from_, set()).add(to_)
         bond_dict.setdefault(to_, set()).add(from_)
     atom_set = set(atom_inds)
+
+    for ibond in ignore_bonds:
+        from_, to_ = ibond
+        try:
+            bond_dict[from_].remove(to_)
+            bond_dict[to_].remove(from_)
+        except KeyError:
+            pass
 
     cut_bonds = list()
     # Check all bonds from residue-atoms. Determine which bonds are cut.
@@ -257,6 +273,7 @@ def cluster_from_psf_pdb(
     within_dist=0.0,
     ref_residues=None,
     kind="atom",
+    ignore_bonds=None,
 ):
     atoms, coords, _, atom_map = parse_pdb(pdb_fn)
     coords3d = coords.reshape(-1, 3)
@@ -275,23 +292,49 @@ def cluster_from_psf_pdb(
         )
     # Select residues according to provided ref_residues.
     elif ref_residues:
-        sel_residues = [residues[ref_res.key] for ref_res in ref_residues]
+        sel_residues = [residues[ref_res] for ref_res in ref_residues]
     # Or complain!
     else:
         raise Exception(
             "Either 'within_resid' and 'within_dist' or 'residues' must be given!"
         )
 
+    residue_charges = [res.charge for res in sel_residues]
+    tot_charge = sum(residue_charges)
+    charge_table = TablePrinter("# Residue Charge".split(), ("int", "str", "float"))
+    charge_table.print_header()
+    for i, res in enumerate(sel_residues):
+        charge_table.print_row((i, f"{res.id}{res.name}", residue_charges[i]))
+    print(f"Total charge of selected residues: {tot_charge: >8.6f} e")
+    print()
+
     geom = geom_from_residues(sel_residues)
-    print("Create cluster geometry.")
+    print("Created cluster geometry.")
     bonds = np.array(psf_data["nbond"]["inds"], dtype=int).reshape(-1, 2)
     link_hosts, link_atoms, link_coords3d = link_atoms_for_residues(
-        sel_residues, bonds, coords3d, atom_map
+        sel_residues,
+        bonds,
+        coords3d,
+        atom_map,
+        ignore_bonds=ignore_bonds,
     )
     sat_geom = Geometry(
         geom.atoms + link_atoms, np.concatenate((geom.coords3d, link_coords3d), axis=0)
     )
-    print("Created satured geometry with link atoms.")
+    nlink_atoms = len(link_atoms)
+    header = ("#", "Org Host (1b)", "Link atom (0b)", "x", "y", "z")
+    col_fmts = "int3 str str float float float".split()
+    link_table = TablePrinter(header, col_fmts, width=14)
+    print(f"Created satured geometry with {nlink_atoms} link atoms.")
+    link_table.print_header()
+    loffset = len(geom.atoms)
+    for i in range(nlink_atoms):
+        lx, ly, lz = link_coords3d[i]
+        la = f"{i+loffset}{link_atoms[i]}"
+        lh = int(link_hosts[i])
+        ha = atoms[lh - 1]
+        lha = f"{lh}{ha}"
+        link_table.print_row((i, lha, la, lx, ly, lz))
 
     # Determine backbone atoms and/or link atoms and report their indices, so they can
     # be restrained in subsequent RMSD-biased optimizations. Also report the distance
@@ -300,17 +343,20 @@ def cluster_from_psf_pdb(
     i = 0
     backbone_inds = list()
     backbone_com_dists = list()
-    ref_com = residues[within_resid].com
+    ref_com = None
+    if within_resid is not None:
+        ref_com = residues[within_resid].com
     for res in sel_residues:
         for atom in res.atoms:
             if atom.name in backbone_names:
                 backbone_inds.append(i)
-                bb_dist = np.linalg.norm(ref_com - atom.coords)
-                backbone_com_dists.append(bb_dist)
-                print(
-                    f"{res.name: >4s}{res.id: <5d}, {atom.element: >2s}{atom.id: <5d}, "
-                    f"type={atom.name: >4s}, id={i: >5d}, {bb_dist: >8.4f} au"
-                )
+                if ref_com is not None:
+                    bb_dist = np.linalg.norm(ref_com - atom.coords)
+                    backbone_com_dists.append(bb_dist)
+                    print(
+                        f"{res.name: >4s}{res.id: <5d}, {atom.element: >2s}{atom.id: <5d}, "
+                        f"type={atom.name: >4s}, id={i: >5d}, {bb_dist: >8.4f} au"
+                    )
             i += 1
     backbone_inds = np.array(backbone_inds, dtype=int)
     backbone_com_dists = np.array(backbone_com_dists, dtype=float)

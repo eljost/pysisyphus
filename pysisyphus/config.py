@@ -59,7 +59,7 @@ Config = configparser.ConfigParser()
 read_fns = Config.read(config_fn)
 
 
-def get_cmd(section, key="cmd", use_defaults=True):
+def get_cmd(section, key="cmd", use_defaults=True, silent=False):
     cmd = None
     msg = f" and no default was specified for '{section}'."
 
@@ -81,12 +81,17 @@ def get_cmd(section, key="cmd", use_defaults=True):
                 pass
 
     if cmd is None:
-        logger.warning(
-            f"Failed to load '{key}' from [{section}] "
-            f"in ~/.pysisyphusrc{msg}"
-        )
+        if not silent:
+            logger.warning(
+                f"Failed to load '{key}' from [{section}] " f"in ~/.pysisyphusrc{msg}"
+            )
         cmd = None
     return cmd
+
+
+# Try to set NUMBA_CACHE_DIR
+if _numba_cache_dir := get_cmd("numba", key="cache_dir", silent=True):
+    os.environ["NUMBA_CACHE_DIR"] = _numba_cache_dir
 
 
 def detect_paths():

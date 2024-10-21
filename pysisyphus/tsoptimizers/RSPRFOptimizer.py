@@ -14,8 +14,8 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
 class RSPRFOptimizer(TSHessianOptimizer):
-    def optimize(self):
-        energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
+    def get_step(self, energy, forces, hessian, eigvals, eigvecs, resetted):
+        gradient = -forces
         self.update_ts_mode(eigvals, eigvecs)
 
         # Transform gradient to eigensystem of hessian

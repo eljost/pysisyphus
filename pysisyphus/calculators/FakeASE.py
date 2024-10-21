@@ -1,6 +1,13 @@
+import warnings
+
 from pysisyphus.constants import BOHR2ANG
 
+
 class FakeASE:
+    """Pysisyphus calculator mimicing an ASE calculator.
+
+    Instances of this class can be set as calculators on ASE Atoms
+    objects."""
 
     def __init__(self, calc):
         self.calc = calc
@@ -8,12 +15,15 @@ class FakeASE:
         self.results = dict()
 
     def get_atoms_coords(self, atoms):
-        return (atoms.get_chemical_symbols(),
-                # Convert ASE Angstrom to Bohr for pysisyphus
-                atoms.get_positions().flatten() / BOHR2ANG
+        return (
+            atoms.get_chemical_symbols(),
+            # Convert ASE Angstrom to Bohr for pysisyphus
+            atoms.get_positions().flatten() / BOHR2ANG,
         )
 
-    def get_potential_energy(self, atoms=None):
+    def get_potential_energy(self, atoms=None, force_consistent=True):
+        if not force_consistent:
+            warnings.warn("force_consistent=False is ignored by FakeASE!")
         atoms, coords = self.get_atoms_coords(atoms)
         results = self.calc.get_energy(atoms, coords)
 
