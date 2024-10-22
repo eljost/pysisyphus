@@ -55,6 +55,7 @@ AU2FS = AU2SEC * 1e15
 AMU2KG = spc.value("atomic mass constant")
 M_E = spc.electron_mass
 AMU2AU = AMU2KG / M_E
+KG2AU = 1 / M_E
 # Avogadro constant
 NA = spc.Avogadro
 # Force constants from au to mdyne/Å (force / Ångstrom)

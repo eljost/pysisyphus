@@ -207,7 +207,7 @@ def run(
     grid: np.ndarray,
     energy_getter: Callable[[int, float], float],
     mass: float,
-    nstates: int,
+    nstates: int = 50,
     accuracy: Literal[2, 4, 6, 8, 10] = 10,
     periodic: bool = False,
     normalize=True,
@@ -227,7 +227,10 @@ def run(
     mass
         Mass in atomic units for the kinetic energy calculation.
     nstates
-        Number of desired eigenstates to be calculated.
+        Number of desired eigenstates to be calculated. Defaults to 50.
+        As we use a sparse matrix diagonalization algorithm from scipy that converged
+        the first nstats smallest eigenvalues nstates must be smaller than the number
+        of grid points.
     accuracy
         Kind of stencil used for the improved Numerov-method. Must be one of
     periodic
@@ -247,7 +250,6 @@ def run(
     d = grid[1] - grid[0]
     assert d > 0.0
     assert mass > 0.0
-    assert nstates > 0
     stencil = STENCILS[accuracy]
 
     # Number of grid points

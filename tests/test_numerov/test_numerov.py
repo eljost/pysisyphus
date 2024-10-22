@@ -8,6 +8,9 @@
 #     torsional tunneling splitting in hydrogen peroxide,
 #     aliphatic alcohols and phenol
 #     Kuenzer, Hofer, 2019
+# [3] https://doi.org/10.1119/1.1538575
+#     Visualization and measurement of quantum rotational dynamics
+#     Dimeo, 2003
 
 
 import matplotlib.pyplot as plt
@@ -17,13 +20,20 @@ import scipy as sp
 
 import pysisyphus.numerov as numerov
 from pysisyphus.constants import (
-    ANG2BOHR,
-    AU2NU,
-    KCALPERMOLPERANG2,
-    AU2KCALPERMOL,
+    AU2EV,
+    AU2J,
     AMU2AU,
+    ANG2BOHR,
+    AU2KJPERMOL,
+    AU2KCALPERMOL,
+    AU2NU,
+    BOHR2M,
+    HBAR,
+    KCALPERMOLPERANG2,
+    KG2AU,
     NU2AU,
 )
+
 from pysisyphus.elem_data import MASS_DICT
 
 
@@ -139,12 +149,13 @@ def test_hydrogen(this_dir):
 
     nus = w / NU2AU
     fundamental = nus[1] - nus[0]
+    _1stovertone = nus[2] - nus[0]
+    print(f"\n{fundamental=: >10.2f} cm⁻¹, {_1stovertone=: >10.2f} cm⁻¹")
     # As given for cc-pVQZ in Table 6 of [1]
     assert fundamental == pytest.approx(4162.1, abs=6e-2)
-    _1stovertone = nus[2] - nus[0]
     assert _1stovertone == pytest.approx(8089.5, abs=7e-2)
-    print(f"\n{fundamental=: >10.2f} cm⁻¹, {_1stovertone=: >10.2f} cm⁻¹")
 
+    """
     energies_kcal = energies * AU2KCALPERMOL
     w_kcal = w * AU2KCALPERMOL
     xs_ang = xs / ANG2BOHR
@@ -166,6 +177,7 @@ def test_hydrogen(this_dir):
     ax.set_xlabel("x / Å")
     ax.set_ylabel("ΔE / kcal mol⁻¹")
     # plt.show()
+    """
 
 
 def red_mass(m1, m2):
@@ -235,3 +247,103 @@ def test_h2o2_ref(mass_1, mass_2, ref, this_dir):
     # ax.set_ylabel("ΔE / kcal mol⁻¹")
     # ax.set_title(f"tunnel splitting: {ts: >10.4} cm⁻¹")
     # plt.show()
+
+
+CH3_INERTIA_SI = 5.3e-47  # kg m²
+CH3_INERTIA_AU = CH3_INERTIA_SI / BOHR2M**2 * KG2AU
+CH3_B_AU = HBAR**2 / 2.0 / CH3_INERTIA_SI / AU2J  # in au
+# One full rotation/360°
+# Drop last point of grid, to make it suitable for a periodic calculation
+CH3_GRID = np.linspace(0, 2.0 * np.pi, 2 * 360 + 1)[:-1]
+
+
+def test_ch3i_free_rotor():
+    """Free CH3 rotor in CH3I. Example from [3]."""
+    nstates = 9
+
+    # Potential is zero
+    def energy_getter(i, x):
+        return 0.0
+
+    # Convert from kg m² to moment of inertia in atomic units (mass_au * Bohr**2)
+    w, v = numerov.run(
+        CH3_GRID, energy_getter, CH3_INERTIA_AU, periodic=True, nstates=nstates
+    )
+
+    # Set up reference energy leves; all states for j > 0 are doubly degenerate
+    # Rotational quantum number js
+    js = np.repeat(np.arange((nstates - 1) // 2 + 1), 2)[1:]  # Drop first 0
+    w_ref = CH3_B_AU * js**2
+    np.testing.assert_allclose(w, w_ref, atol=1e-12)
+
+    """
+    scale = 3e-5
+    fig, ax = plt.subplots()
+    ax.axhline(0.0, label="Zero")
+    for i, wi in enumerate(w):
+        ax.axhline(wi, c="k", ls=":", label=f"state {i}")
+        ax.axhline(w_ref[i], c="red", ls="-.", label=f"ref {i}")
+        ax.plot(CH3_GRID, wi + scale * v[:, i])
+    ax.set_xlim(0, CH3_GRID[-1])
+    ax.set_ylim(-2e-5, 1.25 * w[-1])
+    ax.set_xlabel("deg / rad")
+    ax.set_ylabel("E / au")
+    fig.tight_layout()
+    plt.show()
+    """
+
+
+@pytest.mark.parametrize(
+    "V3_eV, atol0, atol1",
+    (
+        (41e-3, 1.5e-5, 8.0e-5),
+        (22.5e-3, 1.6e-5, 9.0e-5),
+    ),
+)
+def test_ch3i_hindered_rotor(V3_eV: float, atol0: float, atol1: float):
+    """Hindered CH3 rotor in solid CH3I. Example from [3]."""
+    nstates = 3 * 3
+    # V3 = 41.0  # mEV
+    V3 = V3_eV / AU2EV
+    # Eq. (5) in [3] for high barries
+    omega_0 = 3 * np.sqrt(V3 / (2.0 * CH3_INERTIA_AU))
+
+    # Potential term from eq. (3) in [3]
+    energies = V3 / 2.0 * (1.0 - np.cos(3 * CH3_GRID))
+    energies -= energies.min()
+
+    def energy_getter(i, x):
+        return energies[i]
+
+    # Convert from kg m² to moment of inertia in atomic units (mass_au * Bohr**2)
+    w, v = numerov.run(
+        CH3_GRID, energy_getter, CH3_INERTIA_AU, periodic=True, nstates=nstates
+    )
+    print()
+    for i, wi in enumerate(w):
+        print(f"{i:03d}: w={wi*AU2KJPERMOL: >8.3} kJ mol⁻¹")
+
+    nlib = np.repeat((0, 1), 3)
+    w_ref = (0.5 + nlib) * omega_0
+    # Here, the allowed absolute error is quite high, because the formulate
+    # for the harmonic oscillator does not quite fit.
+    # The first three states are correct to 1.5e-5 au
+    np.testing.assert_allclose(w[:3], w_ref[:3], atol=atol0)
+    np.testing.assert_allclose(w[3:6], w_ref[3:], atol=atol1)
+
+    """
+    scale = 1e-4
+    fig, ax = plt.subplots()
+    ax.plot(CH3_GRID, energies)
+    for i, wi in enumerate(w):
+        ax.axhline(wi, c="k", ls=":", label=f"state {i}")
+        # ax.axhline(w_ref[i], c="red", ls="-.", label=f"ref {i}")
+        ax.plot(CH3_GRID, wi + scale * v[:, i])
+    # ax.set_ylim(-2e-5, 1.25 * w[-1])
+    ax.set_xlim(0, CH3_GRID[-1])
+    ax.set_ylim(0.0, 1.25 * w[-1])
+    ax.set_xlabel("deg / rad")
+    ax.set_ylabel("E / au")
+    fig.tight_layout()
+    plt.show()
+    """
