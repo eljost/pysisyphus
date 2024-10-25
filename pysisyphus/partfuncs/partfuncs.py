@@ -203,7 +203,8 @@ def sos_partfunc(eigvals: np.ndarray, temperature: float) -> float:
     """Sum-over-states partition function.
 
     Eq. (2) in [1]. In contrast to [2] this partition function is not
-    truncated but calculated from all provided eigenvalues.
+    truncated but calculated from all provided eigenvalues. In the literature
+    this approach is sometimes also referred to as "eigenvalue summation."
 
     Parameters
     ----------

@@ -1,6 +1,8 @@
+from collections.abc import Sequence
 import functools
-import numpy as np
 from typing import Callable, Literal, Optional
+
+import numpy as np
 
 from pysisyphus.executors import CloudpickleProcessPoolExecutor
 
@@ -186,3 +188,61 @@ def finite_difference_hessian_mp(
     # Symmetrize
     fd_hessian = (fd_hessian + fd_hessian.T) / 2
     return fd_hessian
+
+
+def periodic_finite_difference(
+    x_ind: int, y: np.ndarray, dx: float, degree: int, coeffs: Sequence[float]
+):
+    """Finite differences for data on a periodic grid.
+
+    Parameters
+    ----------
+    x_ind
+        Non-negative integer indexing the point on the grid, where the derivative
+        is evaluated.
+    y
+        Data array on a periodic evenely spaced grid.
+    dx
+        Grid spacing.
+    degree
+        Degree of the derivative. Positive integer >= 1.
+    coeffs
+        Sequence of floating point numbers containing Floating pi
+    Returns
+    -------
+    """
+    assert x_ind >= 0
+    assert degree >= 1, "Degree must be >= 1 but got {degree}!"
+    assert len(coeffs) % 2 == 1, "Length of coefficient sequence must be odd!"
+    mid = (len(coeffs) - 1) // 2
+    npoints = len(y)
+    # The negative indices will wrap around.
+    stencil = np.arange(-mid, mid + 1) + x_ind
+    mask = stencil > npoints - 1
+    stencil[mask] = stencil[mask] - npoints
+    deriv = (y[stencil] * coeffs).sum() / dx**degree
+    return deriv
+
+
+def periodic_fd_2_8(x_ind: int, y: np.ndarray, dx: float):
+    """2nd derivative for 8th-order accuracy from data on a periodic grid.
+
+    For more information see the docstring of 'periodic_finite_difference'.
+    """
+    return periodic_finite_difference(
+        x_ind,
+        y,
+        dx,
+        degree=2,
+        coeffs=[
+            -1.0 / 560.0,
+            8.0 / 315.0,
+            -1.0 / 5.0,
+            8.0 / 5.0,
+            -205.0 / 72.0,
+            8.0 / 5.0,
+            -1.0 / 5.0,
+            8.0 / 315.0,
+            -1.0 / 560.0,
+        ],
+    )

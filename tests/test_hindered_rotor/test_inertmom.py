@@ -2,7 +2,7 @@ import pytest
 
 from pysisyphus.constants import BOHR2ANG
 from pysisyphus.helpers import geom_loader
-from pysisyphus.partfuncs import inertmom
+from pysisyphus.hindered_rotor import inertmom
 
 
 # Values from Table VI on p. 6660 of https://doi.org/10.1063/1.473958
