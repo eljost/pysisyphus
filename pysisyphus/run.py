@@ -56,7 +56,6 @@ from pysisyphus.helpers_pure import (
     recursive_update,
     highlight_text,
     approx_float,
-    results_to_json,
 )
 from pysisyphus.hindered_rotor import torsion_driver
 from pysisyphus.intcoords import PrimitiveNotDefinedException
