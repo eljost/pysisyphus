@@ -1,6 +1,8 @@
+from collections.abc import Callable
 import dataclasses
 import functools
 from pathlib import Path
+from typing import Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -47,19 +49,23 @@ class TorsionGPRResult:
 
 def run(
     geom: Geometry,
-    calc_getter,
-    torsion_inds,
-    npoints=500,
-    temperature=298.15,
-    plot=False,
+    indices: list[int],
+    calc_getter=None,
+    single_point_calc_getter=None,
+    energy_getter=None,
+    en_thresh: float = 1e-5,
+    npoints: int = 721,
+    temperature: float = 298.15,
+    plot: bool = True,
     out_dir: str | Path = ".",
 ):
+    assert (calc_getter is not None) or (energy_getter is not None)
     opt_kwargs = {}
     out_dir = Path(out_dir)
     if not out_dir.exists():
         out_dir.mkdir()
 
-    bond = torsion_inds[1:3]
+    bond = indices[1:3]
 
     fragment_left, fragment_right = hr_fragment.fragment_geom(geom, bond)
     imom_left, imom_right = inertmom.get_top_moment_of_inertia(
@@ -68,9 +74,16 @@ def run(
     imom_left *= AMU2AU
     imom_right *= AMU2AU
     mass = imom_left
-    energy_getter, rad_store = hr_opt.opt_closure(
-        geom, torsion_inds, calc_getter, opt_kwargs, out_dir=out_dir
-    )
+    if calc_getter is not None:
+        energy_getter = hr_opt.opt_closure(
+            geom,
+            indices,
+            calc_getter,
+            opt_kwargs,
+            single_point_calc_getter=single_point_calc_getter,
+            out_dir=out_dir,
+        )
+    rad_store = energy_getter.rad_store
 
     # The step is later required for finite differences
     grid, dx = np.linspace(
@@ -89,13 +102,18 @@ def run(
         energy_getter,
         callback=part_callback,
         temperature=temperature,
+        en_thresh=en_thresh,
     )
     rads = list(rad_store.keys())
     xyzs = list()
+    en_fmt = " >20.8f"
     for ind in np.argsort(rads):
         key = rads[ind]
-        en, c3d = rad_store[key]
-        xyz = geom.as_xyz(cart_coords=c3d, comment=f"{en: >20.8f}")
+        en, sp_en, c3d = rad_store[key]
+        comment = f"{en:{en_fmt}}"
+        if sp_en is not np.nan:
+            comment += f", sp_energy={sp_en:{en_fmt}}"
+        xyz = geom.as_xyz(cart_coords=c3d, comment=comment)
         xyzs.append(xyz)
     trj = "\n".join(xyzs)
     with open(out_dir / "torsion_scan.trj", "w") as handle:
@@ -106,7 +124,7 @@ def run(
     # we can't get the data from it.
     # TODO: modify callback to store Numerov-results in some container?!
     eigvals, eigvecs, weights = callback(
-        gpr_status, mass=mass, temperature=temperature, plot=False
+        gpr_status, mass=mass, temperature=temperature, plot=False, out_dir=out_dir
     )
 
     # Hindered rotor partition function
@@ -141,6 +159,11 @@ def run(
         hr_partfunc=hr_partfunc,
         cancel_partfunc=cancel_partfunc,
     )
+    # TODO:
+    # - report summary in a kind of table
+    # - add support for known symmetry ... modify periodicity?!
+    # - report moments of inertia for all minima within a given threshold
+    # - report numbers from Calculator.run_call_counts
     return result
 
 
@@ -202,7 +225,8 @@ def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
             color="grey",
             label="± std",
         )
-        ax_.set_ylim(0, energies.max() * 1.25)
+        if energies.max() > 0.0:
+            ax_.set_ylim(0, energies.max() * 1.25)
         ax_.set_ylabel("ΔE / kJ mol⁻¹")
 
     ax.legend(

@@ -58,6 +58,7 @@ from pysisyphus.helpers_pure import (
     approx_float,
     results_to_json,
 )
+from pysisyphus.hindered_rotor import torsion_driver
 from pysisyphus.intcoords import PrimitiveNotDefinedException
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
@@ -975,6 +976,7 @@ def copy_yaml_and_geometries(run_dict, yaml_fn, dest_and_add_cp, new_yaml_fn=Non
 
 def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     # Defaults
+    # TODO: build this automatically from VALID_KEYS?!
     dd = {
         "assert": None,
         "afir": None,
@@ -986,6 +988,7 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
         "endopt": None,
         "geom": None,
         "glob": None,
+        "hindered_rotor": None,
         "interpol": None,
         "irc": None,
         "md": None,
@@ -1148,6 +1151,9 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
     if "afir" in conf_dict:
         dd["afir"] = {}
 
+    if "hindered_rotor" in conf_dict:
+        dd["hindered_rotor"] = {}
+
     return dd
 
 
@@ -1184,6 +1190,7 @@ VALID_KEYS = {
     "cos",
     "endopt",
     "geom",
+    "hindered_rotor",
     "interpol",
     "irc",
     "md",
@@ -1273,6 +1280,9 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     if run_dict["afir"]:
         afir_key = run_dict["afir"].pop("type")
         afir_kwargs = run_dict["afir"]
+    if run_dict["hindered_rotor"]:
+        hr_key = run_dict["hindered_rotor"].pop("type")
+        hr_kwargs = run_dict["hindered_rotor"]
 
     # Handle geometry input. This section must always be present.
     geom_kwargs = run_dict["geom"]
@@ -1408,6 +1418,16 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
             calc_getter,
             **afir_kwargs,
         )
+    elif run_dict["hindered_rotor"]:
+        assert (
+            hr_key.upper() == "TORSION"
+        ), f"Currently only 'type: TORSION' is supported, but got '{hr_key}'!"
+        if sp_calc_kwargs := hr_kwargs.pop("single_point_calc", None):
+            sp_calc_key = sp_calc_kwargs.pop("type")
+            hr_kwargs["single_point_calc_getter"] = get_calc_closure(
+                "single_point_calculator", sp_calc_key, sp_calc_kwargs
+            )
+        hr_result = torsion_driver.run(geom, calc_getter=calc_getter, **hr_kwargs)
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
     #
