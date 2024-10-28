@@ -2,10 +2,12 @@ import functools
 from pathlib import Path
 
 import numpy as np
+import scipy as sp
 
 from pysisyphus.drivers import opt
-from pysisyphus.hindered_rotor import fragment as hr_fragment
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers import align_coords
+from pysisyphus.hindered_rotor import fragment as hr_fragment, types as hr_types
 
 
 # Define a custom exception for an empty store
@@ -38,7 +40,14 @@ def find_closest_key(rad_store, target_radian):
     return closest_key
 
 
-def opt_closure(geom, torsion, calc_getter, opt_kwargs=None, out_dir=Path(".")):
+def opt_closure(
+    geom,
+    torsion,
+    calc_getter,
+    opt_kwargs=None,
+    single_point_calc_getter=None,
+    out_dir=Path("."),
+) -> hr_types.TorsionEnergyGetter:
     _opt_kwargs = {
         "type": "rfo",
         "thresh": "gau",
@@ -72,7 +81,7 @@ def opt_closure(geom, torsion, calc_getter, opt_kwargs=None, out_dir=Path(".")):
         # closest geometry.
         try:
             rad_trial = find_closest_key(rad_store, rad)
-            _, c3d_trial = rad_store[rad_trial]
+            *_, c3d_trial = rad_store[rad_trial]
         except EmptyStoreException:
             c3d_trial = geom.coords3d.copy()
             rad_trial = 0.0
@@ -102,7 +111,7 @@ def opt_closure(geom, torsion, calc_getter, opt_kwargs=None, out_dir=Path(".")):
         )
         # Set appropriate calc_number to distinguish the log
         calc_getter_wrapped = functools.partial(calc_getter, calc_number=calc_number)
-        title = f"Rad {rad:5.3f} Optimization"
+        title = f"Cycle {calc_number}, rad={rad:5.3f}"
         opt_result = opt.run_opt(
             opt_geom, calc_getter_wrapped, opt_cls, opt_kwargs, title=title
         )
@@ -111,11 +120,55 @@ def opt_closure(geom, torsion, calc_getter, opt_kwargs=None, out_dir=Path(".")):
         # Dump optimized geometry
         opt_geom.dump_xyz(out_dir / f"{calc_number:03d}_opt_{rad_key}.xyz")
         coords3d_opt = opt_geom.coords3d
-        energy = opt_geom.energy
-        # Store optimize geometry so it can later be utilized to start new optimizations
-        # with similar radian.
-        rad_store[rad] = (energy, coords3d_opt.copy())
+
+        # If an additional single point calculator was given recalculate the final
+        # energy with it ...
+        if single_point_calc_getter is not None:
+            sp_calc = single_point_calc_getter(calc_number=calc_number)
+            sp_result = sp_calc.get_energy(opt_geom.atoms, opt_geom.cart_coords)
+            sp_energy = sp_result["energy"]
+            energy = sp_energy
+        # ... or stick with the energy from the level of theory that was used for the
+        # optimization.
+        else:
+            energy = opt_geom.energy
+            sp_energy = np.nan
+        # Store aligned, optimized coordiantes, so they can later be utilized to start
+        # new optimizations with similar radian.
+        #
+        # On could also always align on rad=0.0
+        # _, c3d_aligned = align_coords([c3d_trial, coords3d_opt])
+        # rad_store[rad] = (energy, sp_energy, c3d_aligned)
+        # TODO: re-enable alignment. Currently, it is disable as it seems to mess
+        # up the whole process.
+        rad_store[rad] = (energy, sp_energy, coords3d_opt)
         calc_number += 1
         return energy
 
-    return energy_getter, rad_store
+    energy_getter.rad_store = rad_store
+
+    return energy_getter
+
+
+def spline_closure(
+    natoms: int, rads: np.ndarray, energies: np.ndarray
+) -> hr_types.TorsionEnergyGetter:
+    # Dummy coordinates
+    dummy_c3d = np.zeros((natoms, 3))
+    rad_store = dict()
+
+    # Shift radians at minimum energy to 0.0
+    min_ind = energies.argmin()
+    rad_min = rads[min_ind]
+    rads = rads - rad_min
+
+    func = sp.interpolate.make_interp_spline(rads, energies, k=5, bc_type="periodic")
+
+    def energy_getter(rad):
+        energy = func(rad)
+        rad_store[rad] = (energy, np.nan, dummy_c3d.copy())
+        return energy
+
+    energy_getter.rad_store = rad_store
+
+    return energy_getter

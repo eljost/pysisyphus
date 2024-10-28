@@ -19,7 +19,7 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 PERIOD_BOUNDS = (0.0, 2 * np.pi)
 PERIOD_LOW, PERIOD_HIGH = PERIOD_BOUNDS
 # Length scale bound
-LS_BOUNDS = (0.1, np.pi)
+LS_BOUNDS = (0.1, 2 * np.pi)
 # Constant value bound
 CONST_BOUNDS = (1e-6, 1e3)
 
@@ -40,6 +40,7 @@ def get_gpr(length_scale, constant_value) -> GaussianProcessRegressor:
     kernel = const * expsine
     gpr_kwargs = {
         "n_restarts_optimizer": 0,  # Default; 1 opt. cycle
+        "normalize_y": True,
     }
     gpr = GaussianProcessRegressor(kernel=kernel, **gpr_kwargs)
     return gpr
@@ -51,10 +52,14 @@ def fleck_acquisition_func(
     mean = mean - mean.min()
     beta = en_range / (KBAU * temperature)
     p = 1 / np.sqrt(2 * np.pi * variance)
-    fleck_func = beta * np.exp(-beta * mean) - p * np.log(p)
+    term1 = beta * np.exp(-beta * mean)
+    term2 = p * np.log(p)
+    fleck_func = term1 - term2
+
     # Shift minimum to 0.0
-    # TODO: do this outside of this function, because this is only required for plotting
+    # TODO: do shifting outside of this function, because this is only required for plotting
     fleck_func -= fleck_func.min()
+
     return fleck_func
 
 
@@ -89,10 +94,10 @@ def run_gpr(
     grid,
     wrapped,
     en_thresh=1e-5,
-    en_range=50 / AU2KJPERMOL,
     callback=None,
     temperature=298.15,
-    max_cycles=25,
+    max_cycles=50,
+    en_range=50 / AU2KJPERMOL,
 ) -> GPRStatus:
     x_train = list()
     y_train = list()
@@ -117,7 +122,7 @@ def run_gpr(
         # Evaluate new point
         y_train.append(wrapped(x_next))
 
-        print(f"@ There are {len(x_train)} training points in macro cycle {cur_cycle}.")
+        # print(f"@ There are {len(x_train)} training points in macro cycle {cur_cycle}.")
 
         study = optuna.create_study(direction="minimize")
         if prev_best_params is not None:
@@ -129,11 +134,14 @@ def run_gpr(
         gpr = get_gpr(**study.best_params)
         gpr.fit(np.array(x_train).reshape(-1, 1), y_train)
         y_pred, std_pred = gpr.predict(grid, return_std=True)
-        print(f"{std_pred.max()=: >12.6e}")
+        print(
+            f"@@@ Cycle {cur_cycle:03d}, max. predicted standard deviation: "
+            f"{std_pred.max(): >12.6e}"
+        )
 
         # Update the selected energy range after some points have been calculated.
-        if len(x_train) >= 2:
-            en_range = 1.1 * (max(y_train) - min(y_train))
+        if len(x_train) > 5:
+            en_range = max(y_train) - min(y_train)
         # Add new trial point to enlarge the training set using the Fleck
         # acquisition function.
         fleck_func = fleck_acquisition_func(
