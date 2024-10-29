@@ -183,6 +183,9 @@ def parse_args(args):
     parser.add_argument(
         "--scheduler", default=None, help="Address of the dask scheduler."
     )
+    parser.add_argument(
+        "--ntimes", default=0, type=int, help="Run the calculation NTIMES."
+    )
     return parser.parse_args()
 
 
@@ -1246,7 +1249,7 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
     # Dump run_dict
     run_dict_copy = run_dict.copy()
     run_dict_copy["version"] = __version__
-    with open("RUN.yaml", "w") as handle:
+    with open(yaml_dir / "RUN.yaml", "w") as handle:
         yaml.dump(run_dict_copy, handle)
 
     if run_dict["interpol"]:
@@ -1423,10 +1426,15 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
         ), f"Currently only 'type: TORSION' is supported, but got '{hr_key}'!"
         if sp_calc_kwargs := hr_kwargs.pop("single_point_calc", None):
             sp_calc_key = sp_calc_kwargs.pop("type")
+            sp_calc_kwargs["out_dir"] = calc_kwargs.get(
+                "out_dir", yaml_dir / OUT_DIR_DEFAULT
+            )
             hr_kwargs["single_point_calc_getter"] = get_calc_closure(
                 "single_point_calculator", sp_calc_key, sp_calc_kwargs
             )
-        hr_result = torsion_driver.run(geom, calc_getter=calc_getter, **hr_kwargs)
+        hr_result = torsion_driver.run(
+            geom, calc_getter=calc_getter, out_dir=yaml_dir, **hr_kwargs
+        )
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:
     #
@@ -1885,6 +1893,24 @@ def print_bibtex():
     print(bibtex)
 
 
+def run_ntimes(run_dict, restart, cwd, scheduler, ntimes):
+    cp_files = [f for f in cwd.iterdir() if f.is_file()]
+    out_dirs = [Path(cwd / f"{i:03d}_run") for i in range(ntimes)]
+
+    for out_dir in out_dirs:
+        if not out_dir.exists():
+            out_dir.mkdir()
+        for cp_file in cp_files:
+            shutil.copy(cp_file, out_dir)
+        # run_result = main(run_dict, restart, out_dir, scheduler)
+        run_dict_copy = copy.deepcopy(run_dict)
+        main(run_dict_copy, restart, out_dir, scheduler)
+        all_files = [f for f in cwd.iterdir() if f.is_file()]
+        new_files = [f for f in all_files if f not in cp_files]
+        for fn in new_files:
+            shutil.move(fn, out_dir)
+
+
 def run_from_dict(
     run_dict,
     cwd=None,
@@ -1896,6 +1922,7 @@ def run_from_dict(
     fclean=False,
     version=False,
     restart=False,
+    ntimes: int = 0,
 ):
     if cwd is None:
         cwd = Path(".")
@@ -1926,6 +1953,9 @@ def run_from_dict(
         return
     # Return after header was printed
     elif version:
+        return
+    elif ntimes > 0:
+        run_ntimes(run_dict, restart, cwd, scheduler, ntimes)
         return
 
     run_dict_without_none = {k: v for k, v in run_dict.items() if v is not None}
@@ -1993,6 +2023,7 @@ def run():
         "fclean": args.fclean,
         "version": args.version,
         "restart": args.restart,
+        "ntimes": args.ntimes,
     }
     run_result = run_from_dict(run_dict, **run_kwargs)
 

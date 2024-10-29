@@ -89,7 +89,8 @@ def opt_closure(
         # When we found a geometry that is closer to the desired radian value
         # we have to correct the radian for rotation by the radian value of the
         # stored geometry.
-        target_deg = np.rad2deg(rad - rad_trial)
+        target_rad = rad - rad_trial
+        target_deg = np.rad2deg(target_rad)
         c3d_rot = hr_fragment.rotate_fragment_around_bond(
             c3d_trial, bond, fragment, target_deg
         )
@@ -137,11 +138,8 @@ def opt_closure(
         # new optimizations with similar radian.
         #
         # On could also always align on rad=0.0
-        # _, c3d_aligned = align_coords([c3d_trial, coords3d_opt])
-        # rad_store[rad] = (energy, sp_energy, c3d_aligned)
-        # TODO: re-enable alignment. Currently, it is disable as it seems to mess
-        # up the whole process.
-        rad_store[rad] = (energy, sp_energy, coords3d_opt)
+        _, c3d_aligned = align_coords([c3d_trial, coords3d_opt])
+        rad_store[rad] = (energy, sp_energy, c3d_aligned)
         calc_number += 1
         return energy
 
