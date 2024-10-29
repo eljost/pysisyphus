@@ -1,5 +1,6 @@
 import functools
 from pathlib import Path
+import time
 
 import numpy as np
 import scipy as sp
@@ -8,6 +9,7 @@ from pysisyphus.drivers import opt
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import align_coords
 from pysisyphus.hindered_rotor import fragment as hr_fragment, types as hr_types
+from pysisyphus import timing
 
 
 # Define a custom exception for an empty store
@@ -126,7 +128,10 @@ def opt_closure(
         # energy with it ...
         if single_point_calc_getter is not None:
             sp_calc = single_point_calc_getter(calc_number=calc_number)
+            sp_dur = time.time()
             sp_result = sp_calc.get_energy(opt_geom.atoms, opt_geom.cart_coords)
+            sp_dur = time.time() - sp_dur
+            print(f"Single point calculation took {timing.render(sp_dur)}.")
             sp_energy = sp_result["energy"]
             energy = sp_energy
         # ... or stick with the energy from the level of theory that was used for the
@@ -138,6 +143,8 @@ def opt_closure(
         # new optimizations with similar radian.
         #
         # On could also always align on rad=0.0
+        # TODO: also keep and set chkfile information, so this method could also be
+        # utilized for MCSCF calculations, where input MOs are important.
         _, c3d_aligned = align_coords([c3d_trial, coords3d_opt])
         rad_store[rad] = (energy, sp_energy, c3d_aligned)
         calc_number += 1
