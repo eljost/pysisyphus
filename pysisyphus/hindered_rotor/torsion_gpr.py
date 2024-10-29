@@ -93,11 +93,11 @@ class GPRStatus:
 def run_gpr(
     grid,
     wrapped,
-    en_thresh=1e-5,
     callback=None,
-    temperature=298.15,
     max_cycles=50,
+    en_thresh=1e-5,
     en_range=50 / AU2KJPERMOL,
+    temperature=298.15,
 ) -> GPRStatus:
     x_train = list()
     y_train = list()

@@ -53,8 +53,10 @@ def run(
     calc_getter=None,
     single_point_calc_getter=None,
     energy_getter=None,
-    en_thresh: float = 1e-5,
     npoints: int = 721,
+    max_cycles=50,
+    en_thresh: float = 1e-5,
+    en_range: float = 50 / AU2KJPERMOL,
     temperature: float = 298.15,
     plot: bool = True,
     out_dir: str | Path = ".",
@@ -92,17 +94,19 @@ def run(
     part_callback = functools.partial(
         callback,
         mass=mass,
-        temperature=temperature,
         plot=plot,
         out_dir=out_dir,
+        temperature=temperature,
     )
 
     gpr_status = torsion_gpr.run_gpr(
         grid.reshape(-1, 1),
         energy_getter,
         callback=part_callback,
-        temperature=temperature,
+        max_cycles=max_cycles,
         en_thresh=en_thresh,
+        en_range=en_range,
+        temperature=temperature,
     )
     rads = list(rad_store.keys())
     xyzs = list()
@@ -181,8 +185,8 @@ def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
     ax = fig.add_subplot(gs[:2, 0])
     ax_acq = fig.add_subplot(gs[2, 0])
     ax_numerov = fig.add_subplot(gs[:, 1])
-    # ax.plot(x.flatten(), y, ls=":", label="True")
     ax.plot(grid, energies, c="orange", label="Fit")
+    ax.axhline(energies.max(), c="k", ls=":")
     ax.scatter(gpr_status.x_train, y_train, s=50, c="red", label="Samples", zorder=5)
     # Next point
     x_next = gpr_status.x_next
