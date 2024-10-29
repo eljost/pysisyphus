@@ -164,6 +164,10 @@ class TablePrinter:
         header_fmt = "  ".join(header_fmts)
         self.header_str = self.prefix + header_fmt.format(*self.header)
 
+    @property
+    def nfields(self) -> int:
+        return len(self.header)
+
     def _print(self, msg, level=None):
         if level is None:
             level = self.level
@@ -198,3 +202,16 @@ class TablePrinter:
             level = 0
         level_prefix = "    " * level
         self._print(textwrap.indent(text, self.prefix + level_prefix))
+
+    def print_rows(self, all_args, marks=None, first_n=None):
+        assert len(all_args) == self.nfields
+        nrows = len(all_args[0])
+        # Verify that provided args all have the same length
+        assert all([len(arg) == nrows for arg in all_args])
+        # Update the number of rows that will be printed
+        if first_n is not None:
+            nrows = min(nrows, first_n)
+
+        for i in range(nrows):
+            args_i = [arg[i] for arg in all_args]
+            self.print_row(args_i, marks=marks)

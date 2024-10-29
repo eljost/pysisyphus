@@ -9,7 +9,7 @@ from matplotlib.gridspec import GridSpec
 import numpy as np
 
 from pysisyphus import numerov
-from pysisyphus.constants import AU2KJPERMOL, AMU2AU, AU2SEC
+from pysisyphus.constants import AU2KJPERMOL, AMU2AU, AU2SEC, AU2NU
 from pysisyphus.drivers import boltzmann
 from pysisyphus.finite_diffs import periodic_fd_2_8
 from pysisyphus.Geometry import Geometry
@@ -20,6 +20,7 @@ from pysisyphus.hindered_rotor import (
     torsion_gpr,
 )
 from pysisyphus.partfuncs import partfuncs as pf
+from pysisyphus.TablePrinter import TablePrinter
 
 
 @dataclasses.dataclass
@@ -44,7 +45,28 @@ class TorsionGPRResult:
     hr_partfunc: float
     cancel_partfunc: float
     # TODO: Correction factor as quotient of the two pfs above; make as property
-    # Store optimized geometries?!
+    # TODO: Store optimized geometries?!
+
+    def report(self, boltzmann_thresh=0.9999):
+        print(f"Reporting states until Σp_Boltz. >= {boltzmann_thresh}")
+        print(f"Temperature: {self.temperature: >8.2} K")
+        header = ("#", "E/Eh", "E/kJ mol⁻¹", "ΔE/cm⁻¹", "p_Boltz.", "Σp_Boltz.")
+        col_fmts = ("{:3d}", "float", "{: 12.6f}", "{: >8.2f}", "float", "float")
+        table = TablePrinter(header, col_fmts, width=12)
+
+        weights_cum = np.cumsum(self.weights)
+        nstates = np.argmax(weights_cum > boltzmann_thresh) + 1
+
+        eigvals = self.eigvals - self.eigvals.min()
+        eigvals_kJ = eigvals * AU2KJPERMOL
+        eigvals_nu = eigvals * AU2NU
+        nrows = len(eigvals)
+
+        table.print_header()
+        table.print_rows(
+            (range(nrows), eigvals, eigvals_kJ, eigvals_nu, self.weights, weights_cum),
+            first_n=nstates,
+        )
 
 
 def run(
@@ -168,6 +190,7 @@ def run(
     # - add support for known symmetry ... modify periodicity?!
     # - report moments of inertia for all minima within a given threshold
     # - report numbers from Calculator.run_call_counts
+    result.report()
     return result
 
 
