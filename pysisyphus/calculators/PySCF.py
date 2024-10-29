@@ -276,7 +276,7 @@ class PySCF(OverlapCalculator):
 
         # Keep mf and dump mol
         # save_mol(mol, self.make_fn("mol.chk"))
-        self.mf = mf
+        self.mf = mf.reset() # release integrals and other temporary intermediates.
         self.calc_counter += 1
 
         return mf
