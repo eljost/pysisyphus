@@ -86,6 +86,8 @@ def calc_wrapper(geom: Geometry, func_name: str, skip_existing: bool = False):
         with open(hash_fn, "w") as handle:
             handle.write(as_json)
         json_fn = calc.make_fn("results.json", counter=calc.calc_counter - 1)
+        if json_fn.exists():
+            json_fn.unlink()
         json_fn.symlink_to(hash_fn)
         msg = f"Dumped JSON results to '{hash_fn}'."
     except KeyError:
