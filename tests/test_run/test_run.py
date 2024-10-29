@@ -31,6 +31,8 @@ def test_diels_alder_growing_string():
             "reparam_check": "rms",
             "climb": True,
             "climb_rms": 0.02,
+            "left_images": 5,
+            "right_images": 5,
         },
         "opt": {
             "type": "string",
