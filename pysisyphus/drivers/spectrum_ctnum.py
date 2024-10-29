@@ -39,6 +39,7 @@ def plot_geometry_graph(
     filter_atoms={
         "h",
     },
+    try_graphviz: bool = True,
 ):
     atoms = [atom.lower() for atom in atoms]
     node_color = list()
@@ -77,20 +78,22 @@ def plot_geometry_graph(
         for i, atom in enumerate(atoms)
         if atom not in filter_atoms
     }
-    try:
-        pos = nx.nx_agraph.graphviz_layout(G, prog="neato")
-        pos_arr = np.array(list(pos.values()))
-        pos_max = pos_arr.max(axis=0)
-        pos_min = pos_arr.min(axis=0)
-        pos_extents = pos_max - pos_min
-        pos_scale = pos0_extents / pos_extents
-        pos_arr = pos_arr * pos_scale
-        for i, key in enumerate(pos.keys()):
-            pos[key] = pos_arr[i]
-    except ImportError:
-        print("Falling back to networkx-layout, as (py)graphviz is not available.")
+    if not try_graphviz:
         # Kamda-Kawai can also lead to overlapping nodes
         pos = nx.kamada_kawai_layout(G, scale=scale, pos=pos0)
+    else:
+        try:
+            pos = nx.nx_agraph.graphviz_layout(G, prog="neato")
+            pos_arr = np.array(list(pos.values()))
+            pos_max = pos_arr.max(axis=0)
+            pos_min = pos_arr.min(axis=0)
+            pos_extents = pos_max - pos_min
+            pos_scale = pos0_extents / pos_extents
+            pos_arr = pos_arr * pos_scale
+            for i, key in enumerate(pos.keys()):
+                pos[key] = pos_arr[i]
+        except ImportError:
+            print("Falling back to networkx-layout, as (py)graphviz is not available.")
     """
     nx.draw(
         G, pos=pos, ax=ax, labels=labels, node_color=node_color, node_size=node_size
@@ -271,7 +274,14 @@ def get_annotate_state(ax, exc_ens, foscs):
 
 
 def ct_number_plot(
-    atoms, coords, all_energies, foscs, ct_numbers, bond_inds=None, frags=None
+    atoms,
+    coords,
+    all_energies,
+    foscs,
+    ct_numbers,
+    bond_inds=None,
+    frags=None,
+    try_graphviz=True,
 ):
     if bond_inds is None:
         # Bond indices without interfragment bonds and/or hydrogen bonds
@@ -300,7 +310,12 @@ def ct_number_plot(
     fig, (ax0, ax1) = plt.subplots(ncols=2, figsize=(12, 6))
 
     _, _, frag_pos = plot_geometry_graph(
-        ax1, atoms, coords.reshape(-1, 3), frags, bond_inds
+        ax1,
+        atoms,
+        coords.reshape(-1, 3),
+        frags,
+        bond_inds,
+        try_graphviz=try_graphviz,
     )
 
     # Plot broadened spectrum
