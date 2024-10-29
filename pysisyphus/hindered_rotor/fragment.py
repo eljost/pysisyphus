@@ -65,7 +65,18 @@ def rotate_fragment_around_bond(
 
     # Degrees of rotation are encoded in the length of the vector
     Rot = sp.spatial.transform.Rotation.from_rotvec(deg * bond_vec, degrees=True)
-    frag_coords3d_rot = Rot.apply(frag_coords3d)
+    # Sadly, we can't just use 'Rot.apply(frag_coords3d)' here, as it seems as
+    # if the centroid of all fragment coordinates is shifted to the origin, which
+    # leads to a rotation of the anchor atom. To avoid this, we do it manually.
+    #
+    # For some test cases I considered using Rot.apply seemed to work well, but just
+    # by coincidence. For example, when rotating a CH3 group the carbon will be just
+    # above/below the centroid and won't move, when applying the rotation.
+    rot_mat = Rot.as_matrix()
+    anchor_coords = coords3d[from_]
+    frag_coords3d -= anchor_coords
+    frag_coords3d_rot = frag_coords3d @ rot_mat
+    frag_coords3d_rot += anchor_coords
 
     # Construct updated coordinates, that contain the rotated fragment
     coords3d_rot = coords3d.copy()
