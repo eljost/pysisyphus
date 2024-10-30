@@ -1,8 +1,6 @@
-from collections.abc import Callable
 import dataclasses
 import functools
 from pathlib import Path
-from typing import Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -41,15 +39,41 @@ class TorsionGPRResult:
     temperature: float
     # Boltzmann weights
     weights: np.ndarray
-    # Partition functions
-    hr_partfunc: float
-    cancel_partfunc: float
-    # TODO: Correction factor as quotient of the two pfs above; make as property
     # TODO: Store optimized geometries?!
+
+    @property
+    def dx(self):
+        return abs(self.grid[1] - self.grid[0])
+
+    def calc_hr_partfunc(self):
+        eigvals = self.eigvals - self.eigvals.min()
+        return pf.sos_partfunc(eigvals, self.temperature)
+
+    def calc_cancel_partfunc(self):
+        force_constant = periodic_fd_2_8(0, self.energies, self.dx)
+        ho_freq = np.sqrt(force_constant / self.inertmom_left) / (2 * np.pi)
+        ho_freq_si = ho_freq / AU2SEC
+        return pf.harmonic_quantum_partfunc(ho_freq_si, self.temperature)
+
+    def __post_init__(self):
+        # Calculation of partition function correction factor (HR / HO)
+        #
+        # Currently, we evaluate the partition function at the initial geometry.
+        # TODO: make evaluation more flexible; Maybe pick the global minimum of the scan
+        # and don't always stay at the initial geometry.
+        # TODO: move partfunc stuff into separate function?!
+        self.hr_partfunc = self.calc_hr_partfunc()
+        self.cancel_partfunc = self.calc_cancel_partfunc()
 
     def report(self, boltzmann_thresh=0.9999):
         print(f"Reporting states until Σp_Boltz. >= {boltzmann_thresh}")
-        print(f"Temperature: {self.temperature: >8.2} K")
+        print(f"Temperature: {self.temperature: >10.4f} K")
+        print(f"Rotor moment of inertia: {self.inertmom_left: >14.8f} au")
+        print(f"1d hindered rotor partition function: {self.hr_partfunc: >14.6f}")
+        print(f"        HO cancel partition function: {self.cancel_partfunc: >14.6f}")
+        print(
+            f"           Correction factor (HR/HO): {self.hr_partfunc/self.cancel_partfunc: >14.6f}"
+        )
         header = ("#", "E/Eh", "E/kJ mol⁻¹", "ΔE/cm⁻¹", "p_Boltz.", "Σp_Boltz.")
         col_fmts = ("{:3d}", "float", "{: 12.6f}", "{: >8.2f}", "float", "float")
         table = TablePrinter(header, col_fmts, width=12)
@@ -153,19 +177,6 @@ def run(
         gpr_status, mass=mass, temperature=temperature, plot=False, out_dir=out_dir
     )
 
-    # Hindered rotor partition function
-    #
-    # Currently, we evaluate the partition function at the initial geometry.
-    # TODO: make evaluation more flexible; Maybe pick the global minimum of the scan
-    # and don't always stay at the initial geometry.
-    # TODO: move partfunc stuff into separate function?!
-    hr_partfunc = pf.sos_partfunc(eigvals - eigvals.min(), temperature)
-
-    force_constant = periodic_fd_2_8(0, gpr_status.energies, dx)
-    ho_freq = np.sqrt(force_constant / imom_left) / (2 * np.pi)
-    ho_freq_si = ho_freq / AU2SEC
-    cancel_partfunc = pf.harmonic_quantum_partfunc(ho_freq_si, temperature)
-
     result = TorsionGPRResult(
         geom.atoms,
         geom.coords3d,
@@ -182,8 +193,6 @@ def run(
         eigvecs=eigvecs,
         temperature=temperature,
         weights=weights,
-        hr_partfunc=hr_partfunc,
-        cancel_partfunc=cancel_partfunc,
     )
     # TODO:
     # - report summary in a kind of table
@@ -285,7 +294,7 @@ def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
             label=f"{lbl} next",
         )
     ax_acq.set_title("Normalized acquisition function")
-    ax_acq.set_xlabel("Torsion / rad")
+    ax_acq.set_xlabel("ΔTorsion / rad")
     ax_acq.legend(
         loc="lower center",
         ncols=2,
@@ -294,7 +303,7 @@ def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
         },
     )
     for ax_ in (ax, ax_numerov, ax_acq):
-        ax_.set_xlabel("Torsion / rad")
+        ax_.set_xlabel("ΔTorsion / rad")
         ax_.set_xlim(grid[0], grid[-1])
     return fig
 

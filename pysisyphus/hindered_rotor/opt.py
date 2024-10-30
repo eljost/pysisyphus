@@ -53,6 +53,7 @@ def opt_closure(
     _opt_kwargs = {
         "type": "rfo",
         "thresh": "gau",
+        "overachieve_factor": 3,
     }
     if opt_kwargs is None:
         opt_kwargs = dict()
