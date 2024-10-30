@@ -9,6 +9,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.utils._testing import ignore_warnings
 
 from pysisyphus.constants import KBAU, AU2KJPERMOL
+from pysisyphus.helpers import check_for_end_sign
 
 
 # TODO: do this in a function and revert afterwards?!
@@ -177,5 +178,11 @@ def run_gpr(
 
         # Pick next trial point
         x_next = float(grid[max_ind, 0])
+
+        sign = check_for_end_sign()
+        if sign == "converged_hr":
+            print("Operator indicated convergence!")
+            break
+
     # End of macro loop
     return gpr_status
