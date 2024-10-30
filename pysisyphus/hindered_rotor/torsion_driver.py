@@ -6,9 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import numpy as np
 
-from pysisyphus import numerov
-from pysisyphus.constants import AU2KJPERMOL, AMU2AU, AU2SEC, AU2NU
-from pysisyphus.drivers import boltzmann
+from pysisyphus.constants import AU2KJPERMOL, AMU2AU, AU2SEC, AU2NU, AU2EV
 from pysisyphus.finite_diffs import periodic_fd_2_8
 from pysisyphus.Geometry import Geometry
 from pysisyphus.hindered_rotor import (
@@ -55,6 +53,14 @@ class TorsionGPRResult:
         ho_freq_si = ho_freq / AU2SEC
         return pf.harmonic_quantum_partfunc(ho_freq_si, self.temperature)
 
+    @property
+    def B(self):
+        return 1 / (2 * self.inertmom_left)
+
+    @property
+    def BeV(self):
+        return self.B * AU2EV
+
     def __post_init__(self):
         # Calculation of partition function correction factor (HR / HO)
         #
@@ -65,18 +71,19 @@ class TorsionGPRResult:
         self.hr_partfunc = self.calc_hr_partfunc()
         self.cancel_partfunc = self.calc_cancel_partfunc()
 
-    def report(self, boltzmann_thresh=0.9999):
-        print(f"Reporting states until Σp_Boltz. >= {boltzmann_thresh}")
-        print(f"Temperature: {self.temperature: >10.4f} K")
+    def report(self, boltzmann_thresh: float = 0.9999):
         print(f"Rotor moment of inertia: {self.inertmom_left: >14.8f} au")
+        print(f"           B = ħ²/(2·I): {self.BeV*1e3:>14.6e} meV")
         print(f"1d hindered rotor partition function: {self.hr_partfunc: >14.6f}")
         print(f"        HO cancel partition function: {self.cancel_partfunc: >14.6f}")
         print(
             f"           Correction factor (HR/HO): {self.hr_partfunc/self.cancel_partfunc: >14.6f}"
         )
-        header = ("#", "E/Eh", "E/kJ mol⁻¹", "ΔE/cm⁻¹", "p_Boltz.", "Σp_Boltz.")
+        print(f"Reporting states until Σp_Boltz. >= {boltzmann_thresh}")
+        print(f"                         Temperature: {self.temperature: >14.4f} K")
+        header = ("# State", "E/Eh", "E/kJ mol⁻¹", "ΔE/cm⁻¹", "p_Boltz.", "Σp_Boltz.")
         col_fmts = ("{:3d}", "float", "{: 12.6f}", "{: >8.2f}", "float", "float")
-        table = TablePrinter(header, col_fmts, width=12)
+        table = TablePrinter(header, col_fmts, width=12, sub_underline=False)
 
         weights_cum = np.cumsum(self.weights)
         nstates = np.argmax(weights_cum > boltzmann_thresh) + 1
@@ -100,9 +107,8 @@ def run(
     single_point_calc_getter=None,
     energy_getter=None,
     npoints: int = 721,
-    max_cycles=50,
-    en_thresh: float = 1e-5,
-    en_range: float = 50 / AU2KJPERMOL,
+    max_cycles: int = 50,
+    partfunc_thresh: float = 1e-4,
     temperature: float = 298.15,
     plot: bool = True,
     out_dir: str | Path = ".",
@@ -137,21 +143,15 @@ def run(
     grid, dx = np.linspace(
         torsion_gpr.PERIOD_LOW, torsion_gpr.PERIOD_HIGH, num=npoints, retstep=True
     )
-    part_callback = functools.partial(
-        callback,
-        mass=mass,
-        plot=plot,
-        out_dir=out_dir,
-        temperature=temperature,
-    )
+    part_callback = functools.partial(callback, plot=plot, out_dir=out_dir)
 
     gpr_status = torsion_gpr.run_gpr(
         grid.reshape(-1, 1),
         energy_getter,
+        mass,
         callback=part_callback,
         max_cycles=max_cycles,
-        en_thresh=en_thresh,
-        en_range=en_range,
+        partfunc_thresh=partfunc_thresh,
         temperature=temperature,
     )
     rads = list(rad_store.keys())
@@ -169,14 +169,6 @@ def run(
     with open(out_dir / "torsion_scan.trj", "w") as handle:
         handle.write(trj)
 
-    # Do a final Numerov run to get wavefunctions and energies ...
-    # This calculation was actually already done in the GPR run, but
-    # we can't get the data from it.
-    # TODO: modify callback to store Numerov-results in some container?!
-    eigvals, eigvecs, weights = callback(
-        gpr_status, mass=mass, temperature=temperature, plot=False, out_dir=out_dir
-    )
-
     result = TorsionGPRResult(
         geom.atoms,
         geom.coords3d,
@@ -189,21 +181,20 @@ def run(
         fragment_right=fragment_right,
         grid_train=gpr_status.x_train,
         energies_train=gpr_status.y_train,
-        eigvals=eigvals,
-        eigvecs=eigvecs,
+        eigvals=gpr_status.eigvals_absolute,
+        eigvecs=gpr_status.eigvecs,
         temperature=temperature,
-        weights=weights,
+        weights=gpr_status.weights,
     )
     # TODO:
-    # - report summary in a kind of table
+    # - report scan results similar to relaxed scans
     # - add support for known symmetry ... modify periodicity?!
-    # - report moments of inertia for all minima within a given threshold
     # - report numbers from Calculator.run_call_counts
     result.report()
     return result
 
 
-def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
+def plot_summary(gpr_status, boltzmann_thresh=0.95):
     grid = gpr_status.grid.flatten()
 
     energies = gpr_status.energies
@@ -228,9 +219,11 @@ def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
     )
 
     # Wavefunction and energy levels
+    weights = gpr_status.weights
     weights_cum = np.cumsum(weights)
     nstates = np.argmax(weights_cum > boltzmann_thresh) + 1
     weight_tot = weights[:nstates].sum()
+    eigvals = gpr_status.eigvals_absolute
     eigvals = (eigvals - en_min) * AU2KJPERMOL
     y_range = energies.max() - energies.min()
     scale = y_range / nstates / 2.0
@@ -241,7 +234,7 @@ def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
         ax_numerov.plot(
             # no abs because we have real wavefunctions
             grid[:-1],
-            wj + scale * eigvecs[:, j] ** 2,
+            wj + scale * gpr_status.eigvecs[:, j] ** 2,
             alpha=0.5,
             c="k",
         )
@@ -283,6 +276,7 @@ def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
     for lbl, acq_func, marker in acq_iter:
         amax = acq_func.argmax()
         acq_norm = acq_func / acq_func.max()
+        ax_acq.set_yscale("log")
         (acq_line,) = ax_acq.plot(grid, acq_norm, label=lbl)
         color = acq_line.get_color()
         ax_acq.scatter(
@@ -293,7 +287,7 @@ def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
             c=color,
             label=f"{lbl} next",
         )
-    ax_acq.set_title("Normalized acquisition function")
+    ax_acq.set_title("log(normalized acquisition function)")
     ax_acq.set_xlabel("ΔTorsion / rad")
     ax_acq.legend(
         loc="lower center",
@@ -308,32 +302,11 @@ def plot_summary(gpr_status, eigvals, eigvecs, weights, boltzmann_thresh=0.95):
     return fig
 
 
-def callback(
-    gpr_status, mass: float, temperature: float, plot=False, out_dir=Path(".")
-):
+def callback(gpr_status, plot=False, out_dir=Path(".")):
     gpr_status.dump_potential(out_dir)
 
-    # Run Numerov
-    en_min = gpr_status.energies.min()
-    # Drop last data point because our potential is periodic
-    energies_cut = gpr_status.energies[:-1]
-    energies_cut = energies_cut - en_min
-
-    grid_cut = gpr_status.grid[:-1].flatten()
-
-    def energy_getter(i, x):
-        return energies_cut[i]
-
-    eigvals, eigvecs = numerov.run(grid_cut, energy_getter, mass, periodic=True)
-
-    # Calculate Boltzmann populations of the obtained states
-    weights = boltzmann.boltzmann_weights(eigvals - eigvals.min(), temperature)
-    eigvals_absolute = eigvals + en_min
-
     if plot:
-        fig = plot_summary(gpr_status, eigvals_absolute, eigvecs, weights=weights)
+        fig = plot_summary(gpr_status)
         out_fn = f"cycle_{gpr_status.cycle:03d}.png"
         fig.savefig(out_dir / out_fn, dpi=200)
         plt.close()
-
-    return eigvals_absolute, eigvecs, weights
