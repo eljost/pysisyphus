@@ -115,7 +115,7 @@ def opt_closure(
         )
         # Set appropriate calc_number to distinguish the log
         calc_getter_wrapped = functools.partial(calc_getter, calc_number=calc_number)
-        title = f"Cycle {calc_number}, rad={rad:5.3f}"
+        title = f"Cycle {calc_number}, Δrad={rad:5.3f}"
         opt_result = opt.run_opt(
             opt_geom, calc_getter_wrapped, opt_cls, opt_kwargs, title=title
         )
