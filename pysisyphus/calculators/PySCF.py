@@ -3,7 +3,7 @@ import shutil
 
 import numpy as np
 import pyscf
-from pyscf import gto, lib, qmmm
+from pyscf import __all__ # ensure all modules are accessible under the pyscf namespace
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.helpers import geom_loader
