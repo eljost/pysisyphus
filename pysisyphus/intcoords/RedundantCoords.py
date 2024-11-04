@@ -140,6 +140,7 @@ class RedundantCoords:
 
         # Set up primitive coordinate indices
         if typed_prims is None:
+            # self.typed_prims will be set in this method
             self.set_primitive_indices(
                 self.atoms,
                 self.coords3d,
