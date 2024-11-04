@@ -1154,7 +1154,13 @@ def get_defaults(conf_dict, T_default=T_DEFAULT, p_default=p_DEFAULT):
         dd["afir"] = {}
 
     if "hindered_rotor" in conf_dict:
-        dd["hindered_rotor"] = {}
+        dd["hindered_rotor"] = {
+            "opt": {
+                "type": "rfo",
+                "thresh": "gau",
+                "overachieve_factor": 3,
+            }
+        }
 
     return dd
 
@@ -1432,8 +1438,13 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
             hr_kwargs["single_point_calc_getter"] = get_calc_closure(
                 "single_point_calculator", sp_calc_key, sp_calc_kwargs
             )
+        hr_opt_kwargs = hr_kwargs.pop("opt")
         hr_result = torsion_driver.run(
-            geom, calc_getter=calc_getter, out_dir=yaml_dir, **hr_kwargs
+            geom,
+            calc_getter=calc_getter,
+            opt_kwargs=hr_opt_kwargs,
+            out_dir=yaml_dir,
+            **hr_kwargs,
         )
     # This case will handle most pysisyphus runs. A full run encompasses
     # the following steps:

@@ -55,6 +55,10 @@ def opt_closure(
         "thresh": "gau",
         "overachieve_factor": 3,
     }
+    # TODO: add method to correctly pick the imaginary mode.
+    # For me, the simpley way would be to tell the user to provide
+    # an rx_modes input.
+    # _opt_kwargs.update(
     if opt_kwargs is None:
         opt_kwargs = dict()
     _opt_kwargs.update(opt_kwargs)
@@ -116,8 +120,10 @@ def opt_closure(
         # Set appropriate calc_number to distinguish the log
         calc_getter_wrapped = functools.partial(calc_getter, calc_number=calc_number)
         title = f"Cycle {calc_number}, Δrad={rad:5.3f}"
+        cur_opt_kwargs = opt_kwargs.copy()
+        cur_opt_kwargs["prefix"] = f"{calc_number:03d}"
         opt_result = opt.run_opt(
-            opt_geom, calc_getter_wrapped, opt_cls, opt_kwargs, title=title
+            opt_geom, calc_getter_wrapped, opt_cls, cur_opt_kwargs, title=title
         )
         # Continue with (potentially) replaced optimized geometry
         opt_geom = opt_result.geom

@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 from pathlib import Path
+from typing import Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -9,6 +10,7 @@ import numpy as np
 from pysisyphus.constants import AU2KJPERMOL, AMU2AU, AU2SEC, AU2NU, AU2EV
 from pysisyphus.finite_diffs import periodic_fd_2_8
 from pysisyphus.Geometry import Geometry
+from pysisyphus.helpers_pure import highlight_text
 from pysisyphus.hindered_rotor import (
     fragment as hr_fragment,
     inertmom,
@@ -43,15 +45,35 @@ class TorsionGPRResult:
     def dx(self):
         return abs(self.grid[1] - self.grid[0])
 
-    def calc_hr_partfunc(self):
+    def calc_hr_partfunc(self, temperature: Optional[float] = None):
+        if temperature is None:
+            temperature = self.temperature
         eigvals = self.eigvals - self.eigvals.min()
-        return pf.sos_partfunc(eigvals, self.temperature)
+        return pf.sos_partfunc(eigvals, temperature)
 
-    def calc_cancel_partfunc(self):
-        force_constant = periodic_fd_2_8(0, self.energies, self.dx)
+    def calc_cancel_partfunc(self, temperature: Optional[float] = None):
+        if temperature is None:
+            temperature = self.temperature
+        # TODO: make calculation of force constant more robust; currently
+        # index 0 is hardcoded, but this is not necessarily the minimum.
+        # If an index != 0 is supposed to be used we would also have to update
+        # the stored moments of inertia, as they are currently calculated for
+        # the initial geometry (with index 0) only.
+        #
+        # Idea: add index as argument; if not provided use actual minimum and
+        # recalculate moments of inertia?
+        energies_cut = self.energies[:-1]
+        force_constant = periodic_fd_2_8(0, energies_cut, self.dx)
         ho_freq = np.sqrt(force_constant / self.inertmom_left) / (2 * np.pi)
         ho_freq_si = ho_freq / AU2SEC
-        return pf.harmonic_quantum_partfunc(ho_freq_si, self.temperature)
+        return pf.harmonic_quantum_partfunc(ho_freq_si, temperature)
+
+    def calc_corr_factor(self, temperature: Optional[float] = None):
+        if temperature is None:
+            temperature = self.temperature
+        hr_partfunc = self.calc_hr_partfunc(temperature)
+        cancel_partfunc = self.calc_cancel_partfunc(temperature)
+        return hr_partfunc / cancel_partfunc
 
     @property
     def B(self):
@@ -70,15 +92,15 @@ class TorsionGPRResult:
         # TODO: move partfunc stuff into separate function?!
         self.hr_partfunc = self.calc_hr_partfunc()
         self.cancel_partfunc = self.calc_cancel_partfunc()
+        self.corr_factor = self.calc_corr_factor()
 
     def report(self, boltzmann_thresh: float = 0.9999):
-        print(f"Rotor moment of inertia: {self.inertmom_left: >14.8f} au")
-        print(f"           B = ħ²/(2·I): {self.BeV*1e3:>14.6e} meV")
+        print(highlight_text("Hindered Rotor Scan Summary"))
+        print(f"Rotor moment of inertia: {self.inertmom_left: >14.8e} au")
+        print(f"           B = ħ²/(2·I): {self.BeV*1e3:>14.8e} meV")
         print(f"1d hindered rotor partition function: {self.hr_partfunc: >14.6f}")
         print(f"        HO cancel partition function: {self.cancel_partfunc: >14.6f}")
-        print(
-            f"           Correction factor (HR/HO): {self.hr_partfunc/self.cancel_partfunc: >14.6f}"
-        )
+        print(f"           Correction factor (HR/HO): {self.corr_factor: >14.6f}")
         print(f"Reporting states until Σp_Boltz. >= {boltzmann_thresh}")
         print(f"                         Temperature: {self.temperature: >14.4f} K")
         header = ("# State", "E/Eh", "E/kJ mol⁻¹", "ΔE/cm⁻¹", "p_Boltz.", "Σp_Boltz.")
@@ -106,15 +128,20 @@ def run(
     calc_getter=None,
     single_point_calc_getter=None,
     energy_getter=None,
+    opt_kwargs: Optional[dict] = None,
     npoints: int = 721,
-    max_cycles: int = 50,
+    max_cycles: int = 75,
     partfunc_thresh: float = 1e-4,
+    std_thresh: float = 1e-4,
     temperature: float = 298.15,
     plot: bool = True,
     out_dir: str | Path = ".",
 ):
-    assert (calc_getter is not None) or (energy_getter is not None)
-    opt_kwargs = {}
+    assert (calc_getter is not None) or (
+        energy_getter is not None
+    ), "Either 'calc_getter' or 'energy_getter' must be provided!"
+    if opt_kwargs is None:
+        opt_kwargs = {}
     out_dir = Path(out_dir)
     if not out_dir.exists():
         out_dir.mkdir()
@@ -152,6 +179,7 @@ def run(
         callback=part_callback,
         max_cycles=max_cycles,
         partfunc_thresh=partfunc_thresh,
+        std_thresh=std_thresh,
         temperature=temperature,
     )
     rads = list(rad_store.keys())
