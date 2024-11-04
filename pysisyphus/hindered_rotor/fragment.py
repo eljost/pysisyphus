@@ -44,8 +44,21 @@ def fragment_geom(
     # of components by one.
     assert ncomponents_frag == ncomponents_org + 1
 
-    sg_left, sg_right = [G.subgraph(c).copy() for c in components_frag]
+    # When this function is called with transition state geometry it can happen,
+    # that initially already more than one fragment is detected. Subsequent removal
+    # of a bond will then lead to more than two fragments.
+    #
+    # Right now, we merge all subgraphs in sgs_right back into one subgraph.
+    #
+    # TODO: figure out if calculation of moments of inertia is somehow affected by
+    # this; maybe only a subset of the right subgraphs must be taken into account
+    # for the calculation?
+    # Given a two non-covalently bonded fragment (left, right) where we remove
+    # a bond in left, yielding (left1, left2, right), maybe it is enough to only
+    # take left1 and left2 into account?!
+    sg_left, *sgs_right = [G.subgraph(c).copy() for c in components_frag]
     nodes_left = list(map(int, sg_left))
+    sg_right = functools.reduce(lambda sg1, sg2: nx.compose(sg1, sg2), sgs_right)
     nodes_right = list(map(int, sg_right))
     return nodes_left, nodes_right
 

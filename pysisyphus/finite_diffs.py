@@ -193,7 +193,11 @@ def finite_difference_hessian_mp(
 def periodic_finite_difference(
     x_ind: int, y: np.ndarray, dx: float, degree: int, coeffs: Sequence[float]
 ):
-    """Finite differences for data on a periodic grid.
+    """Finite differences for data on a periodic grid. IMPORTANT: The grid data
+    in y must be provided so that y[1] == y[-1]! If you initially evaluated
+    y on a grid where x[0] and x[-1] are equal when periodicity is taken into
+    account, e.g. np.sin(np.linspace(0, 2*np.pi)), then the last point must be
+    excluded by passing only y[:-1]!
 
     Parameters
     ----------
