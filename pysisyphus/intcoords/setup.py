@@ -957,6 +957,8 @@ def setup_redundant(
                 org_indices = indices
             else:
                 raise error
+        # Convert from numpy.int64 to normal int
+        org_indices = tuple(map(int, org_indices))
         return (prim_type, *org_indices)
 
     # Shortcut for PrimTypes Enum
