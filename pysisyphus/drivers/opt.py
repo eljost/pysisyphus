@@ -4,6 +4,7 @@
 #     Spicher, Grimme
 
 
+import copy
 from dataclasses import dataclass
 from math import floor, ceil
 from pathlib import Path
@@ -94,6 +95,10 @@ def run_opt(
     copy_final_geom=None,
     level=0,
 ):
+    # Work on a copy of opt_kwargs, as we will pop items from it. Modifying
+    # opt_kwargs in this function was a mistake.
+    opt_kwargs = copy.deepcopy(opt_kwargs)
+
     is_cos = issubclass(type(geom), ChainOfStates)
     is_tsopt = key_is_tsopt(opt_key)
     # Disallow iterative optimizations for COS objects
