@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import sys
 import textwrap
+import warnings
 
 import h5py
 import matplotlib
@@ -856,7 +857,11 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
 
 def plot_irc():
     cwd = Path(".")
-    h5s = cwd.glob("*irc_data.h5")
+    pattern = "*irc_data.h5"
+    h5s = list(cwd.glob(pattern))
+    if len(h5s) == 0:
+        print(f"Couldn't find any HDF5 files matching {pattern}!")
+        return
     for h5 in h5s:
         type_ = h5.name.split("_")[0]
         title = f"{type_.capitalize()} IRC data"
@@ -892,7 +897,26 @@ def plot_irc_h5(h5, title=None):
     energies *= en_conv
 
     if coordinate is None:
-        assert ts_index is not None
+        if ts_index is None:
+            warnings.warn("Trying to guess ts_index!")
+            if "forward" in str(h5).lower():
+                ts_index = 0
+            elif "backward" in str(h5).lower():
+                ts_index = -1
+            elif "finished" in str(h5).lower():
+                en_argmax = energies.argmax()
+                grad_argmin = np.linalg.norm(gradients, axis=1).argmin()
+                if en_argmax == grad_argmin:
+                    ts_index = int(en_argmax)
+                else:
+                    raise Exception(
+                        f"Energy maximum is at index {en_argmax}, but minimum of "
+                        f"norm(gradient) is at index {grad_argmin}. Could not "
+                        "determine ts index!"
+                    )
+            else:
+                raise Exception("Couldn't guess ts_index!")
+            print(f"Using {ts_index} for {h5}")
         ts_mw_coords = mw_coords[ts_index]
         signs = np.ones(size0)
         signs[ts_index:] *= -1
