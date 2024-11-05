@@ -524,6 +524,12 @@ class HessianOptimizer(Optimizer):
         # Transform gradient to basis of eigenvectors
         gradient_ = eigvecs.T.dot(gradient)
 
+        # Filter out small gradient components
+        mask = np.abs(gradient_) > self.small_eigval_thresh
+        gradient_ = gradient_[mask]
+        eigvals = eigvals[mask]
+        eigvecs = eigvecs[:, mask]
+
         alpha = self.alpha0
         for mu in range(self.max_micro_cycles):
             self.log(f"{name} micro cycle {mu:02d}, alpha={alpha:.6f}")
