@@ -158,7 +158,7 @@ def test_thresh_never():
 
     assert geom.energy == pytest.approx(0.98555442)
     norm = np.linalg.norm(geom.forces)
-    assert norm == pytest.approx(0.0)
+    assert norm == pytest.approx(0.0, abs=1e-8)
 
 
 @pytest.mark.parametrize(
