@@ -36,12 +36,9 @@ def test_torsion_gpr_ethane(this_dir):
     )
     np.testing.assert_allclose(
         (result.hr_partfunc, result.cancel_partfunc),
-        # For partfunc_thresh=1e-4
-        # (4.2893, 1.0167),
-        # atol=4e-2,
-        # For partfunc_thresh=1e-3
-        (4.281, 0.894),
-        atol=1e-1,
+        # For partfunc_thresh=1e-3; values for xtb 6.7.1
+        (4.283, 0.670),
+        atol=1e-2,
     )
 
 

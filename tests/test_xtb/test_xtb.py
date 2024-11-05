@@ -46,7 +46,7 @@ def test_xtb_hessian(geom):
 def test_run_md(geom):
     T = 298.15
     seed = 20182503
-    energy_ref = -20.47232690901  # Obtained with xtb 6.4.0
+    energy_ref = -20.47367  # Obtained with xtb 6.7.1 from Nix
     velocities = get_mb_velocities_for_geom(geom, T=T, seed=seed)
     calc = geom.calculator
     geoms = calc.run_md(
@@ -59,7 +59,7 @@ def test_run_md(geom):
     assert len(geoms) == 200
     last_geom = geoms[-1]
     energy = calc.get_energy(last_geom.atoms, last_geom.cart_coords)["energy"]
-    assert energy == pytest.approx(energy_ref)
+    assert energy == pytest.approx(energy_ref, abs=1e-4)
 
 
 @using("xtb")
