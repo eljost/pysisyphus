@@ -1,4 +1,5 @@
 import argparse
+import json
 from pathlib import Path
 import sys
 import textwrap
@@ -766,6 +767,13 @@ def parse_args(args):
     group.add_argument("--gau", nargs="*")
     group.add_argument("--scan", action="store_true")
     group.add_argument(
+        "--calcs",
+        action="store_true",
+        help=(
+            "Plot energy-values from JSON results, produced from plain calculations."
+        ),
+    )
+    group.add_argument(
         "--trj", help="Plot energy values from the comments of a " ".trj file."
     )
 
@@ -927,30 +935,6 @@ def plot_irc_h5(h5, title=None):
     return fig, (ax0, ax1, ax2)
 
 
-"""
-def plot_scan(h5_fn="scan.h5"):
-    with h5py.File(h5_fn, "r") as handle:
-        groups = list()
-        energies = list()
-        for k in handle.keys():
-            group = handle[k]
-            groups.append(k)
-            energies.append(group["energies"][:])
-    print(f"Found {len(groups)} groups in '{h5_fn}'.")
-
-    en_conv, _ = get_en_conv
-    for group, ens in zip(groups, energies):
-        ens -= ens.min()
-        ens *= en_conv
-        fig, ax = plt.subplots()
-        ax.plot(ens, "o-")
-        ax.set_xlabel("Scan point")
-        ax.set_ylabel(DE_LABEL)
-        ax.set_title(group)
-    plt.show()
-"""
-
-
 def plot_scan(dat_fn=None):
     if dat_fn is None:
         dat_fns = Path(".").glob("*relaxed_scan.dat")
@@ -974,6 +958,38 @@ def plot_scan(dat_fn=None):
         ax.set_title(fn.name)
         fig.tight_layout()
         print(f"Created plot for '{fn}'")
+    plt.show()
+
+
+def plot_calculations():
+    cwd = Path("qm_calcs")
+    if not cwd.exists():
+        cwd = Path(".")
+    pattern = "*.results.json"
+    print(f"Using {cwd=} to look for '{pattern}'")
+    jsons = list(sorted(cwd.glob(pattern)))
+    datas = list()
+    for i, fn in enumerate(jsons):
+        with open(fn, "r") as handle:
+            data = json.load(handle)
+        print(f"Loaded {fn}")
+        datas.append(data)
+
+    energies = [data["energy"] for data in datas]
+    energies = np.array(energies)
+    energies -= energies.min()
+    en_conv, en_unit = get_en_conv()
+    energies *= en_conv
+    xs = np.arange(len(energies))
+
+    fig, ax = plt.subplots()
+    ax.plot(xs, energies, "o-")
+    for i, en in enumerate(energies):
+        ax.annotate(text=str(i), xy=(i + 0.05, en + 1.0))
+    ax.set_xlabel("Step")
+    ax.set_ylabel(f"ΔE / {en_unit}")
+    ax.set_xlim(0, xs[-1])
+    fig.tight_layout()
     plt.show()
 
 
@@ -1062,6 +1078,8 @@ def run():
         plot_gau(args.gau)
     elif args.scan:
         plot_scan()
+    elif args.calcs:
+        plot_calculations()
     elif args.render_cdds:
         render_cdds(h5=h5_fn)
     elif args.trj:
