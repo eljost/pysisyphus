@@ -435,6 +435,7 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
     hydrogen_inds = [i for i, a in enumerate(atoms) if a.lower() == "h"]
     x_inds = [i for i, a in enumerate(atoms) if a.lower() in "n o f p s cl".split()]
     hydrogen_bond_inds = list()
+    bond_sets = [set(map(int, bond)) for bond in bond_inds]
     for h_ind, x_ind in it.product(hydrogen_inds, x_inds):
         as_set = set((h_ind, x_ind))
         if as_set not in tmp_sets:
@@ -450,8 +451,13 @@ def get_hydrogen_bond_inds(atoms, coords3d, bond_inds, logger=None):
             distance = Stretch._calculate(coords3d, (h_ind, y_ind))
             vdw_rad_sum = VDW_RADII["h"] + VDW_RADII[y_atom]
             angle = Bend._calculate(coords3d, (x_ind, h_ind, y_ind))
-            if (1.1 * cov_rad_sum < distance < 0.9 * vdw_rad_sum) and (
-                angle > np.pi / 2
+            if (
+                (1.1 * cov_rad_sum < distance < 0.9 * vdw_rad_sum)
+                and (angle > np.pi / 2)
+                # Avoid adding hydrogen bonds that are already in bond_inds.
+                # This can happen when the user manually defined a bond, that
+                # is actually a hydrogen bond.
+                and {h_ind, y_ind} not in bond_sets
             ):
                 hydrogen_bond_inds.append((h_ind, y_ind))
                 log(
