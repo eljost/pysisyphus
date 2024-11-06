@@ -292,7 +292,9 @@ def test_hydrogen_bonds():
     geom = geom_loader("lib:hydrogen_bond_test.xyz", coord_type="redund")
     typed_prims = geom.internal.typed_prims
     h_bonds = [tp for tp in typed_prims if tp[0] == PrimTypes.HYDROGEN_BOND]
-    h_bond_ref = set([frozenset(inds) for inds in ((6, 27), (43, 56), (15, 42))])
+    # (6, 27) was included below earlier, but this is already designated as a real bond
+    # and is not added again as hydrogen bond.
+    h_bond_ref = set([frozenset(inds) for inds in ((43, 56), (15, 42))])
     assert set([frozenset(inds) for _, *inds in h_bonds]) == h_bond_ref
 
 
