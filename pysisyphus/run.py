@@ -57,7 +57,7 @@ from pysisyphus.helpers_pure import (
     highlight_text,
     approx_float,
 )
-from pysisyphus.hindered_rotor import torsion_driver
+from pysisyphus.hindered_rotor import torsion_driver, RotorInfo
 from pysisyphus.intcoords import PrimitiveNotDefinedException
 from pysisyphus.intcoords.setup import get_bond_mat
 from pysisyphus.init_logging import init_logging
@@ -1247,6 +1247,7 @@ RunResult = namedtuple(
         "stocastic calc_getter "
         "scan_geoms scan_vals scan_energies "
         "perf_results "
+        "hr_result "
     ),
 )
 
@@ -1439,8 +1440,15 @@ def main(run_dict, restart=False, yaml_dir="./", scheduler=None):
                 "single_point_calculator", sp_calc_key, sp_calc_kwargs
             )
         hr_opt_kwargs = hr_kwargs.pop("opt")
+        hr_torsion = hr_kwargs.pop("indices")
+        hr_rotor_kwargs = hr_kwargs.pop("rotor", {})
+        hr_rotor_indices = hr_rotor_kwargs.pop("indices", None)
+        hr_rotor_info = RotorInfo.from_torsion(
+            geom, hr_torsion, rotor_indices=hr_rotor_indices, **hr_rotor_kwargs
+        )
         hr_result = torsion_driver.run(
             geom,
+            hr_rotor_info,
             calc_getter=calc_getter,
             opt_kwargs=hr_opt_kwargs,
             out_dir=yaml_dir,

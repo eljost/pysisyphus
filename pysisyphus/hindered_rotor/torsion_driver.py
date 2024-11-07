@@ -1,4 +1,3 @@
-import dataclasses
 import functools
 from pathlib import Path
 from typing import Optional
@@ -7,124 +6,21 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import numpy as np
 
-from pysisyphus.constants import AU2KJPERMOL, AMU2AU, AU2SEC, AU2NU, AU2EV
-from pysisyphus.finite_diffs import periodic_fd_2_8
+from pysisyphus.constants import AU2KJPERMOL
 from pysisyphus.Geometry import Geometry
-from pysisyphus.helpers_pure import highlight_text
+from pysisyphus.helpers import align_coords
 from pysisyphus.hindered_rotor import (
-    fragment as hr_fragment,
-    inertmom,
     opt as hr_opt,
     torsion_gpr,
+    TorsionGPRResult,
+    RotorInfo,
 )
-from pysisyphus.partfuncs import partfuncs as pf
-from pysisyphus.TablePrinter import TablePrinter
-
-
-@dataclasses.dataclass
-class TorsionGPRResult:
-    atoms: tuple[str, ...]
-    coords3d: np.ndarray
-    inertmom_left: float
-    fragment_left: list[int]
-    inertmom_right: float
-    fragment_right: list[int]
-    grid: np.ndarray
-    energies: np.ndarray
-    std: np.ndarray
-    grid_train: np.ndarray
-    energies_train: np.ndarray
-    eigvals: np.ndarray
-    eigvecs: np.ndarray
-    temperature: float
-    # Boltzmann weights
-    weights: np.ndarray
-    # TODO: Store optimized geometries?!
-
-    @property
-    def dx(self):
-        return abs(self.grid[1] - self.grid[0])
-
-    def calc_hr_partfunc(self, temperature: Optional[float] = None):
-        if temperature is None:
-            temperature = self.temperature
-        eigvals = self.eigvals - self.eigvals.min()
-        return pf.sos_partfunc(eigvals, temperature)
-
-    def calc_cancel_partfunc(self, temperature: Optional[float] = None):
-        if temperature is None:
-            temperature = self.temperature
-        # TODO: make calculation of force constant more robust; currently
-        # index 0 is hardcoded, but this is not necessarily the minimum.
-        # If an index != 0 is supposed to be used we would also have to update
-        # the stored moments of inertia, as they are currently calculated for
-        # the initial geometry (with index 0) only.
-        #
-        # Idea: add index as argument; if not provided use actual minimum and
-        # recalculate moments of inertia?
-        energies_cut = self.energies[:-1]
-        force_constant = periodic_fd_2_8(0, energies_cut, self.dx)
-        ho_freq = np.sqrt(force_constant / self.inertmom_left) / (2 * np.pi)
-        ho_freq_si = ho_freq / AU2SEC
-        return pf.harmonic_quantum_partfunc(ho_freq_si, temperature)
-
-    def calc_corr_factor(self, temperature: Optional[float] = None):
-        if temperature is None:
-            temperature = self.temperature
-        hr_partfunc = self.calc_hr_partfunc(temperature)
-        cancel_partfunc = self.calc_cancel_partfunc(temperature)
-        return hr_partfunc / cancel_partfunc
-
-    @property
-    def B(self):
-        return 1 / (2 * self.inertmom_left)
-
-    @property
-    def BeV(self):
-        return self.B * AU2EV
-
-    def __post_init__(self):
-        # Calculation of partition function correction factor (HR / HO)
-        #
-        # Currently, we evaluate the partition function at the initial geometry.
-        # TODO: make evaluation more flexible; Maybe pick the global minimum of the scan
-        # and don't always stay at the initial geometry.
-        # TODO: move partfunc stuff into separate function?!
-        self.hr_partfunc = self.calc_hr_partfunc()
-        self.cancel_partfunc = self.calc_cancel_partfunc()
-        self.corr_factor = self.calc_corr_factor()
-
-    def report(self, boltzmann_thresh: float = 0.9999):
-        print(highlight_text("Hindered Rotor Scan Summary"))
-        print(f"Rotor moment of inertia: {self.inertmom_left: >14.8e} au")
-        print(f"           B = ħ²/(2·I): {self.BeV*1e3:>14.8e} meV")
-        print(f"1d hindered rotor partition function: {self.hr_partfunc: >14.6f}")
-        print(f"        HO cancel partition function: {self.cancel_partfunc: >14.6f}")
-        print(f"           Correction factor (HR/HO): {self.corr_factor: >14.6f}")
-        print(f"Reporting states until Σp_Boltz. >= {boltzmann_thresh}")
-        print(f"                         Temperature: {self.temperature: >14.4f} K")
-        header = ("# State", "E/Eh", "E/kJ mol⁻¹", "ΔE/cm⁻¹", "p_Boltz.", "Σp_Boltz.")
-        col_fmts = ("{:3d}", "float", "{: 12.6f}", "{: >8.2f}", "float", "float")
-        table = TablePrinter(header, col_fmts, width=12, sub_underline=False)
-
-        weights_cum = np.cumsum(self.weights)
-        nstates = np.argmax(weights_cum > boltzmann_thresh) + 1
-
-        eigvals = self.eigvals - self.eigvals.min()
-        eigvals_kJ = eigvals * AU2KJPERMOL
-        eigvals_nu = eigvals * AU2NU
-        nrows = len(eigvals)
-
-        table.print_header()
-        table.print_rows(
-            (range(nrows), eigvals, eigvals_kJ, eigvals_nu, self.weights, weights_cum),
-            first_n=nstates,
-        )
+from pysisyphus import xyzloader
 
 
 def run(
     geom: Geometry,
-    indices: list[int],
+    rotor_info: RotorInfo,
     calc_getter=None,
     single_point_calc_getter=None,
     energy_getter=None,
@@ -137,28 +33,24 @@ def run(
     plot: bool = True,
     out_dir: str | Path = ".",
 ):
-    assert (calc_getter is not None) or (
-        energy_getter is not None
-    ), "Either 'calc_getter' or 'energy_getter' must be provided!"
+    # Logical XOR; we need one of them but not both.
+    assert bool(calc_getter) != bool(
+        energy_getter
+    ), "Either 'calc_getter' or 'energy_getter' must be provided but not both!"
     if opt_kwargs is None:
         opt_kwargs = {}
     out_dir = Path(out_dir)
     if not out_dir.exists():
         out_dir.mkdir()
 
-    bond = indices[1:3]
+    print(rotor_info.render_report())
 
-    fragment_left, fragment_right = hr_fragment.fragment_geom(geom, bond)
-    imom_left, imom_right = inertmom.get_top_moment_of_inertia(
-        geom.coords3d, geom.masses, fragment_left, bond, m=2, n=3
-    )
-    imom_left *= AMU2AU
-    imom_right *= AMU2AU
-    mass = imom_left
+    # When calc_getter is given we probably have to do actual constrained optimizations,
+    # so we prepare the energy_getter.
     if calc_getter is not None:
         energy_getter = hr_opt.opt_closure(
             geom,
-            indices,
+            rotor_info,
             calc_getter,
             opt_kwargs,
             single_point_calc_getter=single_point_calc_getter,
@@ -167,11 +59,10 @@ def run(
     rad_store = energy_getter.rad_store
 
     # The step is later required for finite differences
-    grid, dx = np.linspace(
-        torsion_gpr.PERIOD_LOW, torsion_gpr.PERIOD_HIGH, num=npoints, retstep=True
-    )
+    grid = np.linspace(torsion_gpr.PERIOD_LOW, torsion_gpr.PERIOD_HIGH, num=npoints)
     part_callback = functools.partial(callback, plot=plot, out_dir=out_dir)
 
+    mass = rotor_info.imom_left
     gpr_status = torsion_gpr.run_gpr(
         grid.reshape(-1, 1),
         energy_getter,
@@ -185,28 +76,33 @@ def run(
     rads = list(rad_store.keys())
     xyzs = list()
     en_fmt = " >20.8f"
+    # Final alignment of coordinates onto the initial geometry at Δrad = 0.0
+    coords3d_aligned = list()
     for ind in np.argsort(rads):
         key = rads[ind]
-        en, sp_en, c3d = rad_store[key]
+        *_, c3d = rad_store[key]
+        coords3d_aligned.append(c3d)
+    coords3d_aligned = align_coords(coords3d_aligned)
+
+    for ind in np.argsort(rads):
+        key = rads[ind]
+        en, sp_en, _ = rad_store[key]
         comment = f"{en:{en_fmt}}"
         if sp_en is not np.nan:
             comment += f", sp_energy={sp_en:{en_fmt}}"
-        xyz = geom.as_xyz(cart_coords=c3d, comment=comment)
+        xyz = xyzloader.make_xyz_str_au(
+            rotor_info.atoms, coords3d_aligned[ind], comment=comment
+        )
         xyzs.append(xyz)
     trj = "\n".join(xyzs)
     with open(out_dir / "torsion_scan.trj", "w") as handle:
         handle.write(trj)
 
-    result = TorsionGPRResult(
-        geom.atoms,
-        geom.coords3d,
+    result = TorsionGPRResult.TorsionGPRResult(
+        rotor_info=rotor_info,
         grid=grid,
         energies=gpr_status.energies,
         std=gpr_status.std,
-        inertmom_left=imom_left,
-        fragment_left=fragment_left,
-        inertmom_right=imom_right,
-        fragment_right=fragment_right,
         grid_train=gpr_status.x_train,
         energies_train=gpr_status.y_train,
         eigvals=gpr_status.eigvals_absolute,
