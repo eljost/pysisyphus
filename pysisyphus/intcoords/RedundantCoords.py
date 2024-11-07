@@ -430,7 +430,7 @@ class RedundantCoords:
         """Wilson B-Matrix"""
         return self.B_prim
 
-    def inv_B(self, B, project_tr=True):
+    def inv_B(self, B, project_tr=False):
         svd_arg = B.T.dot(B)
         if project_tr:
             # As described in eq. (18) of [6]
