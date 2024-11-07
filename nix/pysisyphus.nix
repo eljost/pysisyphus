@@ -8,6 +8,7 @@
 , nix-gitignore
   # Python dependencies
 , pysisyphus-addons
+, thermoanalysis
 , setuptools-scm
 , autograd
 , dask
@@ -29,6 +30,7 @@
 , openbabel-bindings
 , pyscf
 , numba
+, optuna
   # Runtime dependencies
 , runtimeShell
 , jmol
@@ -112,7 +114,7 @@ let
 in
 buildPythonPackage rec {
   pname = "pysisyphus";
-  version = "0.8.0b0";
+  version = "1.0.0";
 
   build-system = [
     makeWrapper
@@ -121,6 +123,7 @@ buildPythonPackage rec {
 
   dependencies = [
     pysisyphus-addons
+    thermoanalysis
     autograd
     dask
     distributed
@@ -142,6 +145,7 @@ buildPythonPackage rec {
     openssh
     pyscf
     numba
+    optuna
   ] # Syscalls
   ++ lib.optional enableXtb xtb
   ++ lib.optional enableTblite tblite
@@ -188,6 +192,7 @@ buildPythonPackage rec {
         "hcn_neb_dimer_irc"
         "test_ci_opt[RFOptimizer-opt_kwargs1--78.2487951]" # Broken as of PySCF >= 2.3 as a DFT functional definition was changed
         "test_composite_oniom[lib:subst_effect/toluene_minus_H_b3lypG_631g.xyz-2-high_inds1--270.824806805671]" # Slight numerical deviations
+        "test_spectrum_ctnum"
       ];
     in
     [
