@@ -557,7 +557,12 @@ class Geometry:
                 bend to a linear bend and its complement.
                 
                 Currently the default."""
-                coord_kwargs["define_prims"] = valid_typed_prims
+                coord_kwargs.update(
+                    {
+                        "define_prims": valid_typed_prims,
+                        "constrain_prims": self.internal.constrain_prims,
+                    }
+                )
 
                 self.internal = coord_class(self.atoms, coords3d, **coord_kwargs)
                 self._coords = coords3d.flatten()
