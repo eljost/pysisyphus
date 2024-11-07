@@ -16,6 +16,8 @@
     pysisyphus-addons.url = "github:eljost/pysisyphus-addons";
 
     sympleints.url = "github:eljost/sympleints";
+
+    thermoanalysis.url = "github:eljost/thermoanalysis";
   };
 
   nixConfig = {
@@ -24,16 +26,17 @@
     extra-subtituters = [ "https://pysisyphus.cachix.org" ];
   };
 
-  outputs = { self, qchem, sympleints, pysisyphus-addons, flake-utils, nixBundlers, ... }:
+  outputs = { self, qchem, sympleints, pysisyphus-addons, thermoanalysis, flake-utils, nixBundlers, ... }:
     flake-utils.lib.eachSystem [ "x86_64-linux" ]
       (system:
         let
           pkgs = import qchem.inputs.nixpkgs {
             inherit system;
             overlays = [
+              qchem.overlays.default
+              thermoanalysis.overlays.default
               sympleints.overlays.default
               pysisyphus-addons.overlays.default
-              qchem.overlays.default
               (import ./nix/overlay.nix)
             ];
             config = {
@@ -82,7 +85,7 @@
           devShells.default =
             let
               pythonEnv = pkgs.python3.withPackages (p: with p;
-                [ pip ]
+                [ pip pytest ]
                 ++ p.pysisyphus.nativeBuildInputs
                 ++ p.pysisyphus.buildInputs
                 ++ p.pysisyphus.propagatedBuildInputs
