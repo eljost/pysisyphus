@@ -4,6 +4,9 @@
 # [4] 10.1002/(SICI)1096-987X(19990730)20:10<1067::AID-JCC9>3.0.CO;2-V
 #     Handling of corner cases
 # [5] https://doi.org/10.1063/1.462844 , Pulay 1992
+# [6] https://doi.org/10.1007/s00214-016-1847-3
+#     Exploration of some refinements to geometry optimization methods
+#     Birkholz, Schlegel, 2016
 
 import itertools as it
 import math
@@ -46,6 +49,27 @@ from pysisyphus.intcoords.setup import (
     get_primitives,
 )
 from pysisyphus.intcoords.valid import check_typed_prims
+
+
+def get_tr_projector(coords3d):
+    natoms = len(coords3d)
+    ncoords = natoms * 3
+    I = np.eye(3)
+    # Translation, eq. (16) in [6]
+    trans_vecs = np.tile(I, natoms)
+
+    # Rotation, eq. (17)
+    rot_vecs = np.zeros_like(trans_vecs)
+    rot_vecs[0] = np.cross(coords3d, (1.0, 0.0, 0.0)).flatten()
+    rot_vecs[1] = np.cross(coords3d, (0.0, 1.0, 0.0)).flatten()
+    rot_vecs[2] = np.cross(coords3d, (0.0, 0.0, 1.0)).flatten()
+
+    P = np.zeros((ncoords, ncoords))
+    for i, tv in enumerate(trans_vecs):
+        P += np.outer(tv, tv) / tv.dot(tv)
+        rv = rot_vecs[i]
+        P += np.outer(rv, rv) / rv.dot(rv)
+    return P
 
 
 class RedundantCoords:
@@ -118,6 +142,9 @@ class RedundantCoords:
         self._B_prim = None
         # Lists for the other types of primitives will be created afterwards.
         self.logger = logger
+
+        nconstraints = len(self.constrain_prims)
+        self.log(f"Using {nconstraints} constraints: {self.constrain_prims}")
 
         if self.weighted:
             self.log(
@@ -403,11 +430,16 @@ class RedundantCoords:
         """Wilson B-Matrix"""
         return self.B_prim
 
-    def inv_B(self, B):
-        return B.T.dot(svd_inv(B.dot(B.T), thresh=self.svd_inv_thresh, hermitian=True))
+    def inv_B(self, B, project_tr=True):
+        svd_arg = B.T.dot(B)
+        if project_tr:
+            # As described in eq. (18) of [6]
+            P_tr = get_tr_projector(self.coords3d)
+            svd_arg += P_tr
+        return svd_inv(svd_arg, thresh=self.svd_inv_thresh, hermitian=True).dot(B.T)
 
     def inv_Bt(self, B):
-        return svd_inv(B.dot(B.T), thresh=self.svd_inv_thresh, hermitian=True).dot(B)
+        return self.inv_B(B).T
 
     @property
     def Bt_inv_prim(self):
