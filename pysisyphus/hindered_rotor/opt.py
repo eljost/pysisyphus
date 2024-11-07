@@ -8,7 +8,11 @@ import scipy as sp
 from pysisyphus.drivers import opt
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import align_coords
-from pysisyphus.hindered_rotor import fragment as hr_fragment, types as hr_types
+from pysisyphus.hindered_rotor import (
+    fragment as hr_fragment,
+    types as hr_types,
+    RotorInfo,
+)
 from pysisyphus import timing
 
 
@@ -44,7 +48,7 @@ def find_closest_key(rad_store, target_radian):
 
 def opt_closure(
     geom,
-    torsion,
+    rotor_info: RotorInfo,
     calc_getter,
     opt_kwargs=None,
     single_point_calc_getter=None,
@@ -68,6 +72,7 @@ def opt_closure(
     atoms = geom.atoms
     _geom = geom.copy(coord_type="redund")
     typed_prims = _geom.internal.typed_prims
+    torsion = rotor_info.indices
     bond = torsion[1:3]
     tp_constraint = ("PROPER_DIHEDRAL", *torsion)
     tp_bond = ("BOND", *bond)
@@ -75,8 +80,6 @@ def opt_closure(
 
     # This dict will store optimized coordinates and associated energies
     rad_store = dict()
-
-    _, fragment = hr_fragment.fragment_geom(geom, bond)
 
     def energy_getter(rad):
         nonlocal calc_number
@@ -99,7 +102,7 @@ def opt_closure(
         target_rad = rad - rad_trial
         target_deg = np.rad2deg(target_rad)
         c3d_rot = hr_fragment.rotate_fragment_around_bond(
-            c3d_trial, bond, fragment, target_deg
+            c3d_trial, bond, rotor_info.indices_left, target_deg
         )
         opt_geom = Geometry(
             atoms,
@@ -157,6 +160,7 @@ def opt_closure(
         calc_number += 1
         return energy
 
+    # Keep a reference to rad_store on the function object, so we can later access it.
     energy_getter.rad_store = rad_store
 
     return energy_getter
@@ -181,6 +185,7 @@ def spline_closure(
         rad_store[rad] = (energy, np.nan, dummy_c3d.copy())
         return energy
 
+    # Keep a reference to rad_store on the function object, so we can later access it.
     energy_getter.rad_store = rad_store
 
     return energy_getter

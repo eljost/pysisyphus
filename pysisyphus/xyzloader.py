@@ -6,6 +6,7 @@ from pysisyphus.constants import BOHR2ANG
 
 
 def make_xyz_str(atoms, coords, comment=""):
+    """Expects coordinates in Angstrom!"""
     assert len(atoms) == len(coords)
     atoms = [a.capitalize() for a in atoms]
 
@@ -21,6 +22,11 @@ def make_xyz_str(atoms, coords, comment=""):
     body = "\n".join(body)
 
     return f"{len(atoms)}\n{comment}\n{body}"
+
+
+def make_xyz_str_au(atoms, coords3d, comment=""):
+    """Excpects coordinates in atomic units/Bohr!"""
+    return make_xyz_str(atoms, coords3d * BOHR2ANG, comment=comment)
 
 
 def make_trj_str(atoms, coords_list, comments=None):
