@@ -1487,7 +1487,8 @@ class Geometry:
             return None
 
         # ASE coordinates are in Angstrom
-        atoms = ase.Atoms(symbols=self.atoms, positions=self.coords3d * BOHR2ANG)
+        capital_atoms = map(lambda s: s.capitalize(), self.atoms)
+        atoms = ase.Atoms(symbols=capital_atoms, positions=self.coords3d * BOHR2ANG)
         if vacuum is not None:
             atoms.center(vacuum=vacuum)
 
