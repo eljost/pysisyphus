@@ -570,7 +570,8 @@ class RateInput:
     energy: float
     vibfreqs: np.ndarray
 
-    def to_qcdata(self) -> QCData:
+    # def to_qcdata(self) -> QCData:
+    def to_qcdata(self):
         coords3d_ang = self.coords3d * BOHR2ANG
         kwargs = {
             "masses": self.masses,
