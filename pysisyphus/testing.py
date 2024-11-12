@@ -29,6 +29,7 @@ IMPORT_DICT = {
     "geodesic": "geodesic_interpolate",
     "openmm": "simtk.openmm",
     "pyscf": "pyscf",
+    "pysisyphus_addons": "pysisyphus_addons",
     "tblite": "tblite",
     "qcengine": "qcengine",
     "thermoanalysis": "thermoanalysis",

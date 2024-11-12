@@ -169,6 +169,7 @@ pysisyphus/wavefunction/devel_ints/*
 version.py
 
 !tests/test_barriers/*.h5
+!tests/test_diabatization/00_bena2_dcat/*
 !tests/test_dma/data/*
 !tests/test_es_capabilities/control_path_mult_*
 !tests/test_exc_densities/data/*
