@@ -1,0 +1,13 @@
+# Examples from http://dx.doi.org/10.1063/1.3148777
+! hf 6-31G(d) tightscf
+
+%cis
+ tda true
+ nroots 5
+end
+
+*xyz 2 1
+Na  0.0  0.0 -5.0
+Be  0.0  0.0  0.0
+Na  0.0  0.0  5.0
+*

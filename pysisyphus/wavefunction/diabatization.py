@@ -47,6 +47,10 @@ def get_random_U(N):
     return special_ortho_group.rvs(N)
 
 
+def fmt_tensor(tensor):
+    return np.array2string(tensor, formatter={"float": lambda f: f"{f:10.4e}"})
+
+
 DQTemplate = Template(
     """{{ name }}
 
@@ -184,7 +188,7 @@ ERTemplate = Template(
 
 Coulomb-Tensor R
 ----------------
-{{ R }}
+{{ fmt_tensor(R) }}
 
 """
 )
@@ -213,6 +217,7 @@ def edmiston_ruedenberg_jacobi_sweeps(
     msg = ERTemplate.render(
         name=highlight_text("Edmiston-Ruedenberg-diabatization"),
         R=R,
+        fmt_tensor=fmt_tensor,
     )
     logger.info(msg)
 
@@ -437,8 +442,9 @@ class DiabatizationResult:
         kwargs["U"] = Usort
         return DiabatizationResult(**kwargs)
 
-    def savez(self, fn):
+    def savez(self, fn, **add_kwargs):
         kwargs = dataclasses.asdict(self)
+        kwargs.update(add_kwargs)
         np.savez(fn, **kwargs)
 
     @property
