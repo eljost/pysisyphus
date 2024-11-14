@@ -34,9 +34,15 @@ from pysisyphus.wavefunction.excited_states import (
     norm_ci_coeffs,
 )
 
-# pysisyphus_addons imports below
-from pysisyphus_addons.diabatization import intor
-from pysisyphus_addons.grid import grid
+
+try:
+    # pysisyphus_addons imports below
+    from pysisyphus_addons.diabatization import intor
+    from pysisyphus_addons.grid import grid
+
+    can_pysis_addons = True
+except (ImportError, ModuleNotFoundError):
+    can_pysis_addons = False
 
 
 class DiaKind(enum.Flag):
