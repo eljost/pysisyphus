@@ -23,10 +23,10 @@ from pysisyphus.constants import AU2EV, BOHR2ANG
 from pysisyphus.helpers import get_coords_diffs
 import pysisyphus.io.cube as iocube
 from pysisyphus.wavefunction import Shells, Wavefunction
-from pysisyphus.wavefunction.diabatization import (
-    dq_diabatization,
-    edmiston_ruedenberg_diabatization_jacobi,
-)
+from pysisyphus.diabatization import plot as dia_plot, chimerabatch
+from pysisyphus.diabatization.coulomb import edmiston_ruedenberg_diabatization_jacobi
+from pysisyphus.diabatization.coulomb_eta import edmiston_ruedenberg_eta_diabatization
+from pysisyphus.diabatization.multipole import dq_diabatization
 from pysisyphus.wavefunction.excited_states import (
     detachment_attachment_density,
     get_state_to_state_transition_density,
@@ -42,6 +42,7 @@ from pysisyphus_addons.grid import grid
 class DiaKind(enum.Flag):
     NONE = 0
     EDMISTON_RUEDENBERG = enum.auto()
+    EDMISTON_RUEDENBERG_ETA = enum.auto()
     BOYS = enum.auto()
 
 
@@ -70,6 +71,14 @@ def get_states_hash(states: np.ndarray):
     inp_str = "-".join(map(str, states))
     hash_object = hashlib.md5(inp_str.encode("utf-8"))
     return hash_object.hexdigest()
+
+
+def plot_diabatic(dia_res, key, states, base_name, out_dir):
+    G = dia_plot.state_graph_from_en_mat(dia_res.dia_mat, state_inds=states)
+    fig = dia_plot.draw_state_graph(G)
+    fig_fn = out_dir / f"{base_name}_{key}_plot.pdf"
+    fig.savefig(fig_fn)
+    print(f"Wrote plot of diabatic states to '{fig_fn}'.")
 
 
 @dataclasses.dataclass
@@ -166,6 +175,7 @@ def make_ao_spin_densities(
     states: Sequence[int],
     spin: Literal["alpha", "beta"],
     P: Optional[np.ndarray] = None,
+    full: bool = True,
 ):
     """Construct alpha or beta spin (transition) densities in the AO basis.
 
@@ -192,6 +202,10 @@ def make_ao_spin_densities(
         to pysisyphus-ordering. If given, P is a 2d permutation matrix of shape
         (naos, naos) with the external order along the rows and pysisyphus order
         along the columns.
+    full
+        Whether to include density terms arising from occupied orbitals in the
+        ground state. For Edmiston-Ruedenberg-Eta diabatization this term has
+        to be excluded.
 
     Returns
     -------
@@ -228,7 +242,7 @@ def make_ao_spin_densities(
                 dens_mo = get_state_to_state_transition_density(
                     X[J], XI
                 ) + get_state_to_state_transition_density(Y[J], YI)
-                if I == J:
+                if full and I == J:
                     dens_mo[:nocc, :nocc] += eye
                 dens_ao = C @ dens_mo @ C.T
             # Ground state to excited state. In this case we use the transition
@@ -245,12 +259,14 @@ def make_ao_spin_densities(
     return densities, state_pairs
 
 
-def run_er_dia(
+def run_coulomb_dia(
     wf: Wavefunction,
     densities: np.ndarray,
     adia_ens: np.ndarray,
+    dia_func,
     tensor_fn: Optional[Path] = None,
     aux_shells: Optional[Shells] = None,
+    **dia_kwargs,
 ):
     """Edmiston-Ruedenberg diabatization wrapper.
 
@@ -290,7 +306,7 @@ def run_er_dia(
         if tensor_fn is not None:
             np.save(tensor_fn, coulomb_tensor)
             print(f"Saved Coulomb tensor to {tensor_fn}.")
-    dia_result = edmiston_ruedenberg_diabatization_jacobi(adia_ens_eV, coulomb_tensor)
+    dia_result = dia_func(adia_ens_eV, coulomb_tensor, **dia_kwargs)
     return dia_result
 
 
@@ -493,6 +509,23 @@ def make_diabatic_properties(U, adia_props: np.ndarray):
     return dia_props
 
 
+def postprocess_dia(
+    key,
+    dia_result,
+    out_dir,
+    get_result_fn,
+    plot_diabatic,
+    all_dia_results,
+    **add_savez_kwargs,
+):
+    dia_result_fn = get_result_fn(key)
+    dia_result.savez(out_dir / dia_result_fn, **add_savez_kwargs)
+    all_dia_results[key] = dia_result
+    print(dia_result.render_report())
+    plot_diabatic(dia_result, key)
+    sys.stdout.flush()
+
+
 @functools.singledispatch
 def run_dia(
     wf: Wavefunction,
@@ -505,6 +538,7 @@ def run_dia(
     base_name: str,
     dia_kinds: DiaKind,
     cube_kinds: CubeKind,
+    dia_kwargs: Optional[dict] = None,
     grid_kwargs: Optional[dict] = None,
     out_dir: Optional[Path] = None,
     force: bool = False,
@@ -516,6 +550,8 @@ def run_dia(
         Force calculation of the Coulomb tensor and don't try to save it to or
         load it from disk. Useful for testing.
     """
+    if dia_kwargs is None:
+        dia_kwargs = {}
     if grid_kwargs is None:
         grid_kwargs = {}
 
@@ -524,8 +560,28 @@ def run_dia(
     if not out_dir.exists():
         out_dir.mkdir()
 
+    all_dia_results = {}
+    add_savez_kwargs = {
+        "states": states,
+    }
+    get_result_fn = functools.partial(get_dia_result_fn, base_name=base_name)
     cube_da_densities_wrapped = functools.partial(
-        cube_da_densities, out_dir=out_dir, base_name=base_name, **grid_kwargs
+        # cube_da_densities, out_dir=out_dir, base_name=base_name, **grid_kwargs
+        cube_da_densities,
+        out_dir=out_dir,
+        base=base_name,
+        **grid_kwargs,
+    )
+    plot_diabatic_wrapped = functools.partial(
+        plot_diabatic, states=states, base_name=base_name, out_dir=out_dir
+    )
+    postprocess_dia_wrapped = functools.partial(
+        postprocess_dia,
+        out_dir=out_dir,
+        get_result_fn=get_result_fn,
+        plot_diabatic=plot_diabatic_wrapped,
+        all_dia_results=all_dia_results,
+        **add_savez_kwargs,
     )
 
     states = np.sort(states, kind="stable")
@@ -551,10 +607,15 @@ def run_dia(
     naos, _ = Ca.shape
 
     P = wf.get_permut_matrix()
-    adia_densities_a, state_pairs = make_ao_spin_densities(
-        Ca, Xa, Ya, states, "alpha", P=P
+    # See eq. (A5) in [???] and the comment below. For Edmiston-Ruedenberg-Eta
+    # diabatization we have to exclude the diagonal terms.
+    full = DiaKind.EDMISTON_RUEDENBERG_ETA not in dia_kinds
+    adia_densities_a, _ = make_ao_spin_densities(
+        Ca, Xa, Ya, states, "alpha", P=P, full=full
     )
-    adia_densities_b, _ = make_ao_spin_densities(Cb, Xb, Yb, states, "beta", P=P)
+    adia_densities_b, _ = make_ao_spin_densities(
+        Cb, Xb, Yb, states, "beta", P=P, full=full
+    )
     adia_densities = adia_densities_a + adia_densities_b
 
     nstates = len(adia_ens)
@@ -573,8 +634,6 @@ def run_dia(
         print(f"\t{I: >03d} -> {J: >03d}: {fmt_dpm(dpm)} au")
 
     cube_fns = {}
-    dia_results = {}
-
     # Adiabatic detachment/attachment densities
     if CubeKind.ADIA_DA in cube_kinds:
         # Skip GS in adiabatic detachment/attachment calculation.
@@ -616,6 +675,7 @@ def run_dia(
             wf,
             adia_state_spin_densities,
             adia_state_sd_labels,
+            out_dir,
             reorder_coeffs=c2s_coeffs,
             **grid_kwargs,
         )
@@ -624,34 +684,43 @@ def run_dia(
     # Actual diabatizations #
     #########################
 
-    add_savez_kwargs = {
-        "states": states,
-    }
-
-    get_result_fn = functools.partial(get_dia_result_fn, base_name=base_name)
+    states_hash = get_states_hash(states)
+    if force:
+        coulomb_tensor_fn = None
+    else:
+        coulomb_tensor_fn = out_dir / Path(
+            f"{base_name}_coulomb_tensor_{states_hash}.npy"
+        )
 
     # Edmiston-Ruedenberg diabatization
     if DiaKind.EDMISTON_RUEDENBERG in dia_kinds:
-        states_hash = get_states_hash(states)
-        if force:
-            tensor_fn = None
-        else:
-            tensor_fn = out_dir / Path(f"{base_name}_coulomb_tensor_{states_hash}.npy")
-        er_dia_result = run_er_dia(wf, adia_densities, adia_ens, tensor_fn)
-        er_dia_results_fn = get_result_fn("er")
-        er_dia_result.savez(out_dir / er_dia_results_fn, **add_savez_kwargs)
-        dia_results["er"] = er_dia_result
-        print(er_dia_result.render_report())
-        sys.stdout.flush()
+        er_dia_result = run_coulomb_dia(
+            wf,
+            adia_densities,
+            adia_ens,
+            edmiston_ruedenberg_diabatization_jacobi,
+            coulomb_tensor_fn,
+        )
+        # TODO: the six lines below could also be handled inside a function,
+        # that is reused for all diabatization approaches.
+        postprocess_dia_wrapped("er", er_dia_result)
+
+    # Edmiston-Ruedenberg-ETA diabatization
+    if DiaKind.EDMISTON_RUEDENBERG_ETA in dia_kinds:
+        ereta_dia_result = run_coulomb_dia(
+            wf,
+            adia_densities,
+            adia_ens,
+            edmiston_ruedenberg_eta_diabatization,
+            coulomb_tensor_fn,
+            **dia_kwargs,
+        )
+        postprocess_dia_wrapped("ereta", ereta_dia_result)
 
     # Boys diabatization
     if DiaKind.BOYS in dia_kinds:
         boys_dia_result = run_boys_dia(dip_moms_2d, adia_ens)
-        boys_dia_results_fn = get_result_fn("boys")
-        boys_dia_result.savez(out_dir / boys_dia_results_fn, **add_savez_kwargs)
-        dia_results["boys"] = boys_dia_result
-        print(boys_dia_result.render_report())
-        sys.stdout.flush()
+        postprocess_dia_wrapped("boys", boys_dia_result)
 
     if CubeKind.DIA_DA in cube_kinds and 0 in states:
         cube_kinds &= ~CubeKind.DIA_DA
@@ -662,7 +731,7 @@ def run_dia(
 
     # Loop over all diabatization that were carried out and calculate diabatic
     # properties as requested.
-    for prefix, dia_result in dia_results.items():
+    for prefix, dia_result in all_dia_results.items():
         # One column per diabatic state
         U = dia_result.U
         Xa_dia = Xa[states].copy()
@@ -687,9 +756,6 @@ def run_dia(
                 Xb_dia,
                 Yb_dia,
                 f"{prefix}_dia",
-                # base_name,
-                # out_dir,
-                # **grid_kwargs,
             )
             cube_fns[f"{prefix.upper()}_DIA_DA"] = dia_da_cube_fns
 
@@ -706,12 +772,13 @@ def run_dia(
                 wf,
                 dia_state_spin_densities,
                 dia_state_sd_labels,
+                out_dir,
                 reorder_coeffs=c2s_coeffs,
                 **grid_kwargs,
             )
             cube_fns[f"{prefix.upper()}_DIA_SD"] = dia_sd_cube_fns
 
-    return dia_results, cube_fns
+    return all_dia_results, cube_fns
 
 
 @run_dia.register
@@ -785,6 +852,73 @@ def plot_dia_results(coord_diffs, dia_results, states, kind):
     plt.show()
 
 
+def run(
+    orca_outs: list[str],
+    states: list[int],
+    triplets: bool,
+    dia_kinds: DiaKind,
+    cube_kinds: CubeKind,
+    ovlp: bool,
+    grid_kwargs: dict,
+    dia_kwargs: dict,
+    out_dir: Path,
+):
+    nouts = len(orca_outs)
+    nstates = len(states)
+
+    all_dia_results = list()
+    all_coords = list()
+    dia_inp_prev = None
+    all_states = np.zeros((nouts, nstates))
+    for i, base in enumerate(orca_outs):
+        base_name = base.stem
+        # TODO: allow other codes
+        wf, all_ens, Xa, Ya, Xb, Yb = parse_orca(base, triplets=triplets)
+        sys.stdout.flush()
+
+        dia_inp = DiaInput(
+            wf=wf,
+            all_ens=all_ens,
+            Xa=Xa,
+            Ya=Ya,
+            Xb=Xb,
+            Yb=Yb,
+            states=states,
+            base_name=base_name,
+        )
+        if i > 0:
+            print(f"States at previous step were {dia_inp.states}.")
+        # Update states by calculating overlaps if requested
+        if ovlp:
+            # TODO: report previous & new state before/after overlaps
+            dia_inp.update_states(dia_inp_prev)
+        print(f"States for {base} are {dia_inp.states}")
+        all_states[i] = states
+
+        dia_results, cube_fns = run_dia(
+            dia_inp,
+            dia_kinds=dia_kinds,
+            cube_kinds=cube_kinds,
+            dia_kwargs=dia_kwargs,
+            grid_kwargs=grid_kwargs,
+            out_dir=out_dir,
+        )
+        all_dia_results.append(dia_results)
+        all_coords.append(wf.coords)
+        dia_inp_prev = dia_inp
+        cb_fn = chimerabatch.write_inp(
+            cube_fns, wf.atoms, wf.coords, base_name, out_dir
+        )
+        print(f"Created script for chimerabatch.py in '{cb_fn}'.")
+
+    np.save("all_states.npy", all_states)
+
+    if nouts > 1:
+        cds = get_coords_diffs(all_coords, align=True)
+        for key, dia_result in dia_results.items():
+            plot_dia_results(cds, dia_result, states, key)
+
+
 def parse_args(args):
     parser = argparse.ArgumentParser()
 
@@ -804,6 +938,18 @@ def parse_args(args):
         nargs="+",
         help=f"Available diabatization algorithms: {', '.join(DiaKindKeys)}.",
     )
+    parser.add_argument(
+        "-T",
+        "--temperature",
+        type=float,
+        help="Temperature in K. Only required for EDMISTON_RUEDENBERG_ETA.",
+    )
+    parser.add_argument(
+        "-C",
+        "--pekar",
+        type=float,
+        help="Pekar factor. Only required for EDMISTON_RUEDENBERG_ETA.",
+    )
     # Cube generation selection
     parser.add_argument(
         "--cube",
@@ -821,11 +967,25 @@ def parse_args(args):
         default=50,
         help="Number of grid points per cube axis.",
     )
+    parser.add_argument(
+        "--out-dir",
+        default=".",
+    )
 
-    return parser.parse_args(args)
+    # return parser.parse_args(args)
+    args = parser.parse_args(args)
+
+    if (DiaKind.EDMISTON_RUEDENBERG_ETA in args.dia) and (
+        args.temperature is None or args.pekar is None
+    ):
+        parser.error(
+            "When EDMISTON_RUEDENBERG_ETA is selected temperature (-T) "
+            "and Pekar factor (-C) must also be given!"
+        )
+    return args
 
 
-def main():
+def run_cli():
     args = parse_args(sys.argv[1:])
 
     orca_outs = list(map(Path, args.orca_outs))
@@ -835,61 +995,43 @@ def main():
     cube_kinds = functools.reduce(operator.or_, args.cube)
     grid_points = args.grid_points
     ovlp = args.ovlp
+    out_dir = Path(args.out_dir)
+    temperature = args.temperature
+    pekar = args.pekar
 
     grid_kwargs = {
         "num": grid_points,
     }
 
-    nouts = len(orca_outs)
-    nstates = len(states)
+    dia_kwargs = {
+        "temperature": temperature,
+        "pekar": pekar,
+    }
 
-    all_dia_results = list()
-    all_coords = list()
-    dia_inp_prev = None
-    all_states = np.zeros((nouts, nstates))
-    for i, base in enumerate(orca_outs):
-        base_name = base.stem
-        wf, all_ens, Xa, Ya, Xb, Yb = parse_orca(base, triplets=triplets)
-        sys.stdout.flush()
+    grid_kwargs = {
+        "num": grid_points,
+    }
 
-        dia_inp = DiaInput(
-            wf=wf,
-            all_ens=all_ens,
-            Xa=Xa,
-            Ya=Ya,
-            Xb=Xb,
-            Yb=Yb,
-            states=states,
-            base_name=base_name,
-        )
-        # Update states by calculating overlaps if requested
-        if ovlp:
-            # TODO: report previous & new state before/after overlaps
-            dia_inp.update_states(dia_inp_prev)
-        print(f"States for {base} are {dia_inp.states}")
-        all_states[i] = states
+    dia_kwargs = {
+        "temperature": temperature,
+        "pekar": pekar,
+    }
 
-        dia_results, cube_fns = run_dia(
-            dia_inp,
-            dia_kinds=dia_kinds,
-            cube_kinds=cube_kinds,
-            grid_kwargs=grid_kwargs,
-        )
-        all_dia_results.append(dia_results)
-        all_coords.append(wf.coords)
-        dia_inp_prev = dia_inp
+    grid_points = args.grid_points
+    out_dir = Path(args.out_dir)
 
-    np.save("all_states.npy", all_states)
-
-    if nouts > 1:
-        cds = get_coords_diffs(all_coords, align=True)
-        if DiaKind.EDMISTON_RUEDENBERG in dia_kinds:
-            er_dia_results = [dr["er"] for dr in all_dia_results]
-            plot_dia_results(cds, er_dia_results, states, "er")
-        if DiaKind.BOYS in dia_kinds:
-            boys_dia_results = [dr["boys"] for dr in all_dia_results]
-            plot_dia_results(cds, boys_dia_results, states, "boys")
+    return run(
+        orca_outs,
+        states,
+        triplets,
+        dia_kinds,
+        cube_kinds,
+        ovlp,
+        grid_kwargs,
+        dia_kwargs,
+        out_dir,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    run_cli()

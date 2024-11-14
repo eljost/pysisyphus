@@ -7,7 +7,7 @@ import numpy as np
 import yaml
 
 from pysisyphus.constants import AU2EV
-from pysisyphus.wavefunction.diabatization import dq_diabatization
+from pysisyphus.diabatization.multipole import dq_diabatization
 
 
 def make_array(nstates, components, lines):

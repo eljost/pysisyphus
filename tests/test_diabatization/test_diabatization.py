@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import yaml
 
-from pysisyphus.drivers import dq_diabatization_from_run_dict
+from pysisyphus.diabatization.driver_yaml import dq_diabatization_from_run_dict
 from pysisyphus.diabatization import driver as dia_driver
 from pysisyphus.testing import using
 

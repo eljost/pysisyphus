@@ -180,10 +180,17 @@ def run():
 
     data = np.load(fn)
     adia_ens = data["adia_ens"]
+    try:
+        state_inds = data["states"]
+    except KeyError:
+        # If state_inds was not set via --state-inds we enumerate them by ourselves,
+        # starting from 0.
+        if not state_inds:
+            state_inds = list(range(len(adia_ens)))
+    print(f"Using {state_inds=}")
+
     with np.printoptions(precision=4, formatter={"float": lambda f: f"{f: >8.4f}"}):
         print(f"Adiabatic energies: {adia_ens} eV")
-    if not state_inds:
-        state_inds = list(range(len(adia_ens)))
 
     adia_mat = np.diag(adia_ens)
     U = data["U"]

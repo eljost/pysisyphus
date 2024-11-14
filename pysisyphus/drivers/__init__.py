@@ -1,7 +1,4 @@
 from pysisyphus.drivers.afir import run_afir_paths as run_afir_paths
-from pysisyphus.drivers.diabatization import (
-    dq_diabatization_from_run_dict as dq_diabatization_from_run_dict,
-)
 from pysisyphus.drivers.opt import run_opt as run_opt
 from pysisyphus.drivers.scan import (
     relaxed_scan as relaxed_scan,
