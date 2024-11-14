@@ -1,10 +1,12 @@
 from collections import Counter, namedtuple
 import copy
 import itertools as it
+from pathlib import Path
 import re
 import subprocess
 import tempfile
 import sys
+import warnings
 
 import h5py
 import numpy as np
@@ -18,14 +20,19 @@ try:
 except ModuleNotFoundError:
     pass
 
-from pysisyphus import logger
 from pysisyphus.config import p_DEFAULT, T_DEFAULT
 from pysisyphus.constants import BOHR2ANG
+from pysisyphus.exceptions import DifferentAtomOrdering
+
+from pysisyphus.wavefunction.excited_states import norm_ci_coeffs
+from pysisyphus.hessian_proj import get_hessian_projector, inertia_tensor
+from pysisyphus.linalg import are_collinear
 from pysisyphus.elem_data import (
-    MASS_DICT,
-    ISOTOPE_DICT,
     ATOMIC_NUMBERS,
     COVALENT_RADII as CR,
+    INV_ATOMIC_NUMBERS,
+    ISOTOPE_DICT,
+    MASS_DICT,
     VDW_RADII as VDWR,
 )
 from pysisyphus.helpers_pure import (
@@ -52,107 +59,24 @@ from pysisyphus.intcoords.exceptions import (
 from pysisyphus.intcoords.helpers import get_tangent
 from pysisyphus.intcoords.setup import BOND_FACTOR
 from pysisyphus.intcoords.setup_fast import find_bonds
+from pysisyphus.plot_ascii import plot_wrapper
 from pysisyphus.xyzloader import make_xyz_str
 
 
-def inertia_tensor(coords3d, masses):
-    """Inertita tensor.
-
-                          | x² xy xz |
-    (x y z)^T . (x y z) = | xy y² yz |
-                          | xz yz z² |
-    """
-    x, y, z = coords3d.T
-    squares = np.sum(coords3d**2 * masses[:, None], axis=0)
-    I_xx = squares[1] + squares[2]
-    I_yy = squares[0] + squares[2]
-    I_zz = squares[0] + squares[1]
-    I_xy = -np.sum(masses * x * y)
-    I_xz = -np.sum(masses * x * z)
-    I_yz = -np.sum(masses * y * z)
-    I = np.array(((I_xx, I_xy, I_xz), (I_xy, I_yy, I_yz), (I_xz, I_yz, I_zz)))
-    return I
-
-
-def get_trans_rot_vectors(cart_coords, masses, rot_thresh=1e-6):
-    """Vectors describing translation and rotation.
-
-    These vectors are used for the Eckart projection by constructing
-    a projector from them.
-
-    See Martin J. Field - A Pratcial Introduction to the simulation
-    of Molecular Systems, 2007, Cambridge University Press, Eq. (8.23),
-    (8.24) and (8.26) for the actual projection.
-
-    See also https://chemistry.stackexchange.com/a/74923.
-
-    Parameters
-    ----------
-    cart_coords : np.array, 1d, shape (3 * atoms.size, )
-        Atomic masses in amu.
-    masses : iterable, 1d, shape (atoms.size, )
-        Atomic masses in amu.
-
-    Returns
-    -------
-    ortho_vecs : np.array(6, 3*atoms.size)
-        2d array containing row vectors describing translations
-        and rotations.
-    """
-
-    coords3d = np.reshape(cart_coords, (-1, 3))
-    total_mass = masses.sum()
-    com = 1 / total_mass * np.sum(coords3d * masses[:, None], axis=0)
-    coords3d_centered = coords3d - com[None, :]
-
-    I = inertia_tensor(coords3d, masses)
-    _, Iv = np.linalg.eigh(I)
-    Iv = Iv.T
-
-    masses_rep = np.repeat(masses, 3)
-    sqrt_masses = np.sqrt(masses_rep)
-    num = len(masses)
-
-    def get_trans_vecs():
-        """Mass-weighted unit vectors of the three cartesian axes."""
-
-        for vec in ((1, 0, 0), (0, 1, 0), (0, 0, 1)):
-            _ = sqrt_masses * np.tile(vec, num)
-            yield _ / np.linalg.norm(_)
-
-    def get_rot_vecs():
-        """As done in geomeTRIC."""
-
-        rot_vecs = np.zeros((3, cart_coords.size))
-        # p_vecs = Iv.dot(coords3d_centered.T).T
-        for i in range(masses.size):
-            p_vec = Iv.dot(coords3d_centered[i])
-            for ix in range(3):
-                rot_vecs[0, 3 * i + ix] = Iv[2, ix] * p_vec[1] - Iv[1, ix] * p_vec[2]
-                rot_vecs[1, 3 * i + ix] = Iv[2, ix] * p_vec[0] - Iv[0, ix] * p_vec[2]
-                rot_vecs[2, 3 * i + ix] = Iv[0, ix] * p_vec[1] - Iv[1, ix] * p_vec[0]
-        rot_vecs *= sqrt_masses[None, :]
-        return rot_vecs
-
-    trans_vecs = list(get_trans_vecs())
-    rot_vecs = np.array(get_rot_vecs())
-    # Drop vectors with vanishing norms
-    rot_vecs = rot_vecs[np.linalg.norm(rot_vecs, axis=1) > rot_thresh]
-    tr_vecs = np.concatenate((trans_vecs, rot_vecs), axis=0)
-    tr_vecs = np.linalg.qr(tr_vecs.T)[0].T
-    return tr_vecs
-
-
-def get_trans_rot_projector(cart_coords, masses, full=False):
-    tr_vecs = get_trans_rot_vectors(cart_coords, masses=masses)
-    U, s, _ = np.linalg.svd(tr_vecs.T)
-    if full:
-        P = np.eye(cart_coords.size)
-        for tr_vec in tr_vecs:
-            P -= np.outer(tr_vec, tr_vec)
-    else:
-        P = U[:, s.size :].T
-    return P
+def normalize_atoms(atoms) -> tuple[str]:
+    atomic_numbers = set(INV_ATOMIC_NUMBERS.keys())
+    _atoms = list()
+    for atom in atoms:
+        try:
+            atom_int = int(atom)
+            if atom_int in atomic_numbers:
+                atom = INV_ATOMIC_NUMBERS[atom_int]
+        except ValueError:
+            pass
+        # Was atom.capitalize() before ...
+        atom = atom.lower()
+        _atoms.append(atom)
+    return tuple(_atoms)
 
 
 class Geometry:
@@ -177,6 +101,8 @@ class Geometry:
         coord_kwargs=None,
         isotopes=None,
         freeze_atoms=None,
+        remove_com=False,
+        remove_centroid=False,
         comment="",
         name="",
     ):
@@ -208,12 +134,16 @@ class Geometry:
             Given a float, this float will be directly used as mass.
         freeze_atoms : iterable of integers
             Specifies which atoms should remain fixed at their initial positions.
+        remove_com : bool, optional
+            Move center of mass to the origin.
+        remove_centroid : bool, optional
+            Move centroid to the origin.
         comment : str, optional
             Comment string.
         name : str, optional
             Verbose name of the geometry, e.g. methanal or water. Used for printing
         """
-        self.atoms = tuple([atom.capitalize() for atom in atoms])
+        self.atoms = normalize_atoms(atoms)
         # self._coords always holds cartesian coordinates.
         self._coords = np.array(coords, dtype=float).flatten()
         assert self._coords.size == (3 * len(self.atoms)), (
@@ -236,10 +166,17 @@ class Geometry:
         elif type(freeze_atoms) is str:
             freeze_atoms = full_expand(freeze_atoms)
         self.freeze_atoms = np.array(freeze_atoms, dtype=int)
+        self.remove_com = bool(remove_com)
+        self.remove_centroid = bool(remove_centroid)
         self.comment = comment
         self.name = name
 
         self._masses = None
+        if self.remove_com:
+            self.coords3d = self.coords3d - self.center_of_mass[None, :]
+        if self.remove_centroid:
+            self.coords3d = self.coords3d - self.centroid[None, :]
+
         self._energy = None
         self._forces = None
         self._hessian = None
@@ -293,8 +230,10 @@ class Geometry:
 
     @property
     def sum_formula(self):
-        unique_atoms = sorted(set(self.atoms))
-        counter = Counter(self.atoms)
+        atoms = self.atoms
+        atoms = [atom.capitalize() for atom in atoms]
+        unique_atoms = sorted(set(atoms))
+        counter = Counter(atoms)
         atoms = list()
         num_strs = list()
 
@@ -374,6 +313,10 @@ class Geometry:
         atoms = tuple(self.atoms) + tuple(other.atoms)
         coords = np.concatenate((self.cart_coords, other.cart_coords))
         return Geometry(atoms, coords)
+
+    @property
+    def is_linear(self):
+        return are_collinear(self.coords3d)
 
     def atom_xyz_iter(self):
         return iter(zip(self.atoms, self.coords3d))
@@ -481,11 +424,9 @@ class Geometry:
         return layers
 
     def del_atoms(self, inds, **kwargs):
-        atoms = [atom for i, atom in enumerate(self.atoms) if not (i in inds)]
+        atoms = [atom for i, atom in enumerate(self.atoms) if i not in inds]
         c3d = self.coords3d
-        coords3d = np.array(
-            [c3d[i] for i, _ in enumerate(self.atoms) if not (i in inds)]
-        )
+        coords3d = np.array([c3d[i] for i, _ in enumerate(self.atoms) if i not in inds])
         return Geometry(atoms, coords3d.flatten(), **kwargs)
 
     def set_calculator(self, calculator, clear=True):
@@ -551,7 +492,7 @@ class Geometry:
         coords = np.array(coords).flatten()
 
         # Do Internal->Cartesian backtransformation if internal coordinates are used.
-        if self.internal:
+        if hasattr(self, "internal") and self.internal:
             # When internal coordinates are employed it may happen, that the underlying
             # Cartesian coordinates are updated, e.g. from the IPIServer calculator, which
             # may yield different internal coordinates.
@@ -616,7 +557,12 @@ class Geometry:
                 bend to a linear bend and its complement.
                 
                 Currently the default."""
-                coord_kwargs["define_prims"] = valid_typed_prims
+                coord_kwargs.update(
+                    {
+                        "define_prims": valid_typed_prims,
+                        "constrain_prims": self.internal.constrain_prims,
+                    }
+                )
 
                 self.internal = coord_class(self.atoms, coords3d, **coord_kwargs)
                 self._coords = coords3d.flatten()
@@ -727,7 +673,7 @@ class Geometry:
         self._comment = new_comment
 
     @property
-    def masses(self):
+    def masses(self) -> np.ndarray:
         if self._masses is None:
             # Lookup tabuled masses in internal database
             masses = np.array([MASS_DICT[atom.lower()] for atom in self.atoms])
@@ -883,9 +829,9 @@ class Geometry:
             if aligned:
                 break
 
-    def reparametrize(self):
+    def reparametrize(self, energy, forces):
         # Currently, self.calculator.get_coords is only implemented by the
-        # IPIPServer, but it is deactivated there.
+        # IPServer, but it is deactivated there.
         try:
             # TODO: allow skipping the update
             results = self.calculator.get_coords(self.atoms, self.cart_coords)
@@ -920,15 +866,25 @@ class Geometry:
         self._energy = energy
 
     @property
+    def has_energy(self):
+        return self._energy is not None
+
+    @property
     def all_energies(self):
         """Return energies of all states that were calculated.
 
         This will also set self.energy, which may NOT be the ground state,
         but the state correspondig to the 'root' attribute of the calculator."""
         if self._all_energies is None:
-            results = self.calculator.get_energy(self.atoms, self._coords)
+            results = self.calculator.get_all_energies(self.atoms, self._coords)
             self.set_results(results)
         return self._all_energies
+
+    def get_root_energy(self, root):
+        return self.all_energies[root]
+
+    def has_all_energies(self):
+        return self._all_energies is not None
 
     @all_energies.setter
     def all_energies(self, all_energies):
@@ -979,6 +935,10 @@ class Geometry:
         forces = np.array(forces)
         assert forces.shape == self.cart_coords.shape
         self._forces = forces
+
+    @property
+    def has_forces(self):
+        return self._forces is not None
 
     @property
     def cart_gradient(self):
@@ -1048,6 +1008,9 @@ class Geometry:
             return self.internal.transform_hessian(hessian, int_gradient)
         return hessian
 
+    def has_hessian(self):
+        return self._hessian is not None
+
     # @hessian.setter
     # def hessian(self, hessian):
     # """Internal wrapper for setting the hessian."""
@@ -1102,13 +1065,23 @@ class Geometry:
         if valid:
             self.cart_hessian = hessian
 
-    def get_normal_modes(self, cart_hessian=None, full=False):
+    def get_normal_modes(
+        self, cart_hessian=None, cart_gradient=None, proj_gradient=False, full=False
+    ):
         """Normal mode wavenumbers, eigenvalues and Cartesian displacements Hessian."""
         if cart_hessian is None:
             cart_hessian = self.cart_hessian
+        if not proj_gradient:
+            mw_gradient = None
+        elif cart_gradient is None:
+            mw_gradient = self.mw_gradient
+        else:
+            mw_gradient = cart_gradient / np.sqrt(self.masses_rep)
 
         mw_hessian = self.mass_weigh_hessian(cart_hessian)
-        proj_hessian, P = self.eckart_projection(mw_hessian, return_P=True, full=full)
+        proj_hessian, P = self.eckart_projection(
+            mw_hessian, return_P=True, mw_gradient=mw_gradient, full=full
+        )
         eigvals, eigvecs = np.linalg.eigh(proj_hessian)
         mw_cart_displs = P.T.dot(eigvecs)
         cart_displs = self.mm_sqrt_inv.dot(mw_cart_displs)
@@ -1136,9 +1109,9 @@ class Geometry:
             mult = self.calculator.mult
         except AttributeError:
             mult = 1
-            logger.debug(
+            warnings.warn(
                 "Multiplicity for electronic entropy could not be determined! "
-                f"Using 2S+1 = {mult}."
+                f"Falling back to Using 2S+1 = {mult}."
             )
 
         thermo_dict = {
@@ -1157,14 +1130,30 @@ class Geometry:
         return thermo
 
     def get_trans_rot_projector(self, full=False):
-        return get_trans_rot_projector(self.cart_coords, masses=self.masses, full=full)
+        warnings.warn(
+            "'Geometry.get_trans_rot_projector()' is deprecated. Please use "
+            "'Geometry.get_hessian_projector() instead.",
+            DeprecationWarning,
+        )
+        return get_hessian_projector(self.cart_coords, masses=self.masses, full=full)
 
-    def eckart_projection(self, mw_hessian, return_P=False, full=False):
+    def get_hessian_projector(self, cart_gradient=None, full=False):
+        return get_hessian_projector(
+            self.cart_coords, masses=self.masses, cart_gradient=cart_gradient, full=full
+        )
+
+    def eckart_projection(
+        self, mw_hessian, return_P=False, mw_gradient=None, full=False
+    ):
         # Must not project analytical 2d potentials.
         if self.is_analytical_2d:
             return mw_hessian
 
-        P = self.get_trans_rot_projector(full=full)
+        if mw_gradient is not None:
+            cart_gradient = mw_gradient * np.sqrt(self.masses_rep)
+        else:
+            cart_gradient = None
+        P = self.get_hessian_projector(cart_gradient=cart_gradient, full=full)
         proj_hessian = P.dot(mw_hessian).dot(P.T)
         # Projection seems to slightly break symmetry (sometimes?). Resymmetrize.
         proj_hessian = (proj_hessian + proj_hessian.T) / 2
@@ -1173,8 +1162,13 @@ class Geometry:
         else:
             return proj_hessian
 
+    def calc_energy(self):
+        """Force energy calculation at the current coordinates."""
+        results = self.calculator.get_energy(self.atoms, self.cart_coords)
+        self.set_results(results)
+
     def calc_energy_and_forces(self):
-        """Force a calculation of the current energy and forces."""
+        """Force energy and forces calculation at the current coordinates."""
         results = self.calculator.get_forces(self.atoms, self.cart_coords)
         self.set_results(results)
 
@@ -1232,6 +1226,68 @@ class Geometry:
     def zero_frozen_forces(self, cart_forces):
         cart_forces.reshape(-1, 3)[self.freeze_atoms] = 0.0
 
+    def calc_wavefunction(self, **prepare_kwargs):
+        # TODO: support wf (kw)-args?
+        results = self.calculator.get_wavefunction(
+            self.atoms, self.cart_coords, **prepare_kwargs
+        )
+        self.set_results(results)
+        return results
+
+    @property
+    def wavefunction(self):
+        if self._wavefunction is None:
+            self.calc_wavefunction()
+        return self._wavefunction
+
+    @wavefunction.setter
+    def wavefunction(self, wavefunction):
+        self._wavefunction = wavefunction
+
+    @property
+    def td_1tdms(self):
+        """1-particle transition density matrices from TD-DFT/TDA.
+
+        Returns list of Xa, Ya, Xb and Yb in MO basis."""
+        if self._td_1tdms is None:
+            self.all_energies
+        return self._td_1tdms
+
+    @td_1tdms.setter
+    def td_1tdms(self, td_1tdms):
+        self._td_1tdms = td_1tdms
+
+    def calc_relaxed_density(self, root, **prepare_kwargs):
+        """Calculate a relaxed excited state density via an ES gradient calculation.
+
+        The question is, if this method should set the wavefunction property
+        at the current Geometry. On one hand, staying in pure python w/o numba
+        the wavefunction sanity-check can become costly, even though it shouldn't
+        be.
+        On the other hand, setting the wavefunction would ensure consistency
+        between the levels of theory used for density and wavefunction.
+
+        For now, calculating an ES density does not set a wavefunction on the
+        Geometry, whereas requesting the relaxed density for the GS does.
+
+        TODO: add flag that allows setting the wavefunction (WF). Then,
+        calculators should also include the WF in their results."""
+        if root == 0:
+            results = self.calc_wavefunction(**prepare_kwargs)
+            wf = results["wavefunction"]
+            density = wf.get_relaxed_density(0)
+        else:
+            results = self.calculator.get_relaxed_density(
+                self.atoms, self.cart_coords, root, **prepare_kwargs
+            )
+            # Don't set density on Geometry
+            density = results.pop("density")
+            self.set_results(results)
+        results["density"] = density
+        if self.internal:
+            results["forces"] = self.internal.transform_forces(results["forces"])
+        return results
+
     def clear(self):
         """Reset the object state."""
 
@@ -1242,6 +1298,8 @@ class Geometry:
         self.true_forces = None
         self.true_hessian = None
         self._all_energies = None
+        self._wavefunction = None
+        self._td_1tdms = None
 
     def set_results(self, results):
         """Save the results from a dictionary.
@@ -1263,14 +1321,20 @@ class Geometry:
             "true_hessian": "true_hessian",
             # Overlap calculator; includes excited states
             "all_energies": "all_energies",
+            "td_1tdms": "td_1tdms",
+            # Wavefunction related
+            "wavefunction": "wavefunction",
         }
 
-        for key in results:
+        for key, value in results.items():
             # Zero forces of frozen atoms
             if key == "forces":
-                self.zero_frozen_forces(results[key])
+                self.zero_frozen_forces(value)
+            elif key == "td_1tdms":
+                value = norm_ci_coeffs(*value)
+                results[key] = value
 
-            setattr(self, trans[key], results[key])
+            setattr(self, trans[key], value)
         self.results = results
 
     def as_xyz(self, comment="", atoms=None, cart_coords=None):
@@ -1295,7 +1359,9 @@ class Geometry:
             cart_coords = self._coords
         cart_coords = cart_coords.copy()
         cart_coords *= BOHR2ANG
-        if comment == "":
+        if comment is None:
+            comment = ""
+        elif comment == "":
             comment = self.comment
         return make_xyz_str(atoms, cart_coords.reshape((-1, 3)), comment)
 
@@ -1306,7 +1372,18 @@ class Geometry:
         with open(fn, "w") as handle:
             handle.write(self.as_xyz(cart_coords=cart_coords, **kwargs))
 
-    def get_subgeom(self, indices, coord_type="cart", sort=False):
+    def dump_trj(self, fn, trj_cart_coords, **kwargs):
+        fn = Path(fn).with_suffix(".trj")
+        xyzs = list()
+        for cart_coords in trj_cart_coords:
+            xyz = self.as_xyz(cart_coords=cart_coords, **kwargs)
+            xyzs.append(xyz)
+        trj = "\n".join(xyzs)
+        with open(fn, "w") as handle:
+            handle.write(trj)
+        return fn
+
+    def get_subgeom(self, indices, coord_type="cart", sort=False, cart_coords=None):
         """Return a Geometry containing a subset of the current Geometry.
 
         Parameters
@@ -1315,17 +1392,23 @@ class Geometry:
             Atomic indices that the define the subset of the current Geometry.
         coord_type : str, ("cart", "redund"), optional
             Coordinate system of the new Geometry.
+        cart_coords
+            Optional 1d array of Cartesian coordinates of shape (3*natoms, ).
 
         Returns
         -------
         sub_geom : Geometry
             Subset of the current Geometry.
         """
+        if cart_coords is not None:
+            coords3d = cart_coords.reshape(-1, 3)
+        else:
+            coords3d = self.coords3d
         if sort:
             indices = sorted(indices)
         ind_list = list(indices)
         sub_atoms = [self.atoms[i] for i in ind_list]
-        sub_coords = self.coords3d[ind_list]
+        sub_coords = coords3d[ind_list]
         sub_geom = Geometry(sub_atoms, sub_coords.flatten(), coord_type=coord_type)
         return sub_geom
 
@@ -1333,10 +1416,15 @@ class Geometry:
         with_indices = [ind for ind, _ in enumerate(self.atoms) if ind not in indices]
         return self.get_subgeom(with_indices, **kwargs)
 
-    def rmsd(self, geom):
-        return rmsd.kabsch_rmsd(
-            self.coords3d - self.centroid, geom.coords3d - geom.centroid
-        )
+    def rmsd(self, geom, align=True):
+        if not self.atoms == geom.atoms:
+            raise DifferentAtomOrdering
+        if align:
+            return rmsd.kabsch_rmsd(
+                self.coords3d - self.centroid, geom.coords3d - geom.centroid
+            )
+        else:
+            return np.sqrt(np.mean((self.cart_coords - geom.cart_coords) ** 2))
 
     def as_g98_list(self):
         """Returns data for fake Gaussian98 standard orientation output.
@@ -1362,14 +1450,22 @@ class Geometry:
         tmp_xyz.flush()
         return tmp_xyz
 
-    def jmol(self, atoms=None, cart_coords=None):
-        """Show geometry in jmol."""
+    def jmol(self, atoms=None, cart_coords=None, stdin=None, jmol_cmd="jmol"):
+        """Show geometry in jmol.
+
+        TODO: read jmol command from .pysisyphusrc ?!"""
         tmp_xyz = self.tmp_xyz_handle(atoms, cart_coords)
-        jmol_cmd = "jmol"
+        cmd = [jmol_cmd, tmp_xyz.name]
+        if stdin is not None:
+            cmd = cmd + ["-s", "-"]
         try:
-            subprocess.run([jmol_cmd, tmp_xyz.name])
+            subprocess.run(
+                cmd,
+                input=stdin,
+                text=True,
+            )
         except FileNotFoundError:
-            print(f"'{jmol_cmd}' seems not to be on your path!")
+            print(f"'{jmol_cmd}' does not seem to be on your $PATH!")
         tmp_xyz.close()
 
     def modes3d(self):
@@ -1383,7 +1479,7 @@ class Geometry:
         subprocess.run(f"modes3d.py {tmp_xyz.name}{bonds_str}", shell=True)
         tmp_xyz.close()
 
-    def as_ase_atoms(self):
+    def as_ase_atoms(self, vacuum=None):
         try:
             import ase
         except ImportError:
@@ -1391,7 +1487,10 @@ class Geometry:
             return None
 
         # ASE coordinates are in Angstrom
-        atoms = ase.Atoms(symbols=self.atoms, positions=self.coords3d * BOHR2ANG)
+        capital_atoms = map(lambda s: s.capitalize(), self.atoms)
+        atoms = ase.Atoms(symbols=capital_atoms, positions=self.coords3d * BOHR2ANG)
+        if vacuum is not None:
+            atoms.center(vacuum=vacuum)
 
         if self.calculator is not None:
             from pysisyphus.calculators import FakeASE
@@ -1399,6 +1498,12 @@ class Geometry:
             ase_calc = FakeASE(self.calculator)
             atoms.set_calculator(ase_calc)
         return atoms
+
+    def as_ascii_art(self) -> str:
+        """ASCII-art representation of the Geometry.
+
+        Using code from gpaw. Requires an ase installation."""
+        return plot_wrapper(self)
 
     def get_restart_info(self):
         # Geometry restart information

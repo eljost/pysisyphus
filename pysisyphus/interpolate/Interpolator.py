@@ -31,6 +31,13 @@ class Interpolator:
         self.align = align and not one_atom_geom
 
         assert len(geoms) >= 2, "Need at least two geometries to interpolate!"
+        # When the geometries have different coord_types we can't be sure which one
+        # to pick, when we create intermediate geometries.
+        self.coord_type_ref = geoms[0].coord_type
+        coord_types = [geom.coord_type for geom in geoms]
+        assert all(
+            [coord_type == self.coord_type_ref for coord_type in coord_types]
+        ), "Geometries must have the same coord_type, but they have '{}"
 
         # Check for consistent atom ordering
         for i, geom in enumerate(self.geoms[:-1]):
@@ -98,6 +105,7 @@ class Interpolator:
         self, initial_geom, final_geom, interpolate_only=0, extrapolate=False
     ):
         initial_coords = initial_geom.coords
+        coord_type = self.coord_type_ref
 
         # Linear interpolation
         step = (final_geom.coords - initial_geom.coords) / (self.between + 1)
@@ -110,7 +118,7 @@ class Interpolator:
         # initial + i*step
         i_array = np.arange(1, interpolations + 1)
         new_coords = initial_coords + i_array[:, None] * step
-        return [Geometry(self.atoms, nc) for nc in new_coords]
+        return [Geometry(self.atoms, nc, coord_type=coord_type) for nc in new_coords]
 
     def all_geoms_to_trj(self, trj_fn):
         write_geoms_to_trj(self.all_geoms, trj_fn)

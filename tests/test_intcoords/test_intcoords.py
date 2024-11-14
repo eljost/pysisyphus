@@ -1,14 +1,17 @@
-#!/usr/bin/env python3
-
 import numpy as np
 import pytest
 from pytest import approx
+from scipy.spatial.distance import pdist
 
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.calculators import XTB
 from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.PrimTypes import PrimTypes
-from pysisyphus.intcoords.setup import get_fragments, setup_redundant
+from pysisyphus.intcoords.setup import (
+    connect_fragments_ahlrichs,
+    get_fragments,
+    setup_redundant,
+)
 from pysisyphus.intcoords.valid import check_typed_prims
 from pysisyphus.io.zmat import geom_from_zmat_str
 from pysisyphus.optimizers.RFOptimizer import RFOptimizer
@@ -289,7 +292,9 @@ def test_hydrogen_bonds():
     geom = geom_loader("lib:hydrogen_bond_test.xyz", coord_type="redund")
     typed_prims = geom.internal.typed_prims
     h_bonds = [tp for tp in typed_prims if tp[0] == PrimTypes.HYDROGEN_BOND]
-    h_bond_ref = set([frozenset(inds) for inds in ((6, 27), (43, 56), (15, 42))])
+    # (6, 27) was included below earlier, but this is already designated as a real bond
+    # and is not added again as hydrogen bond.
+    h_bond_ref = set([frozenset(inds) for inds in ((43, 56), (15, 42))])
     assert set([frozenset(inds) for _, *inds in h_bonds]) == h_bond_ref
 
 
@@ -305,3 +310,25 @@ def test_hydrogen_bonds():
 def test_hybrid_internals(coord_type, tp_num):
     geom = geom_loader("lib:h2o.xyz", coord_type=coord_type)
     assert len(geom.internal.typed_prims) == tp_num
+
+
+@pytest.mark.parametrize(
+    "fn, ref_nbonds",
+    (
+        ("lib:SulfateInSolution.xyz", 82),
+        ("lib:azobenzene_fragmentation.xyz", 8),
+        ("lib:azobenzene_fragmentation_2.xyz", 5),
+        # Artificial 3x3x3 sodium cube resulting in only interfrag bonds
+        ("lib:na_cube_54_bonds.xyz", 54),
+    ),
+)
+def test_ahlrich_interfragment(fn, ref_nbonds):
+    geom = geom_loader(fn, coord_type="redund")
+    cdm = pdist(geom.coords3d)
+    fragments = geom.internal.fragments
+
+    interfrag_bonds, _ = connect_fragments_ahlrichs(
+        cdm, fragments, geom.atoms, avoid_hh=True
+    )
+    nbonds = len(interfrag_bonds)
+    assert nbonds == ref_nbonds

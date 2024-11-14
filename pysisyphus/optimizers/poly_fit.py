@@ -1,5 +1,4 @@
 from collections import namedtuple
-import logging
 from math import sqrt
 from pprint import pprint
 
@@ -7,9 +6,6 @@ import numpy as np
 import sympy as sym
 
 from pysisyphus.helpers_pure import log
-
-
-logger = logging.getLogger("optimizer")
 
 
 def gen_solutions():
@@ -51,14 +47,14 @@ def gen_solutions():
 
     e0, e1, g0, g1, a0, a1, a2, a3 = sym.symbols("e0 e1 g0 g1 a:4")
 
-    a4 = sym.Rational(3, 8) * a3 ** 2 / a2
+    a4 = sym.Rational(3, 8) * a3**2 / a2
     s0, s1 = sym.solve(
         (
             e0 - a0,
             g0 - a1,
             e1 - a0 - a1 - a2 - a3 - a4,
             g1 - a1 - 2 * a2 - 3 * a3 - 4 * a4,
-            3 * a3 ** 2 - 8 * a2 * a4,
+            3 * a3**2 - 8 * a2 * a4,
         ),
         (a0, a1, a2, a3),
     )
@@ -80,16 +76,16 @@ def gen_solutions():
     # The terms in the sqrt-term correspond to binomial expansions and can be further
     # simplified.
     ref_term = (
-        -12 * e0 ** 2
+        -12 * e0**2
         + 24 * e0 * e1
         - 12 * e0 * g0
         - 12 * e0 * g1
-        - 12 * e1 ** 2
+        - 12 * e1**2
         + 12 * e1 * g0
         + 12 * e1 * g1
-        - 2 * g0 ** 2
+        - 2 * g0**2
         - 8 * g0 * g1
-        - 2 * g1 ** 2
+        - 2 * g1**2
     )
     sqrt_term = -2 * (
         6 * (e0 - e1) ** 2 + 6 * (e0 - e1) * (g0 + g1) + (g0 + g1) ** 2 + 2 * g0 * g1
@@ -161,7 +157,7 @@ def quartic_fit(e0, e1, g0, g1, maximize=False):
     a3_pre = 2 * e0 - 2 * e1 + 2 * g0
 
     def get_poly(a3, a2, a1, a0):
-        a4 = 3 / 8 * a3 ** 2 / a2
+        a4 = 3 / 8 * a3**2 / a2
         return np.poly1d((a4, a3, a2, a1, a0))
 
     a2 = a2_pre - sqrt_term / 2

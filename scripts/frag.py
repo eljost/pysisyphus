@@ -80,7 +80,11 @@ def run():
     args = parse_args(sys.argv[1:])
 
     geom = geom_loader(args.fn)
-    filter = set(args.filter)
+    filter = args.filter
+
+    if filter is None:
+        filter = ()
+    filter = set(filter)
 
     # Determine bond topology
     bonds = get_bond_sets(geom.atoms, geom.coords3d).tolist()

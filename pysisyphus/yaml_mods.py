@@ -16,9 +16,9 @@ _UNIT_MAP = {
     "ns": 1e-6,
     # Lengths are converted to Bohr (a_0)
     "a0": 1,
-    "angstrom": 1 / ANG2BOHR,
+    "angstrom": ANG2BOHR,
     "nm": 1 / BOHR2M * 1e9,
-    "deg": np.pi / 180.0
+    "deg": np.pi / 180.0,
 }
 _UNITS = list(_UNIT_MAP.keys())
 UNITS = _UNITS

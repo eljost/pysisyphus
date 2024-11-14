@@ -3,6 +3,7 @@ import logging
 __all__ = [
     "AFIR",
     "AtomAtomTransTorque",
+    "CFOUR",
     "Composite",
     "ConicalIntersection",
     "DFTBp",
@@ -27,13 +28,14 @@ __all__ = [
     "ORCA5",
     "Psi4",
     "PyPsi4",
-    "PyXTB",
+    "PWHardSphere",
     "Remote",
+    "RobinDayClass2",
+    "TBLite",
     "TIP3P",
     "Turbomole",
     "TransTorque",
     "XTB",
-    "CFOUR",
 ]
 
 
@@ -63,8 +65,9 @@ from pysisyphus.calculators.OpenMolcas import OpenMolcas
 from pysisyphus.calculators.ORCA import ORCA
 from pysisyphus.calculators.ORCA5 import ORCA5
 from pysisyphus.calculators.PyPsi4 import PyPsi4
-from pysisyphus.calculators.PyXTB import PyXTB
+from pysisyphus.calculators.TBLite import TBLite
 from pysisyphus.calculators.Remote import Remote
+from pysisyphus.calculators.RobinDayClass2 import RobinDayClass2
 from pysisyphus.calculators.TIP3P import TIP3P
 from pysisyphus.calculators.TransTorque import TransTorque
 from pysisyphus.calculators.Turbomole import Turbomole

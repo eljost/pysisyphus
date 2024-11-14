@@ -1,4 +1,4 @@
-![pysisyphus logo](resources/logo_small.png)
+![pysisyphus logo](resources/logo_new_cut_small.png)
 
 [![Documentation Status](https://readthedocs.org/projects/pysisyphus/badge/?version=master)](https://pysisyphus.readthedocs.io/en/master/?badge=master)
 [![build](https://github.com/eljost/pysisyphus/workflows/Python%20application/badge.svg)](https://github.com/eljost/pysisyphus/actions)

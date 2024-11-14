@@ -22,16 +22,9 @@ class CGDescent(Optimizer):
         forces = self.geometry.forces
         self.step_direction = forces / np.linalg.norm(forces)
 
-    def optimize(self):
-        forces = self.geometry.forces
-        energy = self.geometry.energy
-
-        self.forces.append(forces)
-        self.energies.append(self.geometry.energy)
-
-        f = lambda coords: self.geometry.get_energy_at(coords)
-        df = lambda coords: -self.geometry.get_energy_and_forces_at(coords)["forces"]
-
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         try:
             f_prev = self.energies[-2]
         except IndexError:
@@ -39,37 +32,15 @@ class CGDescent(Optimizer):
 
         alpha_init = self.alpha_init if self.alpha_prev is None else None
 
-        # kwargs = {
-        # "f": f,
-        # "df": df,
-        # "x0": self.geometry.coords,
-        # "p": self.step_direction,
-        # "f0": energy,
-        # "g0": -forces,
-        # "alpha_init": alpha_init,
-        # "alpha_prev": self.alpha_prev,
-        # "f_prev": f_prev,
-        # "quad_step": True,
-        # # dphi0_prev will be set if alpha_prev is not None
-        # "dphi0_prev": None if not self.alpha_prev else self.dphi0_prev,  # noqa: F821
-        # }
-        # alpha, f_new, g_new, dphi0_prev = hager_zhang(**kwargs)
-
         kwargs = {
-            "geometry": self.geometry,
-            "p": self.step_direction,
-            "f0": energy,
-            "g0": -forces,
             "alpha_init": alpha_init,
             "alpha_prev": self.alpha_prev,
             "f_prev": f_prev,
             "quad_step": True,
             # dphi0_prev will be set if alpha_prev is not None
-            "dphi0_prev": None
-            if not self.alpha_prev
-            else self.dphi0_prev,  # noqa: F821
+            "dphi0_prev": None if not self.alpha_prev else self.dphi0_prev,
         }
-        line_search = HagerZhang(**kwargs)
+        line_search = HagerZhang(self.geometry, p=self.step_direction, **kwargs)
         hz_result = line_search.run()
         alpha = hz_result.alpha
         f_new = hz_result.f_new

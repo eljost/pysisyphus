@@ -10,7 +10,12 @@ import pytest
 from pysisyphus.helpers import geom_loader
 from pysisyphus.init_logging import init_logging
 from pysisyphus.calculators import ORCA
-from pysisyphus.calculators.ORCA import parse_orca_densities, parse_orca_cis
+from pysisyphus.calculators.ORCA import (
+    parse_orca_cis,
+    parse_orca_densities,
+    parse_orca_gbw,
+    update_gbw,
+)
 from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.testing import using
 from pysisyphus.wavefunction import Wavefunction
@@ -136,9 +141,9 @@ def test_parse_orca_cis(method, tda, triplets, this_dir):
     cis_fn = this_dir / "ref_cis" / f"{base_name}_000.000.orca.cis"
     Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn)
 
-    ac = Xa ** 2 - Ya ** 2
+    ac = Xa**2 - Ya**2
     a_sum = np.sum(ac, axis=(1, 2))
-    bc = Xb ** 2 - Yb ** 2
+    bc = Xb**2 - Yb**2
     b_sum = np.sum(bc, axis=(1, 2))
 
     Y0 = np.zeros_like(Ya)
@@ -170,7 +175,7 @@ def test_parse_orca_cis(method, tda, triplets, this_dir):
         print(X)
         print(f"Y{aorb}")
         print(Y)
-        norms = X ** 2 - Y ** 2
+        norms = X**2 - Y**2
         norms_sum = np.sum(norms, axis=(1, 2))
         print(f"@{method}, {tda=}, {aorb} coeffs, {norms_sum}")
         print(norms)
@@ -199,7 +204,6 @@ def assert_dens_mats(dens_dict, json_fn):
     ),
 )
 def test_orca_gs_densities(dens_fn, json_fn):
-
     dens_dict = parse_orca_densities(WF_LIB_DIR / dens_fn)
     _ = assert_dens_mats(dens_dict, WF_LIB_DIR / json_fn)
 
@@ -230,7 +234,84 @@ def test_orca_es_densities(dens_fn, json_fn, ref_dpm):
 @using("orca")
 def test_orca_hf():
     geom = geom_loader("lib:h2o.xyz")
-    calc = ORCA("hf sto-3g", json_dump=True)
+    calc = ORCA("hf sto-3g")
     geom.set_calculator(calc)
     energy = geom.energy
     assert energy == pytest.approx(-74.960702484)
+
+
+@using("orca")
+def test_orca_stored_wavefunction():
+    geom = geom_loader("lib:h2o.xyz")
+    calc = ORCA("hf sto-3g", wavefunction_dump=True)
+    geom.set_calculator(calc)
+    geom.energy
+    # Wavefunction already does some internal sanity checking
+    calc.get_stored_wavefunction()
+
+
+def test_set_gbw_restricted(this_dir, tmp_path):
+    """Do a roundtrip."""
+    gbw_in = this_dir / "restricted.gbw"
+    gbw_out = tmp_path / "restricted.gbw"
+    moc = parse_orca_gbw(gbw_in)
+    update_gbw(gbw_in, gbw_out, moc.Ca)
+    moc2 = parse_orca_gbw(gbw_out)
+    np.testing.assert_allclose(moc2.Ca, moc.Ca)
+
+
+def test_set_gbw_unrestricted(this_dir, tmp_path):
+    """Do a roundtrip."""
+    gbw_in = this_dir / "unrestricted.gbw"
+    gbw_out = tmp_path / "unrestricted.gbw"
+    moc = parse_orca_gbw(gbw_in)
+    update_gbw(gbw_in, gbw_out, moc.Ca, moc.Cb)
+    moc2 = parse_orca_gbw(gbw_out)
+    np.testing.assert_allclose(moc2.Ca, moc.Ca)
+    np.testing.assert_allclose(moc2.Cb, moc.Cb)
+
+
+def test_set_gbw_empty(this_dir, tmp_path):
+    """Do a roundtrip."""
+    gbw_in = this_dir / "unrestricted.gbw"
+    gbw_out = tmp_path / "unrestricted.gbw"
+    moc = parse_orca_gbw(gbw_in)
+    update_gbw(gbw_in, gbw_out)
+    moc2 = parse_orca_gbw(gbw_out)
+    np.testing.assert_allclose(moc2.Ca, moc.Ca)
+    np.testing.assert_allclose(moc2.Cb, moc.Cb)
+
+
+def test_set_gbw_occs_ens_restricted(this_dir, tmp_path):
+    """Do a roundtrip.
+
+    Modify occupation numbers and energies."""
+    gbw_in = this_dir / "restricted.gbw"
+    gbw_out = tmp_path / "restricted_occs_ens.gbw"
+    moc = parse_orca_gbw(gbw_in)
+    occsa = np.arange(moc.occsa.size)
+    ensa = -np.arange(moc.ensa.size)
+    update_gbw(gbw_in, gbw_out, alpha_energies=ensa, alpha_occs=occsa)
+    moc2 = parse_orca_gbw(gbw_out)
+    np.testing.assert_allclose(moc2.ensa, ensa)
+    np.testing.assert_allclose(moc2.occsa, occsa / 2.0)
+
+
+@using("orca")
+@pytest.mark.parametrize(
+    "kind, ref_energies",
+    (
+        ("rhf", (-39.72627841, -38.89274941, -38.89274941, -38.89274941)),
+        ("uhf", (-39.72627831, -39.14167831, -39.06680231, -39.06680231)),
+    ),
+)
+def test_all_energies(kind, ref_energies):
+    kwargs = {
+        "keywords": f"{kind} hf sto-3g",
+        "blocks": "%tddft tda false nroots 3 end",
+    }
+    geom = ORCA.geom_from_fn("lib:methane.xyz", **kwargs)
+    calc = geom.calculator
+    result = calc.get_all_energies(geom.atoms, geom.coords)
+    all_ens = result["all_energies"]
+    np.testing.assert_allclose(all_ens, ref_energies, atol=1e-8)

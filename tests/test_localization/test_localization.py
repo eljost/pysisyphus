@@ -34,10 +34,11 @@ def test_edmiston_ruedenberg(this_dir):
 
     # Pre-localize using Cholesky decomposition
     Crot = cholesky(Crot)
-    Crot, cost_func = edmiston_ruedenberg(Crot, Luv, S)
+    result = edmiston_ruedenberg(Crot, Luv, S)
+    Crot = result.C
     diag = np.diag(Crot.T @ S @ Crot)
     np.testing.assert_allclose(diag, np.ones_like(diag))
-    assert cost_func == pytest.approx(6.086131)
+    assert result.P == pytest.approx(6.086131)
 
 
 def test_pipek_mezey():

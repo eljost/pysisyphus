@@ -10,13 +10,17 @@
 #     Sim-GEDIIS using hessian information
 #     Moss, Li, 2008
 
+from dataclasses import dataclass
 from collections import namedtuple
-import logging
+import functools
+import warnings
 
 import autograd.numpy as anp
 from autograd import grad
 import numpy as np
 from scipy.optimize import minimize
+
+from pysisyphus.helpers_pure import log as hp_log
 
 
 COS_CUTOFFS = {
@@ -36,11 +40,18 @@ COS_CUTOFFS = {
 DIISResult = namedtuple("DIISResult", "coeffs coords forces energy N type")
 
 
-logger = logging.getLogger("optimizer")
+@dataclass
+class DIISResult:
+    coeffs: np.ndarray
+    coords: np.ndarray
+    forces: np.ndarray
+    energy: float
+    N: int
+    prefix: str
 
-
-def log(msg):
-    logger.debug(msg)
+    @property
+    def type(self):
+        return f"{self.prefix}DIIS"
 
 
 def valid_diis_direction(diis_step, ref_step, use):
@@ -63,17 +74,19 @@ def diis_result(coeffs, coords, forces, energy=None, prefix=""):
         forces=diis_forces,
         energy=energy,
         N=len(coeffs),
-        type=f"{prefix}DIIS",
+        prefix=prefix,
     )
-    log(f"\tUsed {len(coeffs)} error vectors for {prefix}DIIS.")
-    log("")
     return diis_result
 
 
-def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5, test_direction=True):
+def gdiis(
+    err_vecs, coords, forces, ref_step, max_vecs=5, test_direction=True, logger=None
+):
     # Scale error vectors so the smallest norm is 1
     norms = np.linalg.norm(err_vecs, axis=1)
     err_vecs = err_vecs / norms.min()
+
+    log = functools.partial(hp_log, logger)
 
     valid_coeffs = None
     for use in range(2, min(max_vecs, len(err_vecs)) + 1):
@@ -138,10 +151,13 @@ def gdiis(err_vecs, coords, forces, ref_step, max_vecs=5, test_direction=True):
     # print("GDIIS with only 2 cycles. Skipping! Return None")
     # return None
 
-    return diis_result(valid_coeffs, coords, forces, prefix="G")
+    result = diis_result(valid_coeffs, coords, forces, prefix="G")
+    log(f"\tUsed {len(result.coeffs)} error vectors for {result.type}.\n")
+    return result
 
 
-def gediis(coords, energies, forces, hessian=None, max_vecs=3):
+def gediis(coords, energies, forces, hessian=None, max_vecs=3, logger=None):
+    log = functools.partial(hp_log, logger)
     use = min(len(coords), max_vecs)
 
     R = coords[::-1][:use]
@@ -154,7 +170,7 @@ def gediis(coords, energies, forces, hessian=None, max_vecs=3):
     Rjfi = np.einsum("jk,ik->ji", R, f)
 
     def x2c(x):
-        return x ** 2 / (x ** 2).sum()
+        return x**2 / (x**2).sum()
 
     # def fun(xs):
     # """Naive implementation with loops."""
@@ -197,34 +213,32 @@ def gediis(coords, energies, forces, hessian=None, max_vecs=3):
                 + (cs * Rifi).sum()
             )
 
-    # def fun(xs):
-    # cs = x2c(xs)
-    # cRjfi = anp.einsum("j,jk,ik->ji", cs, R, f).sum(axis=0)
-    # return anp.sum(
-    # cs * (E + cRjfi + Rifi)
-    # )
+    """
+    def fun(xs):
+        cs = x2c(xs)
+        cRjfi = anp.einsum("j,jk,ik->ji", cs, R, f).sum(axis=0)
+        return anp.sum(cs * (E + cRjfi + Rifi))
+    """
 
     jac = grad(fun)
 
     x0 = np.ones(use) / use
     res = minimize(fun, x0=x0, jac=jac)  # , tol=1e-7)
-    # print(res)
-    # print("final x", res.x)
-    # x = res.x
-    # import pdb; pdb.set_trace()
 
     coeffs = None
     if res.success:
         coeffs = x2c(res.x)
         en_ = res.fun
-    log(f"\tOptimization converged!")
+    log("\tOptimization converged!")
     coeff_str = np.array2string(coeffs, precision=4)
     log(f"\tCoefficients: {coeff_str}")
     # en_ = (E * coeffs).sum()
     # import pdb; pdb.set_trace()
     if (hessian is None) and (en_ >= E[0]):
-        print(
-            f"GEDIIS converged, but proposed energy is above current energy! Returning None"
+        warnings.warn(
+            "GEDIIS converged, but proposed energy is above current energy! Returning None"
         )
         return None
-    return diis_result(coeffs, coords, forces, energy=en_, prefix="GE")
+    result = diis_result(coeffs, coords, forces, energy=en_, prefix="GE")
+    log(f"\tUsed {len(result.coeffs)} error vectors for {result.type}.\n")
+    return result
