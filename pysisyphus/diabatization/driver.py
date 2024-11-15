@@ -22,7 +22,9 @@ from pysisyphus.calculators.ORCA import (
 from pysisyphus.constants import AU2EV, BOHR2ANG
 from pysisyphus.helpers import get_coords_diffs
 import pysisyphus.io.cube as iocube
+import pysisyphus.io.hdf5 as ioh5
 from pysisyphus.wavefunction import Shells, Wavefunction
+from pysisyphus.diabatization import logger
 from pysisyphus.diabatization import plot as dia_plot, chimerabatch
 from pysisyphus.diabatization.coulomb import edmiston_ruedenberg_diabatization_jacobi
 from pysisyphus.diabatization.coulomb_eta import edmiston_ruedenberg_eta_diabatization
@@ -69,8 +71,25 @@ class CubeKind(enum.Flag):
 CubeKindKeys = [key for key in CubeKind.__members__.keys() if key != "NONE"]
 
 
-def get_dia_result_fn(kind, base_name):
-    return f"{base_name}_{kind}_dia_result.npz"
+def get_dia_data_model(kind, nstates):
+    data_model = {
+        "states": (nstates,),
+        "U": (nstates, nstates),
+        "adia_ens": (nstates,),
+    }
+    if kind in ("er", "ereta"):
+        data_model.update(
+            {
+                "R_tensor": (nstates, nstates, nstates, nstates),
+            }
+        )
+    if kind in ("boys",):
+        data_model.update(
+            {
+                "dip_mom_tensor": (3, nstates, nstates),
+            }
+        )
+    return data_model
 
 
 def get_states_hash(states: np.ndarray):
@@ -84,7 +103,7 @@ def plot_diabatic(dia_res, key, states, base_name, out_dir):
     fig = dia_plot.draw_state_graph(G)
     fig_fn = out_dir / f"{base_name}_{key}_plot.pdf"
     fig.savefig(fig_fn)
-    print(f"Wrote plot of diabatic states to '{fig_fn}'.")
+    logger.info(f"Wrote plot of diabatic states to '{fig_fn}'.")
 
 
 @dataclasses.dataclass
@@ -155,7 +174,7 @@ def get_new_states(
                 f"Overlap between previous root {root_prev} "
                 f"and new root {root_new} is {ovlp: >6.2%}"
             )
-        print(msg)
+        logger.info(msg)
         states[i] = root_new
     return states
 
@@ -256,7 +275,7 @@ def make_ao_spin_densities(
             else:
                 dens_ao = Cocc @ (XI + YI) @ Cvirt.T
             densities[k] = dens_ao
-            print(f"Set ({I: >3d},{J: >3d}) {spin: >5s} spin density")
+            logger.info(f"Set ({I: >3d},{J: >3d}) {spin: >5s} spin density")
             k += 1
 
     # Convert to pysisyphus-order if permutation matrix was given
@@ -301,7 +320,7 @@ def run_coulomb_dia(
         aux_shells = shells.from_basis(aux_basis_fn)
     adia_ens_eV = adia_ens * AU2EV
     if tensor_fn is not None and tensor_fn.exists():
-        print(f"Found existing Coulomb tensor in {tensor_fn}.")
+        logger.info(f"Found existing Coulomb tensor in {tensor_fn}.")
         coulomb_tensor = np.load(tensor_fn)
     else:
         # This is were the magic happens and we call into Fortran
@@ -311,7 +330,7 @@ def run_coulomb_dia(
         # Skip saving when no fn was given
         if tensor_fn is not None:
             np.save(tensor_fn, coulomb_tensor)
-            print(f"Saved Coulomb tensor to {tensor_fn}.")
+            logger.info(f"Saved Coulomb tensor to {tensor_fn}.")
     dia_result = dia_func(adia_ens_eV, coulomb_tensor, **dia_kwargs)
     return dia_result
 
@@ -326,10 +345,10 @@ def make_dip_moms_2d(wf: Wavefunction, densities: np.ndarray):
     kind = "coc"
     origin = wf.get_origin(kind)
     origin_ang = origin * BOHR2ANG
-    print(f"Using '{kind}'-origin at {origin} au ({origin_ang} Å).")
+    logger.info(f"Using '{kind}'-origin at {origin} au ({origin_ang} Å).")
     # Calcualte dipole moment integrals in AO basis
     dip_ints = wf.dipole_ints(origin)
-    print("Calculated dipole integrals")
+    logger.info("Calculated dipole integrals")
     # Bring dipole moment integrals into pysisyphus order
     P = wf.get_permut_matrix()
     dip_ints = np.einsum("Irs,rm,sn->Imn", dip_ints, P, P, optimize="greedy")
@@ -391,7 +410,7 @@ def make_ao_da_densities(
     Ca, Cb = wf.C
     Pa_mo = Ca.T @ S @ Pa @ S @ Ca
     Pb_mo = Cb.T @ S @ Pb @ S @ Cb
-    print("Formed GS density matrix in the MO basis")
+    logger.info("Formed GS density matrix in the MO basis")
 
     det_dens_mo_a = np.zeros((nroots, *Pa_mo.shape))
     att_dens_mo_a = np.zeros_like(det_dens_mo_a)
@@ -420,7 +439,7 @@ def make_ao_da_densities(
         det_dens_mo_b[i] = P_det_b
         att_dens_mo_b[i] = P_att_b
 
-        print(f"Calculated A&D density matrices in the MO basis for {root=}")
+        logger.info(f"Calculated A&D density matrices in the MO basis for {root=}")
 
     def transform_mo_ao(C, dens_mo):
         return np.einsum("mr,Irs,ns->Imn", C, dens_mo, C, optimize="greedy")
@@ -470,7 +489,7 @@ def cube_densities(
         cube_fn = out_dir / f"{label}.cub"
         cube.write(cube_fn)
         cube_fns.append(cube_fn)
-        print(
+        logger.info(
             f"{cube_fn}: min={vol_data.min():{vol_fmt}}, max={vol_data.max():{vol_fmt}}, "
             f"{N=: >8.4f}, {grid_shape=}"
         )
@@ -516,19 +535,34 @@ def make_diabatic_properties(U, adia_props: np.ndarray):
 
 
 def postprocess_dia(
-    key,
+    kind,
     dia_result,
     out_dir,
-    get_result_fn,
+    h5_fn,
     plot_diabatic,
     all_dia_results,
-    **add_savez_kwargs,
+    add_attrs: Optional[dict] = None,
+    add_datasets: Optional[dict] = None,
 ):
-    dia_result_fn = get_result_fn(key)
-    dia_result.savez(out_dir / dia_result_fn, **add_savez_kwargs)
-    all_dia_results[key] = dia_result
-    print(dia_result.render_report())
-    plot_diabatic(dia_result, key)
+    if add_attrs is None:
+        add_attrs = {}
+
+    h5_fn = out_dir / h5_fn
+    h5_data_model = get_dia_data_model(kind, dia_result.nstates)
+    h5_group = ioh5.get_h5_group(h5_fn, kind, data_model=h5_data_model, reset=True)
+    h5_group.attrs["kind"] = kind
+    for h5_key in h5_data_model:
+        try:
+            val = getattr(dia_result, h5_key)
+        except AttributeError:
+            val = add_datasets[h5_key]
+        h5_group[h5_key][:] = val
+    for k, v in add_attrs.items():
+        h5_group[k] = v
+
+    all_dia_results[kind] = dia_result
+    logger.info(dia_result.render_report())
+    plot_diabatic(dia_result, kind)
     sys.stdout.flush()
 
 
@@ -567,10 +601,7 @@ def run_dia(
         out_dir.mkdir()
 
     all_dia_results = {}
-    add_savez_kwargs = {
-        "states": states,
-    }
-    get_result_fn = functools.partial(get_dia_result_fn, base_name=base_name)
+
     cube_da_densities_wrapped = functools.partial(
         # cube_da_densities, out_dir=out_dir, base_name=base_name, **grid_kwargs
         cube_da_densities,
@@ -580,14 +611,6 @@ def run_dia(
     )
     plot_diabatic_wrapped = functools.partial(
         plot_diabatic, states=states, base_name=base_name, out_dir=out_dir
-    )
-    postprocess_dia_wrapped = functools.partial(
-        postprocess_dia,
-        out_dir=out_dir,
-        get_result_fn=get_result_fn,
-        plot_diabatic=plot_diabatic_wrapped,
-        all_dia_results=all_dia_results,
-        **add_savez_kwargs,
     )
 
     states = np.sort(states, kind="stable")
@@ -632,12 +655,25 @@ def run_dia(
     # The dipole integrals will also be later passed to the Boys diabatization routine,
     # if enabled.
     dip_moms_2d = make_dip_moms_2d(wf, adia_densities)
-    print("(Transition) dipole moments:")
+    logger.info("(Transition) dipole moments:")
     # TODO: also report GS-> ES DPMs as these are usually printed by the QC codes
     for (i, j), dpm in zip(row_major_iter(nstates), dip_moms_2d, strict=True):
         I = states[i]
         J = states[j]
-        print(f"\t{I: >03d} -> {J: >03d}: {fmt_dpm(dpm)} au")
+        logger.info(f"\t{I: >03d} -> {J: >03d}: {fmt_dpm(dpm)} au")
+
+    add_datasets = {
+        "states": states,
+    }
+    h5_fn = f"{base_name}_dia_result.h5"
+    postprocess_dia_wrapped = functools.partial(
+        postprocess_dia,
+        out_dir=out_dir,
+        h5_fn=h5_fn,
+        plot_diabatic=plot_diabatic_wrapped,
+        all_dia_results=all_dia_results,
+        add_datasets=add_datasets,
+    )
 
     cube_fns = {}
     # Adiabatic detachment/attachment densities
@@ -721,7 +757,7 @@ def run_dia(
             coulomb_tensor_fn,
             **dia_kwargs,
         )
-        postprocess_dia_wrapped("ereta", ereta_dia_result)
+        postprocess_dia_wrapped("ereta", ereta_dia_result, add_attrs=dia_kwargs)
 
     # Boys diabatization
     if DiaKind.BOYS in dia_kinds:
@@ -730,7 +766,7 @@ def run_dia(
 
     if CubeKind.DIA_DA in cube_kinds and 0 in states:
         cube_kinds &= ~CubeKind.DIA_DA
-        print(
+        logger.info(
             "Ground state involved! Disabled generation of diabatic "
             "detachment/attachment densities!"
         )
@@ -808,7 +844,7 @@ def parse_orca(base: str | Path, triplets: bool = False):
     if not wf_fn.exists():
         subprocess.run(f"orca_2json {str(base)} -bson", shell=True)
     wf = Wavefunction.from_file(wf_fn)
-    print(f"Read wavefunction: {wf}")
+    logger.info(f"Read wavefunction: {wf}")
 
     cis_fn = base.with_suffix(".cis")
     log_fn = base.with_suffix(".out")
@@ -816,12 +852,12 @@ def parse_orca(base: str | Path, triplets: bool = False):
         log_fn = base.with_suffix(".log")
 
     all_ens = parse_orca_all_energies(log_fn, do_tddft=True, triplets=triplets)
-    print("Parsed energies from ORCA log file")
+    logger.info("Parsed energies from ORCA log file")
 
     Xa, Ya, Xb, Yb = parse_orca_cis(
         cis_fn, restricted_same_ab=True, triplets_only=triplets
     )
-    print("Parsed ORCA .cis file")
+    logger.info("Parsed ORCA .cis file")
     return wf, all_ens, Xa, Ya, Xb, Yb
 
 
@@ -893,12 +929,12 @@ def run(
             base_name=base_name,
         )
         if i > 0:
-            print(f"States at previous step were {dia_inp.states}.")
+            logger.info(f"States at previous step were {dia_inp.states}.")
         # Update states by calculating overlaps if requested
         if ovlp:
             # TODO: report previous & new state before/after overlaps
             dia_inp.update_states(dia_inp_prev)
-        print(f"States for {base} are {dia_inp.states}")
+        logger.info(f"States for {base} are {dia_inp.states}")
         all_states[i] = states
 
         dia_results, cube_fns = run_dia(
@@ -915,7 +951,7 @@ def run(
         cb_fn = chimerabatch.write_inp(
             cube_fns, wf.atoms, wf.coords, base_name, out_dir
         )
-        print(f"Created script for chimerabatch.py in '{cb_fn}'.")
+        logger.info(f"Created script for chimerabatch.py in '{cb_fn}'.")
 
     np.save("all_states.npy", all_states)
 

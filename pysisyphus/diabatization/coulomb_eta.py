@@ -15,11 +15,15 @@ import numpy as np
 import scipy as sp
 
 from pysisyphus.constants import AU2EV, KBAU
-from pysisyphus.wavefunction.localization import JacobiSweepResult
+from pysisyphus.helpers_pure import highlight_text
+from pysisyphus.diabatization import logger
+from pysisyphus.diabatization.coulomb import ERTemplate
+from pysisyphus.diabatization.helpers import fmt_tensor
 from pysisyphus.diabatization.results import (
     dia_result_from_jac_result,
     DiabatizationResult,
 )
+from pysisyphus.wavefunction.localization import JacobiSweepResult
 
 
 __jac_func = None
@@ -92,8 +96,9 @@ def rot_mat_from_er_eta(R, adia_ens, C, T):
         return -er_eta(k, R=R, adia_ens=adia_ens, C=C, T=T)
 
     max_cycles = 5
+    logger.info("Edmiston-Ruedenberg-Eta cost-function maximization")
     for i in range(max_cycles):
-        print(f"Cost-function before macro cycle {i}: {-1*fun(k_cur): >12.6f}")
+        logger.info(f"Cost-function before macro cycle {i}: {-1*fun(k_cur): >12.6f}")
         res = sp.optimize.minimize(
             fun,
             x0=k_cur,
@@ -102,19 +107,19 @@ def rot_mat_from_er_eta(R, adia_ens, C, T):
             hess=lambda k: -hess_func(k, R=R, adia_ens=adia_ens, C=C, T=T),
             # callback=callback,
         )
-        # print(res)
+        # logger.debug(res)
         k_cur = res.x
 
         hessian = hess_func(k_cur, R=R, adia_ens=adia_ens, C=C, T=T)
         w, v = np.linalg.eigh(hessian)
         non_neg = w > eigval_thresh
-        print(
+        logger.info(
             f"Macro cycle {i} converged in micro cycle {res.nit:>3d}. "
             f"There are {non_neg.sum()} positive eigenvalues."
         )
         is_converged = res.success and non_neg.sum() == 0
         if is_converged:
-            print("Macro cycles converged!")
+            logger.info("Macro cycles converged!")
             break
         # Displace current k along eigenvectors belonging to the positive eigenvalues
         non_neg_eigvecs = v[:, non_neg]
@@ -122,10 +127,17 @@ def rot_mat_from_er_eta(R, adia_ens, C, T):
             k_cur += displ * eigvec
     else:
         raise Exception(f"Diabatization did not converge in {max_cycles} cycles.")
-    print(f"Final cost-function: {-1*fun(k_cur): >12.6f}")
+    logger.info(f"Final cost-function: {-1*fun(k_cur): >12.6f}")
 
     # Final rotation matrix
     U = rot_mat_from_skew_sym(k_cur, n=nstates)
+
+    msg = ERTemplate.render(
+        name=highlight_text("Edmiston-Ruedenberg-Eta-diabatization"),
+        R=R,
+        fmt_tensor=fmt_tensor,
+    )
+    logger.info(msg)
 
     jac_res = JacobiSweepResult(
         is_converged=is_converged,
@@ -155,7 +167,7 @@ def edmiston_ruedenberg_eta_diabatization(
 def callback(intermediate_result):
     # Report actual value
     act_val = -1 * intermediate_result.fun
-    print(f"{act_val: >12.6f}")
+    logger.info(f"{act_val: >12.6f}")
 
 
 def parse_args(args):
@@ -189,9 +201,9 @@ def run():
 
     U = rot_mat_from_er_eta(R, adia_ens, C, T)
 
-    print("Final rotation matrix U")
+    logger.info("Final rotation matrix U")
     with np.printoptions(precision=8, linewidth=240):
-        print(U)
+        logger.info(U)
 
 
 if __name__ == "__main__":
