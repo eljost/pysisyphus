@@ -11,7 +11,7 @@ from pysisyphus.diabatization.results import (
     dia_result_from_jac_result,
 )
 from pysisyphus.helpers_pure import highlight_text
-from pysisyphus.wavefunction import logger
+from pysisyphus.diabatization import logger
 from pysisyphus.wavefunction.localization import JacobiSweepResult, edmiston_ruedenberg
 
 
@@ -79,9 +79,9 @@ def edmiston_ruedenberg_jacobi_sweeps(
         D = np.einsum("IIII->", R_rot)
         # Cost-function change compared to previous macro-cycle
         dD = D - D_prev
-        print(f"Macro cycle {i: >3d}: {D=: >14.6f}, {dD=: >+12.6e}")
+        logger.info(f"Macro cycle {i: >3d}: {D=: >14.6f}, {dD=: >+12.6e}")
         if converged := (abs(dD) <= dP_thresh):
-            print("Converged!")
+            logger.info("Converged!")
             break
         D_prev = D
 
@@ -107,7 +107,7 @@ def edmiston_ruedenberg_jacobi_sweeps(
             B = R1112 - R1222
             # RHS of eq. (26) in [5]
             term = A + (A**2 + B**2) ** 0.5
-            # print(
+            # logger.info(
             # f"\t{j=: >3d}, {k=: >3d}, {A=: >12.6f}, {B=: >12.6f}, {term=: >12.6f}"
             # )
             # Update pair that promises the greatest cost-function increase
@@ -131,7 +131,7 @@ def edmiston_ruedenberg_jacobi_sweeps(
         A = A_max
         B = B_max
         if term_max is None:
-            print("A**2 + B**2 is very small. Indicating convergence.")
+            logger.warning("A**2 + B**2 is very small. Indicating convergence.")
             break
         # Denominator sqrt-term of eq. (19) in [5]
         sqrt_term = (A**2 + B**2) ** 0.5
@@ -164,7 +164,7 @@ def edmiston_ruedenberg_jacobi_sweeps(
         # x of the correct pair corresponds to the cosine of the rotation angle
         rad = np.arccos(x)
         # deg = np.rad2deg(rad)
-        # print(f"\tRotation of {j=} and {k=} by {rad=: 10.6e} rad ({deg: >10.6f}°).")
+        # logger.info(f"\tRotation of {j=} and {k=} by {rad=: 10.6e} rad ({deg: >10.6f}°).")
         # Inplace rotation of matrix columns with indices 'j' and 'k' by 'rad' radians.
         # Eq. (15) in [5]
         # NOTE: whether we rotate/mix columns or rows of U determines how we have to rotate

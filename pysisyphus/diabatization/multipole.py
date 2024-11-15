@@ -31,7 +31,7 @@ from pysisyphus.diabatization.results import (
     dia_result_from_jac_result,
 )
 from pysisyphus.helpers_pure import highlight_text
-from pysisyphus.wavefunction import logger
+from pysisyphus.diabatization import logger
 from pysisyphus.wavefunction.localization import (
     JacobiSweepResult,
     jacobi_sweeps,
@@ -207,5 +207,10 @@ def dq_diabatization(
     jac_res = dq_jacobi_sweeps(dip_moms, quad_moms=quad_moms, epots=epots, **kwargs)
     kind = "dq"
     return dia_result_from_jac_result(
-        kind, adia_ens, jac_res, dip_moms=dip_moms, quad_moms=quad_moms, epots=epots
+        kind,
+        adia_ens,
+        jac_res,
+        dip_mom_tensor=dip_moms,
+        quad_mom_tensor=quad_moms,
+        epots=epots,
     )

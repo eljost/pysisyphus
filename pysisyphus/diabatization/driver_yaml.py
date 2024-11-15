@@ -7,6 +7,7 @@ import numpy as np
 import yaml
 
 from pysisyphus.constants import AU2EV
+from pysisyphus.diabatization import logger
 from pysisyphus.diabatization.multipole import dq_diabatization
 
 
@@ -126,7 +127,7 @@ def run():
     unit = run_dict.pop("unit", "eV")
     dia_res = dq_diabatization_from_run_dict(run_dict)
     report = dia_res.render_report(adia_labels=adia_labels, unit=unit)
-    print(report)
+    logger.info(report)
 
 
 if __name__ == "__main__":

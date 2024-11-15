@@ -8,6 +8,7 @@ import networkx as nx
 import numpy as np
 
 from pysisyphus.constants import AU2NU, AU2EV
+from pysisyphus.diabatization import logger
 
 
 EV2NU = AU2NU / AU2EV
@@ -176,7 +177,7 @@ def run():
     # TODO: read state_inds from npz file
     state_inds = args.state_inds
 
-    print(f"Rendering {fn}")
+    logger.info(f"Rendering {fn}")
 
     data = np.load(fn)
     adia_ens = data["adia_ens"]
@@ -187,10 +188,10 @@ def run():
         # starting from 0.
         if not state_inds:
             state_inds = list(range(len(adia_ens)))
-    print(f"Using {state_inds=}")
+    logger.info(f"Using {state_inds=}")
 
     with np.printoptions(precision=4, formatter={"float": lambda f: f"{f: >8.4f}"}):
-        print(f"Adiabatic energies: {adia_ens} eV")
+        logger.info(f"Adiabatic energies: {adia_ens} eV")
 
     adia_mat = np.diag(adia_ens)
     U = data["U"]
@@ -201,7 +202,7 @@ def run():
     fig.tight_layout()
     if out_fn is not None:
         fig.savefig(out_fn)
-        print(f"Saved figure to '{out_fn}'.")
+        logger.info(f"Saved figure to '{out_fn}'.")
     plt.show()
 
 

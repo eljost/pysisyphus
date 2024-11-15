@@ -4,6 +4,7 @@ import stat
 
 import numpy as np
 
+from pysisyphus.diabatization import logger
 from pysisyphus.xyzloader import make_xyz_str_au
 
 
@@ -63,7 +64,7 @@ def write_inp(
         with open(xyz_fn, "w") as handle:
             handle.write(xyz)
     else:
-        print(f"'{str(xyz_fn)}' already exists. Skipping creation.")
+        logger.info(f"'{str(xyz_fn)}' already exists. Skipping creation.")
 
     cmds = list()
     # Detachment/attachment densities

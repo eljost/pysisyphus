@@ -94,9 +94,9 @@ class DiabatizationResult:
     # Adiabatic properties
     #
     # Dipole moments
-    dip_moms: Optional[np.ndarray] = None
+    dip_mom_tensor: Optional[np.ndarray] = None
     # Quadrupole moments
-    quad_moms: Optional[np.ndarray] = None
+    quad_mom_tensor: Optional[np.ndarray] = None
     # Electrostatic potentials
     epots: Optional[np.ndarray] = None
     # 4d Coulomb tensor  of shape (nstates, nstates, nstates, nstates)
