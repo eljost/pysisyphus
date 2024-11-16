@@ -11,6 +11,7 @@ import subprocess
 import sys
 from typing import Literal, Optional, Self, Sequence
 
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -124,6 +125,26 @@ class DiaInput:
         return (ae - ae[0])[self.states]
 
     @property
+    def nstates_tot(self):
+        return len(self.all_ens)
+
+    @property
+    def nocca(self):
+        return self.Xa.shape[1]
+
+    @property
+    def nvirta(self):
+        return self.Xa.shape[2]
+
+    @property
+    def noccb(self):
+        return self.Xb.shape[1]
+
+    @property
+    def nvirtb(self):
+        return self.Xb.shape[2]
+
+    @property
     def Ca(self):
         return self.wf.C[0]
 
@@ -134,6 +155,34 @@ class DiaInput:
     def update_states(self, other: Self | None):
         new_states = get_new_states(self, other)
         self.states = new_states
+
+    def to_h5(self, h5_fn):
+        data_model = get_dia_inp_data_model(self)
+        # h5_group = ioh5.get_h5_group(h5_fn, kind, data_model=h5_data_model, reset=True)
+        with h5py.File(h5_fn, "w") as handle:
+            for key in data_model.keys():
+                handle[key] = getattr(self, key)
+
+
+def get_dia_inp_data_model(
+    dia_inp: DiaInput,
+):
+    nstates_tot = dia_inp.nstates_tot
+    nocca = dia_inp.nocca
+    nvirta = dia_inp.nvirta
+    ntot = nocca + nvirta
+    noccb = dia_inp.noccb
+    nvirtb = dia_inp.nvirtb
+    data_model = {
+        "all_ens": (dia_inp.nstates_tot,),
+        "Ca": (ntot, ntot),
+        "Cb": (ntot, ntot),
+        "Xa": (nstates_tot, nocca, nvirta),
+        "Ya": (nstates_tot, nocca, nvirta),
+        "Xb": (nstates_tot, noccb, nvirtb),
+        "Yb": (nstates_tot, noccb, nvirtb),
+    }
+    return data_model
 
 
 def get_new_states(
@@ -282,6 +331,25 @@ def make_ao_spin_densities(
     if P is not None:
         densities = np.einsum("rm,sn,Irs->Imn", P, P, densities, optimize="greedy")
     return densities, state_pairs
+
+
+"""
+def look_for_R_tensor(h5_fn: Path, ref_states, groups=("er", "ereta")):
+    if not h5_fn.exists():
+        return None
+
+    with h5py.File(h5_fn) as handle:
+        for group in groups:
+            try:
+                h5_group = handle[group]
+                coulomb_tensor = h5_group["R_tensor"]
+                states = h5_group["states"]
+                breakpoint()
+                return coulomb_tensor
+            except KeyError:
+                pass
+    return None
+"""
 
 
 def run_coulomb_dia(
@@ -547,18 +615,23 @@ def postprocess_dia(
     if add_attrs is None:
         add_attrs = {}
 
-    h5_fn = out_dir / h5_fn
     h5_data_model = get_dia_data_model(kind, dia_result.nstates)
+    # With reset=True, a present group will be deleted and recreated
     h5_group = ioh5.get_h5_group(h5_fn, kind, data_model=h5_data_model, reset=True)
+    # Store the kind of diabatization that created the results and any additional
+    # attributes that were passed in add_attrs.
     h5_group.attrs["kind"] = kind
+    for k, v in add_attrs.items():
+        h5_group.attrs[k] = v
+
     for h5_key in h5_data_model:
+        # Get the values either from the DiabatizationResult dia_result or
+        # from add_datasets.
         try:
             val = getattr(dia_result, h5_key)
         except AttributeError:
             val = add_datasets[h5_key]
         h5_group[h5_key][:] = val
-    for k, v in add_attrs.items():
-        h5_group[k] = v
 
     all_dia_results[kind] = dia_result
     logger.info(dia_result.render_report())
@@ -578,6 +651,7 @@ def run_dia(
     base_name: str,
     dia_kinds: DiaKind,
     cube_kinds: CubeKind,
+    h5_fn: Path,
     dia_kwargs: Optional[dict] = None,
     grid_kwargs: Optional[dict] = None,
     out_dir: Optional[Path] = None,
@@ -656,7 +730,7 @@ def run_dia(
     # if enabled.
     dip_moms_2d = make_dip_moms_2d(wf, adia_densities)
     logger.info("(Transition) dipole moments:")
-    # TODO: also report GS-> ES DPMs as these are usually printed by the QC codes
+    # TODO: also report GS -> ES DPMs as these are usually printed by the QC codes
     for (i, j), dpm in zip(row_major_iter(nstates), dip_moms_2d, strict=True):
         I = states[i]
         J = states[j]
@@ -665,7 +739,6 @@ def run_dia(
     add_datasets = {
         "states": states,
     }
-    h5_fn = f"{base_name}_dia_result.h5"
     postprocess_dia_wrapped = functools.partial(
         postprocess_dia,
         out_dir=out_dir,
@@ -917,6 +990,7 @@ def run(
         # TODO: allow other codes
         wf, all_ens, Xa, Ya, Xb, Yb = parse_orca(base, triplets=triplets)
         sys.stdout.flush()
+        h5_fn = out_dir / f"{base_name}_dia_result.h5"
 
         dia_inp = DiaInput(
             wf=wf,
@@ -928,6 +1002,7 @@ def run(
             states=states,
             base_name=base_name,
         )
+        dia_inp.to_h5(h5_fn)
         if i > 0:
             logger.info(f"States at previous step were {dia_inp.states}.")
         # Update states by calculating overlaps if requested
@@ -943,6 +1018,7 @@ def run(
             cube_kinds=cube_kinds,
             dia_kwargs=dia_kwargs,
             grid_kwargs=grid_kwargs,
+            h5_fn=h5_fn,
             out_dir=out_dir,
         )
         all_dia_results.append(dia_results)

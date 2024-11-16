@@ -5,7 +5,7 @@ import warnings
 from jinja2 import Template
 import numpy as np
 
-from pysisyphus.diabatization.helpers import fmt_tensor, get_random_U
+from pysisyphus.diabatization.helpers import get_random_U
 from pysisyphus.diabatization.results import (
     DiabatizationResult,
     dia_result_from_jac_result,
@@ -20,7 +20,9 @@ ERTemplate = Template(
 
 Coulomb-Tensor R
 ----------------
-{{ fmt_tensor(R) }}
+{% for i in range(R|length) %}
+R[{{ i }}, {{ i }}, {{ i }}, {{ i }}] = {{ "%14.6f" % R[i, i, i, i] }}
+{%- endfor %}
 
 """
 )
@@ -49,7 +51,6 @@ def edmiston_ruedenberg_jacobi_sweeps(
     msg = ERTemplate.render(
         name=highlight_text("Edmiston-Ruedenberg-diabatization"),
         R=R,
-        fmt_tensor=fmt_tensor,
     )
     logger.info(msg)
 
