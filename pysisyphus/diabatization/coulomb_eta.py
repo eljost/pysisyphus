@@ -26,6 +26,8 @@ from pysisyphus.diabatization.results import (
 from pysisyphus.wavefunction.localization import JacobiSweepResult
 
 
+# Wrap gradient and Hessian functions, so they only have to be set up
+# once and can be reused later.
 __jac_func = None
 __hess_func = None
 
