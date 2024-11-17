@@ -3,8 +3,7 @@ import shutil
 
 import numpy as np
 import pyscf
-from pyscf import gto, lib, qmmm
-from pyscf import __all__ # ensure all modules are accessible under the pyscf namespace
+from pyscf import grad, gto, lib, hessian, qmmm, tddft
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.helpers import geom_loader
@@ -277,7 +276,7 @@ class PySCF(OverlapCalculator):
 
         # Keep mf and dump mol
         # save_mol(mol, self.make_fn("mol.chk"))
-        self.mf = mf.reset() # release integrals and other temporary intermediates.
+        self.mf = mf.reset()  # release integrals and other temporary intermediates.
         self.calc_counter += 1
 
         return mf
