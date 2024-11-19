@@ -81,26 +81,26 @@ def get_data_model(geometry, is_cos, max_cycles):
     _energy = _1d if (not is_cos) else (max_cycles, geometry.max_image_num)
 
     data_model = {
-        "image_nums": _1d,
-        "image_inds": _image_inds,
-        "cart_coords": _2d_cart,
-        "coords": _2d,
-        "energies": _energy,
-        "forces": _2d,
+        "image_nums": (_1d, np.int64),
+        "image_inds": (_image_inds, np.int64),
+        "cart_coords": (_2d_cart, np.float64),
+        "coords": (_2d, np.float64),
+        "energies": (_energy, np.float64),
+        "forces": (_2d, np.float64),
         # AFIR related
-        "true_energies": _energy,
-        "true_forces": _2d_cart,
-        "steps": _2d,
+        "true_energies": (_energy, np.float64),
+        "true_forces": (_2d_cart, np.float64),
+        "steps": (_2d, np.float64),
         # Convergence related
-        "max_forces": _1d,
-        "rms_forces": _1d,
-        "max_steps": _1d,
-        "rms_steps": _1d,
+        "max_forces": (_1d, np.float64),
+        "rms_forces": (_1d, np.float64),
+        "max_steps": (_1d, np.float64),
+        "rms_steps": (_1d, np.float64),
         # Misc
-        "cycle_times": _1d,
-        "modified_forces": _2d,
+        "cycle_times": (_1d, np.float64),
+        "modified_forces": (_2d, np.float64),
         # COS specific
-        "tangents": _2d,
+        "tangents": (_2d, np.float64),
     }
 
     return data_model
@@ -433,7 +433,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         return self.out_dir / (prefix + fn)
 
     def make_conv_dict(
-        self, key, rms_force=None, rms_force_only=False, max_force_only=False, force_only=False
+        self,
+        key,
+        rms_force=None,
+        rms_force_only=False,
+        max_force_only=False,
+        force_only=False,
     ):
         if not rms_force:
             threshs = CONV_THRESHS[key]
@@ -650,8 +655,12 @@ class Optimizer(metaclass=abc.ABCMeta):
         # checked, a wrong structure will prevent overachieved convergence.
         overachieved = False
         if overachieve_factor > 0 and desired_eigval_structure:
-            max_thresh = self.convergence.get("max_force_thresh", 0) / overachieve_factor
-            rms_thresh = self.convergence.get("rms_force_thresh", 0) / overachieve_factor
+            max_thresh = (
+                self.convergence.get("max_force_thresh", 0) / overachieve_factor
+            )
+            rms_thresh = (
+                self.convergence.get("rms_force_thresh", 0) / overachieve_factor
+            )
             max_ = max_force < max_thresh
             rms_ = rms_force < rms_thresh
             overachieved = max_ and rms_
@@ -870,7 +879,8 @@ class Optimizer(metaclass=abc.ABCMeta):
         h5_group.attrs["cur_cycle"] = self.cur_cycle
         h5_group.attrs["is_converged"] = self.is_converged
 
-        for key, shape in self.data_model.items():
+        # dtype from data_model values is not needed here
+        for key, (shape, _) in self.data_model.items():
             value = getattr(self, key)
             # Don't try to set empty values, e.g. 'tangents' are only present
             # for COS methods. 'modified_forces' are only present for NCOptimizer.

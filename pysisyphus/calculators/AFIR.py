@@ -27,13 +27,13 @@ def get_data_model(atoms, max_cycles):
     _3d = (max_cycles, coord_size, coord_size)
 
     data_model = {
-        "cart_coords": _2d,
-        "energy": _1d,
-        "forces": _2d,
-        "hessian": _3d,
-        "true_energy": _1d,
-        "true_forces": _2d,
-        "true_hessian": _3d,
+        "cart_coords": (_2d, np.float64),
+        "energy": (_1d, np.float64),
+        "forces": (_2d, np.float64),
+        "hessian": (_3d, np.float64),
+        "true_energy": (_1d, np.float64),
+        "true_forces": (_2d, np.float64),
+        "true_hessian": (_3d, np.float64),
     }
 
     return data_model
