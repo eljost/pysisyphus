@@ -78,26 +78,23 @@ def get_data_model(
     assert (occ_a + virt_a) == (occ_b + virt_b)
     nbf = occ_a + virt_a
     data_model = {
-        "Ca": (max_cycles, nbf, nbf),
-        "Cb": (max_cycles, nbf, nbf),
-        "Xa": (max_cycles, exc_state_num, occ_a, virt_a),
-        "Ya": (max_cycles, exc_state_num, occ_a, virt_a),
-        "Xb": (max_cycles, exc_state_num, occ_b, virt_b),
-        "Yb": (max_cycles, exc_state_num, occ_b, virt_b),
-        "coords": (max_cycles, len(atoms) * 3),
-        "all_energies": (
-            max_cycles,
-            state_num,
-        ),
-        "calculated_roots": _1d,
-        "roots": _1d,
-        "root_flips": _1d,
-        "row_inds": _1d,
-        "ref_cycles": _1d,
-        "ref_roots": _1d,
-        "overlap_matrices": (max_cycles, ovlp_state_num, ovlp_state_num),
-        "cdd_cubes": _1d,
-        "cdd_imgs": _1d,
+        "Ca": ((max_cycles, nbf, nbf), np.float64),
+        "Cb": ((max_cycles, nbf, nbf), np.float64),
+        "Xa": ((max_cycles, exc_state_num, occ_a, virt_a), np.float64),
+        "Ya": ((max_cycles, exc_state_num, occ_a, virt_a), np.float64),
+        "Xb": ((max_cycles, exc_state_num, occ_b, virt_b), np.float64),
+        "Yb": ((max_cycles, exc_state_num, occ_b, virt_b), np.float64),
+        "coords": ((max_cycles, len(atoms) * 3), np.float64),
+        "all_energies": ((max_cycles, state_num), np.float64),
+        "calculated_roots": (_1d, np.int64),
+        "roots": (_1d, np.int64),
+        "root_flips": (_1d, np.bool_),
+        "row_inds": (_1d, np.int64),
+        "ref_cycles": (_1d, np.int64),
+        "ref_roots": (_1d, np.int64),
+        "overlap_matrices": ((max_cycles, ovlp_state_num, ovlp_state_num), np.float64),
+        "cdd_cubes": (_1d, h5py.string_dtype()),
+        "cdd_imgs": (_1d, h5py.string_dtype()),
     }
     return data_model
 
@@ -836,7 +833,8 @@ class OverlapCalculator(Calculator):
             h5_group.attrs["orient"] = self.orient
             h5_group.attrs["atoms"] = np.bytes_(self.atoms)
 
-            for key, shape in self.data_model.items():
+            # dtype from data_model values is not used here
+            for key, (shape, _) in self.data_model.items():
                 try:
                     mapped_key = self.H5_MAP[key]
                 except KeyError:

@@ -52,15 +52,15 @@ def get_data_model(atoms, dump_steps):
     _2d = (dump_steps, coord_size)
 
     data_model = {
-        "cart_coords": _2d,
-        "step": _1d,
-        "energy_tot": _1d,
-        "energy_pot": _1d,
-        "energy_kin": _1d,
-        "energy_conserved": _1d,
-        "T": _1d,
-        "T_avg": _1d,
-        "velocity": _2d,
+        "cart_coords": (_2d, np.float64),
+        "step": (_1d, np.int64),
+        "energy_tot": (_1d, np.float64),
+        "energy_pot": (_1d, np.float64),
+        "energy_kin": (_1d, np.float64),
+        "energy_conserved": (_1d, np.float64),
+        "T": (_1d, np.float64),
+        "T_avg": (_1d, np.float64),
+        "velocity": (_2d, np.float64),
     }
 
     return data_model

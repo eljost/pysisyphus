@@ -1,3 +1,8 @@
+# [1] https://doi.org/10.1063/1.4766463
+#     Optimal diabatic states based on solvation parameters
+#     Alguire, Subotnik, 2012
+
+
 #!/usr/bin/env python3
 
 import argparse
@@ -74,22 +79,35 @@ CubeKindKeys = [key for key in CubeKind.__members__.keys() if key != "NONE"]
 
 def get_dia_data_model(kind, nstates):
     data_model = {
-        "states": (nstates,),
-        "U": (nstates, nstates),
-        "adia_ens": (nstates,),
+        "states": ((nstates,), np.int64),
+        "U": ((nstates, nstates), np.float64),
+        "adia_ens": ((nstates,), np.float64),
+        "adia_mat": ((nstates, nstates), np.float64),
+        "dia_mat": ((nstates, nstates), np.float64),
     }
     if kind in ("er", "ereta"):
         data_model.update(
             {
-                "R_tensor": (nstates, nstates, nstates, nstates),
+                "R_tensor": ((nstates, nstates, nstates, nstates), np.float64),
             }
         )
     if kind in ("boys",):
         data_model.update(
             {
-                "dip_mom_tensor": (3, nstates, nstates),
+                "dip_mom_tensor": ((3, nstates, nstates), np.float64),
             }
         )
+    return data_model
+
+
+def get_dia_trans_dens_data_model(nstates, nocca, nvirta, noccb, nvirtb):
+    data_model = {
+        "states": ((nstates,), np.int64),
+        "Xa_dia": ((nstates, nocca, nvirta), np.float64),
+        "Ya_dia": ((nstates, nocca, nvirta), np.float64),
+        "Xb_dia": ((nstates, noccb, nvirtb), np.float64),
+        "Yb_dia": ((nstates, noccb, nvirtb), np.float64),
+    }
     return data_model
 
 
@@ -174,13 +192,13 @@ def get_dia_inp_data_model(
     noccb = dia_inp.noccb
     nvirtb = dia_inp.nvirtb
     data_model = {
-        "all_ens": (dia_inp.nstates_tot,),
-        "Ca": (ntot, ntot),
-        "Cb": (ntot, ntot),
-        "Xa": (nstates_tot, nocca, nvirta),
-        "Ya": (nstates_tot, nocca, nvirta),
-        "Xb": (nstates_tot, noccb, nvirtb),
-        "Yb": (nstates_tot, noccb, nvirtb),
+        "all_ens": ((dia_inp.nstates_tot,), np.float64),
+        "Ca": ((ntot, ntot), np.float64),
+        "Cb": ((ntot, ntot), np.float64),
+        "Xa": ((nstates_tot, nocca, nvirta), np.float64),
+        "Ya": ((nstates_tot, nocca, nvirta), np.float64),
+        "Xb": ((nstates_tot, noccb, nvirtb), np.float64),
+        "Yb": ((nstates_tot, noccb, nvirtb), np.float64),
     }
     return data_model
 
@@ -615,6 +633,7 @@ def postprocess_dia(
     if add_attrs is None:
         add_attrs = {}
 
+    # Dump data to HDF5 file
     h5_data_model = get_dia_data_model(kind, dia_result.nstates)
     # With reset=True, a present group will be deleted and recreated
     h5_group = ioh5.get_h5_group(h5_fn, kind, data_model=h5_data_model, reset=True)
@@ -633,9 +652,14 @@ def postprocess_dia(
             val = add_datasets[h5_key]
         h5_group[h5_key][:] = val
 
+    # Set the results in the dict, that will be returned by the callcing function
     all_dia_results[kind] = dia_result
+
+    # Print the report
     logger.info(dia_result.render_report())
+    # Plot the diabatic states and their couplings using networkx
     plot_diabatic(dia_result, kind)
+    # Flush stdout to force output to the screen
     sys.stdout.flush()
 
 
@@ -857,6 +881,20 @@ def run_dia(
         Xb_dia = np.einsum("JI,Jia->Iia", U, Xb_dia)
         Yb_dia = Yb[states].copy()
         Yb_dia = np.einsum("JI,Jia->Iia", U, Yb_dia)
+
+        # Dump diabatic transition densities to HDF5 file
+        h5_trans_dens_data_model = get_dia_trans_dens_data_model(
+            nstates, nocca, nvirta, noccb, nvirtb
+        )
+        h5_group = ioh5.get_h5_group(
+            h5_fn,
+            f"{prefix}_trans_dens",
+            data_model=h5_trans_dens_data_model,
+            reset=True,
+        )
+        for key in h5_trans_dens_data_model.keys():
+            h5_group[key][:] = locals()[key]
+
         # Renumber the adiabatic states
         dia_states = (np.arange(nstates) + 1).tolist()
 
