@@ -61,6 +61,11 @@ class DiaKind(enum.Flag):
 
 
 DiaKindKeys = [key for key in DiaKind.__members__.keys() if key != "NONE"]
+DiaKeys = {
+    DiaKind.BOYS: "boys",
+    DiaKind.EDMISTON_RUEDENBERG: "er",
+    DiaKind.EDMISTON_RUEDENBERG_ETA: "ereta",
+}
 
 
 class CubeKind(enum.Flag):
@@ -842,7 +847,7 @@ def run_dia(
         )
         # TODO: the six lines below could also be handled inside a function,
         # that is reused for all diabatization approaches.
-        postprocess_dia_wrapped("er", er_dia_result)
+        postprocess_dia_wrapped(DiaKeys[DiaKind.EDMISTON_RUEDENBERG], er_dia_result)
 
     # Edmiston-Ruedenberg-ETA diabatization
     if DiaKind.EDMISTON_RUEDENBERG_ETA in dia_kinds:
@@ -854,12 +859,16 @@ def run_dia(
             coulomb_tensor_fn,
             **dia_kwargs,
         )
-        postprocess_dia_wrapped("ereta", ereta_dia_result, add_attrs=dia_kwargs)
+        postprocess_dia_wrapped(
+            DiaKeys[DiaKind.EDMISTON_RUEDENBERG_ETA],
+            ereta_dia_result,
+            add_attrs=dia_kwargs,
+        )
 
     # Boys diabatization
     if DiaKind.BOYS in dia_kinds:
         boys_dia_result = run_boys_dia(dip_moms_2d, adia_ens)
-        postprocess_dia_wrapped("boys", boys_dia_result)
+        postprocess_dia_wrapped(DiaKeys[DiaKind.BOYS], boys_dia_result)
 
     if CubeKind.DIA_DA in cube_kinds and 0 in states:
         cube_kinds &= ~CubeKind.DIA_DA
@@ -867,6 +876,12 @@ def run_dia(
             "Ground state involved! Disabled generation of diabatic "
             "detachment/attachment densities!"
         )
+
+    with h5py.File(h5_fn, "a") as handle:
+        dia_keys = list(all_dia_results.keys())
+        dia_trans_dens_keys = [f"{dk}_trans_dens" for dk in dia_keys]
+        handle.attrs["dia_keys"] = tuple(dia_keys)
+        handle.attrs["dia_trans_dens_keys"] = tuple(dia_trans_dens_keys)
 
     # Loop over all diabatization that were carried out and calculate diabatic
     # properties as requested.
