@@ -4,6 +4,7 @@
 import argparse
 import itertools as it
 from pathlib import Path
+import subprocess
 import sys
 from typing import Optional
 
@@ -11,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from pysisyphus.calculators.ORCA import parse_orca_all_energies, parse_orca_cis
+from pysisyphus.constants import AU2EV
 from pysisyphus.intcoords.setup import get_fragments
 from pysisyphus.drivers.spectrum_ctnum import ct_number_plot
 from pysisyphus.wavefunction import Wavefunction
@@ -35,6 +37,11 @@ def load_data(
 
         if not log_fn.exists():
             log_fn = base_name.with_suffix(".out")
+
+        if not wf_fn.exists():
+            print(f"{wf_fn} does not exist. Trying to create it with orca_2json")
+            cmd = f"orca_2json {log_fn.stem} -bson".split()
+            subprocess.run(cmd)
 
         # Drop GS, only keep excitation energies
         all_ens = parse_orca_all_energies(log_fn, triplets=triplets, do_tddft=True)
@@ -121,6 +128,11 @@ def run():
     foscs = data["foscs"]
     ct_numbers = data["ct_numbers"]
     homogenous_frags = data["frags"]
+    exc_ens = all_energies[1:] - all_energies[0]
+    exc_ens_eV = exc_ens * AU2EV
+    for i, exc_en in enumerate(exc_ens_eV):
+        ct_sum = ct_numbers[i].sum()
+        print(f"State {i+1:03d}: {exc_en: >8.2f} eV, ΣCTnums = {ct_sum: >8.4f}")
 
     frags = []
     for key, _frag in it.groupby(

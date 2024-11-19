@@ -165,7 +165,7 @@ def ct_numbers_for_states(
     Returns
     -------
     omegas
-        Array of shape (nstates, len(frags)**2), containing the charge-transfer
+        Array of shape (nstates, nfrags, nfrags), containing the charge-transfer
         numbers of every state.
     """
     shells = wf.shells
