@@ -29,6 +29,9 @@ chimerabatch.py chimera.py --iso 0.001 --cubes {cubs} --xyzs {xyz} --color2
 """.strip()
 DET_TPL = DENS_CUB_TPL + " 1.0 0.0 0.0"
 ATT_TPL = DENS_CUB_TPL + " 0.0 0.0 1.0"
+# Spin density is yellow/cyan, with lower transparency, as the colors aren't as
+# powerful as red and blue.
+SD_TPL = DENS_CUB_TPL + " 1.0 1.0 0.0 --color1 0.0 1.0 1.0 --transparency 10"
 
 
 def dens_cub_call(cub_fns, xyz_fn, tpl):
@@ -47,6 +50,12 @@ def det_att_call(fns, xyz_fn):
     det_cmd = dens_cub_call(det_fns, xyz_fn, DET_TPL)
     att_cmd = dens_cub_call(att_fns, xyz_fn, ATT_TPL)
     cmds = [det_cmd, att_cmd]
+    return cmds
+
+
+def sd_call(fns, xyz_fn):
+    sd_cmds = dens_cub_call(fns, xyz_fn, SD_TPL)
+    cmds = [sd_cmds]
     return cmds
 
 
@@ -77,7 +86,12 @@ def write_inp(
         fns = cube_fns[da_key]
         da_cmds = det_att_call(fns, xyz_name)
         cmds.extend(da_cmds)
-    # TODO: also handle spin densities
+
+    sd_keys = [key for key in keys if key.endswith("_SD")]
+    for sd_key in sd_keys:
+        fns = cube_fns[sd_key]
+        sd_cmds = sd_call(fns, xyz_name)
+        cmds.extend(sd_cmds)
 
     cb_fn = out_dir / "run_chimerabatch.sh"
     with open(cb_fn, "w") as handle:

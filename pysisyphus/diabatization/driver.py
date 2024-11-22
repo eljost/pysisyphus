@@ -35,6 +35,7 @@ from pysisyphus.diabatization import plot as dia_plot, chimerabatch
 from pysisyphus.diabatization.coulomb import edmiston_ruedenberg_diabatization_jacobi
 from pysisyphus.diabatization.coulomb_eta import edmiston_ruedenberg_eta_diabatization
 from pysisyphus.diabatization.multipole import dq_diabatization
+from pysisyphus.diabatization.results import DiabatizationResult
 from pysisyphus.wavefunction.excited_states import (
     detachment_attachment_density,
     get_state_to_state_transition_density,
@@ -58,6 +59,7 @@ class DiaKind(enum.Flag):
     EDMISTON_RUEDENBERG = enum.auto()
     EDMISTON_RUEDENBERG_ETA = enum.auto()
     BOYS = enum.auto()
+    HALF = enum.auto()
 
 
 DiaKindKeys = [key for key in DiaKind.__members__.keys() if key != "NONE"]
@@ -65,6 +67,7 @@ DiaKeys = {
     DiaKind.BOYS: "boys",
     DiaKind.EDMISTON_RUEDENBERG: "er",
     DiaKind.EDMISTON_RUEDENBERG_ETA: "ereta",
+    DiaKind.HALF: "half",
 }
 
 
@@ -475,6 +478,18 @@ def run_boys_dia(dip_moms_2d: np.ndarray, adia_ens: np.ndarray):
     return dia_result
 
 
+def run_half_dia(adia_ens: np.ndarray):
+    nstates = len(adia_ens)
+    assert nstates == 2, f"HALF currently only supports 2 states but got {nstates}!"
+    u = 0.5 * 2**0.5
+    U = np.array(((u, -u), (u, u)))
+    adia_ens_eV = adia_ens * AU2EV
+    dia_result = DiabatizationResult(
+        kind="half", U=U, adia_ens=adia_ens_eV, is_converged=True, cur_cycle=0, P=0
+    )
+    return dia_result
+
+
 def make_ao_da_densities(
     wf: Wavefunction,
     roots: Sequence[int],
@@ -706,7 +721,6 @@ def run_dia(
     all_dia_results = {}
 
     cube_da_densities_wrapped = functools.partial(
-        # cube_da_densities, out_dir=out_dir, base_name=base_name, **grid_kwargs
         cube_da_densities,
         out_dir=out_dir,
         base=base_name,
@@ -791,9 +805,6 @@ def run_dia(
             Xb[1:],
             Yb[1:],
             "adia",
-            # base_name,
-            # out_dir,
-            # **grid_kwargs,
         )
         cube_fns["ADIA_DA"] = adia_da_cube_fns
 
@@ -815,7 +826,7 @@ def run_dia(
             [adia_spin_densities[i, i] for i in range(nstates)]
         )
         adia_state_sd_labels = [f"{base_name}_adia_sd{I}" for I in states]
-        cube_densities(
+        adia_sd_cube_fns = cube_densities(
             wf,
             adia_state_spin_densities,
             adia_state_sd_labels,
@@ -823,6 +834,7 @@ def run_dia(
             reorder_coeffs=c2s_coeffs,
             **grid_kwargs,
         )
+        cube_fns["ADIA_SD"] = adia_sd_cube_fns
 
     #########################
     # Actual diabatizations #
@@ -869,6 +881,10 @@ def run_dia(
     if DiaKind.BOYS in dia_kinds:
         boys_dia_result = run_boys_dia(dip_moms_2d, adia_ens)
         postprocess_dia_wrapped(DiaKeys[DiaKind.BOYS], boys_dia_result)
+
+    if DiaKind.HALF in dia_kinds:
+        half_dia_result = run_half_dia(adia_ens)
+        postprocess_dia_wrapped(DiaKeys[DiaKind.HALF], half_dia_result)
 
     if CubeKind.DIA_DA in cube_kinds and 0 in states:
         cube_kinds &= ~CubeKind.DIA_DA
