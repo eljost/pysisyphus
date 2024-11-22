@@ -116,7 +116,7 @@ def map_array_to_interval(
 
 def draw_state_graph(G: nx.Graph) -> plt.Figure:
     """Draw state graph."""
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(16, 8))
 
     # Spring layout takes "weight" atributes of edges into account.
     pos = nx.spring_layout(G)
