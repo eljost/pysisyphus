@@ -67,7 +67,6 @@ def get_grid_with_spacing(coords3d, spacing=0.30, margin=DEFAULT_MARGIN):
 
 @functools.singledispatch
 def get_box_grid(coords3d: np.ndarray, num=100, margin=DEFAULT_MARGIN, edge_length=5):
-
     (minx, miny, minz), (maxx, maxy, maxz) = get_mins_maxs(coords3d, margin)
 
     try:
@@ -179,6 +178,17 @@ class Cube:
             origin=origin,
             npoints=vol_data.shape,
             axes=axes,
+            vol_data=vol_data,
+        )
+
+    @staticmethod
+    def from_cube_and_vol_data(cube, vol_data):
+        return Cube(
+            atoms=cube.atoms,
+            coords3d=cube.coords3d,
+            origin=cube.origin,
+            npoints=vol_data.shape,
+            axes=cube.axes,
             vol_data=vol_data,
         )
 
