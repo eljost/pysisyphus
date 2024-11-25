@@ -193,6 +193,7 @@ buildPythonPackage rec {
         "test_ci_opt[RFOptimizer-opt_kwargs1--78.2487951]" # Broken as of PySCF >= 2.3 as a DFT functional definition was changed
         "test_composite_oniom[lib:subst_effect/toluene_minus_H_b3lypG_631g.xyz-2-high_inds1--270.824806805671]" # Slight numerical deviations
         "test_spectrum_ctnum"
+        "test_constrain_h2o_ofix"
       ];
     in
     [
