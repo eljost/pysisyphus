@@ -51,6 +51,7 @@ def test_diabatization_driver(dia_kinds, this_dir):
         cube_kinds=dia_driver.CubeKind.NONE,
         out_dir=out_dir,
         force=True,
+        h5_fn=out_dir / "00_bena2_cat_dia_result.h5",
     )
     # Only one key will be present
     key = list(dia_results.keys())[0]
