@@ -128,6 +128,7 @@ def run():
     foscs = data["foscs"]
     ct_numbers = data["ct_numbers"]
     homogenous_frags = data["frags"]
+    nfrags = len(homogenous_frags)
     exc_ens = all_energies[1:] - all_energies[0]
     exc_ens_eV = exc_ens * AU2EV
     for i, exc_en in enumerate(exc_ens_eV):
@@ -142,6 +143,10 @@ def run():
         for _, atom_ind in _frag:
             cur_frag.append(atom_ind)
         frags.append(cur_frag)
+
+    print(f"Found {nfrags} fragments")
+    for i, frag in enumerate(frags):
+        print(f"Fragment {i:03d}: {len(frag)} atoms")
 
     fig = ct_number_plot(atoms, coords, all_energies, foscs, ct_numbers, frags=frags)
     plt.show()
