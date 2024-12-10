@@ -87,14 +87,14 @@ def calc_rot_matrix(
 ):
     H = (source_coords_3d - source_centroid).T @ (target_coords_3d - target_centroid)
     assert H.shape == (3, 3)
-    U, S, V = np.linalg.svd(H)
-    R = V @ U.T
+    U, S, Vh = np.linalg.svd(H)
+    R = Vh.T @ U.T
 
     # Cover corner case
     if np.linalg.det(R) < 0:
-        U, S, V = np.linalg.svd(R)
-        V[:, 2] = V[:, 2] * -1
-        R = V @ U.T
+        U, S, Vh = np.linalg.svd(R)
+        Vh[2, :] = Vh[2, :] * -1
+        R = Vh.T @ U.T
 
     return R
 
