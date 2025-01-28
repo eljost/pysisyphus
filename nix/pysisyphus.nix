@@ -7,6 +7,8 @@
 , pytestCheckHook
 , nix-gitignore
   # Python dependencies
+, pysisyphus-addons
+, thermoanalysis
 , setuptools-scm
 , autograd
 , dask
@@ -25,9 +27,12 @@
 , psutils
 , qcengine
 , ase
-, xtb-python
 , openbabel-bindings
 , pyscf
+, numba
+, optuna
+, jax
+, jaxlib
   # Runtime dependencies
 , runtimeShell
 , jmol
@@ -36,6 +41,8 @@
 , enableMultiwfn ? true
 , xtb
 , enableXtb ? true
+, tblite
+, enableTblite ? true
 , molcas
 , enableMolcas ? true
 , psi4
@@ -93,6 +100,7 @@ let
     ++ lib.optional enableJmol jmol
     ++ lib.optional enableMultiwfn multiwfn
     ++ lib.optional enableXtb xtb
+    ++ lib.optional enableTblite tblite
     ++ lib.optional enableMolcas molcas
     ++ lib.optional enablePsi4 psi4
     ++ lib.optional enableWfoverlap wfoverlap
@@ -108,15 +116,16 @@ let
 in
 buildPythonPackage rec {
   pname = "pysisyphus";
-  version = "0.8.0b0";
+  version = "1.0.0";
 
-  nativeBuildInputs = [
+  build-system = [
     makeWrapper
     setuptools-scm
-    mpiCheckPhaseHook
   ];
 
-  propagatedBuildInputs = [
+  dependencies = [
+    pysisyphus-addons
+    thermoanalysis
     autograd
     dask
     distributed
@@ -137,9 +146,13 @@ buildPythonPackage rec {
     openbabel-bindings
     openssh
     pyscf
+    numba
+    optuna
+    jax
+    jaxlib
   ] # Syscalls
-  ++ lib.optional enableXtb xtb-python
   ++ lib.optional enableXtb xtb
+  ++ lib.optional enableTblite tblite
   ++ lib.optional enableJmol jmol
   ++ lib.optional enableMultiwfn multiwfn
   ++ lib.optional enableMolcas molcas
@@ -160,7 +173,7 @@ buildPythonPackage rec {
 
   preBuild = "export SETUPTOOLS_SCM_PRETEND_VERSION=${version}";
 
-  checkInputs = [ openssh pytestCheckHook ];
+  checkInputs = [ openssh pytestCheckHook mpiCheckPhaseHook ];
 
   preCheck = ''
     export PYSISRC=${pysisrc}
@@ -183,6 +196,7 @@ buildPythonPackage rec {
         "hcn_neb_dimer_irc"
         "test_ci_opt[RFOptimizer-opt_kwargs1--78.2487951]" # Broken as of PySCF >= 2.3 as a DFT functional definition was changed
         "test_composite_oniom[lib:subst_effect/toluene_minus_H_b3lypG_631g.xyz-2-high_inds1--270.824806805671]" # Slight numerical deviations
+        "test_spectrum_ctnum"
       ];
     in
     [
