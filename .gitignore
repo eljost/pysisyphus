@@ -216,6 +216,7 @@ version.py
 !tests/test_turbomole/make_dens/*
 !tests/test_numerov/*.dat
 !tests/test_partfuncs/ts_final_hessian_xtb.h5
+!pysisyphus/basis_library/*
 !pysisyphus/wf_library/*
 !pysisyphus/numint/lebedev_grids_4pi.npz
 !pysisyphus/test_cos/multi_state_inp.npz
