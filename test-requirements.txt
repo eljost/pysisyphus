@@ -26,7 +26,7 @@ contourpy==1.0.7
     # via matplotlib
 coverage[toml]==7.2.7
     # via pytest-cov
-cryptography==43.0.1
+cryptography==44.0.1
     # via paramiko
 cycler==0.11.0
     # via matplotlib
