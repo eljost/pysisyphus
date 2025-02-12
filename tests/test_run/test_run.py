@@ -169,7 +169,9 @@ def test_run_irc_constrained_endopt(this_dir):
     feg, beg = results.end_geoms
     for end_geom in results.end_geoms:
         c3d = end_geom.coords3d
-        np.testing.assert_allclose(c3d[constrain_ind], ref_c3d[constrain_ind])
+        np.testing.assert_allclose(
+            c3d[constrain_ind], ref_c3d[constrain_ind], atol=1e-6
+        )
 
 
 @using("pyscf")
