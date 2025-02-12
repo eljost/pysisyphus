@@ -33,6 +33,7 @@
 , optuna
 , jax
 , jaxlib
+, networkx
   # Runtime dependencies
 , runtimeShell
 , jmol
@@ -150,6 +151,7 @@ buildPythonPackage rec {
     optuna
     jax
     jaxlib
+    networkx
   ] # Syscalls
   ++ lib.optional enableXtb xtb
   ++ lib.optional enableTblite tblite
