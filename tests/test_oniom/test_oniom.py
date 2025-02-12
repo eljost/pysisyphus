@@ -513,7 +513,7 @@ def test_oniom_microiters():
 )
 def test_composite_oniom(fn, mult, high_inds, ref_energy):
     charge = 0
-    pal = 6
+    pal = 2
     run_dict = {
         "geom": {
             "type": "cart",
