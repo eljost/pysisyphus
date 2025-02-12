@@ -32,7 +32,7 @@ def test_ch4_composite(this_dir):
         },
         "charge": 0,
         "mult": 1,
-        "pal": 6,
+        "pal": 2,
         "final": "ccsdt + mp2_high - mp2_low",
     }
     calc = Composite(**calc_kwargs)
@@ -62,7 +62,7 @@ def test_composite_run_dict(this_dir):
                 },
             },
             "final": "high - low",
-            "pal": 4,
+            "pal": 2,
         },
     }
     results = run_from_dict(run_dict)
