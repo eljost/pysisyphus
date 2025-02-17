@@ -23,10 +23,8 @@ jobs:
         with:
           name: pysisyphus
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-      - run: nix flake --allow-import-from-derivation check
-      - run: nix build --print-build-logs
-      - run: nix develop --command echo ""
-
+      - run: nix-build nix/
+      - run: nix-shell nix/ --run "echo OK"
   build:
     runs-on: ubuntu-latest
     steps:
