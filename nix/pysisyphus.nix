@@ -34,7 +34,6 @@
 , jax
 , jaxlib
 , networkx
-, trexio
   # Runtime dependencies
 , runtimeShell
 , jmol
@@ -151,7 +150,6 @@ buildPythonPackage rec {
     scipy
     sympy
     scikit-learn
-    trexio
     # Addons
     pysisyphus-addons
     thermoanalysis
