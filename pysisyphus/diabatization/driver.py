@@ -1110,8 +1110,18 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("orca_outs", nargs="+")
-    parser.add_argument("--states", nargs="+", type=int, required=True)
-    parser.add_argument("--triplets", action="store_true")
+    parser.add_argument(
+        "--states",
+        nargs="+",
+        type=int,
+        required=True,
+        help="Adiabatic state indices to use in the diabatization process. The GS corresponds to 0.",
+    )
+    parser.add_argument(
+        "--triplets",
+        action="store_true",
+        help="Flag to indicate if the calculation contains singlet-triplet excitations.",
+    )
     parser.add_argument(
         "--ovlp",
         action="store_true",
@@ -1157,6 +1167,7 @@ def parse_args(args):
     parser.add_argument(
         "--out-dir",
         default=".",
+        help="Write the generated files to this directory. Defaults to the cwd ('.').",
     )
 
     # return parser.parse_args(args)
