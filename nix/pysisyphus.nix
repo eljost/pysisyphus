@@ -34,6 +34,7 @@
 , jax
 , jaxlib
 , networkx
+, trexio
   # Runtime dependencies
 , runtimeShell
 , jmol
@@ -125,33 +126,35 @@ buildPythonPackage rec {
   ];
 
   dependencies = [
-    pysisyphus-addons
-    thermoanalysis
+    ase
     autograd
     dask
     distributed
+    Fabric
     h5py
+    jax
+    jaxlib
     jinja2
     matplotlib
+    networkx
+    numba
     numpy
     natsort
+    openbabel-bindings
+    openssh
+    optuna
+    psutils
+    pyscf
     pyyaml
+    qcengine
     rmsd
     scipy
     sympy
     scikit-learn
-    Fabric
-    psutils
-    qcengine
-    ase
-    openbabel-bindings
-    openssh
-    pyscf
-    numba
-    optuna
-    jax
-    jaxlib
-    networkx
+    trexio
+    # Addons
+    pysisyphus-addons
+    thermoanalysis
   ] # Syscalls
   ++ lib.optional enableXtb xtb
   ++ lib.optional enableTblite tblite

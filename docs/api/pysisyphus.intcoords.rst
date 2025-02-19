@@ -68,6 +68,14 @@ pysisyphus.intcoords.DistanceFunction module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.intcoords.DummyImproper module
+-----------------------------------------
+
+.. automodule:: pysisyphus.intcoords.DummyImproper
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.intcoords.DummyTorsion module
 ----------------------------------------
 
@@ -120,6 +128,14 @@ pysisyphus.intcoords.RedundantCoords module
 -------------------------------------------
 
 .. automodule:: pysisyphus.intcoords.RedundantCoords
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.RobustTorsion module
+-----------------------------------------
+
+.. automodule:: pysisyphus.intcoords.RobustTorsion
    :members:
    :undoc-members:
    :show-inheritance:
@@ -216,6 +232,14 @@ pysisyphus.intcoords.helpers module
 -----------------------------------
 
 .. automodule:: pysisyphus.intcoords.helpers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.intcoords.logging\_conf module
+-----------------------------------------
+
+.. automodule:: pysisyphus.intcoords.logging_conf
    :members:
    :undoc-members:
    :show-inheritance:

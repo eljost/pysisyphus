@@ -11,19 +11,27 @@ Subpackages
    pysisyphus.calculators
    pysisyphus.cos
    pysisyphus.db
+   pysisyphus.diabatization
    pysisyphus.drivers
    pysisyphus.dynamics
+   pysisyphus.franckcondon
+   pysisyphus.hindered_rotor
    pysisyphus.intcoords
    pysisyphus.interpolate
    pysisyphus.io
    pysisyphus.irc
    pysisyphus.line_searches
+   pysisyphus.marcus_dim
    pysisyphus.modefollow
+   pysisyphus.numerov
+   pysisyphus.numint
    pysisyphus.optimizers
+   pysisyphus.partfuncs
    pysisyphus.plotters
    pysisyphus.stocastic
    pysisyphus.tests
    pysisyphus.tsoptimizers
+   pysisyphus.wavefunction
    pysisyphus.wrapper
 
 Submodules
@@ -37,10 +45,10 @@ pysisyphus.Geometry module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.TableFormatter module
---------------------------------
+pysisyphus.MOCoeffs module
+--------------------------
 
-.. automodule:: pysisyphus.TableFormatter
+.. automodule:: pysisyphus.MOCoeffs
    :members:
    :undoc-members:
    :show-inheritance:
@@ -93,10 +101,26 @@ pysisyphus.exceptions module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.executors module
+---------------------------
+
+.. automodule:: pysisyphus.executors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.filtertrj module
 ---------------------------
 
 .. automodule:: pysisyphus.filtertrj
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.finite\_diffs module
+-------------------------------
+
+.. automodule:: pysisyphus.finite_diffs
    :members:
    :undoc-members:
    :show-inheritance:
@@ -117,6 +141,14 @@ pysisyphus.helpers\_pure module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.hessian\_proj module
+-------------------------------
+
+.. automodule:: pysisyphus.hessian_proj
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.init\_logging module
 -------------------------------
 
@@ -129,6 +161,14 @@ pysisyphus.linalg module
 ------------------------
 
 .. automodule:: pysisyphus.linalg
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.linalg\_affine3 module
+---------------------------------
+
+.. automodule:: pysisyphus.linalg_affine3
    :members:
    :undoc-members:
    :show-inheritance:
@@ -153,6 +193,14 @@ pysisyphus.plot module
 ----------------------
 
 .. automodule:: pysisyphus.plot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.plot\_ascii module
+-----------------------------
+
+.. automodule:: pysisyphus.plot_ascii
    :members:
    :undoc-members:
    :show-inheritance:
@@ -189,10 +237,26 @@ pysisyphus.thermo module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.timing module
+------------------------
+
+.. automodule:: pysisyphus.timing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.trj module
 ---------------------
 
 .. automodule:: pysisyphus.trj
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.typing module
+------------------------
+
+.. automodule:: pysisyphus.typing
    :members:
    :undoc-members:
    :show-inheritance:

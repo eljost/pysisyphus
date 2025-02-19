@@ -4,6 +4,14 @@ pysisyphus.interpolate package
 Submodules
 ----------
 
+pysisyphus.interpolate.Geodesic module
+--------------------------------------
+
+.. automodule:: pysisyphus.interpolate.Geodesic
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.interpolate.IDPP module
 ----------------------------------
 

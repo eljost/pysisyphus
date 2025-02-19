@@ -68,6 +68,14 @@ pysisyphus.dynamics.thermostats module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.dynamics.wigner module
+---------------------------------
+
+.. automodule:: pysisyphus.dynamics.wigner
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
