@@ -83,7 +83,7 @@ def test_cross(this_dir):
 )
 def test_orca_one_el_integrals(fn):
     fn = WF_LIB_DIR / fn
-    shells = Shells.from_orca_json(fn)
+    shells = Shells.from_orca_json(fn, backend="python")
     V = shells.V_sph
     T = shells.T_sph
     H = T + V
@@ -112,9 +112,7 @@ def test_orca_one_el_integrals(fn):
 
 @pytest.mark.parametrize(
     "fchk",
-    (
-        "g16_ch4_qzvpp.fchk",
-    ),
+    ("g16_ch4_qzvpp.fchk",),
 )
 def test_fchk_overlaps(fchk):
     shells = Shells.from_fchk(WF_LIB_DIR / fchk)

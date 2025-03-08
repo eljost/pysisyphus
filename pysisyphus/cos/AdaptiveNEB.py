@@ -9,13 +9,21 @@ import numpy as np
 
 from pysisyphus.cos.NEB import NEB
 from pysisyphus.interpolate import interpolate
+from pysisyphus.helpers_pure import rms
 
 
 class AdaptiveNEB(NEB):
-
-    def __init__(self, images, adapt=True, adapt_fact=.25, adapt_between=1,
-                 scale_fact=False, keep_hei=True, free_ends=True,
-                 **kwargs):
+    def __init__(
+        self,
+        images,
+        adapt=True,
+        adapt_fact=0.25,
+        adapt_between=1,
+        scale_fact=False,
+        keep_hei=True,
+        free_ends=True,
+        **kwargs,
+    ):
         """(Free-End) Adaptive Nudged Elastic Band.
 
         Parameters
@@ -61,18 +69,16 @@ class AdaptiveNEB(NEB):
 
     @NEB.forces.getter
     def forces(self):
-        """See Eq. (7) in [2]."""
-
         forces = super().forces
-        forces_size = self.images[-1].forces.size
+        coords_length = self.coords_length
 
         if self.free_ends and (not self.fix_first):
-            mod_forces = self.get_perpendicular_forces(0)
-            forces[:forces_size] = mod_forces
+            mod_forces = self.perpendicular_forces[0]
+            forces[:coords_length] = mod_forces
 
         if self.free_ends and (not self.fix_last):
-            mod_forces = self.get_perpendicular_forces(self.last_index)
-            forces[-forces_size:] = mod_forces
+            mod_forces = self.perpendicular_forces[self.last_index]
+            forces[-coords_length:] = mod_forces
 
         self._forces = forces
         return self._forces
@@ -97,14 +103,14 @@ class AdaptiveNEB(NEB):
         # This ensures that the adapt_fact increases as we recurse
         # deeper.
         if self.scale_fact:
-            self.adapt_thresh = (self.rms(forces) * self.adapt_fact
-                                 / np.sqrt(1 / self.level)
-            )
+            self.adapt_thresh = rms(forces) * self.adapt_fact / np.sqrt(1 / self.level)
         else:
-            self.adapt_thresh = self.rms(forces) * self.adapt_fact
-        #arr / np.sqrt(1/np.arange(1, 6))
-        self.log(f"Updating adapt_thres. Old thresh was {old_thresh:}. "
-                 f"New threshold is {self.adapt_thresh:.03f}")
+            self.adapt_thresh = rms(forces) * self.adapt_fact
+        # arr / np.sqrt(1/np.arange(1, 6))
+        self.log(
+            f"Updating adapt_thres. Old thresh was {old_thresh:}. "
+            f"New threshold is {self.adapt_thresh:.03f}"
+        )
 
     def adapt_this_cycle(self, forces):
         """Decide wether to adapt.
@@ -119,20 +125,22 @@ class AdaptiveNEB(NEB):
         adapt : bool
             Flag that indicates if adaption should take place in this cycle.
         """
-        cur_rms = self.rms(forces)
+        cur_rms = rms(forces)
         adapt = cur_rms <= self.adapt_thresh
-        self.log(f"Current RMS of forces is {cur_rms:03f}. Current thresh "
-                 f"{self.adapt_thresh:03f}. Adapt = {adapt}")
+        self.log(
+            f"Current RMS of forces is {cur_rms:03f}. Current thresh "
+            f"{self.adapt_thresh:03f}. Adapt = {adapt}"
+        )
         return adapt
 
-    def prepare_opt_cycle(self, *args, **kwargs):
+    def reparametrize(self, image_energies, forces):
         """Check for adaption and adapt if needed.
 
         See ChainOfStates.prepare_opt_cycle for a complete docstring.
         """
-        base_reset = super().prepare_opt_cycle(*args, **kwargs)
+        # Return early when adaption is disabled
         if not self.adapt:
-            return base_reset
+            return False
 
         # Transferring Calculators including WFOWrapper objects
         # in excited state calculations may be problematic.
@@ -141,7 +149,7 @@ class AdaptiveNEB(NEB):
         # image? Additionally we probably would have to shift around the
         # iterations stored in the WFOWrapper.
         img0 = self.images[0]
-        if hasattr(img0, "track") and (img0.track == True):
+        if hasattr(img0, "track") and img0.track:
             raise Exception(
                 "track = True and interpolating new images "
                 "may give problems with excited state tracking, so this "
@@ -150,12 +158,12 @@ class AdaptiveNEB(NEB):
 
         # Initialize adapt_thresh
         if not self.adapt_thresh:
-            self.update_adapt_thresh(self.forces_list[-1])
+            # self.update_adapt_thresh(self.forces_list[-1])
+            self.update_adapt_thresh(forces)
 
-        if not self.adapt_this_cycle(self.forces_list[-1]):
-            return base_reset
+        if not self.adapt_this_cycle(forces):
+            return False
 
-        #
         # Adapation from here on
         #
         # Backup coords if we have to step back
@@ -163,9 +171,9 @@ class AdaptiveNEB(NEB):
         # Determine highest energy index and image (HEI)
         hei_index = self.get_hei_index(self.all_energies[-1])
         self.log(f"Index of highest energy image is {hei_index}")
-        if (hei_index == 0) or (hei_index == len(self.images)-1):
+        if (hei_index == 0) or (hei_index == len(self.images) - 1):
             self.log("Cant adapt, HEI is first or last!")
-            return base_reset
+            return False
         else:
             self.fix_first = False
             self.fix_last = False
@@ -192,24 +200,32 @@ class AdaptiveNEB(NEB):
             new_images_1 = interpolate(prev_image, hei_image, **kwargs)
             new_images_2 = interpolate(hei_image, next_image, **kwargs)
             # Between next neighbour and the HEI.
-            all_new_images = ([prev_image] + new_images_1
-                              + [hei_image]
-                              + new_images_2 + [next_image])
+            all_new_images = (
+                [prev_image] + new_images_1 + [hei_image] + new_images_2 + [next_image]
+            )
         # One interpolation
         #   prev. neighbour - next neighbour
         else:
-            kwargs["between"] = 2*self.adapt_between+1
+            kwargs["between"] = 2 * self.adapt_between + 1
             new_images = interpolate(prev_image, next_image, **kwargs)
             all_new_images = [prev_image] + new_images + [next_image]
 
-        assert len(all_new_images) <= len(self.images), \
-            f"The number of new images ({len(all_new_images)}) is smaller than " \
-            f"the number of current images ({len(self.images)}). Increase the number " \
-             "of starting images or decrease 'adapt_between'."
+        assert len(all_new_images) <= len(self.images), (
+            f"The number of new images ({len(all_new_images)}) is smaller than "
+            f"the number of current images ({len(self.images)}). Increase the number "
+            "of starting images or decrease 'adapt_between'."
+        )
         self.level += 1
 
-        print(f"Adapted images! New number of images is {len(all_new_images)}. "
-              f"Current level is {self.level}.")
+        # TODO: reenable this message
+        # messages.append(
+        # f"Adapted images! New number of images is {len(all_new_images)}. "
+        # f"Current level is {self.level}."
+        # )
+        print(
+            f"Adapted images! New number of images is {len(all_new_images)}. "
+            f"Current level is {self.level}."
+        )
 
         # Backup old calculators
         calcs = [img.calculator for img in self.images]

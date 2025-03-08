@@ -38,10 +38,11 @@ from pysisyphus.calculators import (
     ORCA,
     ORCA5,
     Psi4,
+    TBLite,
     Turbomole,
     XTB,
-    PyXTB,
 )
+from pysisyphus.calculators import pyscf_lazy
 from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.elem_data import COVALENT_RADII as CR
 from pysisyphus.Geometry import Geometry
@@ -62,16 +63,8 @@ CALC_DICT = {
     "turbomole": Turbomole,
     "xtb": XTB.XTB,
     # "pypsi4": PyPsi4,
-    "pyxtb": PyXTB.PyXTB,
+    "tblite": TBLite.TBLite,
 }
-try:
-    from pysisyphus.calculators.PySCF import PySCF
-
-    CALC_DICT["pyscf"] = PySCF
-except (ModuleNotFoundError, ImportError, OSError):
-    # print("Error importing PySCF in ONIOMv2")
-    pass
-
 
 Link = namedtuple("Link", "ind parent_ind atom g")
 
@@ -175,7 +168,6 @@ class Model:
         parent_atom_inds,
         use_link_atoms=True,
     ):
-
         self.name = name
         self.calc_level = calc_level
         self.calc = calc
@@ -711,15 +703,15 @@ class LayerCalc:
         return results
 
     def get_hessian(self, atoms, coords, with_parent=True):
-        hessian = np.zeros((self.total_size*3, self.total_size*3))
+        hessian = np.zeros((self.total_size * 3, self.total_size * 3))
         model_energies = list()
         for model in self.models:
             model_energy, model_hessian = model.get_hessian(
-                    atoms, coords, parent_correction=True
+                atoms, coords, parent_correction=True
             )
             model_energies.append(model_energy)
             try:
-                inds = 3*model.parent_atom_inds[:, None] + np.arange(3)
+                inds = 3 * model.parent_atom_inds[:, None] + np.arange(3)
                 hessian[inds, inds] += model_hessian
             except TypeError:
                 hessian += model_hessian
@@ -835,11 +827,13 @@ class ONIOM(Calculator):
         # Now we convert the single-model layers to lists of length 1, so
         # every layer is a list.
         layers = [
-            [
-                layer,
-            ]
-            if isinstance(layer, str)
-            else layer
+            (
+                [
+                    layer,
+                ]
+                if isinstance(layer, str)
+                else layer
+            )
             for layer in layers
         ]
         self.layer_num = len(layers)
@@ -879,6 +873,8 @@ class ONIOM(Calculator):
             if base_name is not None:
                 kwargs["base_name"] = base_name
 
+            if type_ == "pyscf":
+                pyscf_lazy.add_pyscf_to_dict(CALC_DICT)
             calc = CALC_DICT[type_](**kwargs)
             cur_calc_num += 1
             return calc

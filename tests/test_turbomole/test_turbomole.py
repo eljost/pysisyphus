@@ -182,3 +182,45 @@ def test_mem(mem):
     assert f"$maxcor {mem} MiB per_core" in text
     kill_dir(calc.control_path)
     kill_dir(calc.path_already_prepared)
+
+
+@using("turbomole")
+def test_h2o_all_energies(geom, this_dir):
+    control_path = "./control_path_dft_es1"
+    turbo_kwargs = {
+        "control_path": this_dir / control_path,
+    }
+    calc = Turbomole(**turbo_kwargs)
+    geom.set_calculator(calc)
+    all_energies = geom.all_energies
+    ref_energies = (-76.36357868, -76.0926179, -76.02085091)
+    np.testing.assert_allclose(all_energies, ref_energies)
+
+
+@using("turbomole")
+def test_h2o_all_energies_unrs(geom, this_dir):
+    control_path = "./control_path_dft_es1_unrs"
+    turbo_kwargs = {
+        "control_path": this_dir / control_path,
+    }
+    calc = Turbomole(**turbo_kwargs)
+    geom.set_calculator(calc)
+    all_energies = geom.all_energies
+    ref_energies = (-76.2310422, -76.1422539, -76.0162519)
+    np.testing.assert_allclose(all_energies, ref_energies)
+
+
+@using("turbomole")
+def test_h2o_numforce(geom, this_dir):
+    control_path = "./control_path_dft_gs"
+    turbo_kwargs = {
+        "control_path": this_dir / control_path,
+        "numfreq": True,
+    }
+    calc = Turbomole(**turbo_kwargs)
+    geom.set_calculator(calc)
+    nus, *_ = geom.get_normal_modes()
+    # ref_nus = (1616.41, 3701.58, 3756.98)  # NumForce -ri
+    # ref_nus = (1611.13, 3687.15, 3783.49)  # NumForce -ri -central
+    ref_nus = (1612.75, 3687.06, 3783.55)  # NumForce -ri -central -d 0.005
+    np.testing.assert_allclose(nus, ref_nus, atol=6e-2)

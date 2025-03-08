@@ -14,14 +14,19 @@ from pysisyphus.tsoptimizers.TSHessianOptimizer import TSHessianOptimizer
 
 
 class RSPRFOptimizer(TSHessianOptimizer):
-    def optimize(self):
-        energy, gradient, H, eigvals, eigvecs, resetted = self.housekeeping()
+    def get_step(self, energy, forces, hessian, eigvals, eigvecs, resetted):
+        gradient = -forces
         self.update_ts_mode(eigvals, eigvecs)
 
         # Transform gradient to eigensystem of hessian
         gradient_trans = eigvecs.T.dot(gradient)
         # Minimize energy along all modes, except the TS-mode
-        min_indices = [i for i in range(gradient_trans.size) if i not in self.roots]
+        min_indices = [
+            i
+            for i in range(gradient_trans.size)
+            if (i not in self.roots)
+            and abs(gradient_trans[i]) > self.small_eigval_thresh
+        ]
         # Maximize energy along all requested modes.
         max_indices = [i for i in range(gradient_trans.size) if i in self.roots]
         # Get line search steps, if requested.

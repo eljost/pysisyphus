@@ -70,13 +70,13 @@ class RFOptimizer(HessianOptimizer):
         self.successful_gdiis = 0
         self.successful_line_search = 0
 
-    def optimize(self):
-        energy, gradient, H, big_eigvals, big_eigvecs, resetted = self.housekeeping()
-        step_func, pred_func = self.get_step_func(big_eigvals, gradient)
+    def get_step(self, energy, forces, hessian, eigvals, eigvecs, resetted):
+        gradient = -forces
+        step_func, pred_func = self.get_step_func(eigvals, gradient)
 
         ref_gradient = gradient.copy()
         # Reference step, used for judging the proposed GDIIS step
-        ref_step = step_func(big_eigvals, big_eigvecs, gradient)
+        ref_step = step_func(eigvals, eigvecs, gradient)
 
         # Right everything is in place to check for convergence.  If all values are below
         # the thresholds, there is no need to do additional inter/extrapolations.
@@ -108,13 +108,20 @@ class RFOptimizer(HessianOptimizer):
                 self.forces,
                 ref_step,
                 test_direction=self.gdiis_test_direction,
+                logger=self.logger,
             )
             self.successful_gdiis += 1 if diis_result else 0
         # Don't try GEDIIS if GDIIS failed. If GEDIIS should be tried after GDIIS failed
         # comment the line below and uncomment the line following it.
         elif self.gediis and can_gediis:
             # if self.gediis and can_gediis and (diis_result == None):
-            diis_result = gediis(self.coords, self.energies, self.forces, hessian=H)
+            diis_result = gediis(
+                self.coords,
+                self.energies,
+                self.forces,
+                hessian=hessian,
+                logger=self.logger,
+            )
             self.successful_gediis += 1 if diis_result else 0
 
         try:
@@ -147,13 +154,13 @@ class RFOptimizer(HessianOptimizer):
         else:
             ip_step = np.zeros_like(gradient)
 
-        step = step_func(big_eigvals, big_eigvecs, gradient)
+        step = step_func(eigvals, eigvecs, gradient)
         # Form full step. If we did not interpolate or interpolation failed,
         # ip_step will be zero.
         step = step + ip_step
 
         # Use the original, actually calculated, gradient
-        prediction = pred_func(ref_gradient, H, step)
+        prediction = pred_func(ref_gradient, hessian, step)
         self.predicted_energy_changes.append(prediction)
 
         return step

@@ -25,6 +25,7 @@ calc:
  type: dummy
 opt:
  type: layers
+ thresh: gau
  layers:
   - address: {address0}
     geom:
@@ -33,9 +34,8 @@ opt:
     address: {address1}
     geom:
      type: redund
- # thresh: gau
 assert:
- opt_geom.energy: -115.535231
+ opt_geom.energy: -115.535533
 """
 
 

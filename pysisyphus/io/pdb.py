@@ -28,17 +28,20 @@ def get_parser(widths):
 
 STRIP_RE = re.compile(r"[\d\s]*")  # To remove numbers and whitespace
 NAME_MAP = {
+    "ha": "H",
     "hb": "H",
     "he": "H",
     "hh": "H",
     "hd": "H",
     "hg": "H",
+    "hm": "H",
     "so": "Na",
 }
 FULL_NAME = {
     " sod",
     " cla",
     " cal",
+    " fe ",
 }
 
 
@@ -114,7 +117,7 @@ def parse_pdb(text):
         master_fields = master_parse(master_line)
     except UnboundLocalError:
         master_fields = None
-        print(f"Warning! No MASTER line found in PDB!")
+        print("Warning! No MASTER line found in PDB!")
 
     atoms = list()
     coords = list()
@@ -131,7 +134,7 @@ def parse_pdb(text):
 
         xyz = np.array(fields[8:11], dtype=float)
         atom = fields[13].strip()
-        if not atom.lower() in KNOWN_ATOMS:
+        if atom.lower() not in KNOWN_ATOMS:
             name = fields[2]
             atom = parse_atom_name(name)
         atoms.append(atom)
@@ -212,7 +215,7 @@ def atoms_coords_to_pdb_str(atoms, coords, fragments=None, resname="", conect=Tr
     serial = 1
     for resSeq, fragment in enumerate(fragments, 1):
         for id_ in fragment:
-            name = atoms[id_]
+            name = atoms[id_].capitalize()
             xyz = coords3d_ang[id_]
             line = hetatm_fmt.format(
                 serial,

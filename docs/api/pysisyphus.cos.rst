@@ -76,6 +76,30 @@ pysisyphus.cos.SimpleZTS module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.cos.distributed module
+---------------------------------
+
+.. automodule:: pysisyphus.cos.distributed
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.cos.multi\_state module
+----------------------------------
+
+.. automodule:: pysisyphus.cos.multi_state
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.cos.stiffness module
+-------------------------------
+
+.. automodule:: pysisyphus.cos.stiffness
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

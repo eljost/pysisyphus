@@ -101,6 +101,8 @@ PrimTypeShortcuts = {
     "TRANSLATION": [PT.TRANSLATION_X, PT.TRANSLATION_Y, PT.TRANSLATION_Z],
     "ROTATION": [PT.ROTATION_A, PT.ROTATION_B, PT.ROTATION_C],
     "DIST_FUNC": [PT.DISTANCE_FUNCTION],
+    # Linear bend
+    "LINEAR": [PT.LINEAR_BEND, PT.LINEAR_BEND_COMPLEMENT],
 }
 
 # The tuples below can be used to decide whether a given type belongs

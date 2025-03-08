@@ -68,6 +68,14 @@ pysisyphus.calculators.AtomAtomTransTorque module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.CFOUR module
+-----------------------------------
+
+.. automodule:: pysisyphus.calculators.CFOUR
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.Calculator module
 ----------------------------------------
 
@@ -104,6 +112,22 @@ pysisyphus.calculators.DFTBp module
 -----------------------------------
 
 .. automodule:: pysisyphus.calculators.DFTBp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.DFTD3 module
+-----------------------------------
+
+.. automodule:: pysisyphus.calculators.DFTD3
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.DFTD4 module
+-----------------------------------
+
+.. automodule:: pysisyphus.calculators.DFTD4
    :members:
    :undoc-members:
    :show-inheritance:
@@ -276,6 +300,14 @@ pysisyphus.calculators.MultiCalc module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.NFK module
+---------------------------------
+
+.. automodule:: pysisyphus.calculators.NFK
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.OBabel module
 ------------------------------------
 
@@ -332,6 +364,14 @@ pysisyphus.calculators.OverlapCalculator module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.Pots1d module
+------------------------------------
+
+.. automodule:: pysisyphus.calculators.Pots1d
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.Psi4 module
 ----------------------------------
 
@@ -352,14 +392,6 @@ pysisyphus.calculators.PySCF module
 -----------------------------------
 
 .. automodule:: pysisyphus.calculators.PySCF
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-pysisyphus.calculators.PyXTB module
------------------------------------
-
-.. automodule:: pysisyphus.calculators.PyXTB
    :members:
    :undoc-members:
    :show-inheritance:
@@ -388,6 +420,14 @@ pysisyphus.calculators.Remote module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.RobinDayClass2 module
+--------------------------------------------
+
+.. automodule:: pysisyphus.calculators.RobinDayClass2
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.Rosenbrock module
 ----------------------------------------
 
@@ -396,10 +436,26 @@ pysisyphus.calculators.Rosenbrock module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.SerpentinePot module
+-------------------------------------------
+
+.. automodule:: pysisyphus.calculators.SerpentinePot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.SocketCalc module
 ----------------------------------------
 
 .. automodule:: pysisyphus.calculators.SocketCalc
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.TBLite module
+------------------------------------
+
+.. automodule:: pysisyphus.calculators.TBLite
    :members:
    :undoc-members:
    :show-inheritance:
@@ -428,6 +484,14 @@ pysisyphus.calculators.Turbomole module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.VRIPot module
+------------------------------------
+
+.. automodule:: pysisyphus.calculators.VRIPot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.WFOWrapper module
 ----------------------------------------
 
@@ -452,10 +516,26 @@ pysisyphus.calculators.XTB module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.calculators.cosmo\_data module
+-----------------------------------------
+
+.. automodule:: pysisyphus.calculators.cosmo_data
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.calculators.parser module
 ------------------------------------
 
 .. automodule:: pysisyphus.calculators.parser
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.calculators.pyscf\_lazy module
+-----------------------------------------
+
+.. automodule:: pysisyphus.calculators.pyscf_lazy
    :members:
    :undoc-members:
    :show-inheritance:

@@ -178,18 +178,16 @@ def test_thermostat():
 
     E_tot *= AU2KJPERMOL
     T = res.T
-    fig, (ax0, ax1) = plt.subplots(nrows=2)
-    ax0.plot(E_tot)
-    ax0.axhline(E_tot.mean())
-    ax0.set_title(r"$\Delta$E$_{tot}$ / kJ mol⁻¹")
 
-    ax1.plot(T)
-    T_mean = T.mean()
-    print("T_mean", T_mean, "K")
-    ax1.axhline(T_mean)
-    ax1.set_title(f"T / K, avg. = {T_mean:.2f} K")
-
-    plt.tight_layout()
-    plt.show()
-
-    fig.savefig("md.pdf")
+    # fig, (ax0, ax1) = plt.subplots(nrows=2)
+    # ax0.plot(E_tot)
+    # ax0.axhline(E_tot.mean())
+    # ax0.set_title(r"$\Delta$E$_{tot}$ / kJ mol⁻¹")
+    # ax1.plot(T)
+    # T_mean = T.mean()
+    # print("T_mean", T_mean, "K")
+    # ax1.axhline(T_mean)
+    # ax1.set_title(f"T / K, avg. = {T_mean:.2f} K")
+    # plt.tight_layout()
+    # plt.show()
+    # fig.savefig("md.pdf")

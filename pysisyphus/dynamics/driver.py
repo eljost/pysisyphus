@@ -1,5 +1,7 @@
-from collections import namedtuple
+import dataclasses
+
 import logging
+from typing import Optional
 
 import numpy as np
 
@@ -12,7 +14,11 @@ from pysisyphus.dynamics.helpers import (
     kinetic_energy_for_temperature,
     remove_com_velocity,
 )
-from pysisyphus.dynamics.thermostats import csvr_closure, csvr_closure_2, berendsen_closure
+from pysisyphus.dynamics.thermostats import (
+    csvr_closure,
+    csvr_closure_2,
+    berendsen_closure,
+)
 from pysisyphus.dynamics.rattle import rattle_closure
 from pysisyphus.helpers import check_for_end_sign
 from pysisyphus.helpers_pure import log
@@ -20,10 +26,18 @@ from pysisyphus.io.hdf5 import get_h5_group
 
 logger = logging.getLogger("dynamics")
 
-MDResult = namedtuple(
-    "MDResult",
-    "coords t_ps step terminated T E_tot",
-)
+
+@dataclasses.dataclass
+class MDResult:
+    coords: np.ndarray
+    t_ps: float
+    step: int
+    terminated: Optional[str]
+    T: np.ndarray
+    E_tot: np.ndarray
+    v_last: np.ndarray
+    coords_last: np.ndarray
+
 
 THERMOSTATS = {
     "csvr": csvr_closure,
@@ -38,15 +52,15 @@ def get_data_model(atoms, dump_steps):
     _2d = (dump_steps, coord_size)
 
     data_model = {
-        "cart_coords": _2d,
-        "step": _1d,
-        "energy_tot": _1d,
-        "energy_pot" : _1d,
-        "energy_kin": _1d,
-        "energy_conserved": _1d,
-        "T": _1d,
-        "T_avg": _1d,
-        "velocity": _2d,
+        "cart_coords": (_2d, np.float64),
+        "step": (_1d, np.int64),
+        "energy_tot": (_1d, np.float64),
+        "energy_pot": (_1d, np.float64),
+        "energy_kin": (_1d, np.float64),
+        "energy_conserved": (_1d, np.float64),
+        "T": (_1d, np.float64),
+        "T_avg": (_1d, np.float64),
+        "velocity": (_2d, np.float64),
     }
 
     return data_model
@@ -69,6 +83,7 @@ def md(
     print_stride=50,
     dump_stride=None,
     h5_group_name="run",
+    # forces_callbacks: Optional[list] = None,
 ):
     """Velocity verlet integrator.
 
@@ -131,6 +146,20 @@ def md(
         print(f"Doing {steps} steps of {dt:.4f} fs for a total of {t_ps:.2f} ps.\n")
 
     energy_forces_getter = energy_forces_getter_closure(geom)
+    """
+    if forces_callbacks is None:
+        forces_callbacks = list()
+
+    energy_forces_getter_inner = energy_forces_getter_closure(geom)
+
+    def energy_forces_getter(coords, t=0.0):
+        energy, forces = energy_forces_getter_inner(coords)
+        for callback in forces_callbacks:
+            cb_energy, cb_forces = callback(t, coords)
+            energy += cb_energy
+            forces += cb_forces
+        return energy, forces
+    """
 
     if gaussians is None:
         gaussians = tuple()
@@ -188,6 +217,7 @@ def md(
     if thermostat is not None:
         sigma = kinetic_energy_for_temperature(len(geom.atoms), T, fixed_dof=fixed_dof)
         thermo_func = THERMOSTATS[thermostat](sigma, dof, dt=dt, tau=timecon)
+
     # In amu
     masses = geom.masses
     masses_rep = geom.masses_rep
@@ -255,6 +285,7 @@ def md(
         else:
             # E_pot, forces = energy_forces_getter(geom.coords)
             E_pot, forces = gaussian_wrapper(geom.coords)
+            # E_pot, forces = energy_forces_getter(geom.coords, t=t_cur)
             # Acceleration, convert from Hartree / (Bohr * amu) to Bohr/fs²
             a = forces / masses_rep * FORCE2ACC
             v += 0.5 * (a + a_prev) * dt
@@ -263,7 +294,7 @@ def md(
                 v = remove_com_velocity(v.reshape(-1, 3), masses).flatten()
             # v*dt = Bohr/fs * fs -> Bohr
             # a*dt**2 = Bohr/fs² * fs² -> Bohr
-            x += v * dt + 0.5 * a * dt ** 2
+            x += v * dt + 0.5 * a * dt**2
             a_prev = a
 
         # Update coordinates
@@ -292,6 +323,8 @@ def md(
         terminated=terminate_key,
         T=np.array(Ts),
         E_tot=np.array(E_tots),
+        v_last=v,
+        coords_last=geom.cart_coords.copy(),
     )
 
     return md_result

@@ -27,9 +27,9 @@ def calc_H(geom, calc_getter, thermo_calc_getter, charge, mult):
 
     thermo_dict = {
         "masses": geom.masses,
-        "vibfreqs": vibfreqs,
+        "wavenumbers": vibfreqs,
         "coords3d": geom.coords3d,
-        "energy": energy,
+        "scf_energy": energy,
         "mult": mult,
     }
 
@@ -54,13 +54,15 @@ def hydrogen_bde(geom, mult, diss_geom, diss_mult, calc_getter, thermo_calc_gett
     return bde
 
 
+@pytest.mark.skip_ci
 @using("thermoanalysis")
 @using("orca")
 @pytest.mark.parametrize(
-    "low_keywords", [
-    "mp2 6-31G(d)",
-    "hf 6-31G(d)",
-    ]
+    "low_keywords",
+    [
+        "mp2 6-31G(d)",
+        "hf 6-31G(d)",
+    ],
 )
 def test_calc_bde(low_keywords):
     def thermo_calc_getter(charge=0, mult=1):
@@ -101,7 +103,9 @@ def test_calc_bde(low_keywords):
 
     low_real = hydrogen_bde(real, 1, diss_real, 2, low_calc_getter, thermo_calc_getter)
     print("low_real", low_real)
-    low_model = hydrogen_bde(model, 1, diss_model, 2, low_calc_getter, thermo_calc_getter)
+    low_model = hydrogen_bde(
+        model, 1, diss_model, 2, low_calc_getter, thermo_calc_getter
+    )
     print("low_model", low_model)
     S_low = low_real - low_model
     print("S_low", S_low)

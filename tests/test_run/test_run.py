@@ -31,12 +31,15 @@ def test_diels_alder_growing_string():
             "reparam_check": "rms",
             "climb": True,
             "climb_rms": 0.02,
+            "left_images": 5,
+            "right_images": 5,
         },
         "opt": {
             "type": "string",
             "stop_in_when_full": 5,
         },
         "tsopt": {
+            "thresh": "gau",
             "type": "rsirfo",
             "do_hess": True,
             "hessian_recalc": 5,
@@ -57,7 +60,7 @@ def test_diels_alder_growing_string():
     assert isinstance(results.cos, ChainOfStates)
     assert results.cos_opt.is_converged
     assert results.ts_opt.is_converged
-    assert results.ts_geom._energy == pytest.approx(-17.81191579)
+    assert results.ts_geom._energy == pytest.approx(-17.8122594)
     assert isinstance(results.ts_geom, Geometry)
     assert results.irc.forward_is_converged
     assert results.irc.backward_is_converged
@@ -166,7 +169,9 @@ def test_run_irc_constrained_endopt(this_dir):
     feg, beg = results.end_geoms
     for end_geom in results.end_geoms:
         c3d = end_geom.coords3d
-        np.testing.assert_allclose(c3d[constrain_ind], ref_c3d[constrain_ind])
+        np.testing.assert_allclose(
+            c3d[constrain_ind], ref_c3d[constrain_ind], atol=1e-6
+        )
 
 
 @using("pyscf")

@@ -217,7 +217,7 @@ class HessianOptimizer(Optimizer):
         if self.geometry.is_analytical_2d:
             return
 
-        h5_fn = self.get_path_for_fn(f"hess_calc_cyc_{self.cur_cycle}.h5")
+        h5_fn = self.get_path_for_fn(f"hess_calc_cyc_{self.cur_cycle:03d}.h5")
         # Save the cartesian hessian, as it is independent of the
         # actual coordinate system that is used.
         save_hessian(
@@ -450,21 +450,18 @@ class HessianOptimizer(Optimizer):
         self.log(f"{pre_str}Hessian has {neg_inds.sum()} negative eigenvalue(s).")
         self.log(f"\t{neg_eigval_str}")
 
-    def housekeeping(self):
+    def housekeeping(self) -> dict:
         """Calculate gradient and energy. Update trust radius and hessian
         if needed. Return energy, gradient and hessian for the current cycle."""
-        gradient = self.geometry.gradient
-        energy = self.geometry.energy
-        self.forces.append(-gradient)
-        self.energies.append(energy)
-        self.log(f"    Energy: {energy: >12.6f} au")
-        self.log(f"norm(grad): {np.linalg.norm(gradient): >12.6f} au / bohr (rad)")
-        self.log(f" rms(grad): {np.sqrt(np.mean(gradient**2)): >12.6f} au / bohr (rad)")
+
+        # Calculate forces & energy w/ method of parent class
+        results = super().housekeeping()
+        forces = results["forces"]
 
         can_update = (
             # Allows gradient differences
             len(self.forces) > 1
-            and (self.forces[-2].shape == gradient.shape)
+            and (self.forces[-2].shape == forces.shape)
             and len(self.coords) > 1
             # Coordinates may have been rebuilt. Take care of that.
             and (self.coords[-2].shape == self.coords[1].shape)
@@ -488,7 +485,15 @@ class HessianOptimizer(Optimizer):
         eigvals, eigvecs = self.filter_small_eigvals(eigvals, eigvecs)
 
         resetted = not can_update
-        return energy, gradient, H, eigvals, eigvecs, resetted
+        results.update(
+            {
+                "hessian": H,
+                "eigvals": eigvals,
+                "eigvecs": eigvecs,
+                "resetted": resetted,
+            }
+        )
+        return results
 
     def get_augmented_hessian(self, eigvals, gradient, alpha=1.0):
         dim_ = eigvals.size + 1
@@ -510,9 +515,7 @@ class HessianOptimizer(Optimizer):
         dstep2_dalpha = 2 * rfo_eigval / (1 + step_norm**2 * cur_alpha) * quot
         self.log(f"analytic deriv.={dstep2_dalpha:.6f}")
         # Update alpha
-        alpha_step = (
-            2 * (self.trust_radius * step_norm - step_norm**2) / dstep2_dalpha
-        )
+        alpha_step = 2 * (self.trust_radius * step_norm - step_norm**2) / dstep2_dalpha
         self.log(f"alpha_step={alpha_step:.4f}")
         assert (cur_alpha + alpha_step) > 0, "alpha must not be negative!"
         return alpha_step
@@ -520,6 +523,12 @@ class HessianOptimizer(Optimizer):
     def get_rs_step(self, eigvals, eigvecs, gradient, name="RS"):
         # Transform gradient to basis of eigenvectors
         gradient_ = eigvecs.T.dot(gradient)
+
+        # Filter out small gradient components
+        mask = np.abs(gradient_) > self.small_eigval_thresh
+        gradient_ = gradient_[mask]
+        eigvals = eigvals[mask]
+        eigvecs = eigvecs[:, mask]
 
         alpha = self.alpha0
         for mu in range(self.max_micro_cycles):

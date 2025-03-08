@@ -5,6 +5,8 @@ import numpy as np
 import pyparsing as pp
 import re
 
+from pysisyphus.helpers_pure import file_or_str
+
 
 def to_float(s, loc, toks):
     match = toks[0].replace("D", "E")
@@ -15,17 +17,11 @@ def make_float_class(**kwargs):
     return pp.Word(pp.nums + ".-DE+", **kwargs).setParseAction(to_float)
 
 
-def parse_turbo_gradient(path):
-    results = {}
-    gradient_fn = glob.glob(os.path.join(path, "gradient"))
-    if not gradient_fn:
-        raise Exception("gradient file not found!")
-    assert len(gradient_fn) == 1
-    gradient_fn = gradient_fn[0]
-    with open(gradient_fn) as handle:
-        text = handle.read()
-
+@file_or_str("gradient", exact=True)
+def parse_turbo_gradient_str(text):
     float_ = make_float_class()
+
+    title = pp.Or((pp.Literal("$grad"), pp.Literal("$gradient")))
     cycle = pp.Word(pp.nums).setResultsName("cycle")
     scf_energy = float_.setResultsName("scf_energy")
     grad_norm = float_.setResultsName("grad_norm")
@@ -42,11 +38,8 @@ def parse_turbo_gradient(path):
             pp.Literal("MP2 energy"),
         )
     )
-
-    parser = (
-        pp.Or((pp.Literal("$grad"), pp.Literal("$gradient")))
-        + pp.Optional(cart_grads)
-        + pp.Literal("cycle =")
+    cycle_grads = pp.Group(
+        pp.Literal("cycle =")
         + cycle
         + energy_type
         + pp.Literal("=")
@@ -55,13 +48,36 @@ def parse_turbo_gradient(path):
         + grad_norm
         + pp.OneOrMore(coord_line).setResultsName("coords")
         + pp.OneOrMore(grad_line).setResultsName("grad")
+    )
+
+    parser = (
+        title
+        + pp.Optional(cart_grads)
+        + pp.OneOrMore(cycle_grads).set_results_name("cycle_grads")
         + pp.Literal("$end")
     )
     parsed = parser.parseString(text)
-    gradient = np.array(parsed["grad"].asList()).flatten()
+    return parsed
 
-    results["energy"] = parsed["scf_energy"]
-    results["forces"] = -gradient
+
+def parse_turbo_gradient(path):
+    gradient_fn = glob.glob(os.path.join(path, "gradient"))
+    if not gradient_fn:
+        raise Exception("gradient file not found!")
+    assert len(gradient_fn) == 1
+    gradient_fn = gradient_fn[0]
+    parsed = parse_turbo_gradient_str(gradient_fn)
+    cycle_grads = parsed["cycle_grads"]
+
+    # There may be multiple gradients of different optimization cycles
+    # in the file. Only use latest/last gradient.
+    latest_grad = cycle_grads[-1]
+    gradient = np.array(latest_grad["grad"].asList()).flatten()
+
+    results = {
+        "energy": latest_grad["scf_energy"],
+        "forces": -gradient,
+    }
     return results
 
 
@@ -97,18 +113,17 @@ def parse_turbo_mos(text):
     )
 
     parser = (
-        pp.Literal("$scfmo")
+        (pp.Literal("$scfmo") | pp.Literal("$uhfmo_alpha") | pp.Literal("$uhfmo_beta"))
         + pp.Literal("scfconv=")
         + pp.Word(pp.nums)
-        + pp.Literal("format(4d20.14) ")
+        + pp.Literal("format(4d20.14)")
         + pp.ZeroOrMore(comment)
         + pp.OneOrMore(mo).setResultsName("mos")
         + pp.Literal("$end")
     )
     parsed = parser.parseString(text)
-    mo_coeffs = np.array([mo.mo_coeffs.asList() for mo in parsed.mos]).T
-
     # MOs are in columns
+    mo_coeffs = np.array([mo.mo_coeffs.asList() for mo in parsed.mos]).T
     return mo_coeffs
 
 

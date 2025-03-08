@@ -14,11 +14,12 @@ from pysisyphus.wrapper.mwfn import get_mwfn_exc_str, make_cdd
 
 def parse_args(args):
     parser = argparse.ArgumentParser(
-        description="Wrapper script for "
-        "charge density difference (CDD) cube generation using "
-        "(ORCA), pysisyphus and Multiwfn. The orca_2mkl tool is required "
-        "when this script is called with a .gbw file. Pysisyphus and Multiwfn "
-        "are required always."
+        description=(
+            "Wrapper script for charge density difference (CDD) cube generation using "
+            "(ORCA), pysisyphus and Multiwfn. "
+            "The orca_2mkl tool is required when this script is called with a "
+            ".gbw file. Pysisyphus and Multiwfn are required always."
+        )
     )
     parser.add_argument("cis", help="ORCA .cis file.")
     parser.add_argument("--wfn", help="ORCA .gbw or molden file.")
@@ -165,7 +166,7 @@ def parse_cis(cis):
 
 
 def write_exc_file(fn, energies, Xs, Ys, thresh):
-    exc_str = get_mwfn_exc_str(energies, ci_coeffs=Xs, dexc_ci_coeffs=Ys, thresh=thresh)
+    exc_str = get_mwfn_exc_str(energies, Xa=Xs, Ya=Ys, thresh=thresh)
     with open(fn, "w") as handle:
         handle.write(exc_str)
     print(f"Wrote excitation-data to '{fn}'.")
@@ -177,6 +178,7 @@ def run():
 
     cis = args.cis
     wfn = args.wfn
+
     states = args.states
     elhole = args.elhole
     thresh = args.thresh
@@ -194,8 +196,10 @@ def run():
         print("Exiting after excitation file generation.")
         return
 
-    assert wfn
-    assert min(states) > 0, "'states' input must be all positive and > 0!"
+    assert wfn, "Unless orca2cdd.py is called with --exc-only, a --wfn is mandatory!"
+    assert min(states) > 0, (
+        "Please select some states via --states! " "Input must be > 0!"
+    )
 
     if wfn.endswith(".gbw"):
         wfn = gbw2molden(wfn)
