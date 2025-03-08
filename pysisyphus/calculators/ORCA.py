@@ -618,10 +618,10 @@ class ORCA(OverlapCalculator):
         self.wavefunction_dump = bool(wavefunction_dump)
 
         assert ("pal" not in keywords) and ("nprocs" not in blocks), (
-            "PALn/nprocs not " "allowed! Use 'pal: n' in the 'calc' section instead."
+            "PALn/nprocs not allowed! Use 'pal: n' in the 'calc' section instead."
         )
         assert "maxcore" not in blocks, (
-            "maxcore not allowed! " "Use 'mem: n' in the 'calc' section instead!"
+            "maxcore not allowed! Use 'mem: n' in the 'calc' section instead!"
         )
 
         td_blocks = {
@@ -784,7 +784,7 @@ class ORCA(OverlapCalculator):
                 break
         else:
             raise Exception(
-                "Could not find stable wavefunction in {max_cycles}! " "Aborting."
+                "Could not find stable wavefunction in {max_cycles}! Aborting."
             )
 
     def parse_stable(self, path):
@@ -825,8 +825,7 @@ class ORCA(OverlapCalculator):
         return results
 
     def get_all_energies(self, atoms, coords, **prepare_kwargs):
-        # Calculating a stable wavfunction in this method may lead to unnecessary
-        # ES calculation.
+        # Calculating a stable wavfunction in this method may lead to unnecessary ES calculations.
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 

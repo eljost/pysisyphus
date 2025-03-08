@@ -231,6 +231,8 @@ class PySCF(OverlapCalculator):
         results = self.get_energy(atoms, coords, **prepare_kwargs)
         all_energies = self.parse_all_energies()
         results["all_energies"] = all_energies
+        _, Xa, Ya, _, Xb, Yb, _ = self.prepare_overlap_data(path=None)
+        results["td_1tdms"] = [Xa, Ya, Xb, Yb]
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -294,6 +296,14 @@ class PySCF(OverlapCalculator):
             "wavefunction": kernel_to_wavefunction(mf),
         }
         return results
+
+    def get_stored_wavefunction(self, **kwargs):
+        try:
+            gs_mf = self.mf._scf
+        except AttributeError:
+            gs_mf = self.mf
+        wf = kernel_to_wavefunction(gs_mf)
+        return wf
 
     def run(self, mol, point_charges=None, method=None):
         lib.num_threads(self.pal)
@@ -371,7 +381,8 @@ class PySCF(OverlapCalculator):
             energy = all_energies[0]
         return energy
 
-    def prepare_overlap_data(self, path):
+    def prepare_overlap_data(self, path=None):
+        """This method does not use the path variable."""
         gs_mf = self.mf._scf
         exc_mf = self.mf
 

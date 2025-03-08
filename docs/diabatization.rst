@@ -573,8 +573,8 @@ are given below.
 
     Spin densities for the first two diabatic doublet states of the dithiophene cation.
 
-While the adiabatic spin-densities are evenly split over both monomers (50:50), the diabatic spin-densities are each
-localized mainly on one fragment (87:13 split).
+While the adiabatic spin-densities are evenly distributed over both monomers (50:50),
+the diabatic spin-densities are each localized mainly on one fragment (87:13).
 
 ..
   .. [#subotnikMarcus] https://doi.org/10.1021/jp101235a
