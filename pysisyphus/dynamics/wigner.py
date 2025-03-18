@@ -30,12 +30,9 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.typing import NDArray
 from numpy.polynomial.laguerre import Laguerre
 
 from pysisyphus.constants import AMU2AU, AU2EV, AU2SEC, C, KB, PLANCK
-from pysisyphus.helpers_pure import eigval_to_wavenumber
-from pysisyphus.hessian_proj import get_hessian_projector
 from pysisyphus.io import geom_from_hessian
 from pysisyphus.Geometry import Geometry
 
@@ -98,7 +95,6 @@ def get_vib_state(
     while True:
         # Sample from the possible interval
         random_state = rng.random() * thresh
-        random_state = rng.random() * thresh
         if random_state < probability_sum:
             break
 
@@ -115,9 +111,10 @@ def normal_mode_reduced_masses(masses_rep, normal_modes):
 
 @functools.singledispatch
 def get_wigner_sampler(
-    coords3d: NDArray[float],
-    masses: NDArray[float],
-    hessian: NDArray[float],
+    atoms,
+    coords3d: np.ndarray,
+    masses: np.ndarray,
+    hessian: np.ndarray,
     temperature: Optional[float] = None,
     nu_thresh: float = 20.0,
     stddevs: float = 6.0,
@@ -130,22 +127,12 @@ def get_wigner_sampler(
         seed = secrets.randbits(128)
     rng = np.random.default_rng(seed)
 
-    # Projector to remove translation & rotation
-    Proj = get_hessian_projector(coords3d, masses, full=True)
-    masses_rep = np.repeat(masses, 3)
-    PM = Proj @ np.diag(1 / np.sqrt(masses_rep))
+    tmp_geom = Geometry(atoms, coords3d)
+    tmp_geom.masses = masses
+    tmp_geom.cart_hessian = hessian
+    # nus, eigvals, mw_cart_displs (v), cart_displs
+    nus, _, v, _ = tmp_geom.get_normal_modes()
 
-    # Diagonalize projected, mass-weighted Hessian.
-    w, v = np.linalg.eigh(PM @ hessian @ PM.T)
-    nus = eigval_to_wavenumber(w)
-
-    # TODO: dectect if system is linear and don't hardcode dropping of first 6 modes.
-    # small_nu_mask = np.abs(nus) < nu_thresh
-    small_nu_mask = np.zeros_like(nus, dtype=bool)
-    small_nu_mask[:6] = True
-    # w = w[~small_nu_mask]
-    v = v[:, ~small_nu_mask]
-    nus = nus[~small_nu_mask]
     # Square root of angular frequencies in atomic units. Required to convert the
     # dimensionless Q and P values into atomic units.
     ang_freqs_au_sqrt = np.sqrt(nus * NU2ANGFREQAU)
@@ -166,10 +153,11 @@ def get_wigner_sampler(
         lag_coeffs[n] = 1.0
         return Laguerre(lag_coeffs)
 
+    # Precompute some often accessed Laguere polynomials
     for i in range(2, 11):
         laguerres[i] = get_laguerre(i)
 
-    mm_sqrt_au = np.sqrt(masses_rep * AMU2AU)
+    mm_sqrt_au = np.sqrt(tmp_geom.masses_rep * AMU2AU)
     M_inv_au = np.diag(1 / mm_sqrt_au)
 
     def sampler():
@@ -219,22 +207,27 @@ def get_wigner_sampler(
         displ_coords3d = coords3d.copy() + displ.reshape(-1, 3)
 
         # Remove rotation & translation from velocities at new coordinates.
-        P = get_hessian_projector(displ_coords3d, masses, full=True)
+        displ_geom = Geometry(atoms, displ_coords3d)
+        displ_geom.masses = masses
+        P = displ_geom.get_hessian_projector(full=True)
         velocities = P.dot(velocities)
-        return displ_coords3d, velocities.reshape(-1, 3)
+        velocities = velocities.reshape(-1, 3)
+        return displ_coords3d, velocities
 
     return sampler, seed
 
 
 @get_wigner_sampler.register
 def _(geom: Geometry, **kwargs):
-    return get_wigner_sampler(geom.coords3d, geom.masses, geom.hessian, **kwargs)
+    return get_wigner_sampler(
+        geom.atoms, geom.coords3d, geom.masses, geom.hessian, **kwargs
+    )
 
 
 @get_wigner_sampler.register
-def _(h5_fn: str):
+def _(h5_fn: str, **kwargs):
     geom = geom_from_hessian(h5_fn)
-    return get_wigner_sampler(geom)
+    return get_wigner_sampler(geom, **kwargs)
 
 
 def plot_normal_coords(normal_coords):
