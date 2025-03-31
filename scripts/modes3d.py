@@ -107,7 +107,6 @@ def render_bonds(coords3d, bonds=None):
 
 def input(key):
     global imag_ind
-    global imag_cycler
 
     if key == "space":
         imag_ind = next(imag_cycler)

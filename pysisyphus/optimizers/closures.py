@@ -90,9 +90,9 @@ def bfgs_multiply(
 
     Based on algorithm 7.4 Nocedal, Num. Opt., p. 178."""
 
-    assert len(s_list) == len(
-        y_list
-    ), "lengths of step list 's_list' and gradient list 'y_list' differ!"
+    assert len(s_list) == len(y_list), (
+        "lengths of step list 's_list' and gradient list 'y_list' differ!"
+    )
 
     cycles = len(s_list)
     q = vector.copy()
@@ -182,7 +182,6 @@ def lbfgs_closure(force_getter, M=10, beta=1, restrict_step=None):
         restrict_step = lambda x, dx: dx
 
     def lbfgs(x, *getter_args):
-        nonlocal x_list
         nonlocal cur_cycle
         nonlocal s_list
         nonlocal y_list
@@ -232,7 +231,6 @@ def modified_broyden_closure(force_getter, M=5, beta=1, restrict_step=None):
         nonlocal dxs
         nonlocal dFs
         nonlocal F
-        nonlocal beta
         nonlocal a
 
         F_new = -force_getter(x, *getter_args)
