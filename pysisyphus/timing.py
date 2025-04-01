@@ -33,7 +33,10 @@ class RuntimeEstimation:
         return render(self.median_est)
 
 
-def estimate_runtime(durations: Sequence[float], ncalcs: int) -> RuntimeEstimation:
+def estimate_runtime(
+    durations: Sequence[float], ncalcs: int, pal: int = 1
+) -> RuntimeEstimation:
+    assert pal >= 1, f"pal must be a positive integer, but got {pal=}!"
     ndurations = len(durations)
     if not durations:
         return RuntimeEstimation(0, 0, 0)
@@ -43,8 +46,8 @@ def estimate_runtime(durations: Sequence[float], ncalcs: int) -> RuntimeEstimati
     average_duration = sum(durations) / ndurations
     median_duration = median(durations)
     nremain = ncalcs - ndurations
-    mean_estimation = average_duration * nremain
-    median_estimation = median_duration * nremain
+    mean_estimation = average_duration * nremain / pal
+    median_estimation = median_duration * nremain / pal
     return RuntimeEstimation(
         mean_est=mean_estimation,
         median_est=median_estimation,
