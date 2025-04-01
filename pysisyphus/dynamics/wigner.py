@@ -23,18 +23,21 @@
 
 import argparse
 import functools
-from math import exp, pi
-from typing import Callable, Optional
+from math import ceil, exp, pi
 import secrets
 import sys
+from typing import Callable, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.polynomial.laguerre import Laguerre
+import rmsd
+import scipy as sp
 
-from pysisyphus.constants import AMU2AU, AU2EV, AU2SEC, C, KB, PLANCK
-from pysisyphus.io import geom_from_hessian
+from pysisyphus.constants import AMU2AU, AU2EV, BOHR2ANG, AU2SEC, C, KB, PLANCK
 from pysisyphus.Geometry import Geometry
+from pysisyphus.io import geom_from_hessian
+from pysisyphus.helpers_pure import render_sp_stats
 
 
 # From cm⁻¹ to angular frequency in atomic units
@@ -245,6 +248,28 @@ def plot_normal_coords(normal_coords):
     return fig, ax
 
 
+def plot_distances(all_coords3d):
+    ncoords, natoms, _ = all_coords3d.shape
+    ndists = sum(range(natoms))
+    dists = list()
+    for c3d in all_coords3d:
+        for i, ci in enumerate(c3d):
+            for cj in c3d[i + 1 :]:
+                dists.append(np.linalg.norm(ci - cj))
+    dists = np.array(dists) * BOHR2ANG
+
+    fig, ax = plt.subplots()
+    max_ = dists.max()
+    bins = np.linspace(0.0, max_, num=50)
+    ax.hist(dists, bins=bins)
+
+    ax.set_xlim(0.0, ceil(max_))
+    ax.set_xlabel("Distances / au")
+    ax.set_ylabel("Count")
+    ax.set_title(f"{natoms} atoms, {ncoords} geometries, {ndists} distances per geom")
+    return fig, ax
+
+
 def to_normal_coords_getter(geom):
     coords_eq = geom.coords
     sqrt_masses = np.repeat(np.sqrt(geom.masses), 3)
@@ -275,6 +300,11 @@ def parse_args(args):
         action="store_true",
         help="Plot distribution of normal coordinates",
     )
+    parser.add_argument(
+        "--plotdistances",
+        action="store_true",
+        help="Plot histogram of pairwise atomic distances.",
+    )
     return parser.parse_args(args)
 
 
@@ -287,6 +317,7 @@ def run():
     seed = args.seed
     plotekin = args.plotekin
     plotnormalcoords = args.plotnormalcoords
+    plotdistances = args.plotdistances
 
     geom = geom_from_hessian(h5_fn)
 
@@ -298,6 +329,12 @@ def run():
     for i in range(n):
         coords3d[i], velocities[i] = sampler()
         xyzs.append(geom.as_xyz(cart_coords=coords3d[i]))
+
+    c3d_ref = geom.coords3d
+    rmsds = np.array([rmsd.kabsch_rmsd(c3d_ref, c3d) for c3d in coords3d])
+    rmsd_stats = sp.stats.describe(rmsds)
+    print("RMSD statistics:")
+    print(render_sp_stats(rmsd_stats, unit="au", unit2="Å", conv2=BOHR2ANG))
 
     trj_fn = f"samples_{n}.trj"
     with open(trj_fn, "w") as handle:
@@ -320,3 +357,7 @@ def run():
         fig, ax = plot_normal_coords(normal_coords)
         fig.tight_layout()
         fig.savefig("normal_coords.pdf")
+    if plotdistances:
+        fig, ax = plot_distances(coords3d)
+        fig.tight_layout()
+        fig.savefig("distances.pdf")

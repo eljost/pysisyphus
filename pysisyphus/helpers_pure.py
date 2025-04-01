@@ -702,3 +702,37 @@ def get_state_label(mult: int, state_ind: int, default="?"):
 
 def argsort(iterable):
     return [i for i, _ in sorted(enumerate(iterable), key=lambda i_item: i_item[1])]
+
+
+def render_sp_stats(
+    descr_res,
+    unit: str,
+    unit2: Optional[str] = None,
+    conv2: float = 1.0,
+) -> str:
+    """Render DescribeResult from scipy.stats.describe as str.
+
+    Values are reported with unit '{unit}'. If provided, values
+    are reported with a second unit and an appropriate conversion
+    factor."""
+    rendered = ""
+    min_, max_ = descr_res.minmax
+    data = {
+        "min": min_,
+        "max": max_,
+        "mean": descr_res.mean,
+        "std": (descr_res.variance) ** 0.5,
+    }
+    lines = [
+        f"  nobs: {descr_res.nobs: >8d}",
+    ]
+    fmt = " >8.4f"
+    for k, v in data.items():
+        prefix = "±" if k == "std" else " "
+        line = f"{k: >6s}: {prefix}{v:{fmt}} {unit}"
+        if unit2 is not None:
+            v2 = v * conv2
+            line += f" ({v2:{fmt}} {unit2})"
+        lines.append(line)
+    rendered = "\n".join(lines)
+    return rendered
