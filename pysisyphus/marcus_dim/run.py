@@ -193,16 +193,18 @@ def run_scan_parallel(
 
     def get_properties(calc_number, coords):
         print(f"Started scan calculation {calc_number}")
-        calc = calc_getter(pal=1, calc_number=calc_number, base_name="scan")
+        calc = calc_getter(
+            with_td=True, pal=1, calc_number=calc_number, base_name="scan"
+        )
         all_energies = np.nan
         alpha_epos = np.nan
         try:
             # TODO: move actual calculation into property functions?!
             results = calc.get_all_energies(geom.atoms, coords)
             all_energies = results["all_energies"]
-            assert (
-                all_energies.size >= 2
-            ), "Energies of at least two states must be calculated!"
+            assert all_energies.size >= 2, (
+                "Energies of at least two states must be calculated!"
+            )
         except AttributeError as err:
             if not dummy_scan:
                 raise err
@@ -381,14 +383,16 @@ def run_marcus_dim(
 
     fit_results_path = cwd / FIT_RESULTS_FN
     rms_converged = False
+    one_batch = False
     if fit_results_path.exists():
         marcus_dim_data = np.load(fit_results_path)
         try:
             rms_converged = bool(marcus_dim_data["rms_converged"])
+            one_batch = int(marcus_dim_data["max_batches"]) == 1
         except KeyError:
             print("Could not determine if Marcus dimension already converged!")
     # When rms_converged is True md_results will always be present
-    if not force and rms_converged:
+    if not force and (rms_converged or one_batch):
         marcus_dim = marcus_dim_data["marcus_dim"]
         print(f"Loaded Marcus dimension from '{fit_results_path}'. Skipping fit.")
         print(
@@ -462,7 +466,7 @@ def run_marcus_dim(
     mult_calc = calc_getter()
     try:
         mult = mult_calc.mult
-    except:
+    except AttributeError:
         mult = -1
     # Parametrize using only the energies of ground and 1st excited state.
     models = run_param(scan_result.factors, scan_result.energies[:, :2], mult, cwd=cwd)

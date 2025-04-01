@@ -520,6 +520,7 @@ def fit_marcus_dim(
         # "marcus_dim": np.zeros_like(geom.cart_coords),
         # "coeffs": np.zeros_like(all_norm_coords),
         "rms_thresh": rms_thresh,
+        "max_batches": max_batches,
     }
     results_fn = out_dir / FIT_RESULTS_FN
 
@@ -671,6 +672,8 @@ def fit_marcus_dim(
             )
 
         sys.stdout.flush()
+
+        # Convergence check
         if (rms_marcus_dim is not None) and rms_converged:
             print(
                 f"\nCalculation of Marcus dimension converged after {end_ind} calculations!"
@@ -684,6 +687,8 @@ def fit_marcus_dim(
         prev_coeffs = coeffs
         prev_marcus_dim = marcus_dim
         print()
+    else:
+        print("Reached maximum number of requested batches!")
     # End of loop
 
     # Write final Marcus dimension

@@ -26,15 +26,13 @@ def solve_marcus(R, Vab, dG=None, en_exc_min=None):
         https://www.science.org/doi/epdf/10.1126/science.278.5339.846
     This is not yet implemented!"""
 
-    assert (dG is not None) or (
-        en_exc_min is not None
-    ), "Either 'dG' or 'en_exc_min' must be given!"
+    assert (dG is not None) or (en_exc_min is not None), (
+        "Either 'dG' or 'en_exc_min' must be given!"
+    )
     f, d = sym.symbols("f d", real=True)
     # Equation 1 is the same for both parametrizations; either eq. (5b) or (6b)
     eq1 = (
-        d / 2
-        - 1 / 2 * ((d**2 * f - sym.sqrt(d**4 * f**2 - 4 * Vab**2)) / (d * f))
-        - R
+        d / 2 - 1 / 2 * ((d**2 * f - sym.sqrt(d**4 * f**2 - 4 * Vab**2)) / (d * f)) - R
     )
 
     nan = math.nan
@@ -107,9 +105,9 @@ def param_marcus(coordinate: np.ndarray, energies: np.ndarray):
         "Parametrization requires a 1d coordinate, e.g. an "
         "array collecting displacement along the Marcus dimension!"
     )
-    assert (
-        energies.ndim == 2
-    ), "Parametrization requires potential energy curves of 2 states!"
+    assert energies.ndim == 2, (
+        "Parametrization requires potential energy curves of 2 states!"
+    )
 
     energies = energies - energies.min()
     # Excitation energy at adiabatic minimum
