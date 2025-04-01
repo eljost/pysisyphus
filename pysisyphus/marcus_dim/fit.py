@@ -8,6 +8,7 @@
 #     Šrut, Lear, Krewald, 2023, actual published version
 
 import datetime
+import functools
 from pathlib import Path
 import sys
 import time
@@ -17,6 +18,7 @@ from distributed import Client
 import matplotlib.pyplot as plt
 import numpy as np
 
+from pysisyphus import plot_helpers
 from pysisyphus.constants import BOHR2ANG, C
 from pysisyphus.exceptions import (
     CalculationFailedException,
@@ -29,7 +31,6 @@ from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import (
     get_tangent_trj_str,
     get_fragment_xyzs,
-    highlight_text,
     check_for_end_sign,
 )
 from pysisyphus.helpers_pure import (
@@ -55,7 +56,7 @@ _CORR_THRESH = 0.10
 
 
 def create_marcus_coefficient_plot(nqs, coeffs, batch=None, ncalcs=None):
-    fig, ax = plt.subplots()
+    fig, ax = plot_helpers.fig_ax_from_canvas_agg()
     ax.bar(np.arange(nqs) + 6, coeffs)
     ax.set_xlabel("Mode")
     ax.set_ylabel("Coefficient")
@@ -93,7 +94,7 @@ def create_correlation_plots(
     qs, nus, corrs, depos, drop_first, batch, out_dir=".", corr_thresh=_CORR_THRESH
 ):
     out_dir = Path(out_dir)
-    fig, ax = plt.subplots()
+    fig, ax = plot_helpers.fig_ax_from_canvas_agg()
     # Normal coordinate limits to get sensible y-axis limits
     deposmin = depos.min()
     deposmax = depos.max()
@@ -116,7 +117,7 @@ def create_correlation_plots(
         ax.set_xlim(deposmin, deposmax)
         ax.set_ylim(qmin, qmax)
         ax.set_xlabel("Δepos")
-        ax.set_ylabel(f"$q_{{{i+drop_first}}}$")
+        ax.set_ylabel(f"$q_{{{i + drop_first}}}$")
         title = rf"Batch {batch:02d}: Mode {i:03d}, {nu: >8.2f} cm⁻¹, $\rho$ = {corr:> 8.4f}"
         ax.set_title(title)
         fn = f"correlation_batch_{batch:02d}_mode_{i:03d}.svg"
@@ -263,6 +264,32 @@ def en_exc_property(geom, fragments):
     return property
 
 
+def calculate_property(
+    i, coords, geom, calc_getter, pal, fragments, prop_eq, property_func
+):
+    displ_geom = geom.copy()
+    displ_geom.coords = coords
+    displ_geom.set_calculator(calc_getter(pal=pal, calc_number=i, base_name="displ"))
+    prop = np.nan
+    try:
+        # TODO: move actual calculation into property functions?!
+        # displ_geom.all_energies
+        # TODO: do a different calculation for DEXC
+        displ_geom.calc_wavefunction()
+        prop = property_func(displ_geom, fragments)
+        # Subtract property at equilibrium geometry
+        # If we would not subtract the equilibrium property we would have to pad
+        # the normal coordinate matrix with an additional column.
+        prop = prop - prop_eq
+    except CalculationFailedException as err:
+        print(err)
+        print(f"Calculation {i:03d} failed!")
+    except RunAfterCalculationFailedException as err:
+        print(err)
+        print(f"Postprocessing of calculation {i:03d} failed!")
+    return prop
+
+
 def get_mass(marcus_dim: np.ndarray, masses: np.ndarray) -> float:
     """Mass of fictious particle moving along Marcus dimension.
 
@@ -400,7 +427,7 @@ def fit_marcus_dim(
     print(f"rms threshold: {rms_thresh}")
     print(f"     Property: {property}")
 
-    print(f"Doing at most {batch_size*max_batches} calculations")
+    print(f"Doing at most {batch_size * max_batches} calculations")
 
     # Dump fragments
     fragments_trj = "\n".join(
@@ -431,8 +458,11 @@ def fit_marcus_dim(
 
     # Calculate wavefunction at equilibrium geometry
     print("Starting calculation at equilibrium geometry")
-    geom.all_energies
-    property_eq = property_func(geom, fragments)
+    # TODO: figure out why this is even needed here ... probably because the calculations aren't done
+    # inside the property function(s).
+    gs_energy_eq, *_ = geom.all_energies
+    # TODO: using 'geom.calc_wavefunction()' leads to a pickling-error later on
+    prop_eq = property_func(geom, fragments)
     print("Finished calculation at equilibrium geometry")
 
     # Function that create displaced geometries by drawing from a Wigner distribution
@@ -445,14 +475,14 @@ def fit_marcus_dim(
     all_properties = np.zeros(max_ncalcs)
 
     masses = geom.masses
-    sqrt_masses_rep = np.repeat(np.sqrt(masses), 3)
 
     to_save = {
         # Property key
         "property": str(property),
         # Equilibrium geometry
         "cart_coords_eq": geom.cart_coords,
-        "property_eq": property_eq,
+        "property_eq": prop_eq,
+        "gs_energy_eq": gs_energy_eq,
         # Samples
         "hessian": geom.cart_hessian,
         "mw_hessian": geom.mw_hessian,
@@ -490,28 +520,15 @@ def fit_marcus_dim(
         calc_msg = f"Running calculations in serial with {pal=}."
     print(calc_msg)
 
-    def calculate_property(i, coords):
-        displ_geom = geom.copy()
-        displ_geom.coords = coords
-        displ_geom.set_calculator(
-            calc_getter(pal=pal, calc_number=i, base_name="displ")
-        )
-        property = np.nan
-        try:
-            # TODO: move actual calculation into property functions?!
-            displ_geom.all_energies
-            property = property_func(displ_geom, fragments)
-            # Subtract property at equilibrium geometry
-            # If we would not subtract the equilibrium property we would have to pad
-            # the normal coordinate matrix with an additional column.
-            property = property - property_eq
-        except CalculationFailedException as err:
-            print(err)
-            print(f"Calculation {i:03d} failed!")
-        except RunAfterCalculationFailedException as err:
-            print(err)
-            print(f"Postprocessing of calculation {i:03d} failed!")
-        return property
+    calculate_property_wrapped = functools.partial(
+        calculate_property,
+        geom=geom,
+        calc_getter=calc_getter,
+        pal=pal,
+        fragments=fragments,
+        prop_eq=prop_eq,
+        property_func=property_func,
+    )
 
     print()
     sys.stdout.flush()
@@ -522,7 +539,8 @@ def fit_marcus_dim(
         now = datetime.datetime.now()
         print(highlight_text(f"Batch {batch}") + "\n")
         print(f"Starting at index {start_ind} on {now.strftime('%c')}")
-        print(f"Doing calculations with indices {start_ind} to {end_ind-1}.")
+        print(f"Doing calculations with indices {start_ind} to {end_ind - 1}.")
+        sys.stdout.flush()
 
         batch_displ_coords = np.zeros((batch_size, coords_eq.size))
         # Get and store displaced coordinates and normal coordinates
@@ -539,7 +557,7 @@ def fit_marcus_dim(
         batch_range = range(start_ind, end_ind)
         if client is not None:
             futures = client.map(
-                calculate_property, batch_range, batch_displ_coords, pure=False
+                calculate_property_wrapped, batch_range, batch_displ_coords, pure=False
             )
             batch_properties = client.gather(futures)
             all_properties[start_ind:end_ind] = batch_properties
@@ -548,7 +566,7 @@ def fit_marcus_dim(
                 if i % 5 == 0:
                     print(f"\t{i}")
                     sys.stdout.flush()
-                all_properties[i] = calculate_property(
+                all_properties[i] = calculate_property_wrapped(
                     i, batch_displ_coords[i - start_ind]
                 )
         # End loop over calculations in one batch
@@ -558,6 +576,7 @@ def fit_marcus_dim(
         print(f"Did {batch_size} calculations.")
         print(f"Full batch took {batch_dur:.2f} s, {calc_dur:.2f} s / calculation")
         print(f"Total number of calculations done until now: {end_ind}")
+        sys.stdout.flush()
 
         # Actually calculate Marcus dimension using least-squares
         corrs, coeffs, marcus_dim, marcus_dim_q = get_marcus_dim(

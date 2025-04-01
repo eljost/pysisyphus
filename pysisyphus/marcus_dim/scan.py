@@ -66,7 +66,7 @@ def get_classII_scan_info(
     """
     assert max_bond_change > 0.0
     _, coeffs, marcus_dim, marcus_dim_q = get_marcus_dim(
-        eigvecs, masses, normal_coords, properties
+        eigvecs, normal_coords, properties
     )
 
     prop_change_along_marcus_dim = (marcus_dim_q * coeffs).sum()
@@ -257,8 +257,7 @@ def scan_dir(
         # Check gradient convergence; this check is skipped once convergence is indicated.
         if not converged and (
             # Bad idea to force to continue when converged?!
-            converged := did_min_steps
-            and np.abs(grad) <= grad_thresh
+            converged := did_min_steps and np.abs(grad) <= grad_thresh
         ):
             print("Converged!")
 
