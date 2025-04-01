@@ -385,6 +385,26 @@ def get_wavenumber_from_coeffs(coeffs: np.ndarray, nus: np.ndarray) -> float:
     return marcus_nu
 
 
+def dump_marcus_dim_xyz_trj(
+    atoms, coords3d_eq: np.ndarray, marcus_dim: np.ndarray, out_path: Path
+):
+    # XYZ representation of Marcus dimension and animation
+    marcus_dim_xyz = make_xyz_str(atoms, BOHR2ANG * marcus_dim.reshape(-1, 3))
+    xyz_path = out_path.with_suffix(".xyz")
+    with open(xyz_path, "w") as handle:
+        handle.write(marcus_dim_xyz)
+
+    print(f"Current Marcus dimension:\n{marcus_dim_xyz}\n")
+    marcus_dim_trj = get_tangent_trj_str(
+        atoms, coords3d_eq.flatten(), marcus_dim, comment="Marcus dimension"
+    )
+    # Dump animated Marcus dimension
+    trj_path = out_path.with_suffix(".trj")
+    with open(out_path, "w") as handle:
+        handle.write(marcus_dim_trj)
+    return marcus_dim_xyz, marcus_dim_trj
+
+
 def fit_marcus_dim(
     geom: Geometry,
     calc_getter: Callable,
@@ -582,6 +602,15 @@ def fit_marcus_dim(
         corrs, coeffs, marcus_dim, marcus_dim_q = get_marcus_dim(
             cart_displs, all_norm_coords[:end_ind], all_properties[:end_ind]
         )
+        # Report expansion coefficients and rms values
+        report_marcus_coefficients(coeffs, nus, drop_first)
+        # Dump Marcus dimension and .trj file
+        marcus_dim_trj_fn = out_dir / f"marcus_dim_{batch_str}.trj"
+        # Suppress the 2nd argument (marcus_dim_trj)
+        marcus_dim_xyz, _ = dump_marcus_dim_xyz_trj(
+            geom.atoms, geom.coords3d, marcus_dim, marcus_dim_trj_fn
+        )
+
         # Property change along Marcus dimension from fitted coefficients
         prop_change_along_marcus_dim = marcus_dim_q.dot(coeffs)
 
@@ -601,20 +630,6 @@ def fit_marcus_dim(
         to_save["prop_change_along_marcus_dim"] = prop_change_along_marcus_dim
         to_save["end_ind"] = end_ind
 
-        # XYZ representation of Marcus dimension and animation
-        marcus_dim_xyz_str = make_xyz_str(
-            geom.atoms, BOHR2ANG * marcus_dim.reshape(-1, 3)
-        )
-        print(f"Current Marcus dimension:\n{marcus_dim_xyz_str}\n")
-        marcus_dim_trj = get_tangent_trj_str(
-            geom.atoms, geom.cart_coords, marcus_dim, comment="Marcus dimension"
-        )
-        # Dump animated Marcus dimension
-        with open(f"marcus_dim_{batch_str}.trj", "w") as handle:
-            handle.write(marcus_dim_trj)
-
-        # Report expansion coefficients and rms values
-        report_marcus_coefficients(coeffs, nus, drop_first)
         sys.stdout.flush()
         print()
         if prev_coeffs is not None:
@@ -671,20 +686,23 @@ def fit_marcus_dim(
         print()
     # End of loop
 
+    # Write final Marcus dimension
     with open(out_dir / "marcus_dim.xyz", "w") as handle:
-        handle.write(marcus_dim_xyz_str)
+        handle.write(marcus_dim_xyz)
 
+    # Report failed calculations
     calc_indices = np.arange(end_ind)
     failed_mask = np.isnan(all_properties[:end_ind])
     for i in calc_indices[failed_mask]:
         print(f"Calculation {i:03d} failed!")
     print(f"{failed_mask.sum()}/{end_ind} calculations failed.")
 
+    # Plot summary of utilized normal coordinates
     fig, _ = plot_normal_coords(all_norm_coords[:end_ind])
     fig.savefig(out_dir / "normal_coords.svg")
 
     print()
-    print(f"Final Marcus dimension:\n{marcus_dim_xyz_str}\n")
+    print(f"Final Marcus dimension:\n{marcus_dim_xyz}\n")
     print(f"Mass along final Marcus dimension: {mass_marcus:.6f} amu")
     print(f"Wavenumber of final Marcus dimension: {nu_marcus:.6f} cm⁻¹")
 
