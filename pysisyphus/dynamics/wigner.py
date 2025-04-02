@@ -22,11 +22,13 @@
 #     Zobel, Nogueira, Gonzalez
 
 import argparse
+import dataclasses
 import functools
 from math import ceil, exp, pi
 import secrets
 import sys
 from typing import Callable, Optional
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -46,16 +48,38 @@ from pysisyphus.helpers_pure import render_sp_stats
 NU2ANGFREQAU = 2 * pi * 100 * C * AU2SEC
 
 
+@dataclasses.dataclass
+class WignerSample:
+    # Normal coordinates
+    qs: np.ndarray
+    # Momenta
+    ps: np.ndarray
+    # Dimensionless displacement
+    qs_nodim: np.ndarray
+    # Dimensionless momentum
+    ps_nodim: np.ndarray
+    # Displaced coordinates
+    coords3d: np.ndarray
+    # Equilibrium coordinates
+    coords3d_eq: np.ndarray
+    # Velocities
+    velocities: np.ndarray
+
+
 def get_vib_state(
     wavenumber: float,
     rng: Optional[np.random.Generator] = None,
-    temperature: Optional[float] = None,
+    temperature: float = 0.0,
 ) -> int:
     """Return random vibrational state n for given wavenumber and temperature."""
     if rng is None:
         rng = np.random.default_rng()
-    if temperature is None:
+    temperature_thresh = 1e-8
+    if abs(temperature) <= temperature_thresh:
         return 0  # Ground state
+    assert temperature > temperature_thresh, f"Got negative {temperature=:8.4f}!"
+
+    # The code below is only executed when temperature is > 0 K.
 
     freq = wavenumber * 100 * C  # from cm⁻¹ to s⁻¹
     vib_en_J = PLANCK * freq  # Energy in J
@@ -118,8 +142,8 @@ def get_wigner_sampler(
     coords3d: np.ndarray,
     masses: np.ndarray,
     hessian: np.ndarray,
-    temperature: Optional[float] = None,
-    nu_thresh: float = 20.0,
+    temperature: float = 0.0,
+    nu_thresh: float = 0.0,
     stddevs: float = 6.0,
     seed: Optional[int] = None,
 ) -> tuple[Callable, int]:
@@ -135,13 +159,20 @@ def get_wigner_sampler(
     tmp_geom.cart_hessian = hessian
     # nus, eigvals, mw_cart_displs (v), cart_displs
     nus, _, v, _ = tmp_geom.get_normal_modes()
+    nnus = len(nus)  # Number of non-zero wavenumbers
+
+    imag_nus = nus <= nu_thresh
+    nimag_nus = imag_nus.sum()
+    use_nu_inds = np.arange(nnus)[~imag_nus]
+    if nimag_nus:
+        warnings.warn(
+            f"Detected {nimag_nus} imaginary wavenumber(s)! They will be ignored in the sampling."
+        )
 
     # Square root of angular frequencies in atomic units. Required to convert the
     # dimensionless Q and P values into atomic units.
     ang_freqs_au_sqrt = np.sqrt(nus * NU2ANGFREQAU)
-
-    assert (nus >= nu_thresh).all(), "Imaginary wavenumbers are not yet handled!"
-    nnus = len(nus)  # Number of non-zero wavenumbers
+    ang_freqs_au_sqrt[imag_nus] = 1.0
 
     span = 2 * stddevs
     # Pre-calculate some of the Laguerre polynomials
@@ -163,10 +194,12 @@ def get_wigner_sampler(
     mm_sqrt_au = np.sqrt(tmp_geom.masses_rep * AMU2AU)
     M_inv_au = np.diag(1 / mm_sqrt_au)
 
-    def sampler():
-        Qs = np.zeros(nnus)
-        Ps = np.zeros(nnus)
-        for i in range(nnus):
+    def sampler() -> WignerSample:
+        qs_nodim = np.zeros(nnus)
+        ps_nodim = np.zeros(nnus)
+        # Modes that are ignored will not be part of 'use_nu_inds' and their associated
+        # sampled normal coordinates and momenta will stay at 0.0 throughout.
+        for i in use_nu_inds:
             n = get_vib_state(nus[i], rng, temperature=temperature)
             try:
                 lag = laguerres[n]
@@ -193,17 +226,17 @@ def get_wigner_sampler(
                 # Wigner function. See the SI of [5] for a discussion.
                 if 0.0 < p_wig >= ref:
                     break
-            Qs[i] = q
-            Ps[i] = p
+            qs_nodim[i] = q
+            ps_nodim[i] = p
 
         # The actual displacements/momenta depend on the vibrational frequencies.
-        # Now we the dimensionless units to atomic units. See eq. (5) in [1].
-        Qs /= ang_freqs_au_sqrt
-        Ps *= ang_freqs_au_sqrt
+        # Now we convert the dimensionless units to atomic units. See eq. (5) in [1].
+        qs = qs_nodim / ang_freqs_au_sqrt
+        ps = ps_nodim * ang_freqs_au_sqrt
 
         # Convert to Cartesian coordinates
-        displ = M_inv_au @ v @ Qs
-        velocities = M_inv_au @ v @ Ps
+        displ = M_inv_au @ v @ qs
+        velocities = M_inv_au @ v @ ps
 
         # The COM remains unaffected, as we displace along vibrations,
         # not translations.
@@ -215,7 +248,15 @@ def get_wigner_sampler(
         P = displ_geom.get_hessian_projector(full=True)
         velocities = P.dot(velocities)
         velocities = velocities.reshape(-1, 3)
-        return displ_coords3d, velocities
+        return WignerSample(
+            qs=qs,
+            ps=ps,
+            qs_nodim=qs_nodim,
+            ps_nodim=ps_nodim,
+            coords3d=displ_coords3d,
+            coords3d_eq=coords3d.copy(),
+            velocities=velocities,
+        )
 
     return sampler, seed
 
@@ -292,7 +333,12 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("h5_fn", type=str, help="Filename of pysisyphus HDF5 Hessian.")
     parser.add_argument("-n", type=int, default=100, help="Number of samples.")
-    parser.add_argument("-T", type=float, default=None, help="Temperature in K.")
+    parser.add_argument(
+        "-T",
+        type=float,
+        default=0.0,
+        help="Temperature in K. For T = 0 K only the vibrational ground-state will be sampled.",
+    )
     parser.add_argument("--seed", type=int)
     parser.add_argument("--plotekin", action="store_true", help="Plot kinetic energy.")
     parser.add_argument(
@@ -322,12 +368,14 @@ def run():
     geom = geom_from_hessian(h5_fn)
 
     sampler, seed = get_wigner_sampler(geom, temperature=temperature, seed=seed)
-    print(f"Seed: {seed}")
+    print(f"Seed: {seed}, Temperature = {temperature:8.4f} K")
     xyzs = list()
     coords3d = np.empty((n, len(geom.atoms), 3))
     velocities = np.empty_like(coords3d)
     for i in range(n):
-        coords3d[i], velocities[i] = sampler()
+        sample = sampler()
+        coords3d[i] = sample.coords3d
+        velocities[i] = sample.velocities
         xyzs.append(geom.as_xyz(cart_coords=coords3d[i]))
 
     c3d_ref = geom.coords3d
