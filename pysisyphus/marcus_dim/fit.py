@@ -400,9 +400,48 @@ def dump_marcus_dim_xyz_trj(
     )
     # Dump animated Marcus dimension
     trj_path = out_path.with_suffix(".trj")
-    with open(out_path, "w") as handle:
+    with open(trj_path, "w") as handle:
         handle.write(marcus_dim_trj)
     return marcus_dim_xyz, marcus_dim_trj
+
+
+def setup_calc_client(geom, scheduler):
+    if scheduler is not None:
+        client = Client(scheduler)
+        pal = 1
+        sched_info = client.scheduler_info()
+        n_workers = len(sched_info["workers"])
+        calc_msg = f"Running {n_workers} calculations in parallel with {pal=} each."
+    else:
+        client = None
+        pal = geom.calculator.pal
+        calc_msg = f"Running calculations in serial with {pal=}."
+    return client, pal, calc_msg
+
+
+def run_batch_calcs(batch_size, start_ind, sampler, client, calc_func):
+    # Get and store displaced coordinates and normal coordinates
+    batch_displ_coords = list()
+    batch_norm_coords = list()
+    for i in range(batch_size):
+        displ_coords, norm_coords = sampler()
+        batch_displ_coords.append(displ_coords)
+        batch_norm_coords.append(norm_coords)
+
+    # Loop over cacluclations in current batch
+    batch_range = range(start_ind, start_ind + batch_size)
+    if client is not None:
+        futures = client.map(calc_func, batch_range, batch_displ_coords, pure=False)
+        batch_properties = client.gather(futures)
+    else:
+        batch_properties = list()
+        for i, displ_coords in enumerate(batch_displ_coords, start_ind):
+            if i % 5 == 0:
+                print(f"\t{i}")
+                sys.stdout.flush()
+            prop = calc_func(i, displ_coords)
+            batch_properties.append(prop)
+    return batch_displ_coords, batch_norm_coords, batch_properties
 
 
 def fit_marcus_dim(
@@ -487,6 +526,12 @@ def fit_marcus_dim(
 
     # Function that create displaced geometries by drawing from a Wigner distribution
     wigner_sampler, seed = get_wigner_sampler(geom, temperature=T, seed=seed)
+    sampler_wrapped = functools.partial(
+        get_displaced_coordinates,
+        wigner_sampler=wigner_sampler,
+        cart_displs=cart_displs,
+        coords_eq=coords_eq,
+    )
     print(f"Seed for Wigner sampling: {seed}")
 
     # Arrays holding displace Cartesian coordinates, normal coordinates and properties
@@ -524,21 +569,7 @@ def fit_marcus_dim(
     }
     results_fn = out_dir / FIT_RESULTS_FN
 
-    prev_coeffs = None
-    prev_marcus_dim = None
-    rms_coeffs = None
-    rms_marcus_dim = None
-
-    if scheduler is not None:
-        client = Client(scheduler)
-        pal = 1
-        sched_info = client.scheduler_info()
-        n_workers = len(sched_info["workers"])
-        calc_msg = f"Running {n_workers} calculations in parallel with {pal=} each."
-    else:
-        client = None
-        pal = geom.calculator.pal
-        calc_msg = f"Running calculations in serial with {pal=}."
+    client, pal, calc_msg = setup_calc_client(geom, scheduler)
     print(calc_msg)
 
     calculate_property_wrapped = functools.partial(
@@ -550,9 +581,14 @@ def fit_marcus_dim(
         prop_eq=prop_eq,
         property_func=property_func,
     )
-
     print()
     sys.stdout.flush()
+
+    # Start calculation batches
+    prev_coeffs = None
+    prev_marcus_dim = None
+    rms_coeffs = None
+    rms_marcus_dim = None
     for batch in range(max_batches):
         batch_str = f"batch_{batch:02d}"
         start_ind = batch * batch_size
@@ -563,36 +599,16 @@ def fit_marcus_dim(
         print(f"Doing calculations with indices {start_ind} to {end_ind - 1}.")
         sys.stdout.flush()
 
-        batch_displ_coords = np.zeros((batch_size, coords_eq.size))
-        # Get and store displaced coordinates and normal coordinates
-        for i in range(start_ind, end_ind):
-            displ_coords, norm_coords = get_displaced_coordinates(
-                wigner_sampler, cart_displs, coords_eq
-            )
-            batch_displ_coords[i - start_ind] = displ_coords
-            all_displ_coords[i] = displ_coords
-            all_norm_coords[i] = norm_coords
+        # Run the actual calculatiions
+        batch_dur = time.time()
+        batch_displ_coords, batch_norm_coords, batch_properties = run_batch_calcs(
+            batch_size, start_ind, sampler_wrapped, client, calculate_property_wrapped
+        )
+        batch_dur = time.time() - batch_dur
+        all_displ_coords[start_ind:end_ind] = batch_displ_coords
+        all_norm_coords[start_ind:end_ind] = batch_norm_coords
+        all_properties[start_ind:end_ind] = batch_properties
 
-        # Loop over cacluclations in current batch
-        batch_start = time.time()
-        batch_range = range(start_ind, end_ind)
-        if client is not None:
-            futures = client.map(
-                calculate_property_wrapped, batch_range, batch_displ_coords, pure=False
-            )
-            batch_properties = client.gather(futures)
-            all_properties[start_ind:end_ind] = batch_properties
-        else:
-            for i in batch_range:
-                if i % 5 == 0:
-                    print(f"\t{i}")
-                    sys.stdout.flush()
-                all_properties[i] = calculate_property_wrapped(
-                    i, batch_displ_coords[i - start_ind]
-                )
-        # End loop over calculations in one batch
-
-        batch_dur = time.time() - batch_start
         calc_dur = batch_dur / batch_size
         print(f"Did {batch_size} calculations.")
         print(f"Full batch took {batch_dur:.2f} s, {calc_dur:.2f} s / calculation")
