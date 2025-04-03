@@ -657,6 +657,7 @@ def fit_marcus_dim(
             to_save["rms_converged"] = rms_converged
         else:
             rms_converged = False
+        # Save the actual data here
         np.savez(results_fn, **to_save)
 
         # Plot of expansion coefficients
@@ -666,6 +667,11 @@ def fit_marcus_dim(
         plot_fn = out_dir / f"marcus_coeffs_{batch_str}.svg"
         fig.savefig(plot_fn)
         print(f"Saved expansion coefficent plot to '{plot_fn}'.\n")
+        plt.close(fig)
+
+        # Plot summary of utilized normal coordinates
+        fig, _ = plot_normal_coords(all_norm_coords[:end_ind])
+        fig.savefig(out_dir / "normal_coords.svg", dpi=200)
         plt.close(fig)
 
         # Correlations between normal modes and properties
@@ -681,7 +687,6 @@ def fit_marcus_dim(
                 out_dir=out_dir,
                 corr_thresh=corr_thresh,
             )
-
         sys.stdout.flush()
 
         # Convergence check
@@ -712,11 +717,6 @@ def fit_marcus_dim(
     for i in calc_indices[failed_mask]:
         print(f"Calculation {i:03d} failed!")
     print(f"{failed_mask.sum()}/{end_ind} calculations failed.")
-
-    # Plot summary of utilized normal coordinates
-    fig, _ = plot_normal_coords(all_norm_coords[:end_ind])
-    fig.savefig(out_dir / "normal_coords.svg")
-
     print()
     print(f"Final Marcus dimension:\n{marcus_dim_xyz}\n")
     print(f"Mass along final Marcus dimension: {mass_marcus:.6f} amu")

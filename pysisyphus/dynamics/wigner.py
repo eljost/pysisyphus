@@ -277,16 +277,16 @@ def _(h5_fn: str, **kwargs):
 def plot_normal_coords(normal_coords):
     ncoords, nnormal_coords = normal_coords.shape
     fig, ax = plt.subplots()
-    ax.set_title(
-        f"Normal coordinate distribution from Wigner sampling ({ncoords} samples)"
-    )
     ax.axhline(0.0, c="k", ls="--", zorder=0)
     quants = [0.1, 0.9]
     quantiles = [quants] * nnormal_coords
     ax.violinplot(normal_coords, quantiles=quantiles)
     ax.set_xlabel("Normal mode")
     ax.set_ylabel("Normal coordinate")
-    ax.set_title(f"Markers at quantiles [0, {', '.join(map(str, quants))}, 1.0]")
+    ax.set_title(
+        f"Normal coordinates of {ncoords} geomtries.\n"
+        f"Markers at quantiles [0, {', '.join(map(str, quants))}, 1.0]."
+    )
     ax.set_xlim(0, nnormal_coords + 1)
     fig.tight_layout()
     return fig, ax
