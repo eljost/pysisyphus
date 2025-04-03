@@ -44,15 +44,21 @@ def test_c2h5f_ts_wigner_sampling(this_dir):
     displ_coords3d = np.zeros((n, 8, 3))
     qs_nodim = np.zeros((n, 18))
     ps_nodim = np.zeros((n, 18))
+    qs = np.zeros((n, 18))
     for i in range(n):
         wsample = sampler()
         displ_coords3d[i] = wsample.coords3d
+        qs[i] = wsample.qs
         qs_nodim[i] = wsample.qs_nodim
         ps_nodim[i] = wsample.ps_nodim
 
     nu470 = 1
 
     """
+    fig, ax = plt.subplots()
+    ax.violinplot(qs, quantiles=[[0.1, 0.9]] * 18)
+    plt.show()
+
     nu3340 = 17
     fig, ((ax0, ax1), (ax2, ax3)) = plt.subplots(nrows=2, ncols=2, figsize=(12, 12))
     lim = 4

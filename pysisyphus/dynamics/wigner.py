@@ -281,9 +281,12 @@ def plot_normal_coords(normal_coords):
         f"Normal coordinate distribution from Wigner sampling ({ncoords} samples)"
     )
     ax.axhline(0.0, c="k", ls="--", zorder=0)
-    ax.violinplot(normal_coords)
+    quants = [0.1, 0.9]
+    quantiles = [quants] * nnormal_coords
+    ax.violinplot(normal_coords, quantiles=quantiles)
     ax.set_xlabel("Normal mode")
     ax.set_ylabel("Normal coordinate")
+    ax.set_title(f"Markers at quantiles [0, {', '.join(map(str, quants))}, 1.0]")
     ax.set_xlim(0, nnormal_coords + 1)
     fig.tight_layout()
     return fig, ax
@@ -309,24 +312,6 @@ def plot_distances(all_coords3d):
     ax.set_ylabel("Count")
     ax.set_title(f"{natoms} atoms, {ncoords} geometries, {ndists} distances per geom")
     return fig, ax
-
-
-def to_normal_coords_getter(geom):
-    coords_eq = geom.coords
-    sqrt_masses = np.repeat(np.sqrt(geom.masses), 3)
-    M_sqrt = np.diag(sqrt_masses)
-    _, eigvecs = np.linalg.eigh(geom.eckart_projection(geom.mw_hessian, full=True))
-    drop_first = 5 if geom.is_linear else 6
-    eigvecs = eigvecs[:, drop_first:]
-
-    def to_normal_coords(coords):
-        displ = coords - coords_eq
-        displ_mw = M_sqrt @ displ
-        # Transform mass-weighted displacements to normal coordinates
-        norm_coords = eigvecs.T @ displ_mw
-        return norm_coords
-
-    return to_normal_coords
 
 
 def parse_args(args):
@@ -372,8 +357,10 @@ def run():
     xyzs = list()
     coords3d = np.empty((n, len(geom.atoms), 3))
     velocities = np.empty_like(coords3d)
+    samples = list()
     for i in range(n):
         sample = sampler()
+        samples.append(sample)
         coords3d[i] = sample.coords3d
         velocities[i] = sample.velocities
         xyzs.append(geom.as_xyz(cart_coords=coords3d[i]))
@@ -400,8 +387,7 @@ def run():
         ax.hist(E_kins_eV, bins=100)
         plt.show()
     if plotnormalcoords:
-        to_normal_coords = to_normal_coords_getter(geom)
-        normal_coords = np.array([to_normal_coords(c3d.flatten()) for c3d in coords3d])
+        normal_coords = np.array([sample.qs for sample in samples])
         fig, ax = plot_normal_coords(normal_coords)
         fig.tight_layout()
         fig.savefig("normal_coords.pdf")
