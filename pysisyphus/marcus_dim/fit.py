@@ -190,7 +190,8 @@ def get_marcus_dim(cart_displs, qs, properties):
 
     # Do least-squares.
     print("Solving least squares 'qs . coeffs = depos' for 'coeffs'")
-    coeffs, residual, rank, singvals = np.linalg.lstsq(qs, properties, rcond=None)
+    # coeffs, residual, rank, singvals = np.linalg.lstsq(...)
+    coeffs, *_ = np.linalg.lstsq(qs, properties, rcond=None)
 
     # Construct Marcus dimension as linear combination of normal modes
     # according to coefficients b from least-squares fit ...
@@ -198,17 +199,18 @@ def get_marcus_dim(cart_displs, qs, properties):
     # ... and renormalize vector.
     marcus_dim /= np.linalg.norm(marcus_dim)
 
-    # Also calculate Marcud dimension in normal coordinates
-    marcus_dim_q = cart_displs.T @ marcus_dim
+    # Marcus dimension in normal coordinates.
+    # Normalize coefficients for convenience
+    marcus_dim_q = coeffs / np.linalg.norm(coeffs)
 
     return corrs, coeffs, marcus_dim, marcus_dim_q
 
 
 def get_displaced_coordinates(wigner_sampler, cart_displs, coords_eq):
     """Displaced (normal) coordinates from Wigner sampling."""
-    # Displaced coordinates, drop velocities
-    displ_coords, _ = wigner_sampler()
-    displ_coords = displ_coords.flatten()
+    # Sample from wigner distribution
+    sample = wigner_sampler()
+    displ_coords = sample.coords3d.flatten()
     # Calculate displacements from equilibrium geometry and transform to normal coordinates.
     norm_coords = cart_displs.T @ (displ_coords - coords_eq).flatten()
     return displ_coords, norm_coords
@@ -498,22 +500,9 @@ def fit_marcus_dim(
     print(f"Wrote fragments to '{fragment_trj_fn}'")
 
     coords_eq = geom.cart_coords
-    # The function will probably never be applied to linear molecules,
-    # but why not check this.
-    linear = geom.is_linear
-    drop_first = 5 if linear else 6
-    proj_hessian, P = geom.eckart_projection(geom.mw_hessian, return_P=True, full=True)
-    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
-    # Drop eigenvalues/-vectors belonging to translation & rotation
-    eigvals = eigvals[drop_first:]
-    eigvecs = eigvecs[:, drop_first:]
-    nus = eigval_to_wavenumber(eigvals)
+    nus, eigvals, eigvecs, cart_displs = geom.get_normal_modes()
     nmodes = len(nus)
-
-    # cart_dipls has shape (3*N, nmodes) and contains normalized Cartesian displacements
-    # (normal modes) in columns.
-    cart_displs = geom.mm_sqrt_inv.dot(P.T.dot(eigvecs))
-    cart_displs /= np.linalg.norm(cart_displs, axis=0)
+    drop_first = 3 * len(geom.atoms) - nmodes
 
     # Calculate wavefunction at equilibrium geometry
     print("Starting calculation at equilibrium geometry")
@@ -551,7 +540,7 @@ def fit_marcus_dim(
         # Samples
         "hessian": geom.cart_hessian,
         "mw_hessian": geom.mw_hessian,
-        "linear": linear,
+        "linear": geom.is_linear,
         "wigner_seed": seed,
         "cart_coords": all_displ_coords,
         "normal_coordinates": all_norm_coords,
@@ -602,7 +591,11 @@ def fit_marcus_dim(
         # Run the actual calculatiions
         batch_dur = time.time()
         batch_displ_coords, batch_norm_coords, batch_properties = run_batch_calcs(
-            batch_size, start_ind, sampler_wrapped, client, calculate_property_wrapped
+            batch_size,
+            start_ind,
+            sampler_wrapped,
+            client,
+            calculate_property_wrapped,
         )
         batch_dur = time.time() - batch_dur
         all_displ_coords[start_ind:end_ind] = batch_displ_coords
@@ -617,7 +610,9 @@ def fit_marcus_dim(
 
         # Actually calculate Marcus dimension using least-squares
         corrs, coeffs, marcus_dim, marcus_dim_q = get_marcus_dim(
-            cart_displs, all_norm_coords[:end_ind], all_properties[:end_ind]
+            cart_displs,
+            all_norm_coords[:end_ind],
+            all_properties[:end_ind],
         )
         # Report expansion coefficients and rms values
         report_marcus_coefficients(coeffs, nus, drop_first)

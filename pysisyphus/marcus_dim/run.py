@@ -178,8 +178,6 @@ def run_scan_parallel(
         calculated energies and properties along the scan.
     """
     cwd = Path(cwd)
-    # 2.) Scan along Marcus dimension
-    print(highlight_text("Scan along Marcus Dimension"))
 
     test_calc = calc_getter()
     has_all_energies = hasattr(calc_getter(), "get_all_energies")
