@@ -446,6 +446,56 @@ def run_batch_calcs(batch_size, start_ind, sampler, client, calc_func):
     return batch_displ_coords, batch_norm_coords, batch_properties
 
 
+def get_batch_calc_func(
+    geom,
+    calc_getter,
+    property_func,
+    fragments,
+    scheduler,
+    cart_displs,
+    temperature,
+    seed=None,
+):
+    # Calculate wavefunction at equilibrium geometry
+    print("Starting calculation at equilibrium geometry")
+    # TODO: figure out why this is even needed here ... probably because the calculations aren't done
+    # inside the property function(s).
+    gs_energy_eq, *_ = geom.all_energies
+    # TODO: using 'geom.calc_wavefunction()' leads to a pickling-error later on
+    prop_eq = property_func(geom, fragments)
+    print("Finished calculation at equilibrium geometry")
+    eq_results = {"property_eq": prop_eq, "gs_energy_eq": gs_energy_eq}
+
+    client, pal, calc_msg = setup_calc_client(geom, scheduler)
+    print(calc_msg)
+
+    calculate_property_wrapped = functools.partial(
+        calculate_property,
+        geom=geom,
+        calc_getter=calc_getter,
+        pal=pal,
+        fragments=fragments,
+        prop_eq=prop_eq,
+        property_func=property_func,
+    )
+    # Function that create displaced geometries by drawing from a Wigner distribution
+    wigner_sampler, seed = get_wigner_sampler(geom, temperature=temperature, seed=seed)
+    sampler_wrapped = functools.partial(
+        get_displaced_coordinates,
+        wigner_sampler=wigner_sampler,
+        cart_displs=cart_displs,
+        coords_eq=geom.cart_coords,
+    )
+    print(f"Seed for Wigner sampling: {seed}")
+    batch_calc_func = functools.partial(
+        run_batch_calcs,
+        sampler=sampler_wrapped,
+        client=client,
+        calc_func=calculate_property_wrapped,
+    )
+    return eq_results, batch_calc_func
+
+
 def fit_marcus_dim(
     geom: Geometry,
     calc_getter: Callable,
@@ -460,6 +510,7 @@ def fit_marcus_dim(
     scheduler=None,
     seed: Optional[int] = None,
     out_dir=".",
+    batch_calc_func=None,
 ):
     assert T >= 0.0
     assert batch_size > 0
@@ -476,8 +527,12 @@ def fit_marcus_dim(
 
     out_dir = Path(out_dir)
 
-    charge = geom.calculator.charge
-    mult = geom.calculator.mult
+    try:
+        charge = geom.calculator.charge
+        mult = geom.calculator.mult
+    except AttributeError:
+        charge = None
+        mult = None
 
     if (charge is not None) and (mult is not None):
         print(f"       Charge: {charge}")
@@ -504,24 +559,20 @@ def fit_marcus_dim(
     nmodes = len(nus)
     drop_first = 3 * len(geom.atoms) - nmodes
 
-    # Calculate wavefunction at equilibrium geometry
-    print("Starting calculation at equilibrium geometry")
-    # TODO: figure out why this is even needed here ... probably because the calculations aren't done
-    # inside the property function(s).
-    gs_energy_eq, *_ = geom.all_energies
-    # TODO: using 'geom.calc_wavefunction()' leads to a pickling-error later on
-    prop_eq = property_func(geom, fragments)
-    print("Finished calculation at equilibrium geometry")
+    to_save = dict()
 
-    # Function that create displaced geometries by drawing from a Wigner distribution
-    wigner_sampler, seed = get_wigner_sampler(geom, temperature=T, seed=seed)
-    sampler_wrapped = functools.partial(
-        get_displaced_coordinates,
-        wigner_sampler=wigner_sampler,
-        cart_displs=cart_displs,
-        coords_eq=coords_eq,
-    )
-    print(f"Seed for Wigner sampling: {seed}")
+    if batch_calc_func is None:
+        eq_results, batch_calc_func = get_batch_calc_func(
+            geom,
+            calc_getter,
+            property_func,
+            fragments,
+            scheduler,
+            cart_displs,
+            temperature=T,
+            seed=seed,
+        )
+        to_save.update(eq_results)
 
     # Arrays holding displace Cartesian coordinates, normal coordinates and properties
     all_displ_coords = np.zeros((max_ncalcs, coords_eq.size))
@@ -530,48 +581,34 @@ def fit_marcus_dim(
 
     masses = geom.masses
 
-    to_save = {
-        # Property key
-        "property": str(property),
-        # Equilibrium geometry
-        "cart_coords_eq": geom.cart_coords,
-        "property_eq": prop_eq,
-        "gs_energy_eq": gs_energy_eq,
-        # Samples
-        "hessian": geom.cart_hessian,
-        "mw_hessian": geom.mw_hessian,
-        "linear": geom.is_linear,
-        "wigner_seed": seed,
-        "cart_coords": all_displ_coords,
-        "normal_coordinates": all_norm_coords,
-        "properties": all_properties,
-        "masses": masses,
-        "eigvals": eigvals,
-        "eigvecs": eigvecs,
-        "cart_displs": cart_displs,
-        "nus": nus,
-        # Additional keys will be added/updated throughout the run.
-        # "marcus_dim": np.zeros_like(geom.cart_coords),
-        # "coeffs": np.zeros_like(all_norm_coords),
-        "rms_thresh": rms_thresh,
-        "max_batches": max_batches,
-    }
-    results_fn = out_dir / FIT_RESULTS_FN
-
-    client, pal, calc_msg = setup_calc_client(geom, scheduler)
-    print(calc_msg)
-
-    calculate_property_wrapped = functools.partial(
-        calculate_property,
-        geom=geom,
-        calc_getter=calc_getter,
-        pal=pal,
-        fragments=fragments,
-        prop_eq=prop_eq,
-        property_func=property_func,
+    to_save.update(
+        {
+            # Property key
+            "property": str(property),
+            # Equilibrium geometry
+            "cart_coords_eq": geom.cart_coords,
+            # Samples
+            "hessian": geom.cart_hessian,
+            "mw_hessian": geom.mw_hessian,
+            "linear": geom.is_linear,
+            "wigner_seed": seed,
+            "cart_coords": all_displ_coords,
+            "normal_coordinates": all_norm_coords,
+            "properties": all_properties,
+            "temperature": T,
+            "masses": masses,
+            "eigvals": eigvals,
+            "eigvecs": eigvecs,
+            "cart_displs": cart_displs,
+            "nus": nus,
+            # Additional keys will be added/updated throughout the run.
+            # "marcus_dim": np.zeros_like(geom.cart_coords),
+            # "coeffs": np.zeros_like(all_norm_coords),
+            "rms_thresh": rms_thresh,
+            "max_batches": max_batches,
+        }
     )
-    print()
-    sys.stdout.flush()
+    results_fn = out_dir / FIT_RESULTS_FN
 
     # Start calculation batches
     prev_coeffs = None
@@ -590,25 +627,21 @@ def fit_marcus_dim(
 
         # Run the actual calculatiions
         batch_dur = time.time()
-        batch_displ_coords, batch_norm_coords, batch_properties = run_batch_calcs(
-            batch_size,
-            start_ind,
-            sampler_wrapped,
-            client,
-            calculate_property_wrapped,
+        batch_displ_coords, batch_norm_coords, batch_properties = batch_calc_func(
+            batch_size, start_ind
         )
         batch_dur = time.time() - batch_dur
+        # and store the results of this batch in the respective arrays
         all_displ_coords[start_ind:end_ind] = batch_displ_coords
         all_norm_coords[start_ind:end_ind] = batch_norm_coords
         all_properties[start_ind:end_ind] = batch_properties
-
         calc_dur = batch_dur / batch_size
         print(f"Did {batch_size} calculations.")
         print(f"Full batch took {batch_dur:.2f} s, {calc_dur:.2f} s / calculation")
         print(f"Total number of calculations done until now: {end_ind}")
         sys.stdout.flush()
 
-        # Actually calculate Marcus dimension using least-squares
+        # Calculate Marcus dimension using least-squares from normal coordinates and properties
         corrs, coeffs, marcus_dim, marcus_dim_q = get_marcus_dim(
             cart_displs,
             all_norm_coords[:end_ind],
@@ -628,7 +661,6 @@ def fit_marcus_dim(
 
         # Mass and wavenumber of Marcus dimension mode
         mass_marcus = get_mass(marcus_dim, masses)
-        # nu_marcus = get_wavenumber(marcus_dim, nus, eigvecs, masses)
         nu_marcus = get_wavenumber_from_coeffs(coeffs, nus)
         print(f"Mass along Marcus dimension: {mass_marcus:.6f} amu")
         print(f"Wavenumber of Marcus dimension: {nu_marcus:.6f} cm⁻¹")
