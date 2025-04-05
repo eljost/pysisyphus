@@ -8,11 +8,12 @@
 #     Šrut, Lear, Krewald, 2023, actual published version
 
 import datetime
+from collections.abc import Callable
 import functools
 from pathlib import Path
 import sys
 import time
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from distributed import Client
 import matplotlib.pyplot as plt
@@ -510,7 +511,9 @@ def fit_marcus_dim(
     scheduler=None,
     seed: Optional[int] = None,
     out_dir=".",
-    batch_calc_func=None,
+    batch_calc_func: Optional[
+        Callable[[int, int], tuple[np.ndarray, np.ndarray, np.ndarray]]
+    ] = None,
 ):
     assert T >= 0.0
     assert batch_size > 0
