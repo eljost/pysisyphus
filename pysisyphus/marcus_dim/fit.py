@@ -449,14 +449,46 @@ def run_batch_calcs(batch_size, start_ind, sampler, client, calc_func):
 
 def get_batch_calc_func(
     geom,
-    calc_getter,
-    property_func,
-    fragments,
+    calc_getter: Callable,
+    property: mdtypes.Property,
+    fragments: List[Tuple[int]],
     scheduler,
-    cart_displs,
-    temperature,
+    cart_displs: np.ndarray,
+    temperature: float,
     seed=None,
+    out_dir=Path("."),
 ):
+    assert temperature >= 0.0, f"{temperature=} must be positive!"
+
+    # Dump fragments
+    fragments_trj = "\n".join(
+        get_fragment_xyzs(geom, fragments, with_geom=True, with_dummies=True)
+    )
+    fragment_trj_fn = "fragments.trj"
+    with open(out_dir / fragment_trj_fn, "w") as handle:
+        handle.write(fragments_trj)
+    print(f"Wrote fragments to '{fragment_trj_fn}'")
+
+    property_funcs = {
+        property.EPOS_IAO: epos_property_iao,
+        property.EPOS_MULLIKEN: epos_property_mulliken,
+        property.EEXC: en_exc_property,
+    }
+    property_func = property_funcs[property]
+
+    try:
+        charge = geom.calculator.charge
+        mult = geom.calculator.mult
+    except AttributeError:
+        charge = None
+        mult = None
+
+    if (charge is not None) and (mult is not None):
+        print(f"       Charge: {charge}")
+        print(f" Multiplicity: {mult}")
+    print(f"  Temperature: {temperature:.2f} K")
+    print(f"     Property: {property}")
+
     # Calculate wavefunction at equilibrium geometry
     print("Starting calculation at equilibrium geometry")
     # TODO: figure out why this is even needed here ... probably because the calculations aren't done
@@ -497,120 +529,54 @@ def get_batch_calc_func(
     return eq_results, batch_calc_func
 
 
-def fit_marcus_dim(
-    geom: Geometry,
-    calc_getter: Callable,
-    fragments: List[Tuple[int]],
-    T: float,
-    property=mdtypes.Property.EPOS_IAO,
+def fit_marcus_dim_batched(
+    atoms,
+    coords3d_eq,
+    masses,
+    batch_calc_func: Callable[[int, int], tuple[np.ndarray, np.ndarray, np.ndarray]],
+    nus,
+    cart_displs,
+    to_save: dict,
     batch_size: int = 25,
     max_batches: int = 20,
     rms_thresh: float = RMS_THRESH,
     correlations: bool = False,
     corr_thresh: float = _CORR_THRESH,
-    scheduler=None,
-    seed: Optional[int] = None,
     out_dir=".",
-    batch_calc_func: Optional[
-        Callable[[int, int], tuple[np.ndarray, np.ndarray, np.ndarray]]
-    ] = None,
 ):
-    assert T >= 0.0
     assert batch_size > 0
     assert max_batches > 0
     assert rms_thresh > 0.0
-    max_ncalcs = batch_size * max_batches
 
-    property_funcs = {
-        property.EPOS_IAO: epos_property_iao,
-        property.EPOS_MULLIKEN: epos_property_mulliken,
-        property.EEXC: en_exc_property,
-    }
-    property_func = property_funcs[property]
+    ncart_coords, nmodes = cart_displs.shape
+    drop_first = ncart_coords - nmodes
 
+    ncalcs_max = max_batches * batch_size
+    assert ncalcs_max > 0, "max_batches * batch_size must be greater than zero!"
     out_dir = Path(out_dir)
-
-    try:
-        charge = geom.calculator.charge
-        mult = geom.calculator.mult
-    except AttributeError:
-        charge = None
-        mult = None
-
-    if (charge is not None) and (mult is not None):
-        print(f"       Charge: {charge}")
-        print(f" Multiplicity: {mult}")
-    print(f"  Temperature: {T:.2f} K")
-    print(f"   Batch size: {batch_size}")
-    print(f"  Max batches: {max_batches}")
-    print(f"rms threshold: {rms_thresh}")
-    print(f"     Property: {property}")
-
-    print(f"Doing at most {batch_size * max_batches} calculations")
-
-    # Dump fragments
-    fragments_trj = "\n".join(
-        get_fragment_xyzs(geom, fragments, with_geom=True, with_dummies=True)
-    )
-    fragment_trj_fn = "fragments.trj"
-    with open(fragment_trj_fn, "w") as handle:
-        handle.write(fragments_trj)
-    print(f"Wrote fragments to '{fragment_trj_fn}'")
-
-    coords_eq = geom.cart_coords
-    nus, eigvals, eigvecs, cart_displs = geom.get_normal_modes()
-    nmodes = len(nus)
-    drop_first = 3 * len(geom.atoms) - nmodes
-
-    to_save = dict()
-
-    if batch_calc_func is None:
-        eq_results, batch_calc_func = get_batch_calc_func(
-            geom,
-            calc_getter,
-            property_func,
-            fragments,
-            scheduler,
-            cart_displs,
-            temperature=T,
-            seed=seed,
-        )
-        to_save.update(eq_results)
-
     # Arrays holding displace Cartesian coordinates, normal coordinates and properties
-    all_displ_coords = np.zeros((max_ncalcs, coords_eq.size))
-    all_norm_coords = np.zeros((max_ncalcs, nmodes))
-    all_properties = np.zeros(max_ncalcs)
+    all_displ_coords = np.zeros((ncalcs_max, ncart_coords))
+    all_norm_coords = np.zeros((ncalcs_max, nmodes))
+    all_properties = np.zeros(ncalcs_max)
 
-    masses = geom.masses
+    if not out_dir.exists():
+        out_dir.mkdir()
 
     to_save.update(
         {
-            # Property key
-            "property": str(property),
-            # Equilibrium geometry
-            "cart_coords_eq": geom.cart_coords,
-            # Samples
-            "hessian": geom.cart_hessian,
-            "mw_hessian": geom.mw_hessian,
-            "linear": geom.is_linear,
-            "wigner_seed": seed,
             "cart_coords": all_displ_coords,
             "normal_coordinates": all_norm_coords,
             "properties": all_properties,
-            "temperature": T,
-            "masses": masses,
-            "eigvals": eigvals,
-            "eigvecs": eigvecs,
-            "cart_displs": cart_displs,
-            "nus": nus,
-            # Additional keys will be added/updated throughout the run.
-            # "marcus_dim": np.zeros_like(geom.cart_coords),
-            # "coeffs": np.zeros_like(all_norm_coords),
             "rms_thresh": rms_thresh,
             "max_batches": max_batches,
         }
     )
+
+    print(f"   Batch size: {batch_size}")
+    print(f"  Max batches: {max_batches}")
+    print(f"rms threshold: {rms_thresh}")
+    print(f"Doing at most {ncalcs_max} calculations")
+
     results_fn = out_dir / FIT_RESULTS_FN
 
     # Start calculation batches
@@ -656,7 +622,7 @@ def fit_marcus_dim(
         marcus_dim_trj_fn = out_dir / f"marcus_dim_{batch_str}.trj"
         # Suppress the 2nd argument (marcus_dim_trj)
         marcus_dim_xyz, _ = dump_marcus_dim_xyz_trj(
-            geom.atoms, geom.coords3d, marcus_dim, marcus_dim_trj_fn
+            atoms, coords3d_eq, marcus_dim, marcus_dim_trj_fn
         )
 
         # Property change along Marcus dimension from fitted coefficients
@@ -758,3 +724,64 @@ def fit_marcus_dim(
     print(f"Wavenumber of final Marcus dimension: {nu_marcus:.6f} cm⁻¹")
 
     return to_save
+
+
+def fit_marcus_dim(
+    geom: Geometry,
+    calc_kwargs: Optional[dict] = None,
+    batch_kwargs: Optional[dict] = None,
+    batch_calc_func: Optional[
+        Callable[[int, int], tuple[np.ndarray, np.ndarray, np.ndarray]]
+    ] = None,
+    out_dir=".",
+):
+    if batch_kwargs is None:
+        batch_kwargs = {}
+    if calc_kwargs is None:
+        calc_kwargs = dict()
+    calc_kwargs = calc_kwargs.copy()
+    _calc_kwargs = {
+        "scheduler": None,
+        "seed": None,
+    }
+    _calc_kwargs.update(calc_kwargs)
+    out_dir = Path(out_dir)
+
+    nus, eigvals, eigvecs, cart_displs = geom.get_normal_modes()
+
+    to_save = {
+        # Property key
+        "property": str(property),
+        # Equilibrium geometry
+        "cart_coords_eq": geom.cart_coords,
+        # Samples
+        "hessian": geom.cart_hessian,
+        "mw_hessian": geom.mw_hessian,
+        "linear": geom.is_linear,
+        "masses": geom.masses,
+        "eigvals": eigvals,
+        "eigvecs": eigvecs,
+        "cart_displs": cart_displs,
+        "nus": nus,
+    }
+
+    if batch_calc_func is None:
+        eq_results, batch_calc_func = get_batch_calc_func(
+            geom,
+            cart_displs=cart_displs,
+            out_dir=out_dir,
+            **calc_kwargs,
+        )
+        to_save.update(eq_results)
+
+    return fit_marcus_dim_batched(
+        geom.atoms,
+        geom.coords3d,
+        geom.masses,
+        batch_calc_func,
+        nus,
+        cart_displs,
+        to_save,
+        **batch_kwargs,
+        out_dir=out_dir,
+    )

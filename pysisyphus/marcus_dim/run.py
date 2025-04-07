@@ -33,14 +33,14 @@ from pysisyphus.marcus_dim.scan import plot_scan, scan, scan_parallel
 import pysisyphus.marcus_dim.types as mdtypes
 
 
-def dump_scan_result(geom, scan_result, dummy_scan, cwd="."):
-    cwd = Path(cwd)
+def dump_scan_result(geom, scan_result, dummy_scan, out_dir="."):
+    out_dir = Path(out_dir)
     # Dump scan geometries into trj file
     xyzs = list()
     for sc, (se_gs, *se_es) in zip(scan_result.coords, scan_result.energies):
         xyz = geom.as_xyz(cart_coords=sc, comment=f"{se_gs:.6f}")
         xyzs.append(xyz)
-    scan_trj_path = cwd / "marcus_dim_scan.trj"
+    scan_trj_path = out_dir / "marcus_dim_scan.trj"
     with open(scan_trj_path, "w") as handle:
         handle.write("\n".join(xyzs))
 
@@ -50,7 +50,7 @@ def dump_scan_result(geom, scan_result, dummy_scan, cwd="."):
         scan_result.properties,
         dummy_scan=dummy_scan,
     )
-    scan_fig.savefig(cwd / "scan.svg")
+    scan_fig.savefig(out_dir / "scan.svg")
     plt.close(scan_fig)
 
 
@@ -60,7 +60,7 @@ def run_scan(
     calc_getter: Callable,
     fragments: list[list[int]],
     dummy_scan: bool = False,
-    cwd: Union[os.PathLike, str] = ".",
+    out_dir: Union[os.PathLike, str] = ".",
     **kwargs,
 ) -> mdtypes.MarcusDimScanResult:
     """Scan along Marcus dimension using serial calculations in two directions.
@@ -83,7 +83,7 @@ def run_scan(
         Optional; when True the scan can be carried out using a calculator that
         supports only GS calculations, e.g. xTB. In such a case, a dummy value
         for the first ES is used (GS + 2 eV).
-    cwd
+    out_dir
         String or Path object that controls the directory, where various files
         are written.
 
@@ -93,7 +93,7 @@ def run_scan(
         MarcusDimScanResult, carrying the factors, Cartesian coordinates,
         calculated energies and properties along the scan.
     """
-    cwd = Path(cwd)
+    out_dir = Path(out_dir)
     pos_calc = calc_getter(base_name="scan_pos")
     neg_calc = calc_getter(base_name="scan_neg")
 
@@ -129,7 +129,7 @@ def run_scan(
         get_properties=get_properties,
         **kwargs,
     )
-    dump_scan_result(geom, scan_result, dummy_scan, cwd=cwd)
+    dump_scan_result(geom, scan_result, dummy_scan, out_dir=out_dir)
     return scan_result
 
 
@@ -140,7 +140,7 @@ def run_scan_parallel(
     fragments: list[list[int]],
     rd_class: mdtypes.RobinDay,
     dummy_scan: bool = False,
-    cwd: Union[os.PathLike, str] = ".",
+    out_dir: Union[os.PathLike, str] = ".",
     scheduler: distributed.LocalCluster = None,
     **scan_kwargs,
 ) -> mdtypes.MarcusDimScanResult:
@@ -165,7 +165,7 @@ def run_scan_parallel(
         Optional; when True the scan can be carried out using a calculator that
         supports only GS calculations, e.g. xTB. In such a case, a dummy value
         for the first ES is used (GS + 2 eV).
-    cwd
+    out_dir
         String or Path object that controls the directory, where various files
         are written.
     scheduler
@@ -177,7 +177,7 @@ def run_scan_parallel(
         MarcusDimScanResult, carrying the factors, Cartesian coordinates,
         calculated energies and properties along the scan.
     """
-    cwd = Path(cwd)
+    out_dir = Path(out_dir)
 
     test_calc = calc_getter()
     has_all_energies = hasattr(calc_getter(), "get_all_energies")
@@ -200,9 +200,9 @@ def run_scan_parallel(
             # TODO: move actual calculation into property functions?!
             results = calc.get_all_energies(geom.atoms, coords)
             all_energies = results["all_energies"]
-            assert all_energies.size >= 2, (
-                "Energies of at least two states must be calculated!"
-            )
+            assert (
+                all_energies.size >= 2
+            ), "Energies of at least two states must be calculated!"
         except AttributeError as err:
             if not dummy_scan:
                 raise err
@@ -248,10 +248,10 @@ def run_scan_parallel(
         B=B,
         rd_class=rd_class,
         scheduler=scheduler,
-        out_dir=cwd,
+        out_dir=out_dir,
         **scan_kwargs,
     )
-    dump_scan_result(geom, scan_result, dummy_scan, cwd=cwd)
+    dump_scan_result(geom, scan_result, dummy_scan, out_dir=out_dir)
     return scan_result
 
 
@@ -259,7 +259,7 @@ def run_param(
     scan_factors: np.ndarray,
     scan_energies: np.ndarray,
     mult: int,
-    cwd: Union[os.PathLike, str] = ".",
+    out_dir: Union[os.PathLike, str] = ".",
 ) -> dict[str, mdtypes.MarcusModel]:
     """Try to parametrize quadratic Marcus model from scan data (factors & energies).
 
@@ -273,7 +273,7 @@ def run_param(
     mult
         Integer representing the multiplicity of the system under study. Used to create
         meaningful labels in the plots.
-    cwd
+    out_dir
         String or Path object that controls the directory, where various files
         are written.
 
@@ -283,7 +283,7 @@ def run_param(
         Dictionary with two str keys ("a", "b") containing the (possibly) parametrized
         Marcus models. Parametrization is only possible for class II systems.
     """
-    cwd = Path(cwd)
+    out_dir = Path(out_dir)
     # 3.) Parametrization of Marcus model
     print(highlight_text("Parametrization of Marcus Model"))
     models = param_marcus(scan_factors, scan_energies)
@@ -295,7 +295,7 @@ def run_param(
             label = get_state_label(mult, i)
             ax.plot(scan_factors, state, label=f"${label}$ scan")
             ax.legend()
-        fig_fn = cwd / f"marcus_model_{para}.svg"
+        fig_fn = out_dir / f"marcus_model_{para}.svg"
         fig.savefig(fig_fn)
         plt.close(fig)
         print(f"Saved plot of Marcus model to '{fig_fn}'")
@@ -303,17 +303,28 @@ def run_param(
 
 
 def run_marcus_dim(
+    # geom: Geometry,
+    # calc_getter: Callable,
+    # fragments: list[list[int]],
+    # rd_class: mdtypes.RobinDay,
+    # fit_kwargs: Optional[dict] = None,
+    # scan_kwargs: Optional[dict] = None,
+    # T: float = 300.0,
+    # cluster: bool = True,
+    # force: bool = False,
+    # dummy_scan: bool = False,
+    # out_dir: Union[os.PathLike, str] = ".",
     geom: Geometry,
-    calc_getter: Callable,
-    fragments: list[list[int]],
+    calc_getter,
+    calc_kwargs: dict,
     rd_class: mdtypes.RobinDay,
-    fit_kwargs: Optional[dict] = None,
+    batch_kwargs: Optional[dict] = None,
     scan_kwargs: Optional[dict] = None,
-    T: float = 300.0,
+    # T: float = 300.0,
     cluster: bool = True,
     force: bool = False,
     dummy_scan: bool = False,
-    cwd: Union[os.PathLike, str] = ".",
+    out_dir: Union[os.PathLike, str] = ".",
 ) -> dict[str, mdtypes.MarcusModel]:
     """Fit Marucs dimension, scan along it and try to parametrize the Marcus model
 
@@ -335,7 +346,7 @@ def run_marcus_dim(
     scan_kwargs
         Optional dict, containing additional arguments for scanning along the Marcus dimension.
     T
-        Temperature in Kelvin.
+        Temperature in Kelvin used for Wigner sampling.
     cluster
         Boolean; controls wheter all calculations are done in serial or in parallel
         using dask.distributed.
@@ -343,31 +354,32 @@ def run_marcus_dim(
         Boolean; when True fit & scan are done, even when the results are already present.
     dummy_scan
         Optional; see docstring of run_scan()/run_scan_parallel().
-    cwd
+    out_dir
         String or Path object that controls the directory, where various files
         are written.
     """
     rd_class = mdtypes.get_rd_class(rd_class)
 
-    if fit_kwargs is None:
-        fit_kwargs = {}
+    if batch_kwargs is None:
+        batch_kwargs = {}
+    else:
+        batch_kwargs = batch_kwargs.copy()
     if scan_kwargs is None:
         scan_kwargs = {}
-    fit_kwargs = fit_kwargs.copy()
-    scan_kwargs = scan_kwargs.copy()
-    assert T > 0.0, f"Temperature {T=} must not be negative!"
-    cwd = Path(cwd)
+    else:
+        scan_kwargs = scan_kwargs.copy()
+    out_dir = Path(out_dir)
 
     # When no explicit property function choice is made, we derive the correct
     # property function from the given Robin-Day class.
     try:
-        fit_kwargs["property"]
+        calc_kwargs["property"]
     except KeyError:
         property = {
             mdtypes.RobinDay.CLASS2: mdtypes.Property.EEXC,
             mdtypes.RobinDay.CLASS3: mdtypes.Property.EPOS_IAO,
         }[rd_class]
-        fit_kwargs["property"] = property
+        calc_kwargs["property"] = property
         print(
             "No property was selected for the fit! Using the default property "
             f"for {rd_class}: {property}"
@@ -379,7 +391,7 @@ def run_marcus_dim(
 
     print(highlight_text("Fitting of Marcus Dimension"))
 
-    fit_results_path = cwd / FIT_RESULTS_FN
+    fit_results_path = out_dir / FIT_RESULTS_FN
     rms_converged = False
     one_batch = False
     if fit_results_path.exists():
@@ -398,9 +410,17 @@ def run_marcus_dim(
         )
     else:
         with MaybeScheduler(cluster) as scheduler:
+            calc_kwargs["scheduler"] = scheduler
+            calc_kwargs["calc_getter"] = calc_getter
             marcus_dim_data = fit_marcus_dim(
-                geom, calc_getter, fragments, T=T, scheduler=scheduler, **fit_kwargs
+                # geom, calc_getter, fragments, T=T, scheduler=scheduler, **fit_kwargs
+                geom,
+                calc_kwargs=calc_kwargs,
+                batch_kwargs=batch_kwargs,
+                out_dir=out_dir,
             )
+        del calc_kwargs["scheduler"]
+        del calc_kwargs["calc_getter"]
     print()
 
     ###################################
@@ -409,7 +429,7 @@ def run_marcus_dim(
 
     print(highlight_text("Scan along Marcus Dimension"))
 
-    scan_results_path = cwd / SCAN_RESULTS_FN
+    scan_results_path = out_dir / SCAN_RESULTS_FN
     scan_done = False
     if scan_results_path.exists():
         scan_results = np.load(scan_results_path)
@@ -433,12 +453,12 @@ def run_marcus_dim(
             scan_result = run_scan_parallel(
                 geom,
                 marcus_dim_data,
-                calc_getter,
-                fragments,
+                calc_getter=calc_getter,
+                fragments=calc_kwargs["fragments"],
                 rd_class=rd_class,
                 dummy_scan=dummy_scan,
                 scheduler=scheduler,
-                cwd=".",
+                out_dir=out_dir,
                 **scan_kwargs,
             )
         """
@@ -448,7 +468,7 @@ def run_marcus_dim(
             calc_getter,
             fragments,
             dummy_scan=dummy_scan,
-            cwd=".",
+            out_dir=".",
         )
         """
     else:
@@ -467,6 +487,8 @@ def run_marcus_dim(
     except AttributeError:
         mult = -1
     # Parametrize using only the energies of ground and 1st excited state.
-    models = run_param(scan_result.factors, scan_result.energies[:, :2], mult, cwd=cwd)
+    models = run_param(
+        scan_result.factors, scan_result.energies[:, :2], mult, out_dir=out_dir
+    )
     print()
-    return models
+    return marcus_dim_data, scan_result, models

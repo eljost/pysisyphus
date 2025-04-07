@@ -224,3 +224,4 @@ version.py
 !pysisyphus/test_cos/multi_state_inp.npz
 !pysisyphus/tests/test_wigner_sampling/h2_hfdef2svp_final_hessian.h5
 !pysisyphus/tests/test_wigner_sampling/c2h5f_631gdrimp2_ts_final_hessian.h5
+!pysisyphus/tests/test_marcus_dim/pdnb_xtb_final_hessian.h5
