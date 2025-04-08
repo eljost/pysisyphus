@@ -274,9 +274,10 @@ def _(h5_fn: str, **kwargs):
     return get_wigner_sampler(geom, **kwargs)
 
 
-def plot_normal_coords(normal_coords):
+def plot_normal_coords(normal_coords, fig_ax_func=plt.subplots):
     ncoords, nnormal_coords = normal_coords.shape
-    fig, ax = plt.subplots()
+    # fig, ax = plt.subplots()
+    fig, ax = fig_ax_func()
     ax.axhline(0.0, c="k", ls="--", zorder=0)
 
     vio1 = ax.violinplot(normal_coords)  # , label="[0.0, 1.0]")

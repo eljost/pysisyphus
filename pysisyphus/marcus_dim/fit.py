@@ -529,6 +529,24 @@ def get_batch_calc_func(
     return eq_results, batch_calc_func
 
 
+def get_batch_calc_func_from_npz(npz_fn):
+    data = np.load(npz_fn)
+    displ_coords = data["cart_coords"]
+    norm_coords = data["normal_coordinates"]
+    properties = data["properties"]
+    end_ind = data["end_ind"]
+    ncalcs = end_ind + 1
+
+    def batch_calc_func(batch_size, start_ind):
+        end_ind = start_ind + batch_size
+        batch_displ_coords = displ_coords[start_ind:end_ind]
+        batch_norm_coords = norm_coords[start_ind:end_ind]
+        batch_properties = properties[start_ind:end_ind]
+        return batch_displ_coords, batch_norm_coords, batch_properties
+
+    return batch_calc_func, ncalcs
+
+
 def fit_marcus_dim_batched(
     atoms,
     coords3d_eq,
@@ -671,7 +689,9 @@ def fit_marcus_dim_batched(
         plt.close(fig)
 
         # Plot summary of utilized normal coordinates
-        fig, _ = plot_normal_coords(all_norm_coords[:end_ind])
+        fig, _ = plot_normal_coords(
+            all_norm_coords[:end_ind], fig_ax_func=plot_helpers.fig_ax_from_canvas_agg
+        )
         fig.savefig(out_dir / "normal_coords.svg", dpi=200)
         plt.close(fig)
 
