@@ -134,7 +134,7 @@ pyyaml==6.0
     #   dask
     #   distributed
     #   pysisyphus (setup.cfg)
-requests==2.32.0
+requests==2.32.4
     # via sphinx
 rmsd==1.5.1
     # via pysisyphus (setup.cfg)
