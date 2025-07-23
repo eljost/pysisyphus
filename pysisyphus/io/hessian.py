@@ -8,6 +8,7 @@ import numpy as np
 from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.hessian_proj import inertia_tensor as get_inertia_tensor
 
 
 def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None, charge=None):
@@ -24,21 +25,31 @@ def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None, charge=
         charge = geom.calculator.charge
 
     if len(geom.atoms) > 1:
-        proj_hessian = geom.eckart_projection(geom.mass_weigh_hessian(cart_hessian))
+        proj_hessian, P = geom.eckart_projection(
+            geom.mass_weigh_hessian(cart_hessian), return_P=True
+        )
     else:
         proj_hessian = cart_hessian
-    eigvals, _ = np.linalg.eigh(proj_hessian)
+        P = None
+    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
     vibfreqs = eigval_to_wavenumber(eigvals)
 
     masses = geom.masses
     atoms = geom.atoms
     coords3d = geom.coords3d
+    inertia_tensor = get_inertia_tensor(geom.coords3d, geom.masses)
 
     with h5py.File(h5_fn, "w") as handle:
         handle.create_dataset("hessian", data=cart_hessian)
         handle.create_dataset("vibfreqs", data=vibfreqs)
         handle.create_dataset("masses", data=masses)
         handle.create_dataset("coords3d", data=coords3d)
+        handle.create_dataset("force_constants", data=eigvals)
+        handle.create_dataset("normal_modes", data=eigvecs)
+        if P is not None:
+            mw_cart_displs = P.T.dot(eigvecs)
+            handle.create_dataset("mw_cart_displs", data=mw_cart_displs)
+        handle.create_dataset("inertia_tensor", data=inertia_tensor)
 
         handle.attrs["atoms"] = [atom.lower() for atom in atoms]
         handle.attrs["energy"] = energy
