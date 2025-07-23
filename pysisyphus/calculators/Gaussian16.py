@@ -5,13 +5,162 @@ import re
 import shutil
 import subprocess
 import textwrap
+import warnings
 
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
+from pysisyphus.calculators.OverlapCalculator import (
+    GroundStateContext,
+    OverlapCalculator,
+)
 from pysisyphus.constants import AU2EV, BOHR2ANG
+from pysisyphus.wavefunction.excited_states import norm_ci_coeffs
 from pysisyphus.helpers_pure import file_or_str
+from pysisyphus.io import fchk as io_fchk
+
+
+NMO_RE = re.compile(
+    r"NBasis=\s+(?P<nbfs>\d+)\s+NAE=\s+(?P<nalpha>\d+)\s+NBE=\s+(?P<nbeta>\d+)"
+)
+RESTRICTED_RE = re.compile("RHF ground state")
+TRANS_PATTERN = (
+    r"(?:\d+(?:A|B){0,1})\s+"
+    r"(?:\->|\<\-)\s+"
+    r"(?:\d+(?:A|B){0,1})\s+"
+    r"(?:[\d\-\.]+)\s+"
+)
+# Excited State   2:  2.009-?Sym    7.2325 eV  171.43 nm  f=0.0000  <S**2>=0.759
+EXC_STATE_RE = re.compile(
+    r"Excited State\s+(?P<root>\d+):\s+"
+    r"(?P<label>(?:Singlet|Triplet|[\d.]+)-\?Sym)\s+"
+    r"(?P<exc_ev>[\d\-\.]+) eV\s+"
+    r"(?P<exc_nm>[\d\.\-]+) nm\s+"
+    r"f=(?P<fosc>[\d\.\-]+)\s+"
+    r"<S\*\*2>=(?P<S2>[\d\.]+)\s+"
+    rf"((?:(?!Excited State){TRANS_PATTERN}\s+)+)",
+    re.DOTALL,
+)
+
+
+def get_nmos(text):
+    mobj = NMO_RE.search(text)
+    nbfs = int(mobj.group("nbfs"))
+    nalpha = int(mobj.group("nalpha"))
+    nbeta = int(mobj.group("nbeta"))
+    nocc_a = nalpha
+    nvirt_a = nbfs - nocc_a
+    nocc_b = nbeta
+    nvirt_b = nbfs - nocc_b
+    restricted = bool(RESTRICTED_RE.search(text))
+    return nocc_a, nvirt_a, nocc_b, nvirt_b, restricted
+
+
+def to_ind_and_spin(lbl):
+    try:
+        mo_ind = int(lbl)
+        spin = "A"
+    except ValueError:
+        mo_ind, spin = int(lbl[:-1]), lbl[-1]
+    mo_ind -= 1
+    return mo_ind, spin
+
+
+@file_or_str(".log")
+def parse_ci_coeffs(text, restricted_same_ab=False):
+    nocc_a, nvirt_a, nocc_b, nvirt_b, restricted = get_nmos(text)
+    shape_a = (nocc_a, nvirt_a)
+    shape_b = (nocc_b, nvirt_b)
+
+    exc_states = EXC_STATE_RE.findall(text)
+    nstates = len(exc_states)
+
+    Xa = np.zeros((nstates, *shape_a))
+    Ya = np.zeros_like(Xa)
+    Xb = np.zeros((nstates, *shape_b))
+    Yb = np.zeros_like(Xb)
+
+    for state, exc_state in enumerate(exc_states):
+        root, label, exc_ev, exc_nm, fosc, s2, trans = exc_state
+        root = int(root)
+        exc_ev = float(exc_ev)
+        trans = trans.strip().split()
+        assert len(trans) % 4 == 0, len(trans)
+        ntrans = len(trans) // 4
+        for j in range(ntrans):
+            trans_slice = slice(j * 4, (j + 1) * 4)
+            from_, kind, to_, coeff = trans[trans_slice]
+            coeff = float(coeff)
+            from_ind, from_spin = to_ind_and_spin(from_)
+            to_ind, to_spin = to_ind_and_spin(to_)
+            # alpha-alpha
+            if from_spin == "A" and to_spin == "A":
+                # excitation
+                if kind == "->":
+                    Xa[state, from_ind, to_ind - nocc_a] = coeff
+                # deexcitation
+                else:
+                    Ya[state, from_ind, to_ind - nocc_a] = coeff
+            # beta-beta excitation
+            elif from_spin == "B" and to_spin == "B":
+                # excitation
+                if kind == "->":
+                    Xb[state, from_ind, to_ind - nocc_b] = coeff
+                # deexcitation
+                else:
+                    Yb[state, from_ind, to_ind - nocc_b] = coeff
+    if restricted and restricted_same_ab:
+        Xb = Xa.copy()
+        Yb = Ya.copy()
+    return Xa, Ya, Xb, Yb
+
+
+def noparse(path):
+    return dict()
+
+
+@file_or_str(".fchk")
+def parse_all_energies(text):
+    float_ = r"([\d\-\+Ee\.]+)"
+    gs_re = re.compile(r"SCF Energy\s+R\s+" + float_)
+    gs_mobj = gs_re.search(text)
+    gs_energy = float(gs_mobj[1])
+    # cis_re = re.compile(r"CIS Energy\s+R\s+" + float_)
+    # cis_mobj = cis_re.search(text)
+    # cis_energy = float(cis_mobj[1])
+    etrans_re = re.compile(
+        r"ETran state values\s+R\s+N=\s+(\d+)([\d\-\.Ee\+\s]+)", re.DOTALL
+    )
+    etrans_mobj = etrans_re.search(text)
+    try:
+        etrans = etrans_mobj[2].strip().split()
+        etrans = np.array(etrans, dtype=float).reshape(-1, 16)
+        exc_energies = etrans[:, 0]
+        all_energies = np.zeros(exc_energies.size + 1)
+        all_energies[0] = gs_energy
+        all_energies[1:] = exc_energies
+    except TypeError:
+        all_energies = np.array((gs_energy,))
+    return all_energies
+
+
+def get_overlap_data_from_base_name(base_name: str | Path):
+    base = Path(base_name)
+
+    # CI coefficients: parsing them from the logfile requires a sufficiently high
+    # IOp(9/40) value. At least 3 or 4.
+    log_fn = base.with_suffix(".log")
+    Xa, Ya, Xb, Yb = parse_ci_coeffs(log_fn, restricted_same_ab=True)
+    Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+
+    # MO coefficients
+    fchk_fn = base.with_suffix(".fchk")
+    data = io_fchk.parse_fchk(fchk_fn)
+    mo_coeffs = io_fchk.mo_coeffs_from_fchk_data(data)
+
+    # GS and excitation energies
+    all_energies = io_fchk.all_energies_from_fchk_data(data)
+    return mo_coeffs.Ca, mo_coeffs.Cb, Xa, Ya, Xb, Yb, all_energies
 
 
 class Gaussian16(OverlapCalculator):
@@ -21,6 +170,7 @@ class Gaussian16(OverlapCalculator):
         "fchk",
         ("fchk", "mwfn_wf"),
         "dump_635r",
+        ("log", "out"),
     )
 
     def __init__(
@@ -29,8 +179,10 @@ class Gaussian16(OverlapCalculator):
         gbs="",
         gen="",
         keep_chk=False,
+        wavefunction_dump=True,
         stable="",
         fchk=None,
+        iop9_40=3,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -45,16 +197,23 @@ class Gaussian16(OverlapCalculator):
         assert "@" not in gbs, "Give only the path to the .gbs file, " "without the @!"
         self.gen = gen
         self.keep_chk = keep_chk
+        if not wavefunction_dump:
+            warnings.warn(
+                "The 'wavefunction_dump' argument is ignored by the Gaussian calculator. "
+                "The wavefunction is always dumped."
+            )
+        self.wavefunction_dump = True
         self.stable = stable
         self.fchk = fchk
+        self.iop9_40 = iop9_40
 
         keywords = {
             kw: option
             for kw, option in [self.parse_keyword(kw) for kw in self.route.split()]
         }
         exc_keyword = [key for key in "td tda cis".split() if key in keywords]
-        self.root = None
-        self.nstates = None
+        self.nstates = self.nroots
+        self.exc_args = None
         if exc_keyword:
             self.exc_key = exc_keyword[0]
             exc_dict = keywords[self.exc_key]
@@ -62,9 +221,8 @@ class Gaussian16(OverlapCalculator):
             try:
                 self.root = int(exc_dict["root"])
             except KeyError:
-                self.root = 1
-                self.log("No explicit root was specified! Using root=1 as default!")
-            # Collect remaining options if specified
+                warnings.warn("No explicit root was specified!")
+            # Collect remaining additional options if specified
             self.exc_args = {
                 k: v for k, v in exc_dict.items() if k not in ("nstates", "root")
             }
@@ -102,10 +260,11 @@ class Gaussian16(OverlapCalculator):
         self.gaussian_input = textwrap.dedent(self.gaussian_input)
 
         self.parser_funcs = {
+            "energy": self.parse_energy,
             "force": self.parse_force,
             "hessian": self.parse_hessian,
             "stable": self.parse_stable,
-            "noparse": lambda path: None,
+            "noparse": noparse,
             "double_mol": self.parse_double_mol,
         }
 
@@ -119,14 +278,16 @@ class Gaussian16(OverlapCalculator):
         )
 
     def make_exc_str(self):
-        # Ground state calculation
-        if not self.root:
+        if self.exc_args is None:
             return ""
-        root = f"root={self.root}"
+        root = self.root if self.root is not None else 1
+        root_str = f"root={root}"
         nstates = f"nstates={self.nstates}"
         pair2str = lambda k, v: f"{k}" + (f"={v}" if v else "")
         arg_str = ",".join([pair2str(k, v) for k, v in self.exc_args.items()])
-        exc_str = f"{self.exc_key}=({root},{nstates},{arg_str})"
+        exc_str = (
+            f"{self.exc_key}=({root_str},{nstates},{arg_str}) iop(9/40={self.iop9_40})"
+        )
         return exc_str
 
     def reuse_data(self, path):
@@ -233,10 +394,14 @@ class Gaussian16(OverlapCalculator):
         if not chk_path.exists():
             self.log("No .chk file found.")
             return
+
         # Create the .fchk file so we can keep it and parse it later on.
         self.make_fchk(path)
+
         if self.track:
-            self.run_rwfdump(path, "635r")
+            # As of 2024/06/12 the 635r section is not dummped anymore, but the
+            # coefficients are parsed from the .log-file w/ proper IOp(9/40=3) set.
+            # self.run_rwfdump(path, "635r")
             self.nmos, self.roots = self.parse_log(path / self.out_fn)
 
     def parse_keyword(self, text):
@@ -341,10 +506,26 @@ class Gaussian16(OverlapCalculator):
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
-        results = self.get_forces(atoms, coords, **prepare_kwargs)
+        did_stable = False
+        if self.stable:
+            is_stable = self.run_stable(atoms, coords)
+            self.log(f"Wavefunction is now stable: {is_stable}")
+            did_stable = True
+        inp = self.prepare_input(
+            atoms, coords, "sp", did_stable=did_stable, **prepare_kwargs
+        )
+        kwargs = {
+            "calc": "energy",
+        }
+        results = self.run(inp, **kwargs)
         results = self.store_and_track(
             results, self.get_energy, atoms, coords, **prepare_kwargs
         )
+        return results
+
+    def get_all_energies(self, atoms, coords, **prepare_kwargs):
+        results = self.get_energy(atoms, coords, **prepare_kwargs)
+        results["td_1tdms"] = parse_ci_coeffs(self.out, restricted_same_ab=True)
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -408,9 +589,28 @@ class Gaussian16(OverlapCalculator):
             self.store_overlap_data(atoms, coords)
             self.track_root()
             self.log(
-                "This track_root() call is a bit superfluous as the "
-                "as the result is ignored :)"
+                "This track_root() call is a bit superfluous as the result is ignored."
             )
+        return results
+
+    def get_stored_wavefunction(self, **kwargs):
+        return self.load_wavefunction_from_file(self.fchk, **kwargs)
+
+    def get_wavefunction(self, atoms, coords, **prepare_kwargs):
+        with GroundStateContext(self):
+            results = self.get_energy(atoms, coords, **prepare_kwargs)
+            results["wavefunction"] = self.get_stored_wavefunction()
+        return results
+
+    def get_relaxed_density(self, atoms, coords, root, **prepare_kwargs):
+        # Do excited state gradient calculation for requested root and restore
+        # original root afterwards
+        root_bak = self.root
+        self.root = root
+        results = self.get_forces(atoms, coords, **prepare_kwargs)
+        self.root = root_bak
+
+        results["density"] = io_fchk.get_relaxed_density(self.fchk, key="CI")
         return results
 
     def run_double_mol_calculation(self, atoms, coords1, coords2):
@@ -432,7 +632,11 @@ class Gaussian16(OverlapCalculator):
             text = handle.read()
         td_re = r"Excited State\s*\d+:\s*[\.\w\?-]+\s*([\d\.-]+?)\s*eV"
         matches = re.findall(td_re, text)
-        assert len(matches) == self.nstates
+        nstates_present = len(matches)
+        assert nstates_present == self.nstates, (
+            f"Did you request too many states? {self.nstates} states were requested, "
+            f"but (only) {nstates_present} were found!"
+        )
         # Excitation energies in eV
         exc_energies = np.array(matches, dtype=np.float64)
         # Convert to Hartree
@@ -542,49 +746,18 @@ class Gaussian16(OverlapCalculator):
         return X_full, Y_full
 
     def prepare_overlap_data(self, path):
-        # Parse X eigenvector from 635r dump
-        X, Y = self.parse_635r_dump(self.dump_635r, self.roots, self.nmos)
-
-        # From http://gaussian.com/cis/, Examples tab, Normalization:
-        #
-        # 'For closed shell calculations, the sum of the squares of the
-        # expansion coefficients is normalized to total 1/2 (as the beta
-        # coefficients are not shown).'
-        #
-        # Right now we only deal with restricted calculatios, so alpha == beta
-        # and we ignore beta. So we are lacking a factor of sqrt(2). Another
-        # option would be to normalize all states to 1.
-        # ci_coeffs *= 2**0.5
-
-        # Parse mo coefficients from .fchk file and write a 'fake' turbomole
-        # mos file.
-        keys = (
-            "SCF Energy",
-            "Alpha Orbital Energies",
-            "Alpha MO coefficients",
-            "ETran state values",
+        base_name = self.out
+        Ca, Cb, Xa, Ya, Xb, Yb, all_energies = get_overlap_data_from_base_name(
+            base_name
         )
-        scf_key, mo_energies_key, mo_key, exc_key = keys
-        fchk_dict = self.parse_fchk(self.fchk, keys=keys)
-        mo_energies = fchk_dict[mo_energies_key]
-        C = fchk_dict[mo_key].T
-        C = C.reshape(-1, mo_energies.size)
+        return Ca, Xa, Ya, Cb, Xb, Yb, all_energies
 
-        gs_energy = fchk_dict[scf_key]
-        exc_data = fchk_dict[exc_key].reshape(-1, 16)
-        exc_energies = exc_data[:, 0]
-        all_energies = np.zeros(len(exc_energies) + 1)
-        all_energies[0] = gs_energy
-        all_energies[1:] += exc_energies
-        return C, X, Y, all_energies
-
-    def parse_force(self, path):
+    def parse_energy(self, path):
         results = {}
-        keys = ("SCF Energy", "Total Energy", "Cartesian Gradient")
+        keys = ("SCF Energy", "Total Energy")
         fchk_path = Path(path) / f"{self.fn_base}.fchk"
         fchk_dict = self.parse_fchk(fchk_path, keys)
         results["energy"] = fchk_dict["SCF Energy"]
-        results["forces"] = -fchk_dict["Cartesian Gradient"]
 
         if self.nstates:
             # This sets the proper excited state energy in the
@@ -592,16 +765,26 @@ class Gaussian16(OverlapCalculator):
             exc_energies = self.parse_tddft(path)
             # G16 root input is 1 based, so we substract 1 to get
             # the right index here.
-            root_exc_en = exc_energies[self.root - 1]
             gs_energy = fchk_dict["SCF Energy"]
-            # Add excitation energy to ground state energy.
-            results["energy"] += root_exc_en
-            # Create a new array including the ground state energy
-            # to save the energies of all states.
-            all_ens = np.full(len(exc_energies) + 1, gs_energy)
-            all_ens[1:] += exc_energies
-            results["all_energies"] = all_ens
+            # Modify "energy" when a root is selected
+            if self.root is not None:
+                root_exc_en = exc_energies[self.root - 1]
+                # Add excitation energy to ground state energy.
+                results["energy"] += root_exc_en
+                # Create a new array including the ground state energy
+                # to save the energies of all states.
+                all_ens = np.full(len(exc_energies) + 1, gs_energy)
+                all_ens[1:] += exc_energies
+                results["all_energies"] = all_ens
 
+        return results
+
+    def parse_force(self, path):
+        results = self.parse_energy(path)
+        keys = ("Cartesian Gradient",)
+        fchk_path = Path(path) / f"{self.fn_base}.fchk"
+        fchk_dict = self.parse_fchk(fchk_path, keys)
+        results["forces"] = -fchk_dict["Cartesian Gradient"]
         return results
 
     def parse_hessian(self, path):

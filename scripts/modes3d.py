@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
+import dataclasses
 import itertools as it
 from math import log
 import sys
 
 import numpy as np
+import ursina
 from ursina import (
     color,
     Cylinder,
@@ -21,27 +23,32 @@ from ursina import (
 )
 from ursina.shaders import lit_with_shadows_shader
 
+from pysisyphus.elem_data import CPK_RGB, GOSH_RADII
 from pysisyphus.helpers import geom_loader
 from pysisyphus.intcoords.Stretch import Stretch
 from pysisyphus.io.hessian import geom_from_hessian
 
 
-C = {
-    "h": color.white,
-    "c": color.gray,
-    "n": color.blue,
-    "o": color.red,
-    "f": color.lime,
-    "s": color.yellow,
-    "cl": color.green,
-    "p": color.orange,
+# Colors
+C = {atom: ursina.Vec4(*CPK_RGB[atom], 1.0) for atom in CPK_RGB.keys()}
+_H_RADIUS = GOSH_RADII["h"]
+# Scale factors
+S = {atom: GOSH_RADII[atom] / _H_RADIUS for atom in GOSH_RADII.keys()}
+GEOM_KWARGS = {
+    "remove_com": True,
 }
-S = {
-    "h": 1.0,
-    "n": 1.25,
-    "o": 1.25,
-    "s": 1.25,
-}
+prev_atom_state = None
+
+
+@dataclasses.dataclass
+class AtomState:
+    entity: Entity
+    scale: float
+    color: ursina.Vec4
+
+    def restore(self):
+        self.entity.scale = self.scale
+        self.entity.color = self.color
 
 
 def get_bond_data(coords3d, bonds):
@@ -65,9 +72,25 @@ def get_bond_data_from_geom(geom):
     return get_bond_data(geom.coords3d, geom.internal.bond_atom_indices)
 
 
+def get_atom_clicker(entity, i):
+    def inner():
+        global prev_atom_state
+
+        try:
+            prev_atom_state.restore()
+        except AttributeError:
+            pass
+        print(f"Clicked on atom '{entity.atom}' with id {i}.")
+        prev_atom_state = AtomState(entity, entity.scale, entity.color)
+        entity.scale = min(1.25 * entity.scale, 5.0)
+        entity.color = color.turquoise
+
+    return inner
+
+
 def render_atoms(atoms, coords3d):
     spheres = list()
-    for atom, (x, y, z) in zip(atoms, coords3d):
+    for i, (atom, (x, y, z)) in enumerate(zip(atoms, coords3d)):
         atom = atom.lower()
         scale_ = S.get(atom, 1.0)
         scale = (scale_, scale_, scale_)
@@ -80,7 +103,10 @@ def render_atoms(atoms, coords3d):
             world_y=y,
             world_z=z,
             shader=lit_with_shadows_shader,
+            collider="sphere",
         )
+        sphere.on_click = get_atom_clicker(sphere, i)
+        sphere.atom = atom
         spheres.append(sphere)
     return spheres
 
@@ -113,6 +139,8 @@ def input(key):
         msg = f"Root {imag_ind}"
         popup_text = Text(msg, x=0.30, y=0.45)
         destroy(popup_text, delay=0.5)
+    elif key in ("escape", "q"):
+        ursina.application.quit()
 
 
 def get_tangent_trj_coords(coords, tangent, points=10, displ=None):
@@ -133,7 +161,7 @@ def palindrome_cycler(iterable):
 
 
 def from_h5_hessian(fn):
-    geom = geom_from_hessian(fn, coord_type="redund")
+    geom = geom_from_hessian(fn, coord_type="redund", **GEOM_KWARGS)
     geoms = (geom,)
 
     # Cartesian displacements
@@ -157,7 +185,7 @@ def from_h5_hessian(fn):
 
 
 def from_geom(fn):
-    geoms = geom_loader(fn, coord_type="redund", iterable=True)
+    geoms = geom_loader(fn, coord_type="redund", iterable=True, **GEOM_KWARGS)
     trj_coords = [geom.coords3d for geom in geoms]
     cycler = palindrome_cycler(trj_coords)
     return geoms, cycler, trj_coords

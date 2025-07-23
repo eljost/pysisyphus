@@ -2,7 +2,6 @@ import numpy as np
 
 from pysisyphus.constants import BOHR2M, AU2J, AMU2KG
 from pysisyphus.irc.IRC import IRC
-from pysisyphus.TableFormatter import TableFormatter
 
 
 # [1] https://pubs.acs.org/doi/10.1021/jp012125b
@@ -11,18 +10,14 @@ from pysisyphus.TableFormatter import TableFormatter
 
 
 class DampedVelocityVerlet(IRC):
-
-    def __init__(self, geometry, v0=0.04, dt0=0.5, error_tol=0.003,
-                 max_cycles=150, **kwargs):
+    def __init__(
+        self, geometry, v0=0.04, dt0=0.5, error_tol=0.003, max_cycles=150, **kwargs
+    ):
         super().__init__(geometry, max_cycles=max_cycles, **kwargs)
 
         self.v0 = v0
         self.error_tol = error_tol
         self.dt0 = dt0
-
-        step_header = "damping dt dt_new error".split()
-        step_fmts = [".2f", ".4f", ".4f", ".3E"]
-        self.step_formatter = TableFormatter(step_header, step_fmts, 10)
 
     def mw_grad_to_acc(self, mw_grad):
         """Takes care of the units for the mass-weighted gradient.
@@ -71,8 +66,8 @@ class DampedVelocityVerlet(IRC):
         ref_coords = (
             self.irc_mw_coords[-2]
             # TODO: This should probably be -3 but it seems to give inferior results
-            + self.velocities[-2]*time_step_sum
-            + 0.5*self.accelerations[-2]*time_step_sum**2
+            + self.velocities[-2] * time_step_sum
+            + 0.5 * self.accelerations[-2] * time_step_sum**2
         )
         diff = new_mw_coords - ref_coords
         diff /= np.sqrt(self.geometry.masses_rep)
@@ -96,7 +91,7 @@ class DampedVelocityVerlet(IRC):
         # Get new acceleration
         acceleration = -self.mw_grad_to_acc(self.mw_gradient)
 
-        acc_normed = acceleration/np.linalg.norm(acceleration)
+        acc_normed = acceleration / np.linalg.norm(acceleration)
         prev_vel_normed = prev_velocity / np.linalg.norm(prev_velocity)
         ovlp = acc_normed @ prev_vel_normed
         self.log(f"a @ v_i-1={ovlp:.8f}")
@@ -104,13 +99,14 @@ class DampedVelocityVerlet(IRC):
 
         # Calculate new coords and velocity
         # Eq. (2) in [1]
-        new_mw_coords = (self.mw_coords
-                         + prev_velocity*time_step
-                         + 0.5*prev_acceleration*time_step**2
+        new_mw_coords = (
+            self.mw_coords
+            + prev_velocity * time_step
+            + 0.5 * prev_acceleration * time_step**2
         )
 
         # Update velocity
-        velocity = prev_velocity + 0.5*(prev_acceleration+acceleration)*time_step
+        velocity = prev_velocity + 0.5 * (prev_acceleration + acceleration) * time_step
         # Damp velocity
         damped_velocity, damping_factor = self.damp_velocity(velocity)
         self.velocities.append(damped_velocity)
@@ -122,9 +118,9 @@ class DampedVelocityVerlet(IRC):
             estimated_error = self.estimate_error(new_mw_coords)
 
         # Get next time step from error estimation
-        new_time_step = time_step * (self.error_tol / estimated_error)**(1/3)
+        new_time_step = time_step * (self.error_tol / estimated_error) ** (1 / 3)
         # Constrain time step between 0.0025 fs and 3.0 fs
-        new_time_step = min(new_time_step, 3.)
+        new_time_step = min(new_time_step, 3.0)
         new_time_step = max(new_time_step, 0.025)
         self.time_steps.append(new_time_step)
         self.log(f"\tCur. time step={time_step:.6f} fs")

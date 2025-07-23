@@ -10,7 +10,7 @@ from typing import List, Tuple
 import re
 import uuid
 import time
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -190,18 +190,25 @@ def full_expand(to_expand):
     return expanded
 
 
-def file_or_str(*args, method=False, mode="r", exact=False):
+def file_or_str(*args, method=False, mode="r", exact=False, add_exts=False):
     exts = args
+
+    if add_exts:
+        exts = exts + tuple([f".{ext}" for ext in exts if not ext.startswith(".")])
 
     def inner_func(func):
         def wrapped(inp, *args, **kwargs):
             if method:
                 obj = inp
                 inp, *args = args
-            p = Path(inp)
-            looks_like_file = exts and (
-                (p.suffix in exts) or (exact and p.name in exts)
-            )
+            try:
+                p = Path(inp)
+                looks_like_file = exts and (
+                    (p.suffix in exts) or (exact and p.name in exts)
+                )
+            # TypeError will be raised when bytes were already read from a file
+            except TypeError:
+                looks_like_file = False
             if looks_like_file and p.is_file():
                 with open(p, mode=mode) as handle:
                     inp = handle.read()
@@ -259,6 +266,29 @@ def recursive_update(d, u):
         else:
             d[k] = v
     return d
+
+
+def recursive_extract(
+    inp_dict: dict, target_key: str, prev_keys: Optional[tuple[str]] = None
+) -> dict[tuple[str], Any]:
+    """Recursively extract given key from a dict.
+
+    Can also handle dict of dicts, e.g., different calculation results
+    from a MultiCalc in run.run_calculations."""
+    if prev_keys is None:
+        prev_keys = tuple()
+
+    joined_key = prev_keys + (target_key,)
+
+    target_dict = dict()
+    try:
+        target_dict[joined_key] = inp_dict[target_key]
+    except KeyError:
+        pass
+    for key, value in inp_dict.items():
+        if isinstance(value, dict):
+            target_dict.update(recursive_extract(value, target_key, prev_keys + (key,)))
+    return target_dict
 
 
 def report_isotopes(geom, affect_str):
@@ -638,5 +668,71 @@ def kill_dir(path):
     path.rmdir()
 
 
-def rms(arr):
+def rms(arr: np.ndarray) -> float:
+    """Root mean square
+
+    Returns the root mean square of the given array.
+
+    Parameters
+    ----------
+    arr : iterable of numbers
+
+    Returns
+    -------
+    rms : float
+        Root mean square of the given array.
+    """
     return np.sqrt(np.mean(arr**2))
+
+
+SPIN_LABELS = {
+    1: "S",
+    2: "D",
+    3: "T",
+    4: "Q",
+    5: "5",
+    6: "6",
+}
+
+
+def get_state_label(mult: int, state_ind: int, default="?"):
+    spin_label = SPIN_LABELS.get(mult, default)
+    return f"{spin_label}_{state_ind:d}"
+
+
+def argsort(iterable):
+    return [i for i, _ in sorted(enumerate(iterable), key=lambda i_item: i_item[1])]
+
+
+def render_sp_stats(
+    descr_res,
+    unit: str,
+    unit2: Optional[str] = None,
+    conv2: float = 1.0,
+) -> str:
+    """Render DescribeResult from scipy.stats.describe as str.
+
+    Values are reported with unit '{unit}'. If provided, values
+    are reported with a second unit and an appropriate conversion
+    factor."""
+    rendered = ""
+    min_, max_ = descr_res.minmax
+    data = {
+        "min": min_,
+        "max": max_,
+        "mean": descr_res.mean,
+        "std": (descr_res.variance) ** 0.5,
+    }
+    lines = [
+        f"  nobs: {descr_res.nobs: >8d}",
+    ]
+    fmt = " >8.4f"
+    for k, v in data.items():
+        prefix = "±" if k == "std" else " "
+        line = f"{k: >6s}: {prefix}{v:{fmt}} {unit}"
+        if unit2 is not None:
+            v2 = v * conv2
+            line += f" ({v2:{fmt}} {unit2})"
+        lines.append(line)
+    rendered = "\n".join(lines)
+    return rendered

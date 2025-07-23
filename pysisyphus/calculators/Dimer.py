@@ -420,7 +420,7 @@ class Dimer(Calculator):
 
         if max(abs(average)) > 1e-8:
             self.log(
-                f"N-vector not translationally invariant. Removing average before normalization."
+                "N-vector not translationally invariant. Removing average before normalization."
             )
         else:
             return displacement

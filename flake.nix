@@ -12,6 +12,12 @@
     flake-utils.url = "github:numtide/flake-utils";
 
     nixBundlers.url = "github:NixOS/bundlers/master";
+
+    pysisyphus-addons.url = "github:eljost/pysisyphus-addons";
+
+    sympleints.url = "github:eljost/sympleints";
+
+    thermoanalysis.url = "github:eljost/thermoanalysis";
   };
 
   nixConfig = {
@@ -20,13 +26,19 @@
     extra-subtituters = [ "https://pysisyphus.cachix.org" ];
   };
 
-  outputs = { self, qchem, flake-utils, nixBundlers, ... }:
+  outputs = { self, qchem, sympleints, pysisyphus-addons, thermoanalysis, flake-utils, nixBundlers, ... }:
     flake-utils.lib.eachSystem [ "x86_64-linux" ]
       (system:
         let
           pkgs = import qchem.inputs.nixpkgs {
             inherit system;
-            overlays = [ qchem.overlays.default (import ./nix/overlay.nix) ];
+            overlays = [
+              qchem.overlays.default
+              thermoanalysis.overlays.default
+              sympleints.overlays.default
+              pysisyphus-addons.overlays.default
+              (import ./nix/overlay.nix)
+            ];
             config = {
               allowUnfree = true;
               qchem-config = {
@@ -73,7 +85,7 @@
           devShells.default =
             let
               pythonEnv = pkgs.python3.withPackages (p: with p;
-                [ pip ]
+                [ pip pytest ]
                 ++ p.pysisyphus.nativeBuildInputs
                 ++ p.pysisyphus.buildInputs
                 ++ p.pysisyphus.propagatedBuildInputs
@@ -84,6 +96,8 @@
                 pkgs.nixpkgs-fmt
                 pkgs.black
                 pythonEnv
+                pkgs.qchem.orca
+                pkgs.qchem.xtb
               ];
 
               shellHook = ''

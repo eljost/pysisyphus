@@ -36,10 +36,13 @@ Contrubtions are welcome, so feel free to submit a PR.
    chainofstates.rst
    tsoptimization.rst
    irc.rst
-   diabatization.rst
    plotting.rst
-   pysistrj.rst
+   diabatization.rst
+   marcusdim.rst
    api/modules.rst
+
+.. comments below
+   pysistrj.rst
 
 Indices and tables
 ==================

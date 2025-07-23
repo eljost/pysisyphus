@@ -1,13 +1,25 @@
 import h5py
+import numpy as np
 
 
 def init_h5_group(f, group_name, data_model):
     """Create group with given name and data model."""
     group = f.create_group(group_name)
     # Create (resizable) datasets by using None in maxshape
-    for key, shape in data_model.items():
+    for key, (shape, dtype) in data_model.items():
+        assert dtype in (
+            int,
+            np.int32,
+            np.int64,
+            float,
+            np.float32,
+            np.float64,
+            bool,
+            np.bool_,
+            h5py.string_dtype(),
+        )
         maxshape = (None,) if (len(shape) == 1) else (None, *shape[1:])
-        group.create_dataset(key, shape, maxshape=maxshape)
+        group.create_dataset(key, shape, maxshape=maxshape, dtype=dtype)
 
 
 def get_h5_group(fn, group_name, data_model=None, reset=False):

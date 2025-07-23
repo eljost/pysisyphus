@@ -5,8 +5,9 @@
 
 
 from copy import deepcopy
-from dataclasses import dataclass
+import dataclasses
 from math import sqrt
+from typing import Optional
 
 import numpy as np
 
@@ -20,7 +21,7 @@ def update_y(x, x_prev, y_prev):
 
     y_prev_x = y_prev.dot(x)
     x_prev_x = x_prev.dot(x)
-    y = (y_prev_x * x_prev - x_prev_x * y_prev) / sqrt(y_prev_x ** 2 + x_prev_x ** 2)
+    y = (y_prev_x * x_prev - x_prev_x * y_prev) / sqrt(y_prev_x**2 + x_prev_x**2)
     return y
 
 
@@ -34,7 +35,7 @@ def get_P(x, y):
     return P
 
 
-@dataclass
+@dataclasses.dataclass
 class CIQuantities:
     energy1: float
     gradient1: np.ndarray
@@ -50,6 +51,11 @@ class CIQuantities:
     y: np.ndarray
     energy: float
     forces: np.ndarray
+    hessian: Optional[np.ndarray] = None
+
+    def savez(self, fn):
+        kwargs = dataclasses.asdict(self)
+        np.savez(fn, **kwargs)
 
 
 class ConicalIntersection(Calculator):
@@ -70,7 +76,9 @@ class ConicalIntersection(Calculator):
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
         """Energy of calculator 1."""
-        return self.calculator1.get_energy(atoms, coords, **prepare_kwargs)
+        results = self.calculator1.get_energy(atoms, coords, **prepare_kwargs)
+        self.calc_counter += 1
+        return results
 
     def get_ci_quantities(self, atoms, coords, **prepare_kwargs):
         """Relavent quantities including branching plane and projector P."""
@@ -146,6 +154,8 @@ class ConicalIntersection(Calculator):
         """Projected gradient for CI optimization."""
         ciq = self.get_ci_quantities(atoms, coords, **prepare_kwargs)
 
+        ciq.savez(self.make_fn("ci_quantities.npz"))
+        self.calc_counter += 1
         return {
             "energy": ciq.energy,
             "forces": ciq.forces,
@@ -164,6 +174,9 @@ class ConicalIntersection(Calculator):
         hessian_mean = (hessian1 + hessian2) / 2
         hessian_proj = ciq.P.dot(hessian_mean).dot(ciq.P)
 
+        ciq.hessian = hessian_proj
+        ciq.savez(self.make_fn("ci_quantities.npz"))
+        self.calc_counter += 1
         return {
             "energy": ciq.energy,
             "forces": ciq.forces,

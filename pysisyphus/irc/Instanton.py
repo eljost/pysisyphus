@@ -13,7 +13,6 @@ import logging
 import numpy as np
 import scipy as sp
 
-from pysisyphus import logger as pysis_logger
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers import align_coords, get_coords_diffs
 from pysisyphus.helpers_pure import eigval_to_wavenumber
@@ -40,7 +39,7 @@ def T_crossover_from_ts(ts_geom):
     return T_c
 
 
-logger = pysis_logger.getChild("instanton")
+logger = logging.getLogger("pysis.instanton")
 logger.setLevel(logging.DEBUG)
 file_handler = logging.FileHandler("instanton.log", mode="w", delay=True)
 logger.addHandler(file_handler)
@@ -288,6 +287,6 @@ class Instanton:
         length = coord_diffs.sum()
         return length
 
-    def get_additional_print(self):
+    def get_additional_print(self, energies):
         length = self.path_length
         return f"\t\tInstanton length={length:.2f} √a̅m̅u̅·au"

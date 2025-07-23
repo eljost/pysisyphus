@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -33,13 +32,14 @@ def test_results_to_json():
         "get_hessian",
     ),
 )
-def test_calculator_dump(run_func):
-    out_dir = Path(".")
-    out_fn = "calculator_000.000.results"
-    try:
-        os.remove(out_dir / out_fn)
-    except FileNotFoundError:
-        pass
+def test_calculator_dump(run_func, this_dir):
+    out_fn = "calculator_000.000.results.json"
+    jsons = this_dir.glob("*.json")
+    for fn in jsons:
+        try:
+            os.remove(fn)
+        except FileNotFoundError:
+            pass
 
     run_dict = {
         "geom": {
@@ -49,8 +49,8 @@ def test_calculator_dump(run_func):
             "type": "pyscf",
             "basis": "sto3g",
             "run_func": run_func,
-            "out_dir": out_dir,
+            "out_dir": this_dir,
         },
     }
     _ = run_from_dict(run_dict)
-    assert (out_dir / out_fn).exists()
+    assert (this_dir / out_fn).exists()

@@ -1,4 +1,6 @@
-![pysisyphus logo](resources/logo_small.png)
+![pysisyphus logo](resources/logo_new_cut_small.png)
+
+**As of November 2024 I'm no longer in academia. I've no longer access to commerical/closed-source codes like Gaussian or Turbomole, nor to scientific papers. Consider pysisyphus to be unmaintained.**
 
 [![Documentation Status](https://readthedocs.org/projects/pysisyphus/badge/?version=master)](https://pysisyphus.readthedocs.io/en/master/?badge=master)
 [![build](https://github.com/eljost/pysisyphus/workflows/Python%20application/badge.svg)](https://github.com/eljost/pysisyphus/actions)

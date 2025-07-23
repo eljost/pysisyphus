@@ -89,7 +89,7 @@ class ModeKill(IRC):
         # Overlaps between current normal modes and the modes we want to
         # remove.
         overlaps = np.abs(np.einsum("ij,ik->jk", self.kill_modes, v))
-        self.log(f"Overlaps between original modes and current modes:")
+        self.log("Overlaps between original modes and current modes:")
         # overlaps contains one row per mode to remove
         for i, ovlps in enumerate(overlaps):
             above_thresh = ovlps > self.ovlp_thresh
