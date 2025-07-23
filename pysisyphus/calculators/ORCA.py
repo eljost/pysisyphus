@@ -834,7 +834,12 @@ class ORCA(OverlapCalculator):
         results = self.store_and_track(
             results, self.get_all_energies, atoms, coords, **prepare_kwargs
         )
-        results["td_1tdms"] = parse_orca_cis(self.cis, restricted_same_ab=True)
+        try:
+            results["td_1tdms"] = parse_orca_cis(self.cis, restricted_same_ab=True)
+        except AttributeError:
+            warnings.warn(
+                "Can't set td_1tdms, as ORCA calculator has no 'cis' attribute."
+            )
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
