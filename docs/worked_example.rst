@@ -1,4 +1,4 @@
-Worked example
+Worked Example
 ==============
 
 This page provides a general overview of pysisyphus's capabilities for optimizing ground
