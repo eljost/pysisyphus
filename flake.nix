@@ -96,6 +96,8 @@
                 pkgs.nixpkgs-fmt
                 pkgs.black
                 pythonEnv
+                pkgs.qchem.orca
+                pkgs.qchem.xtb
               ];
 
               shellHook = ''
