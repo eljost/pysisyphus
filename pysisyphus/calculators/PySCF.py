@@ -394,18 +394,25 @@ class PySCF(OverlapCalculator):
             Cb = Ca.copy()
 
         xy = exc_mf.xy
-        X = np.array([x for x, _ in xy])
-        Y = np.array([y for _, y in xy])
 
+        # Transition density matrices may have different shapes,
+        # when different number of alpha and beta electrons are present.
         if self.unrestricted:
-            Xa = X[:, 0]
-            Xb = X[:, 1]
-            Ya = Y[:, 0]
-            Yb = Y[:, 1]
+            shapea = xy[0][0][0].shape
+            shapeb = xy[0][0][1].shape
+            Xa = np.zeros((self.nroots, *shapea))
+            Ya = np.zeros_like(Xa)
+            Xb = np.zeros((self.nroots, *shapeb))
+            Yb = np.zeros_like(Xb)
+            for i, ((Xai, Xbi), (Yai, Ybi)) in enumerate(xy):
+                Xa[i] = Xai
+                Ya[i] = Yai
+                Xb[i] = Xbi
+                Yb[i] = Ybi
         else:
-            Xa = X
+            Xa = np.array([x for x, _ in xy])
             Xb = Xa.copy()
-            Ya = Y
+            Ya = np.array([y for _, y in xy])
             Yb = Ya.copy()
 
         # Methods that don't yield a Y-vector (TDA/TDAHF) will only produce a 0
