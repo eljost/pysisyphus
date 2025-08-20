@@ -61,7 +61,7 @@ def test_run_marcus_dim(cluster, this_dir):
         calc = AllEnsXTB(**_calc_kwargs)
         return calc
 
-    h5_fn = "pdnb_xtb_final_hessian.h5"
+    h5_fn = this_dir / "pdnb_xtb_final_hessian.h5"
     calc = calc_getter(base_name="eq", pal=pal)
     geom = geom_from_hessian(h5_fn, calculator=calc)
 
