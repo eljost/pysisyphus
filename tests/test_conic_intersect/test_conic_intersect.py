@@ -39,8 +39,10 @@ def calc():
 @pytest.mark.parametrize(
     "opt_cls, opt_kwargs, ref_energy",
     [
-        (ConjugateGradient, {}, -78.25693885),
+        # ΔE is 6.6 kJ mol⁻¹
+        (ConjugateGradient, {}, -78.2594),
         (
+            # ΔE is 0.3 kJ mol⁻¹
             RFOptimizer,
             {
                 "thresh": "gau",
