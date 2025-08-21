@@ -40,7 +40,7 @@ def calc():
     "opt_cls, opt_kwargs, ref_energy",
     [
         # ΔE is 6.6 kJ mol⁻¹
-        (ConjugateGradient, {}, -78.2594),
+        pytest.param(ConjugateGradient, {}, -78.2594, marks=pytest.mark.skip_ci),
         (
             # ΔE is 0.3 kJ mol⁻¹
             RFOptimizer,

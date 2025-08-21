@@ -218,10 +218,10 @@ version.py
 !tests/test_turbomole/make_dens/*
 !tests/test_numerov/*.dat
 !tests/test_partfuncs/ts_final_hessian_xtb.h5
+!tests/test_cos/multi_state_inp.npz
+!tests/test_wigner_sampling/h2_hfdef2svp_final_hessian.h5
+!tests/test_wigner_sampling/c2h5f_631gdrimp2_ts_final_hessian.h5
+!tests/test_marcusdim/pdnb_xtb_final_hessian.h5
 !pysisyphus/basis_library/*
 !pysisyphus/wf_library/*
 !pysisyphus/numint/lebedev_grids_4pi.npz
-!pysisyphus/test_cos/multi_state_inp.npz
-!pysisyphus/tests/test_wigner_sampling/h2_hfdef2svp_final_hessian.h5
-!pysisyphus/tests/test_wigner_sampling/c2h5f_631gdrimp2_ts_final_hessian.h5
-!pysisyphus/tests/test_marcus_dim/pdnb_xtb_final_hessian.h5

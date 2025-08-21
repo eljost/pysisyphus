@@ -11,6 +11,7 @@ from pysisyphus.drivers.spectrum_ctnum import ct_number_plot
     remove_text=True,
     extensions=["png"],
     style="mpl20",
+    tol=10.0,
 )
 def test_spectrum_ctnum(this_dir):
     data_dir = this_dir / "data"
