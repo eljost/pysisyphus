@@ -14,10 +14,17 @@ L_MAP = {
     "h": 5,
 }
 L_MAP_INV = {key: L for L, key in L_MAP.items()}
-L_SIZE = {l: (l + 1) * (l + 2) // 2 for l in L_MAP.values()}
 
 Ls = Literal["s", "p", "d", "f", "g", "h"]
 L_Inp = Union[int, Ls]
+
+
+def cart_size(L: int) -> int:
+    return (L + 2) * (L + 1) // 2
+
+
+def sph_size(L: int) -> int:
+    return 2 * L + 1
 
 
 def get_l(l_inp: L_Inp) -> int:
@@ -27,10 +34,6 @@ def get_l(l_inp: L_Inp) -> int:
     except (KeyError, AttributeError):
         l = int(l_inp)
     return l
-
-
-def get_shell_shape(*Ls):
-    return [L_SIZE[L] for L in Ls]
 
 
 class BFType(IntEnum):
@@ -65,6 +68,12 @@ def cca_order(l):
             b = l - a
         inds.append((a, b, c))
     return inds
+
+
+def lm_iter(L_max):
+    for l in range(L_max + 1):
+        for m in range(-l, l + 1):
+            yield l, m
 
 
 def cart2ang_moms(cart):

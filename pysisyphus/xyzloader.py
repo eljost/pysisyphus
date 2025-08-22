@@ -6,10 +6,11 @@ from pysisyphus.constants import BOHR2ANG
 
 
 def make_xyz_str(atoms, coords, comment=""):
+    """Expects coordinates in Angstrom!"""
     assert len(atoms) == len(coords)
     atoms = [a.capitalize() for a in atoms]
 
-    coord_fmt = "{: 03.8f}"
+    coord_fmt = "{: 14.8f}"
     line_fmt = "{:>3s} " + " ".join(
         [
             coord_fmt,
@@ -21,6 +22,11 @@ def make_xyz_str(atoms, coords, comment=""):
     body = "\n".join(body)
 
     return f"{len(atoms)}\n{comment}\n{body}"
+
+
+def make_xyz_str_au(atoms, coords3d, comment=""):
+    """Excpects coordinates in atomic units/Bohr!"""
+    return make_xyz_str(atoms, coords3d * BOHR2ANG, comment=comment)
 
 
 def make_trj_str(atoms, coords_list, comments=None):
@@ -73,7 +79,8 @@ def split_xyz_str(xyz_str):
     """
     float_ = r"([\+\d\-\.]+)"
     header_re = re.compile(r"(\d+)")
-    coord_re = re.compile(fr"[a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
+    # Also allow numbers instead of element symbols
+    coord_re = re.compile(rf"[0-9a-zA-Z]+\s+{float_}\s+{float_}\s+{float_}")
 
     lines = [l.strip() for l in xyz_str.strip().split("\n")]
 
@@ -126,8 +133,9 @@ def parse_xyz_str(xyz_str, with_comment):
     # Only consider the first four items on a line
     atom_num = int(xyz_lines[0])
     atoms_present = len(xyz_lines) - 2
-    assert len(xyz_lines) == atom_num + 2, \
-        f"Expected {atom_num} atoms, but found only {atoms_present}!"
+    assert (
+        len(xyz_lines) == atom_num + 2
+    ), f"Expected {atom_num} atoms, but found only {atoms_present}!"
     atoms_coords = [
         line.strip().split()[:4] for line in xyz_str.strip().split("\n")[2:]
     ]

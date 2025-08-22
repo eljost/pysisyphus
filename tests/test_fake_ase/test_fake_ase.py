@@ -34,4 +34,4 @@ def test_fake_ase_opt():
 
     assert dyn.converged()
     assert dyn.get_number_of_steps() == 14
-    assert np.linalg.norm(dyn.f0) == pytest.approx(0.0041871980)
+    assert np.linalg.norm(dyn.forces0) == pytest.approx(0.0041871980)

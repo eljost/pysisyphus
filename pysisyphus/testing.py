@@ -22,15 +22,17 @@ _reason = "Calculator {} is not available."
 _using_cache = dict()
 # Python modules to be imported using importlib.import_module
 IMPORT_DICT = {
-    "dftd4": "dftd4",
-    "pyscf": "pyscf",
     "dalton": "daltonproject",
-    "qcengine": "qcengine",
-    "openmm": "simtk.openmm",
-    "thermoanalysis": "thermoanalysis",
-    "pyxtb": "xtb.interface",
+    "dftd4": "dftd4",
+    "numba": "numba",
     "obabel": "openbabel.openbabel",
     "geodesic": "geodesic_interpolate",
+    "openmm": "simtk.openmm",
+    "pyscf": "pyscf",
+    "pysisyphus_addons": "pysisyphus_addons",
+    "tblite": "tblite",
+    "qcengine": "qcengine",
+    "thermoanalysis": "thermoanalysis",
 }
 
 

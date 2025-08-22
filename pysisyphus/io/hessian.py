@@ -1,11 +1,17 @@
-import numpy as np 
-import h5py
+import functools
+import math
 
+import jinja2
+import h5py
+import numpy as np
+
+from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import eigval_to_wavenumber
+from pysisyphus.hessian_proj import inertia_tensor as get_inertia_tensor
 
 
-def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None):
+def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None, charge=None):
     if cart_hessian is None:
         cart_hessian = geom.cart_hessian
 
@@ -15,26 +21,40 @@ def save_hessian(h5_fn, geom, cart_hessian=None, energy=None, mult=None):
     if mult is None:
         mult = geom.calculator.mult
 
+    if charge is None:
+        charge = geom.calculator.charge
+
     if len(geom.atoms) > 1:
-        proj_hessian = geom.eckart_projection(geom.mass_weigh_hessian(cart_hessian))
+        proj_hessian, P = geom.eckart_projection(
+            geom.mass_weigh_hessian(cart_hessian), return_P=True
+        )
     else:
         proj_hessian = cart_hessian
-    eigvals, _ = np.linalg.eigh(proj_hessian)
+        P = None
+    eigvals, eigvecs = np.linalg.eigh(proj_hessian)
     vibfreqs = eigval_to_wavenumber(eigvals)
 
     masses = geom.masses
     atoms = geom.atoms
     coords3d = geom.coords3d
+    inertia_tensor = get_inertia_tensor(geom.coords3d, geom.masses)
 
     with h5py.File(h5_fn, "w") as handle:
         handle.create_dataset("hessian", data=cart_hessian)
         handle.create_dataset("vibfreqs", data=vibfreqs)
         handle.create_dataset("masses", data=masses)
         handle.create_dataset("coords3d", data=coords3d)
+        handle.create_dataset("force_constants", data=eigvals)
+        handle.create_dataset("normal_modes", data=eigvecs)
+        if P is not None:
+            mw_cart_displs = P.T.dot(eigvecs)
+            handle.create_dataset("mw_cart_displs", data=mw_cart_displs)
+        handle.create_dataset("inertia_tensor", data=inertia_tensor)
 
         handle.attrs["atoms"] = [atom.lower() for atom in atoms]
         handle.attrs["energy"] = energy
         handle.attrs["mult"] = mult
+        handle.attrs["charge"] = charge
 
 
 def save_third_deriv(h5_fn, geom, third_deriv_result, H_mw, H_proj):
@@ -49,14 +69,150 @@ def save_third_deriv(h5_fn, geom, third_deriv_result, H_mw, H_proj):
         handle.attrs["atoms"] = [atom.lower() for atom in geom.atoms]
 
 
-def geom_from_hessian(h5_fn, **geom_kwargs):
+def geom_from_hessian(
+    h5_fn: str, with_attrs: bool = False, calculator=None, **geom_kwargs
+):
+    """Construct geometry from pysisyphus Hessian in HDF5 format.
+
+    Parameters
+    ----------
+    h5_fn
+        Filename of HDF5 Hessian.
+    with_attrs
+        Whether to also return an attributes dictionary. Attributes
+        contain charge and multiplicity, as well as atoms and the electronic
+        energy.
+    calculator
+        Calculator that is set on the Geometry object, before energy & hessian
+        are assigned. This argument is not typed, as using 'Calculator' and
+        the associated import leads to a circular import.
+
+    Returns
+    -------
+    geom
+        Geometry object with Hessian and electronic energy set.
+    attrs
+        Dictinoary containing the attributes set in the HDF5 file. Only returned
+        when with_attrs is True.
+    """
     with h5py.File(h5_fn, "r") as handle:
-        atoms = [atom.capitalize() for atom in handle.attrs["atoms"]]
         coords3d = handle["coords3d"][:]
-        energy = handle.attrs["energy"]
         cart_hessian = handle["hessian"][:]
 
+        attrs = dict(handle.attrs.items())
+        atoms = [atom.capitalize() for atom in attrs["atoms"]]
+        energy = attrs["energy"]
+
     geom = Geometry(atoms=atoms, coords=coords3d, **geom_kwargs)
+    if calculator is not None:
+        geom.set_calculator(calculator)
     geom.cart_hessian = cart_hessian
     geom.energy = energy
-    return geom
+
+    if with_attrs:
+        return geom, attrs
+    else:
+        return geom
+
+
+def cart_displs_to_vib_normal_modes(
+    cart_displs: np.ndarray, chunk_size: int = 5
+) -> str:
+    """Convert Cartesian normal modes into TURBOMOLE vib_normal_modes format.
+
+    cart_displs must be a matrix of shape (3N, 3N), with Cartesian displacements
+    in columns. One column per normal mode. The columns must be normalized.
+    """
+    nchunks = math.ceil(cart_displs.shape[1] / chunk_size)
+    fmt = " >14.10f"
+    lines = [
+        "$vibrational normal modes",
+    ]
+    for i, line in enumerate(cart_displs, 1):
+        for j in range(1, nchunks + 1):
+            chunk = line[(j - 1) * chunk_size : j * chunk_size]
+            formatted = [f"{num:{fmt}}" for num in chunk]
+            joined = " ".join([f" {i}", str(j)] + formatted)
+            lines.append(joined)
+    lines.append("$end")
+    return "\n".join(lines)
+
+
+MOLDEN_FREQ_TPL = jinja2.Template(
+    """[Molden Format]
+[Title]
+Generated by pysisyphus
+[Atoms] AU
+{%- for atom, atom_num, xyz in atoms_nums_xyzs %}
+ {{ atom }} {{ "%4d"|format(loop.index) }} {{ atom_num }}{{ format_xyz(xyz) }}
+{%- endfor %}
+[FREQ]
+{%- for nu in nus %}
+ {{ "%12.8e" % nu }}
+{%- endfor %}
+[FR-COORD]
+{%- for atom, _, xyz in atoms_nums_xyzs %}
+ {{ atom }} {{ format_xyz(xyz) }}
+{%- endfor %}
+[FR-NORM-COORD]
+{%- for vib in vibrations %}
+ vibration    {{ loop.index }}
+ {{ format_vib(vib) }}
+{%- endfor %}
+"""
+)
+
+
+def format_vib(vib_displs, chunk_size=3):
+    nchunks = math.ceil(vib_displs.size // chunk_size)
+    lines = list()
+    for i in range(nchunks):
+        displs = vib_displs[i * chunk_size : (i + 1) * chunk_size]
+        line = " ".join([f"{d:> 20.12e}" for d in displs])
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def format_xyz(xyz):
+    x, y, z = xyz
+    fmt = " >18.12f"
+    return f"{x:{fmt}} {y:{fmt}} {z:{fmt}}"
+
+
+@functools.singledispatch
+def normal_modes_to_molden(
+    atoms: tuple[str],
+    coords3d: np.ndarray,
+    nus: np.ndarray,
+    cart_displs: np.ndarray,
+    thresh: float = 10.0,
+) -> str:
+    atomic_numbers = [ATOMIC_NUMBERS[atom] for atom in atoms]
+    atoms_nums_xyzs = list(zip(atoms, atomic_numbers, coords3d))
+
+    mask = np.abs(nus) < thresh
+    nus[mask] = 0.0
+    vibrations = cart_displs.T
+
+    rendered = MOLDEN_FREQ_TPL.render(
+        atoms_nums_xyzs=atoms_nums_xyzs,
+        nus=nus,
+        format_xyz=format_xyz,
+        format_vib=format_vib,
+        vibrations=vibrations,
+    )
+    return rendered
+
+
+@normal_modes_to_molden.register
+def _(geom: Geometry, **kwargs) -> str:
+    atoms = geom.atoms
+    coords3d = geom.coords3d
+    nus, *_, cart_displs = geom.get_normal_modes(full=True)
+    return normal_modes_to_molden(atoms, coords3d, nus, cart_displs, **kwargs)
+
+
+@normal_modes_to_molden.register
+def _(h5_fn: str, **kwargs) -> str:
+    geom = geom_from_hessian(h5_fn)
+    return normal_modes_to_molden(geom, **kwargs)

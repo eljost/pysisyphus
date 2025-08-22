@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from scipy.interpolate import splprep, splev
 
@@ -7,7 +9,6 @@ from pysisyphus.intcoords.exceptions import (
     DifferentPrimitivesException,
     RebuiltInternalsException,
 )
-from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.cos.GrowingChainOfStates import GrowingChainOfStates
 
 
@@ -31,12 +32,22 @@ class GrowingString(GrowingChainOfStates):
         max_micro_cycles=5,
         reset_dlc=True,
         climb=False,
+        left_images: Optional[int] = None,
+        right_images: Optional[int] = None,
         **kwargs,
     ):
-        assert len(images) >= 2, "Need at least 2 images for GrowingString."
-        if len(images) > 2:
-            images = [images[0], images[-1]]
-            print("More than 2 images given. Will only use first and last image!")
+        nimages = len(images)
+        assert (
+            nimages >= 2
+        ), f"Need at least 2 images for GrowingString, but got only {nimages}!."
+
+        # When more than two images were given, 'left_images' and 'right_images' must
+        # also be given. In principle one of both values would be enough but right now
+        # we require both inputs, so the user must really make up its mind about it ;)
+        if nimages > 2:
+            assert left_images is not None and left_images > 0
+            assert right_images is not None and right_images > 0
+            assert left_images + right_images == nimages
         if climb:
             climb = "one"
         super().__init__(images, calc_getter, climb=climb, **kwargs)
@@ -59,14 +70,17 @@ class GrowingString(GrowingChainOfStates):
         self.max_micro_cycles = int(max_micro_cycles)
         self.reset_dlc = bool(reset_dlc)
 
-        left_img, right_img = self.images
-
-        self.left_string = [
-            left_img,
-        ]
-        self.right_string = [
-            right_img,
-        ]
+        if grow_in_first_cycle := nimages == 2:
+            left_img, right_img = self.images
+            self.left_string = [
+                left_img,
+            ]
+            self.right_string = [
+                right_img,
+            ]
+        else:
+            self.left_string = images[:left_images]
+            self.right_string = images[left_images:]
 
         # The desired spacing of the nodes in the final string on the
         # normalized arclength.
@@ -74,14 +88,12 @@ class GrowingString(GrowingChainOfStates):
 
         self.reparam_in = reparam_every
         self._tangents = None
-        self.tangent_list = list()
-        self.perp_forces_list = list()
-        self.coords_list = list()
 
-        left_frontier = self.get_new_image(self.lf_ind)
-        self.left_string.append(left_frontier)
-        right_frontier = self.get_new_image(self.rf_ind)
-        self.right_string.append(right_frontier)
+        if grow_in_first_cycle:
+            left_frontier = self.get_new_image(self.lf_ind)
+            self.left_string.append(left_frontier)
+            right_frontier = self.get_new_image(self.rf_ind)
+            self.right_string.append(right_frontier)
         self.new_image_inds = list()
 
     def get_cur_param_density(self, kind=None):
@@ -274,7 +286,7 @@ class GrowingString(GrowingChainOfStates):
         )
         return tcks, us
 
-    def reparam_cart(self, desired_param_density):
+    def reparam_cart(self, desired_param_density, image_energies):
         tcks, us = self.spline()
         # Reparametrize mesh
         new_points = np.vstack([splev(desired_param_density, tck) for tck in tcks])
@@ -282,15 +294,15 @@ class GrowingString(GrowingChainOfStates):
         new_points = new_points.reshape(-1, len(self.images)).T
         # With a climbing image we ignore the just splined coordinates for the CI
         # and restore its original coordinates.
-        for index in self.get_climbing_indices():
+        for index in self.get_climbing_indices(image_energies):
             new_points[index] = self.images[index].coords
             self.log(f"Skipped reparametrization of climbing image with index {index}")
         self.coords = new_points.flatten()
         # In contrast to self.reparam_dlc() we don't check if the reparametrization
         # succeeded because it can't fail ;)
 
-    def reparam_dlc(self, desired_param_density, thresh=1e-3):
-        climbing_indices = self.get_climbing_indices()
+    def reparam_dlc(self, desired_param_density, image_energies, thresh=1e-3):
+        climbing_indices = self.get_climbing_indices(image_energies)
         # Reparametrization will take place along the tangent between two
         # images. The index of the tangent image depends on wether the image
         # is above or below the desired param_density on the normalized arc.
@@ -369,33 +381,18 @@ class GrowingString(GrowingChainOfStates):
         elif self.reset_dlc:
             self.log("Skipping creation of new DLCs, as string is already fully grown.")
 
-    def get_tangent(self, i):
-        # Simple tangent, pointing at each other, for the frontier images.
+    def get_tangent(self, i: int, *args, **kwargs):
+        # Return a simple normalized coordinate difference for the frontier images.
         if not self.fully_grown and i in (self.lf_ind, self.rf_ind):
             next_ind = i + 1 if (i <= self.lf_ind) else i - 1
             tangent = self.images[next_ind] - self.images[i]
             tangent /= np.linalg.norm(tangent)
         else:
-            tangent = super().get_tangent(i, kind="upwinding")
-
+            # Use whathever kind else
+            tangent = super().get_tangent(i, *args, **kwargs)
         return tangent
 
-    @ChainOfStates.forces.getter
-    def forces(self):
-        if self._forces is None:
-            self.calculate_forces()
-        indices = range(len(self.images))
-        # In constrast to NEB calculations we only use the perpendicular component
-        # of the force, without any spring forces. A desired image distribution is
-        # achieved via periodic reparametrization.
-        perp_forces = np.array([self.get_perpendicular_forces(i) for i in indices])
-        self.perp_forces_list.append(perp_forces.copy().flatten())
-        # Add climbing forces
-        total_forces = self.set_climbing_forces(perp_forces)
-        self._forces = total_forces.flatten()
-        return self._forces
-
-    def reparametrize(self):
+    def reparametrize(self, image_energies, forces):
         reparametrized = False
         # If this counter reaches 0 reparametrization will occur.
         self.reparam_in -= 1
@@ -413,6 +410,7 @@ class GrowingString(GrowingChainOfStates):
             self.log(
                 f"Checking frontier node convergence, threshold={self.perp_thresh:.6f}"
             )
+
             # We can add a new node if the norm/rms of the perpendicular force is below
             # the threshold.
             def converged(i):
@@ -468,11 +466,14 @@ class GrowingString(GrowingChainOfStates):
             self.log(f"Desired param density: {pd_str}")
 
             # Reparametrize images.
-            if self.coord_type == "cart":
-                self.reparam_cart(desired_param_density)
+            if self.coord_type in ("cart", "cartesian"):
+                self.reparam_cart(desired_param_density, image_energies)
             elif self.coord_type == "dlc":
-                self.reparam_dlc(desired_param_density, thresh=self.reparam_tol)
+                self.reparam_dlc(
+                    desired_param_density, image_energies, thresh=self.reparam_tol
+                )
             else:
+                # TODO: fix GSM for coord_type 'cartesian'
                 raise Exception("How did you get here?")
 
             self.reparam_in = (
@@ -486,12 +487,11 @@ class GrowingString(GrowingChainOfStates):
 
         return reparametrized
 
-    def get_additional_print(self):
+    def get_additional_print(self, energies):
         size_str = f"{self.left_size}+{self.right_size}"
         if self.fully_grown:
             size_str = " Full"
         size_info = f"String={size_str: >5s}"
-        energies = np.array(self.all_energies[-1])
         barrier = (energies.max() - energies[0]) * AU2KJPERMOL
         barrier_info = f"(E_hei-E_0)={barrier:6.1f} kJ/mol"
         hei_ind = energies.argmax()

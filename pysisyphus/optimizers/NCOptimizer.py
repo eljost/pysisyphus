@@ -4,26 +4,24 @@
 import numpy as np
 
 from pysisyphus.optimizers.HessianOptimizer import HessianOptimizer
-from pysisyphus.helpers_pure import eigval_to_wavenumber 
+from pysisyphus.helpers_pure import eigval_to_wavenumber
 
 
 class NCOptimizer(HessianOptimizer):
-
     def __init__(self, geometry, *args, freeze_modes=None, **kwargs):
         super().__init__(geometry, **kwargs)
 
-        assert not self.is_cos and self.geometry.coord_type == "cart", \
-            "NCOptimizer can't be used with ChainOfStates-methods and " \
+        assert not self.is_cos and self.geometry.coord_type == "cart", (
+            "NCOptimizer can't be used with ChainOfStates-methods and "
             "coordinate systems beside cartesians ('coord_type: cart')."
+        )
 
         self.freeze_modes = freeze_modes
-        
+
         self.sqrt_m = np.sqrt(self.geometry.masses_rep)
 
-    def optimize(self):
-        grad = self.geometry.gradient
-        self.forces.append(-grad.copy())
-        self.energies.append(self.geometry.energy)
+    def get_step(self, energy, forces, hessian, eigvals, eigvecs, resetted):
+        grad = -forces
 
         if self.cur_cycle > 0:
             self.update_trust_radius()
@@ -40,7 +38,9 @@ class NCOptimizer(HessianOptimizer):
         eigvals, eigvecs = np.linalg.eigh(H_mw)
         # Drop translational/rotational modes as they will have
         # small (zero) eigenvalues. Zero the corresponding gradient entries.
-        eigvals, eigvecs, small_inds = self.filter_small_eigvals(eigvals, eigvecs, mask=True)
+        eigvals, eigvecs, small_inds = self.filter_small_eigvals(
+            eigvals, eigvecs, mask=True
+        )
 
         wavenumbers = eigval_to_wavenumber(eigvals)
 
@@ -48,14 +48,16 @@ class NCOptimizer(HessianOptimizer):
         if self.freeze_modes:
             freeze_inds = wavenumbers < self.freeze_modes
             eigvals = eigvals[~freeze_inds]
-            eigvecs = eigvecs[:,~freeze_inds]
+            eigvecs = eigvecs[:, ~freeze_inds]
             self.log(f"{np.sum(freeze_inds)} normal modes will be frozen.")
 
         frozen_str = ["(frozen)" if frozen else "" for frozen in freeze_inds]
-        wavenumber_str = "\n".join([
-                            f"\t{i:> 3d}: {wn:> 8.2f} cm⁻¹ {frz}"
-                            for i, (wn, frz) in enumerate(zip(wavenumbers, frozen_str))
-        ])
+        wavenumber_str = "\n".join(
+            [
+                f"\t{i:> 3d}: {wn:> 8.2f} cm⁻¹ {frz}"
+                for i, (wn, frz) in enumerate(zip(wavenumbers, frozen_str))
+            ]
+        )
         self.log("Frequencies:\n" + wavenumber_str)
 
         # Transform gradient to eigensystem of Hessian. We also have to use

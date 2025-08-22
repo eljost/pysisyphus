@@ -181,13 +181,9 @@ class PreconLBFGS(Optimizer):
             step *= max_step_element / max_element
         return step
 
-    def optimize(self):
-        forces = self.geometry.forces
-        energy = self.geometry.energy
-
-        self.forces.append(forces)
-        self.energies.append(energy)
-
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         norm = np.linalg.norm(forces)
         if not self.is_cos:
             fmt = " >12.6f"
@@ -231,14 +227,9 @@ class PreconLBFGS(Optimizer):
 
         # Determine step length
         if self.line_search_cls is not None:
-            kwargs = {
-                "geometry": self.geometry,
-                "p": step,
-                "f0": energy,
-                "g0": -forces,
-                "alpha_init": self.alpha_init,
-            }
-            line_search = self.line_search_cls(**kwargs)
+            line_search = self.line_search_cls(
+                self.geometry, step, alpha_init=self.alpha_init
+            )
             line_search_result = line_search.run()
             try:
                 alpha = line_search_result.alpha

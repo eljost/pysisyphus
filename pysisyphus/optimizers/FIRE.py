@@ -67,13 +67,12 @@ class FIRE(Optimizer):
     def reset(self):
         pass
 
-    def optimize(self):
-        if self.is_cos and self.align:
-            (self.v,), _, _ = self.fit_rigid(vectors=(self.v,))
+    def fit_rigid(self):
+        (self.v,), _, _ = super()._fit_rigid(vectors=(self.v,))
 
-        self.forces.append(self.geometry.forces)
-        self.energies.append(self.geometry.energy)
-        forces = self.forces[-1]
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         mixed_v = (
             # As 'a' gets bigger we keep less old v.
             (1.0 - self.a) * self.v

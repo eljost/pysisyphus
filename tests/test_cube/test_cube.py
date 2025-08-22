@@ -13,7 +13,7 @@ def test_cube(this_dir):
         origin=np.zeros(3),
         axes=np.eye(3),
         npoints=npoints,
-        vol_data=np.ones(np.product(npoints)),
+        vol_data=np.ones(np.prod(npoints)),
     )
     print(cube)
     out_fn = this_dir / "test.cub"

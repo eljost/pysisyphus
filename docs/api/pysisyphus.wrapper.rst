@@ -4,6 +4,22 @@ pysisyphus.wrapper package
 Submodules
 ----------
 
+pysisyphus.wrapper.crest module
+-------------------------------
+
+.. automodule:: pysisyphus.wrapper.crest
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.wrapper.exceptions module
+------------------------------------
+
+.. automodule:: pysisyphus.wrapper.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.wrapper.jmol module
 ------------------------------
 

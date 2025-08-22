@@ -9,8 +9,7 @@ from pysisyphus.config import WF_LIB_DIR
 from pysisyphus.wavefunction import Wavefunction
 from pysisyphus.wavefunction.pop_analysis import (
     mulliken_charges,
-    mulliken_charges_from_wf,
-    iao_charges_from_wf,
+    iao_charges,
 )
 from pysisyphus.wavefunction.excited_states import norm_ci_coeffs
 
@@ -34,7 +33,7 @@ def test_orca_json(fn, unrestricted):
 )
 def test_orca_mulliken(fn):
     wf = Wavefunction.from_orca_json(WF_LIB_DIR / fn)
-    ana = mulliken_charges_from_wf(wf)
+    ana = mulliken_charges(wf)
     np.testing.assert_allclose(
         ana.charges,
         (-0.27748112, 0.06937027, 0.06937027, 0.06937027, 0.06937027),
@@ -51,7 +50,7 @@ def test_orca_mulliken(fn):
 )
 def test_orca_iao(fn):
     wf = Wavefunction.from_orca_json(WF_LIB_DIR / fn)
-    ana = iao_charges_from_wf(wf)
+    ana = iao_charges(wf)
     np.testing.assert_allclose(
         ana.charges,
         (-0.523749, 0.130937, 0.130937, 0.130937, 0.130937),
@@ -85,7 +84,7 @@ def test_mulliken_exc(this_dir):
         P_exc = wf.P_exc(tden)
         _ = wf.get_dipole_moment(P=P_exc + P_exc)
         ana = mulliken_charges(
-            P=(P_exc / 2, P_exc / 2),
+            (P_exc / 2, P_exc / 2),
             S=wf.S,
             nuc_charges=wf.nuc_charges,
             ao_centers=wf.ao_centers,
@@ -119,7 +118,7 @@ def test_orca_unrestricted(this_dir):
     np.testing.assert_allclose(dpm, ref_dpm, atol=1e-5)
 
     ref_mulliken = (0.077267, 0.077267, -0.577267, -0.577267)
-    ana = mulliken_charges_from_wf(wf)
+    ana = mulliken_charges(wf)
     np.testing.assert_allclose(ana.charges, ref_mulliken, atol=1e-5)
 
     Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn)
@@ -176,7 +175,7 @@ def test_quadrupole_moment():
 
 def test_one_el_terms():
     fn = WF_LIB_DIR / "orca_ch4_sto3g.json"
-    wf = Wavefunction.from_orca_json(fn)
+    wf = Wavefunction.from_orca_json(fn, shell_kwargs={"backend": "python"})
     shells = wf.shells
     T = shells.T_sph
     V = shells.V_sph
@@ -189,7 +188,9 @@ def test_one_el_terms():
 
 
 def test_eval_esp():
-    wf = Wavefunction.from_file(WF_LIB_DIR / "orca_lih_ccpvdz.molden.input")
+    wf = Wavefunction.from_file(
+        WF_LIB_DIR / "orca_lih_ccpvdz.molden.input", shell_kwargs={"backend": "python"}
+    )
     coords3d = np.array(
         (
             (0.0, 0.0, 1.0),

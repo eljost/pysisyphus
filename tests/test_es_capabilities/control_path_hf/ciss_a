@@ -1,0 +1,14 @@
+$title
+$symmetry c1
+$tensor space dimension        5
+$scfinstab ciss
+$current subspace dimension        2
+$current iteration converged
+$eigenpairs
+        1   eigenvalue =  0.4656665133434372D+00
+0.00000000000000D+000.00000000000000D+00-.28140582727723D-140.52764412855609D+00
+0.84946552231405D+00
+        2   eigenvalue =  0.4656665133434372D+00
+0.00000000000000D+000.25222772360097D-150.11280122165156D-14-.84946552231405D+00
+0.52764412855609D+00
+$end

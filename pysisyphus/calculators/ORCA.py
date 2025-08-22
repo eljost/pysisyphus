@@ -11,8 +11,13 @@ import warnings
 import numpy as np
 import pyparsing as pp
 
-from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
+from pysisyphus.MOCoeffs import MOCoeffs
+from pysisyphus.calculators.OverlapCalculator import (
+    GroundStateContext,
+    OverlapCalculator,
+)
 from pysisyphus.constants import BOHR2ANG, ANG2BOHR
+from pysisyphus.Geometry import Geometry
 from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction import norm_ci_coeffs, Wavefunction
 
@@ -55,7 +60,7 @@ def save_orca_pc_file(point_charges, pc_fn, hardness=None):
     )
 
 
-def parse_orca_gbw(gbw_fn):
+def parse_orca_gbw(gbw_fn: str) -> MOCoeffs:
     """Adapted from
     https://orcaforum.kofo.mpg.de/viewtopic.php?f=8&t=3299
 
@@ -76,10 +81,15 @@ def parse_orca_gbw(gbw_fn):
         dimension = struct.unpack("<i", handle.read(4))[0]
 
         coeffs_fmt = "<" + dimension**2 * "d"
-        assert operators == 1, "Unrestricted case is not implemented!"
+        assert operators in (1, 2)
 
+        keys = {
+            0: "a",
+            1: "b",
+        }
+        kwargs = {}
         for i in range(operators):
-            # print('\nOperator: {}'.format(i))
+            key = keys[i]
             coeffs = struct.unpack(coeffs_fmt, handle.read(8 * dimension**2))
             occupations = struct.iter_unpack("<d", handle.read(8 * dimension))
             energies = struct.iter_unpack("<d", handle.read(8 * dimension))
@@ -87,23 +97,121 @@ def parse_orca_gbw(gbw_fn):
             cores = struct.iter_unpack("<i", handle.read(4 * dimension))
 
             coeffs = np.array(coeffs).reshape(-1, dimension)
+            occupations = np.array([occ[0] for occ in occupations])
             energies = np.array([en[0] for en in energies])
+            kwargs[f"C{key}"] = coeffs
+            kwargs[f"ens{key}"] = energies
+            kwargs[f"occs{key}"] = occupations
 
-        # MOs are returned in columns
-        return coeffs, energies
+        mo_coeffs = MOCoeffs(**kwargs)
+        return mo_coeffs
 
 
-def parse_orca_cis(cis_fn):
+def update_gbw(
+    gbw_in,
+    gbw_out,
+    alpha_mo_coeffs=None,
+    beta_mo_coeffs=None,
+    alpha_energies=None,
+    alpha_occs=None,
+    beta_energies=None,
+    beta_occs=None,
+):
+    """MOs are expected to be in columns."""
+
+    with open(gbw_in, "rb") as handle:
+        handle.seek(24)
+        offset = struct.unpack("<q", handle.read(8))[0]
+        handle.seek(offset)
+        operators = struct.unpack("<i", handle.read(4))[0]
+        if beta_mo_coeffs is not None:
+            assert operators == 2
+        # Number of MOs
+        dimension = struct.unpack("<i", handle.read(4))[0]
+
+        handle.seek(0)
+        gbw_bytes = handle.read()
+
+    # offset + operators + dimension
+    tot_offset = offset + 4 + 4
+    start = gbw_bytes[:tot_offset]
+
+    # Update alpha MO coefficients
+    _4dim = 4 * dimension
+    _8dim = 2 * _4dim
+    _8dim2 = _8dim * dimension
+    coeffs_size = _8dim2
+    occs_size = energies_size = _8dim
+    irreps_size = cores_size = _4dim
+    block_size = coeffs_size + occs_size + energies_size + irreps_size + cores_size
+
+    occ_start = coeffs_size
+    ens_start = occ_start + occs_size
+    ens_end = ens_start + energies_size
+
+    def update_block(start, mo_coeffs, occs, energies):
+        block = gbw_bytes[start : start + block_size]
+
+        # Read existing data from block or convert provided arguments to bytes.
+
+        # Occupation numbers
+        if occs is None:
+            occs = block[occ_start:ens_start]
+        else:
+            occs = np.array(occs, dtype=float).tobytes()
+        # MO energies
+        if energies is None:
+            energies = block[ens_start:ens_end]
+        else:
+            energies = np.array(energies, dtype=float).tobytes()
+        # MO coefficients
+        if mo_coeffs is None:
+            mo_coeffs = block[:coeffs_size]
+        else:
+            mo_coeffs = np.array(mo_coeffs, dtype=float).tobytes()
+
+        # Reassemble block
+        block = mo_coeffs + occs + energies + block[coeffs_size + _8dim + _8dim :]
+        return block
+
+    # The alpha block is always present in the .gbw ...
+    alpha_block = gbw_bytes[tot_offset : tot_offset + block_size]
+    alpha_block = update_block(tot_offset, alpha_mo_coeffs, alpha_occs, alpha_energies)
+
+    # The beta block is only present for operators == 2.
+    if operators == 2:
+        beta_block = update_block(
+            tot_offset + block_size, beta_mo_coeffs, beta_occs, beta_energies
+        )
+    else:
+        beta_block = bytes()
+
+    # Reassemble modified .gbw file
+    mod_gbw_bytes = start + alpha_block + beta_block
+    # and write the bytes.
+    with open(gbw_out, "wb") as handle:
+        handle.write(mod_gbw_bytes)
+
+
+def parse_orca_cis(
+    cis_fn, restricted_same_ab: bool = False, triplets_only: bool = True
+):
     """
     Read binary CI vector file from ORCA.
         Loosly based on TheoDORE 1.7.1, Authors: S. Mai, F. Plasser
         https://sourceforge.net/p/theodore-qc
+
+    With restricted_same_ab the alpha part will be copied over to the beta-part
+    in restricted calculations. Otherwise the beta-part (Xb, Yb) will just be zeros
+    in restricted calculations.
     """
+
     cis_handle = open(cis_fn, "rb")
     # self.log(f"Parsing CI vectors from {cis_handle}")
 
-    # The header consists of 9 4-byte integers, the first 5 of which give useful info.
     nvec = struct.unpack("i", cis_handle.read(4))[0]
+
+    # The header consists of 9 4-byte integers, the first 5 of which give useful info.
     # [0] index of first alpha occ,  is equal to number of frozen alphas
     # [1] index of last  alpha occ
     # [2] index of first alpha virt
@@ -247,7 +355,7 @@ def parse_orca_cis(cis_fn):
         return Xs, Ys
 
     # Only return triplet states if present
-    if triplets:
+    if triplets_only and triplets:
         Xs_a, Ys_a = handle_triplets(Xs_a, Ys_a)
         assert len(Xs_b) == 0
         assert len(Ys_b) == 0
@@ -256,35 +364,52 @@ def parse_orca_cis(cis_fn):
     if not unrestricted:
         assert len(Xs_b) == 0
         assert len(Ys_b) == 0
-        Xs_b = np.zeros_like(Xs_a)
-        Ys_b = np.zeros_like(Xs_b)
+        if restricted_same_ab:
+            Xs_b = Xs_a.copy()
+            Ys_b = Ys_a.copy()
+        else:
+            Xs_b = np.zeros_like(Xs_a)
+            Ys_b = np.zeros_like(Xs_b)
 
     return Xs_a, Ys_a, Xs_b, Ys_b
 
 
 @file_or_str(".log", ".out")
-def parse_orca_all_energies(text, triplets=False, do_tddft=False):
+def parse_orca_all_energies(text, triplets=False, do_tddft=False, do_ice=False):
     energy_re = r"FINAL SINGLE POINT ENERGY\s*([-\.\d]+)"
     energy_mobj = re.search(energy_re, text)
     gs_energy = float(energy_mobj.groups()[0])
     all_energies = [gs_energy]
+    did_triplets = bool(re.search(r"Generation of triplets\s*... on", text))
 
     if do_tddft:
         scf_re = re.compile(r"E\(SCF\)\s+=\s*([\d\-\.]+) Eh")
         scf_mobj = scf_re.search(text)
         scf_en = float(scf_mobj.group(1))
         gs_energy = scf_en
-        tddft_re = re.compile(r"STATE\s*(\d+):\s*E=\s*([\d\.]+)\s*au")
+        tddft_re = re.compile(r"STATE\s*(\d+):\s*E=\s*([-\d\.]+)\s*au")
         states, exc_ens = zip(
             *[(int(state), float(en)) for state, en in tddft_re.findall(text)]
         )
-        if triplets:
+        if did_triplets:
             roots = len(states) // 2
-            exc_ens = exc_ens[-roots:]
-            states = states[-roots:]
+            if triplets:
+                exc_ens = exc_ens[-roots:]
+                states = states[-roots:]
+            else:
+                warnings.warn(
+                    "Detected singlet-triplet excitations but 'triplets' is set to "
+                    "False. Returning only singlet-energies!"
+                )
+                exc_ens = exc_ens[:roots]
+                states = states[:roots]
         assert len(exc_ens) == len(set(states))
         all_energies = np.full(1 + len(exc_ens), gs_energy)
         all_energies[1:] += exc_ens
+    elif do_ice:
+        ice_re = re.compile(r"Final CIPSI Energy Root\s*(\d+):\s*([\d\.\-]+) EH")
+        ice_root_ens = ice_re.findall(text)
+        all_energies = [float(en) for _, en in ice_root_ens]
     all_energies = np.array(all_energies)
     return all_energies
 
@@ -296,7 +421,21 @@ def get_name(text: bytes):
 
 
 @file_or_str(".densities", mode="rb")
-def parse_orca_densities(text: bytes):
+def parse_orca_densities(text: bytes) -> dict[str, np.ndarray]:
+    """Parse ORCA *.densities file and return densities in dict.
+
+    Some examples of densities found in the file(s):
+
+        scfp : HF/DFT total electronic density
+        scfr : HF/DFT spin density
+        cisp : TDA/TD-DFT/CIS total electronic density
+        cisr : TDA/TD-DFT/CIS spin density
+        pmp2ur: MP2 total unrelaxed density
+        rmp2ur: MP2 unrelaxed spin density
+        pmp2re: MP2 total relaxed density
+        rmp2re: MP2 relaxed spin density
+    """
+
     handle = io.BytesIO(text)
 
     # Determine file size
@@ -343,14 +482,6 @@ def parse_orca_densities(text: bytes):
     densities = np.array(densities).reshape(ndens, *dens_shape)
 
     dens_dict = {dens_ext: dens for dens_ext, dens in zip(dens_exts, densities)}
-    # This check could be removed but I'll keep if for now, so I only deal with
-    # known densities.
-    # scfp : HF/DFT electronic density
-    # scfr : HF/DFT spin density
-    # cisp : TDA/TD-DFT/CIS electronic density
-    # cisr : TDA/TD-DFT/CIS spin density
-    assert set(dens_dict) <= {"scfp", "scfr", "cisp", "cisr"}
-
     return dens_dict
 
 
@@ -366,8 +497,59 @@ def get_exc_ens_fosc(wf_fn, cis_fn, log_fn):
     return exc_ens, fosc
 
 
-class ORCA(OverlapCalculator):
+def geom_from_orca_hess(fn):
+    data = ORCA.parse_hess_file(fn)
+    hessian = make_sym_mat(data["hessian"])
 
+    atoms = list()
+    coords3d = list()
+    # mass is neglected
+    for atom, _, coords in data["atoms"][2:]:
+        atoms.append(atom)
+        coords3d.append(coords.as_list())
+    coords = np.array(coords3d).flatten()
+
+    geom = Geometry(atoms, coords)
+    geom.cart_hessian = hessian
+    return geom
+
+
+class ORCAGroundStateContext(GroundStateContext):
+    def __enter__(self):
+        super().__enter__()
+        try:
+            self.root_bak = self.root
+        except AttributeError:
+            self.had_root = False
+        self.root = None
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        super().__exit__(exc_type, exc_value, exc_traceback)
+        if self.had_root:
+            self.root = self.root_bak
+        else:
+            del self.root
+
+
+def get_overlap_data_from_base_name(base_name: str | Path):
+    base = Path(base_name)
+
+    cis_fn = base.with_suffix(".cis")
+    Xa, Ya, Xb, Yb = parse_orca_cis(cis_fn, restricted_same_ab=True)
+    Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+
+    gbw_fn = base.with_suffix(".gbw")
+    mo_coeffs = parse_orca_gbw(gbw_fn)
+
+    # TODO: also obtain all_energies and return them
+    #
+    # Getting the energies from parse_orca_all_energies would require additional
+    # arguments (triplets, do_tddft, do_ice)...
+
+    return mo_coeffs.Ca, mo_coeffs.Cb, Xa, Ya, Xb, Yb
+
+
+class ORCA(OverlapCalculator):
     conf_key = "orca"
     _set_plans = (
         "gbw",
@@ -375,6 +557,7 @@ class ORCA(OverlapCalculator):
         "cis",
         "densities",
         ("molden", "mwfn_wf"),
+        "bson",
     )
 
     def __init__(
@@ -384,7 +567,8 @@ class ORCA(OverlapCalculator):
         gbw=None,
         do_stable=False,
         numfreq=False,
-        json_dump=True,
+        json_dump=None,
+        wavefunction_dump=True,
         **kwargs,
     ):
         """ORCA calculator.
@@ -412,8 +596,10 @@ class ORCA(OverlapCalculator):
             before every calculation.
         numfreq : bool, optional
             Use numerical frequencies instead of analytical ones.
-        json_dump : bool, optional
-            Whether to dump the wavefunction to JSON via orca_2json. The JSON can become
+        json_dump : bool, optional, deprecated
+            Use 'wavefunction_dump' instead.
+        wavefunction_dump : bool, optional
+            Whether to dump the wavefunction to BSON via orca_2json. The BSON can become
             very large in calculations comprising many basis functions.
         """
         super().__init__(**kwargs)
@@ -423,18 +609,62 @@ class ORCA(OverlapCalculator):
         self.gbw = gbw
         self.do_stable = bool(do_stable)
         self.freq_keyword = "numfreq" if numfreq else "freq"
-        self.json_dump = bool(json_dump)
+        if json_dump is not None:
+            warnings.warn(
+                "Use of 'json_dump' is deprecated! Use 'wavefunction_dump' instead!",
+                DeprecationWarning,
+            )
+            wavefunction_dump = json_dump
+        self.wavefunction_dump = bool(wavefunction_dump)
 
         assert ("pal" not in keywords) and ("nprocs" not in blocks), (
-            "PALn/nprocs not " "allowed! Use 'pal: n' in the 'calc' section instead."
+            "PALn/nprocs not allowed! Use 'pal: n' in the 'calc' section instead."
         )
         assert "maxcore" not in blocks, (
-            "maxcore not allowed! " "Use 'mem: n' in the 'calc' section instead!"
+            "maxcore not allowed! Use 'mem: n' in the 'calc' section instead!"
         )
 
+        td_blocks = {
+            "%tddft",
+            "%cis",
+        }
+        ice_blocks = {
+            "%ice",
+        }
+        self.es_block_header = [
+            key for key in (td_blocks | ice_blocks) if key in self.blocks
+        ]
+        es_block_header_set = set(self.es_block_header)
+
+        self.do_tddft = bool(es_block_header_set & td_blocks)
+        self.do_ice = bool(es_block_header_set & ice_blocks)
+        self.do_es = any((self.do_tddft, self.do_ice))
+        # There can be at most on ES block at a time
+        assert not (self.do_tddft and self.do_ice)
+        if self.es_block_header:
+            assert len(self.es_block_header) == 1
+            self.es_block_header = self.es_block_header[0]
+
+        if self.do_tddft:
+            try:
+                self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
+                warnings.warn(
+                    f"Using root {self.root}, as specified w/ 'iroot' keyword. Please "
+                    "use the designated 'root' keyword in the future, as the 'iroot' route "
+                    "will be deprecated.",
+                    DeprecationWarning,
+                )
+            except AttributeError:
+                self.log("Doing TDA/TDDFT calculation without gradient.")
+        self.triplets = bool(
+            re.search(r"triplets\s+true|irootmult\s+triplet", self.blocks)
+        )
+        self.inp_fn = "orca.inp"
+        self.out_fn = "orca.out"
         self.to_keep = (
-            "inp",
-            "out:orca.out",
+            # *inp will match the input file and cipsi.inp in ICE-CI calculations
+            "*inp",
+            f"out:{self.out_fn}",
             "gbw",
             "engrad",
             "hessian",
@@ -443,18 +673,11 @@ class ORCA(OverlapCalculator):
             "hess",
             "pcgrad",
             "densities:orca.densities",
-            "json",
+            "bson",
+            "cipsi.nat",
+            "cipsi.out",
+            "mp2nat",
         )
-        self.do_tddft = False
-        if "tddft" in self.blocks:
-            self.do_tddft = True
-            try:
-                self.root = int(re.search(r"iroot\s*(\d+)", self.blocks).group(1))
-            except AttributeError:
-                self.log("Doing TDA/TDDFT calculation without gradient.")
-        self.triplets = bool(re.search(r"triplets\s+true", self.blocks))
-        self.inp_fn = "orca.inp"
-        self.out_fn = "orca.out"
 
         self.orca_input = """!{keywords} {calc_type}
         {moinp}
@@ -471,6 +694,7 @@ class ORCA(OverlapCalculator):
         """
 
         self.parser_funcs = {
+            "all_energies": self.parse_all_energies_from_path,
             "energy": self.parse_energy,
             "grad": self.parse_engrad,
             "hessian": self.parse_hessian,
@@ -527,9 +751,21 @@ class ORCA(OverlapCalculator):
 
     def get_block_str(self):
         block_str = self.blocks
-        # Use the correct root if we track it
-        if self.track:
-            block_str = re.sub(r"iroot\s+(\d+)", f"iroot {self.root}", self.blocks)
+        # Use the correct iroot if 'root' attribute is set.
+        if self.root is not None:
+            # The spaces around ' iroot ' are important, because w/o them this conditional
+            # would also evaluate to True for 'irootmult', which is not intended.
+            if " iroot " in self.blocks:
+                block_str = re.sub(
+                    r" iroot\s+(\d+)", f" iroot {self.root}", self.blocks
+                )
+            # Insert appropriate iroot keyword if not already present
+            else:
+                block_str = re.sub(
+                    f"{self.es_block_header}",
+                    f"{self.es_block_header} iroot {self.root}",
+                    self.blocks,
+                )
             self.log(f"Using iroot '{self.root}' for excited state gradient.")
         return block_str
 
@@ -548,11 +784,11 @@ class ORCA(OverlapCalculator):
                 break
         else:
             raise Exception(
-                "Could not find stable wavefunction in {max_cycles}! " "Aborting."
+                "Could not find stable wavefunction in {max_cycles}! Aborting."
             )
 
     def parse_stable(self, path):
-        with open(path / "orca.out") as handle:
+        with open(path / self.out_fn) as handle:
             text = handle.read()
 
         stable_re = re.compile("Stability Analysis indicates a stable")
@@ -572,19 +808,38 @@ class ORCA(OverlapCalculator):
                 # Redo the calculation with the updated root
                 results = func(atoms, coords, **prepare_kwargs)
         results["all_energies"] = self.parse_all_energies()
+        # Set energy of current root if set
+        if self.root is not None:
+            results["energy"] = results["all_energies"][self.root]
         return results
 
     def get_energy(self, atoms, coords, **prepare_kwargs):
-        calc_type = ""
-
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
+        inp = self.prepare_input(atoms, coords, calc_type="", **prepare_kwargs)
         results = self.run(inp, calc="energy")
         results = self.store_and_track(
             results, self.get_energy, atoms, coords, **prepare_kwargs
         )
+        return results
+
+    def get_all_energies(self, atoms, coords, **prepare_kwargs):
+        # Calculating a stable wavfunction in this method may lead to unnecessary ES calculations.
+        if self.do_stable:
+            self.get_stable_wavefunction(atoms, coords)
+
+        inp = self.prepare_input(atoms, coords, calc_type="", **prepare_kwargs)
+        results = self.run(inp, calc="all_energies")
+        results = self.store_and_track(
+            results, self.get_all_energies, atoms, coords, **prepare_kwargs
+        )
+        try:
+            results["td_1tdms"] = parse_orca_cis(self.cis, restricted_same_ab=True)
+        except AttributeError:
+            warnings.warn(
+                "Can't set td_1tdms, as ORCA calculator has no 'cis' attribute."
+            )
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -593,38 +848,73 @@ class ORCA(OverlapCalculator):
 
         calc_type = "engrad"
         inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
-        kwargs = {
-            "calc": "grad",
-        }
-        results = self.run(inp, **kwargs)
+        results = self.run(inp, calc="grad")
         results = self.store_and_track(
             results, self.get_forces, atoms, coords, **prepare_kwargs
         )
         return results
 
     def get_hessian(self, atoms, coords, **prepare_kwargs):
-        calc_type = self.freq_keyword
-
         if self.do_stable:
             self.get_stable_wavefunction(atoms, coords)
 
-        inp = self.prepare_input(atoms, coords, calc_type, **prepare_kwargs)
+        # self.freq_keyword maybe numfreq/anfreq
+        inp = self.prepare_input(
+            atoms, coords, calc_type=self.freq_keyword, **prepare_kwargs
+        )
         results = self.run(inp, calc="hessian")
-        # results = self.store_and_track(
-        # results, self.get_hessian, atoms, coords, **prepare_kwargs
-        # )
+        results = self.store_and_track(
+            results, self.get_hessian, atoms, coords, **prepare_kwargs
+        )
+        return results
+
+    def get_stored_wavefunction(self, **kwargs):
+        return self.load_wavefunction_from_file(self.bson, **kwargs)
+
+    def get_wavefunction(self, atoms, coords, **prepare_kwargs):
+        with ORCAGroundStateContext(self):
+            results = self.get_energy(atoms, coords, **prepare_kwargs)
+            results["wavefunction"] = self.get_stored_wavefunction()
+        return results
+
+    def get_relaxed_density(self, atoms, coords, root, **prepare_kwargs):
+        # Do excited state gradient calculation for requested root and restore
+        # original root afterwards
+        root_bak = self.root
+        self.root = root
+        results = self.get_forces(atoms, coords, **prepare_kwargs)
+        self.root = root_bak
+
+        # Read density from .densities file
+        dens = parse_orca_densities(self.densities)
+        cisp = dens["cisp"]  # Total density; sum of alpha and beta density
+
+        # Construct alpha and beta densities in unrestricted calculations
+        try:
+            # Spin-density; not present in restricted calculations; will raise KeyError
+            cisr = dens["cisr"]
+            dens_a = (cisp + cisr) / 2.0
+            dens_b = cisp - dens_a
+        except KeyError:
+            dens_a = cisp / 2.0
+            dens_b = dens_a
+        density = np.stack((dens_a, dens_b), axis=0)
+        results["density"] = density
         return results
 
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         """Basically some kind of dummy method that can be called
         to execute ORCA with the stored cmd of this calculator."""
+        if self.do_stable:
+            self.get_stable_wavefunction(atoms, coords)
         inp = self.prepare_input(atoms, coords, "noparse", **prepare_kwargs)
         kwargs = {
             "calc": "energy",
         }
         results = self.run(inp, **kwargs)
-        if self.track:
-            self.store_overlap_data(atoms, coords)
+        results = self.store_and_track(
+            results, self.run_calculation, atoms, coords, **prepare_kwargs
+        )
         return results
 
     def run_after(self, path):
@@ -634,9 +924,9 @@ class ORCA(OverlapCalculator):
             self.popen(cmd, cwd=path)
             shutil.copy(path / "orca.molden.input", path / "orca.molden")
 
-        if self.json_dump: 
+        if self.wavefunction_dump:
             # Will silently fail with ECPs
-            cmd = "orca_2json orca"
+            cmd = "orca_2json orca -bson"
             proc = self.popen(cmd, cwd=path)
             if (ret := proc.returncode) != 0:
                 self.log(f"orca_2json call failed with return-code {ret}!")
@@ -720,7 +1010,7 @@ class ORCA(OverlapCalculator):
         return results
 
     def parse_energy(self, path):
-        log_fn = glob.glob(os.path.join(path / "orca.out"))
+        log_fn = glob.glob(os.path.join(path / self.out_fn))
         if not log_fn:
             raise Exception("ORCA calculation failed.")
 
@@ -728,12 +1018,29 @@ class ORCA(OverlapCalculator):
         log_fn = log_fn[0]
         with open(log_fn) as handle:
             text = handle.read()
-        mobj = re.search(r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)", text)
+        # By default, ORCA reports the total energy of the first ES, when ES were calculated.
+        # But we are interested in the GS energy, when self.root is None ...
+        # if not self.do_es and self.root is not None:
+        if (self.root is None or self.root == 0) and self.do_es:
+            en_re = r"Total Energy\s+:\s+([\d\-\.]+) Eh"
+        # ... so we look at the energy that was reported after the SCF.
+        else:
+            en_re = r"FINAL SINGLE POINT ENERGY\s+([\d\-\.]+)"
+        en_re = re.compile(en_re)
+        mobj = en_re.search(text)
         energy = float(mobj[1])
         return {"energy": energy}
 
+    def parse_all_energies_from_path(self, path):
+        with open(path / self.out_fn) as handle:
+            text = handle.read()
+        all_ens = self.parse_all_energies(text=text)
+        return {
+            "energy": all_ens[0],
+            "all_energies": all_ens,
+        }
+
     def parse_engrad(self, path):
-        results = {}
         engrad_fn = glob.glob(os.path.join(path, "*.engrad"))
         if not engrad_fn:
             raise Exception("ORCA calculation failed.")
@@ -746,46 +1053,26 @@ class ORCA(OverlapCalculator):
         atoms = int(engrad.pop(0))
         energy = float(engrad.pop(0))
         force = -np.array(engrad[: 3 * atoms], dtype=float)
-        results["energy"] = energy
-        results["forces"] = force
+        results = {
+            "energy": energy,
+            "forces": force,
+        }
 
         return results
 
     @staticmethod
-    def parse_cis(cis):
-        """Simple wrapper of external function.
-
-        Currently, only returns Xα and Yα.
-        """
-        return parse_orca_cis(cis)[:2]
-
-    @staticmethod
     def parse_gbw(gbw_fn):
-        return parse_orca_gbw(gbw_fn)
+        moc = parse_orca_gbw(gbw_fn)
+        return moc.Ca, moc.ensa
 
     @staticmethod
     def set_mo_coeffs_in_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs):
         """See self.parse_gbw."""
-
-        with open(in_gbw_fn, "rb") as handle:
-            handle.seek(24)
-            offset = struct.unpack("<q", handle.read(8))[0]
-            handle.seek(offset)
-            operators = struct.unpack("<i", handle.read(4))[0]
-            dimension = struct.unpack("<i", handle.read(4))[0]
-            assert operators == 1, "Unrestricted case is not implemented!"
-
-            handle.seek(0)
-            gbw_bytes = handle.read()
-
-        tot_offset = offset + 4 + 4
-        start = gbw_bytes[:tot_offset]
-        end = gbw_bytes[tot_offset + 8 * dimension**2 :]
-        # Construct new gbw content by replacing the MO coefficients in the middle
-        mod_gbw_bytes = start + mo_coeffs.T.tobytes() + end
-
-        with open(out_gbw_fn, "wb") as handle:
-            handle.write(mod_gbw_bytes)
+        warnings.warn(
+            "Previously, this method expected MO coefficients in rows! "
+            "Did you update your code?!"
+        )
+        return update_gbw(in_gbw_fn, out_gbw_fn, mo_coeffs)
 
     def parse_all_energies(self, text=None, triplets=None):
         if text is None:
@@ -795,7 +1082,9 @@ class ORCA(OverlapCalculator):
         if triplets is None:
             triplets = self.triplets
 
-        return parse_orca_all_energies(text, triplets, self.do_tddft)
+        return parse_orca_all_energies(
+            text, triplets, do_tddft=self.do_tddft, do_ice=self.do_ice
+        )
 
     @staticmethod
     @file_or_str(".out", method=False)
@@ -851,14 +1140,21 @@ class ORCA(OverlapCalculator):
         self.log(f"Setting MO coefficients from {gbw}.")
         self.mo_coeffs, _ = self.parse_gbw(self.gbw)
 
-    def prepare_overlap_data(self, path):
+    def prepare_overlap_data(self, path, triplets=None):
+        if triplets is None:
+            triplets = self.triplets
         # Parse eigenvectors from tda/tddft calculation
-        X, Y = self.parse_cis(self.cis)
-        # Parse mo coefficients from gbw file and write a 'fake' turbomole
-        # mos file.
-        C, _ = self.parse_gbw(self.gbw)
+        Xa, Ya, Xb, Yb = parse_orca_cis(self.cis, restricted_same_ab=True)
+        if triplets:
+            Xa = Xa[self.nroots :]
+            Ya = Ya[self.nroots :]
+            Xb = Xb[self.nroots :]
+            Yb = Yb[self.nroots :]
+        mo_coeffs = parse_orca_gbw(self.gbw)
+        Ca = mo_coeffs.Ca
+        Cb = mo_coeffs.Cb
         all_energies = self.parse_all_energies()
-        return C, X, Y, all_energies
+        return Ca, Xa, Ya, Cb, Xb, Yb, all_energies
 
     def get_chkfiles(self):
         return {

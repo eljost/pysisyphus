@@ -1,13 +1,17 @@
 from math import cos, sin, sqrt
-from typing import Callable, Literal, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 from scipy.linalg.lapack import dpstrf
 
+from pysisyphus.finite_diffs import finite_difference_hessian
+
 
 def gram_schmidt(vecs, thresh=1e-8):
+    """For historical reasons, this operates on rows ..."""
+
     def proj(v1, v2):
         return v1.dot(v2) / v1.dot(v1)
 
@@ -149,55 +153,6 @@ def norm3(a):
     return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
 
 
-def finite_difference_hessian(
-    coords: NDArray[float],
-    grad_func: Callable[[NDArray[float]], NDArray[float]],
-    step_size: float = 1e-2,
-    acc: Literal[2, 4] = 2,
-    callback: Optional[Callable] = None,
-) -> NDArray[float]:
-    """Numerical Hessian from central finite gradient differences.
-
-    See central differences in
-      https://en.wikipedia.org/wiki/Finite_difference_coefficient
-    for the different accuracies.
-    """
-    if callback is None:
-
-        def callback(*args):
-            pass
-
-    accuracies = {
-        2: ((-0.5, -1), (0.5, 1)),  # 2 calculations
-        4: ((1 / 12, -2), (-2 / 3, -1), (2 / 3, 1), (-1 / 12, 2)),  # 4 calculations
-    }
-    accs_avail = list(accuracies.keys())
-    assert acc in accs_avail
-
-    size = coords.size
-    fd_hessian = np.zeros((size, size))
-    zero_step = np.zeros(size)
-
-    coeffs = accuracies[acc]
-    for i, _ in enumerate(coords):
-        step = zero_step.copy()
-        step[i] = step_size
-
-        def get_grad(factor, displ, j):
-            displ_coords = coords + step * displ
-            callback(i, j)
-            grad = grad_func(displ_coords)
-            return factor * grad
-
-        grads = [get_grad(factor, displ, j) for j, (factor, displ) in enumerate(coeffs)]
-        fd = np.sum(grads, axis=0) / step_size
-        fd_hessian[i] = fd
-
-    # Symmetrize
-    fd_hessian = (fd_hessian + fd_hessian.T) / 2
-    return fd_hessian
-
-
 def rot_quaternion(coords3d, ref_coords3d):
     # Translate to origin by removing centroid
     c3d = coords3d - coords3d.mean(axis=0)
@@ -301,6 +256,23 @@ def rmsd_grad(
     return rmsd, grad
 
 
+def fd_rmsd_hessian(
+    coords3d: NDArray[float],
+    ref_coords3d: NDArray[float],
+    step_size=1e-4,
+):
+    def grad_func(coords):
+        _, grad = rmsd_grad(coords.reshape(-1, 3), ref_coords3d)
+        return grad.flatten()
+
+    coords = coords3d.flatten()
+    fd_hessian = finite_difference_hessian(
+        coords, grad_func, step_size=step_size, acc=4
+    )
+    rmsd, _ = rmsd_grad(coords3d, ref_coords3d)
+    return rmsd, fd_hessian
+
+
 def pivoted_cholesky(A: NDArray, tol: float = -1.0):
     """Cholesky factorization a real symmetric positive semidefinite matrix.
     Cholesky factorization is carried out with full pivoting.
@@ -375,7 +347,7 @@ def matrix_power(mat, p, thresh=1e-12, strict=True):
     assert (not strict) or (
         w > 0.0
     ).all(), "matrix_power must be called with a (semi)-positive-definite matrix!"
-    mask = np.abs(w) > thresh
+    mask = w > thresh
     w_pow = w[mask] ** p
     v_mask = v[:, mask]
     return v_mask @ np.diag(w_pow) @ v_mask.T
@@ -409,3 +381,31 @@ def multi_component_sym_mat(arr, dim):
     sym[triu] = arr
     sym[tril1] = sym[triu1]
     return sym.reshape(*target_shape, *shape[1:])
+
+
+def are_collinear(points: np.ndarray, rad_thresh: float = 1e-12) -> bool:
+    """Determine linearity of points in R^N.
+
+    Linearity is checked by comparing dot products between
+    successive point pairs. Coinciding points are NOT checked.
+    """
+
+    assert points.ndim == 2
+    npoints = points.shape[0]
+    if npoints == 1:
+        return False
+    elif npoints == 2:
+        return True
+
+    first, second = points[:2]
+    ref_vec = second - first
+    ref_vec /= np.linalg.norm(ref_vec)
+    is_linear = True
+    for other in points[1:]:
+        diff = other - first
+        diff /= np.linalg.norm(diff)
+        dot = abs(ref_vec.dot(diff))
+        if abs(dot - 1.0) >= rad_thresh:
+            is_linear = False
+            break
+    return is_linear

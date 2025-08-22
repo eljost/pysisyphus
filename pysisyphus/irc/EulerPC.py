@@ -109,7 +109,7 @@ class EulerPC(IRC):
         if self.cur_cycle > 0:
             if self.hessian_recalc and (self.cur_cycle % self.hessian_recalc == 0):
                 self.mw_hessian = self.geometry.mw_hessian
-                h5_fn = f"hess_calc_irc_{self.direction}_cyc{self.cur_cycle}.h5"
+                h5_fn = f"hess_calc_irc_{self.direction}_cyc_{self.cur_cycle:03d}.h5"
                 save_hessian(self.get_path_for_fn(h5_fn), self.geometry)
                 self.log("Calculated excact hessian")
             else:
@@ -178,7 +178,7 @@ class EulerPC(IRC):
             self.mw_coords = euler_mw_coords
 
             # Use rms of gradient from taylor expansion for convergence check.
-            euler_grad = self.unweight_vec(euler_mw_grad)
+            euler_grad = self.unweight_mw_grad(euler_mw_grad)
             rms_grad = rms(euler_grad)
 
             # Or check true gradient? But this would need an additional calculation,

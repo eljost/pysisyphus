@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import sys
 import time
+from typing import List, Union
 
 import numpy as np
 import scipy as sp
@@ -37,6 +38,7 @@ from pysisyphus.io import (
     geoms_from_inline_xyz,
     geom_from_pubchem_name,
 )
+from pysisyphus.io.coord import geoms_from_turbomole_coord
 from pysisyphus.thermo import (
     can_thermoanalysis,
     print_thermoanalysis,
@@ -78,7 +80,22 @@ def geoms_from_trj(trj_fn, first=None, coord_type="cart", **coord_kwargs):
     return geoms
 
 
-def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
+def geom_from_missing_ext(fn, **kwargs):
+    fn_path = Path(fn)
+    name = fn_path.name
+    if name == "coord" or "coord" in name:
+        # Return an iterable of one geometry, because of this check later
+        #   'if iterable and (ext in (".trj", ".fchk", "")) ...' in
+        # geom_loader().
+        geoms = geoms_from_turbomole_coord(fn, **kwargs)
+    else:
+        geoms = geoms_from_inline_xyz(fn, **kwargs)
+    return geoms
+
+
+def geom_loader(
+    fn, coord_type="cart", iterable=False, **coord_kwargs
+) -> Union[Geometry, tuple[Geometry]]:
     """After introducing the pubchem functionality I don't like this
     function anymore :) Too complicated."""
     fn = str(fn)
@@ -92,7 +109,7 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         index = None
     ext = "" if "\n" in fn else Path(fn).suffix
 
-    funcs = {
+    ext_funcs = {
         ".cjson": geom_from_cjson,
         ".crd": geom_from_crd,
         ".cub": geom_from_cube,
@@ -105,28 +122,30 @@ def geom_loader(fn, coord_type="cart", iterable=False, **coord_kwargs):
         ".trj": geoms_from_trj,
         ".xyz": geom_from_xyz_file,
         ".zmat": geom_from_zmat_fn,
-        "": geoms_from_inline_xyz,
+        "": geom_from_missing_ext,
     }
-    assert ext in funcs, f"Unknown filetype for '{fn}'!"
-    func = funcs[ext]
+    assert ext in ext_funcs, f"Unknown filetype for '{fn}'!"
+    ext_func = ext_funcs[ext]
 
     if fn.startswith("lib:"):
         fn = str(LIB_DIR / fn[4:])
     elif fn.startswith("pubchem:"):
-        func = geom_from_pubchem_name
+        ext_func = geom_from_pubchem_name
         fn = fn[8:]
 
     kwargs = {
         "coord_type": coord_type,
     }
     kwargs.update(coord_kwargs)
-    geom = func(fn, **kwargs)
+    geom = ext_func(fn, **kwargs)
 
     if index is not None:
         geom = geom[index]
 
     if iterable and org_fn.startswith("pubchem:"):
         geom = (geom,)
+    # TODO: simplify this. This condition is also True for 'coord' files and expects
+    # multiple geometries, or at least that geom is an iterable.
     if iterable and (ext in (".trj", ".fchk", "")) and index is None:
         geom = tuple(geom)
     elif not iterable and ext == "" and len(geom) == 1:
@@ -460,6 +479,54 @@ def complete_fragments(atoms, fragments):
     fragments = tuple([tuple(frag) for frag in fragments])
 
     return fragments
+
+
+def get_fragment_xyzs(
+    geom: Geometry,
+    fragments: List[List[int]],
+    with_geom: bool = False,
+    with_dummies: bool = True,
+) -> List[str]:
+    """Create list of fragment xyz-strings.
+
+    Parameters
+    ----------
+    geom
+        Geometry object.
+    fragment
+        List of fragments. Each fragment is described by a list of atom index
+        integers.
+    with_geom
+        Whether the xyz string of the full geometry is included at the first position.
+    with_dummies
+        Whether atoms not belonging to the fragment are replaced by dummy atoms or just
+        excluded. Using dummy atoms facilitates fragment recognition when viewing them.
+
+    Returns
+    -------
+    xyzs
+        List of xyz-strings.
+    """
+    atoms = geom.atoms
+    dummy_atoms = ["X"] * len(atoms)
+    coords3d = geom.coords3d
+    xyzs = list()
+    if with_geom:
+        xyzs.append(geom.as_xyz(comment="Full geometry"))
+
+    for i, frag in enumerate(fragments):
+        if with_dummies:
+            frag_atoms = dummy_atoms.copy()
+            # Replace dummy atoms with the actual fragment atoms
+            for j in frag:
+                frag_atoms[j] = atoms[j]
+            frag_coords3d = coords3d
+        else:
+            frag_atoms = [atoms[j] for j in frag]
+            frag_coords3d = coords3d[frag]
+        frag_geom = Geometry(frag_atoms, frag_coords3d)
+        xyzs.append(frag_geom.as_xyz(comment=f"Fragment {i}"))
+    return xyzs
 
 
 FinalHessianResult = namedtuple(

@@ -1,7 +1,9 @@
 import argparse
+import json
 from pathlib import Path
 import sys
 import textwrap
+import warnings
 
 import h5py
 import matplotlib
@@ -254,7 +256,10 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt", last=15):
     results = load_h5(
         h5_fn,
         h5_group,
-        datasets=("energies", "forces",),
+        datasets=(
+            "energies",
+            "forces",
+        ),
         attrs=("is_cos", "coord_type", "max_force_thresh", "rms_force_thresh"),
     )
     cycles = len(results["energies"])
@@ -267,7 +272,7 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt", last=15):
 
     last_axis = forces.ndim - 1
     max_ = np.nanmax(np.abs(forces), axis=last_axis)
-    rms = np.sqrt(np.mean(forces ** 2, axis=last_axis))
+    rms = np.sqrt(np.mean(forces**2, axis=last_axis))
     hei_indices = energies.argmax(axis=1)
     force_unit = get_force_unit(coord_type)
 
@@ -277,7 +282,9 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt", last=15):
         cycle = last_cycles[i]
         hei_max = max_[i, hei_index]
         hei_rms = rms[i, hei_index]
-        print(f"\tCycle {cycle:03d}: max(forces)={hei_max:{fmt}}, rms(forces)={hei_rms:{fmt}}")
+        print(
+            f"\tCycle {cycle:03d}: max(forces)={hei_max:{fmt}}, rms(forces)={hei_rms:{fmt}}"
+        )
 
     fig, (ax0, ax1) = plt.subplots(sharex=True, nrows=2)
 
@@ -285,7 +292,7 @@ def plot_cos_forces(h5_fn="optimization.h5", h5_group="opt", last=15):
         num = data.shape[0]
         alphas = np.linspace(0.125, 1, num=num)
         colors = matplotlib.cm.Greys(np.linspace(0, 1, num=num))
-        colors[-1] = (1., 0., 0., 1.)  # use red for latest cycle
+        colors[-1] = (1.0, 0.0, 0.0, 1.0)  # use red for latest cycle
         for row, color, alpha in zip(data, colors, alphas):
             ax.plot(row, "o-", color=color, alpha=alpha)
             ax.set_ylabel(force_unit)
@@ -390,7 +397,7 @@ def plot_md(h5_group="run"):
     ens_conserved -= mean_conserved
     ax1.plot(dts, ens_conserved)
     ax1.axhline(0, ls="--", c="k")
-    ax1.set_ylabel(r"$E_\\mathrm{cons.} - \overline{E}_\\mathrm{cons.}$ / {en_unit}")
+    ax1.set_ylabel(r"$E_\text{cons.} - \overline{E}_\text{cons.}$ / " + en_unit)
     ax1.set_title("Conserved quantity")
 
     ax2.plot(dts, Ts, label="Current")
@@ -525,8 +532,8 @@ def plot_overlaps(h5, thresh=0.1):
         o = np.abs(overlaps[i])
         ax.imshow(o, vmin=0, vmax=1)
         ax.grid(color="#CCCCCC", linestyle="--", linewidth=1)
-        ax.set_xticks(np.arange(n_states, dtype=np.int))
-        ax.set_yticks(np.arange(n_states, dtype=np.int))
+        ax.set_xticks(np.arange(n_states, dtype=int))
+        ax.set_yticks(np.arange(n_states, dtype=int))
         # set_ylim is needed, otherwise set_yticks drastically shrinks the plot
         ax.set_ylim(n_states - 0.5, -0.5)
         ax.set_xlabel("new roots")
@@ -546,7 +553,7 @@ def plot_overlaps(h5, thresh=0.1):
         ref_overlaps = o[ref_ind]
         argmax = np.nanargmax(ref_overlaps)
         xy = (argmax - 0.5, ref_ind - 0.5)
-        highlight = Rectangle(xy, 1, 1, fill=False, color="red", lw="4")
+        highlight = Rectangle(xy, 1, 1, fill=False, color="red", lw=4)
         ax.add_artist(highlight)
         if ax1:
             ax1.imshow(cdd_imgs[i])
@@ -638,7 +645,6 @@ def render_cdds(h5):
 
 
 def plot_afir(h5_fn="afir.h5", h5_group="afir"):
-
     h5_fns = (h5_fn, Path(OUT_DIR_DEFAULT) / h5_fn)
     for h5_fn in h5_fns:
         print(f"Trying to open '{h5_fn}' ... ", end="")
@@ -655,7 +661,6 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
         except FileNotFoundError:
             print("file not found.")
             continue
-
 
     en_conv, en_unit = get_en_conv()
     afir_ens *= en_conv
@@ -716,7 +721,7 @@ def plot_afir(h5_fn="afir.h5", h5_group="afir"):
         )
         en_ax.axvline(peak_xs[highest], c="k", ls="--")
         forces_ax.axvline(peak_xs[highest], c="k", ls="--")
-    except ValueError as err:
+    except ValueError:
         print("Peak-detection failed!")
 
     # fig.legend(loc="upper right")
@@ -762,6 +767,13 @@ def parse_args(args):
     group.add_argument("--md", action="store_true", help="Plot MD.")
     group.add_argument("--gau", nargs="*")
     group.add_argument("--scan", action="store_true")
+    group.add_argument(
+        "--calcs",
+        action="store_true",
+        help=(
+            "Plot energy-values from JSON results, produced from plain calculations."
+        ),
+    )
     group.add_argument(
         "--trj", help="Plot energy values from the comments of a " ".trj file."
     )
@@ -845,7 +857,11 @@ def plot_opt(h5_fn="optimization.h5", h5_group="opt"):
 
 def plot_irc():
     cwd = Path(".")
-    h5s = cwd.glob("*irc_data.h5")
+    pattern = "*irc_data.h5"
+    h5s = list(cwd.glob(pattern))
+    if len(h5s) == 0:
+        print(f"Couldn't find any HDF5 files matching {pattern}!")
+        return
     for h5 in h5s:
         type_ = h5.name.split("_")[0]
         title = f"{type_.capitalize()} IRC data"
@@ -866,6 +882,11 @@ def plot_irc_h5(h5, title=None):
         except KeyError:
             ts_index = None
 
+        try:
+            coordinate = handle["lengths"][:]
+        except KeyError:
+            coordinate = None
+
     sizes = [dataset.shape[0] for dataset in (mw_coords, energies, gradients)]
     size0 = sizes[0]
     assert all([size == size0 for size in sizes])
@@ -875,8 +896,32 @@ def plot_irc_h5(h5, title=None):
     energies -= energies[0]
     energies *= en_conv
 
-    cds = np.linalg.norm(mw_coords - mw_coords[0], axis=1)
-    rms_grads = np.sqrt(np.mean(gradients ** 2, axis=1))
+    if coordinate is None:
+        if ts_index is None:
+            warnings.warn("Trying to guess ts_index!")
+            if "forward" in str(h5).lower():
+                ts_index = 0
+            elif "backward" in str(h5).lower():
+                ts_index = -1
+            elif "finished" in str(h5).lower():
+                en_argmax = energies.argmax()
+                grad_argmin = np.linalg.norm(gradients, axis=1).argmin()
+                if en_argmax == grad_argmin:
+                    ts_index = int(en_argmax)
+                else:
+                    raise Exception(
+                        f"Energy maximum is at index {en_argmax}, but minimum of "
+                        f"norm(gradient) is at index {grad_argmin}. Could not "
+                        "determine ts index!"
+                    )
+            else:
+                raise Exception("Couldn't guess ts_index!")
+            print(f"Using {ts_index} for {h5}")
+        ts_mw_coords = mw_coords[ts_index]
+        signs = np.ones(size0)
+        signs[ts_index:] *= -1
+        coordinate = signs * np.linalg.norm(ts_mw_coords - mw_coords, axis=1)
+    rms_grads = np.sqrt(np.mean(gradients**2, axis=1))
     max_grads = np.abs(gradients).max(axis=1)
 
     fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, sharex=True)
@@ -886,22 +931,22 @@ def plot_irc_h5(h5, title=None):
         "marker": "o",
     }
 
-    ax0.plot(cds, energies, **plt_kwargs)
+    ax0.plot(coordinate, energies, **plt_kwargs)
     ax0.set_title("energy change")
     ax0.set_ylabel(DE_LABEL)
 
-    ax1.plot(cds, rms_grads, **plt_kwargs)
+    ax1.plot(coordinate, rms_grads, **plt_kwargs)
     ax1.axhline(rms_grad_thresh, linestyle="--", color="k")
     ax1.set_title("rms(gradient)")
     ax1.set_ylabel("$E_h$ Bohr⁻¹")
 
-    ax2.plot(cds, max_grads, **plt_kwargs)
+    ax2.plot(coordinate, max_grads, **plt_kwargs)
     ax2.set_title("max(gradient)")
     ax2.set_xlabel("IRC / amu$^{\\frac{1}{2}}$ Bohr")
     ax2.set_ylabel("$E_h$ Bohr⁻¹")
 
     if ts_index:
-        x = cds[ts_index]
+        x = coordinate[ts_index]
         for ax, arr in ((ax0, energies), (ax1, rms_grads), (ax2, max_grads)):
             xy = (x, arr[ts_index])
             ax.annotate("TS", xy, fontsize=12, fontweight="bold")
@@ -914,25 +959,61 @@ def plot_irc_h5(h5, title=None):
     return fig, (ax0, ax1, ax2)
 
 
-def plot_scan(h5_fn="scan.h5"):
-    with h5py.File(h5_fn, "r") as handle:
-        groups = list()
-        energies = list()
-        for k in handle.keys():
-            group = handle[k]
-            groups.append(k)
-            energies.append(group["energies"][:])
-    print(f"Found {len(groups)} groups in '{h5_fn}'.")
+def plot_scan(dat_fn=None):
+    if dat_fn is None:
+        dat_fns = Path(".").glob("*relaxed_scan.dat")
+    else:
+        dat_fns = (dat_fn,)
 
-    en_conv, _ = get_en_conv
-    for group, ens in zip(groups, energies):
-        ens -= ens.min()
-        ens *= en_conv
+    en_conv, _ = get_en_conv()
+
+    for fn in dat_fns:
+        data = np.loadtxt(fn)
+        print(f"Found {len(data)} scan points on '{fn}'.")
+        vals, energies = data.T
+        energies -= energies.min()
+        energies *= en_conv
         fig, ax = plt.subplots()
-        ax.plot(ens, "o-")
-        ax.set_xlabel("Scan point")
+        ax.plot(vals, energies, "o-")
+        ax.set_xlabel("Scanned coordinate")
+        for ind in (0, [-1]):
+            ax.axhline(energies[ind], c="k", ls=":")
         ax.set_ylabel(DE_LABEL)
-        ax.set_title(group)
+        ax.set_title(fn.name)
+        fig.tight_layout()
+        print(f"Created plot for '{fn}'")
+    plt.show()
+
+
+def plot_calculations():
+    cwd = Path("qm_calcs")
+    if not cwd.exists():
+        cwd = Path(".")
+    pattern = "*.results.json"
+    print(f"Using {cwd=} to look for '{pattern}'")
+    jsons = list(sorted(cwd.glob(pattern)))
+    datas = list()
+    for i, fn in enumerate(jsons):
+        with open(fn, "r") as handle:
+            data = json.load(handle)
+        print(f"Loaded {fn}")
+        datas.append(data)
+
+    energies = [data["energy"] for data in datas]
+    energies = np.array(energies)
+    energies -= energies.min()
+    en_conv, en_unit = get_en_conv()
+    energies *= en_conv
+    xs = np.arange(len(energies))
+
+    fig, ax = plt.subplots()
+    ax.plot(xs, energies, "o-")
+    for i, en in enumerate(energies):
+        ax.annotate(text=str(i), xy=(i + 0.05, en + 1.0))
+    ax.set_xlabel("Step")
+    ax.set_ylabel(f"ΔE / {en_unit}")
+    ax.set_xlim(0, xs[-1])
+    fig.tight_layout()
     plt.show()
 
 
@@ -1021,6 +1102,8 @@ def run():
         plot_gau(args.gau)
     elif args.scan:
         plot_scan()
+    elif args.calcs:
+        plot_calculations()
     elif args.render_cdds:
         render_cdds(h5=h5_fn)
     elif args.trj:

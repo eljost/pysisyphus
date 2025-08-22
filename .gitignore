@@ -63,6 +63,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/timer.dat
 
 # PyBuilder
 target/
@@ -165,10 +166,18 @@ cur_out
 *.gbw
 *.chkfile
 pysisyphus/wavefunction/devel_ints/*
+timer.dat
 
 version.py
 
 !tests/test_barriers/*.h5
+!tests/test_diabatization/00_bena2_cat/00_bena2_dcat.bson
+!tests/test_diabatization/00_bena2_cat/00_bena2_dcat.cis
+!tests/test_diabatization/00_bena2_cat/00_bena2_dcat.log
+!tests/test_dma/data/*
+!tests/test_es_capabilities/control_path_mult_*
+!tests/test_exc_densities/data/*
+!tests/test_rates/ethyl_propionate/*.h5
 !tests/test_franckcondon/*.h5
 !tests/test_franckcondon/naphthalene_gradient
 !tests/test_hessian_updates/*.h5
@@ -182,12 +191,18 @@ version.py
 !tests/test_orca/orca_tddft_triplets.out
 !tests/test_orca/fail_term.orca.out
 !tests/test_orca/orca_tddft_triplets.out
+!tests/test_orca/restricted.gbw
+!tests/test_orca/unrestricted.gbw
+!tests/test_openmolcas/butadien_vdzp.rasscf.h5
 !tests/test_openmolcas/cms_pdft_opt.yaml
-!tests/test_openmolcas/cms_pdft_opt.RasOrb
+!tests/test_openmolcas/cms_pdft.rasscf.h5
 !tests/test_point_charges/methane_control_path/*
 !tests/test_xtb/xtb_pass.out
 !tests/test_xtb/xtb_crash.out
+!tests/test_thermo/irc_*.orca.h5
+!tests/test_thermo/hcn_orca_b973c_hessian.h5
 !tests/test_turbomole/control_path_big_hess/*
+!tests/test_turbomole/make_dens/*/*
 !tests/test_tsopt/inp_hessian_ref.h5
 !tests/test_rates/peroxyl_r1_h5s/*.h5
 !tests/test_integrals/methane_def2svp_aomix.in
@@ -197,5 +212,16 @@ version.py
 !tests/test_wavefunction/pyrrole/*
 !tests/test_psf/step1_pdbreader.psf
 !tests/test_overlap_calculator/benzene/*
+!tests/test_local_force_constants/bf3_ccsd_t_ccpvdz.h5
 !tests/test_wavefunction/bases/*
+!tests/test_so_coupling/data/*
+!tests/test_turbomole/make_dens/*
+!tests/test_numerov/*.dat
+!tests/test_partfuncs/ts_final_hessian_xtb.h5
+!tests/test_cos/multi_state_inp.npz
+!tests/test_wigner_sampling/h2_hfdef2svp_final_hessian.h5
+!tests/test_wigner_sampling/c2h5f_631gdrimp2_ts_final_hessian.h5
+!tests/test_marcusdim/pdnb_xtb_final_hessian.h5
+!pysisyphus/basis_library/*
 !pysisyphus/wf_library/*
+!pysisyphus/numint/lebedev_grids_4pi.npz

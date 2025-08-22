@@ -2,9 +2,20 @@ from math import prod
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.special import factorial2
+from scipy.special import factorial2 as sp_factorial2
 
 from pysisyphus.wavefunction.helpers import canonical_order
+
+
+def factorial2(n: int):
+    """Scipy 1.11 decided that (-1)!! is not 1 anymore!
+
+    Please see https://github.com/scipy/scipy/issues/18813."""
+    if n == -1:
+        return 1
+    elif n < -1:
+        raise Exception(f"Only supported negative argument is -1, but got {n}!")
+    return sp_factorial2(n)
 
 
 # @functools.cache
@@ -15,6 +26,22 @@ def get_lmn_factors(L: int):
         lmn_factors[i] = prod([factorial2(2 * am - 1) for am in lmn])
     lmn_factors = 1 / np.sqrt(lmn_factors)
     return lmn_factors
+
+
+def norm_pgto(exponent: float, L: int) -> np.ndarray:
+    prim_norms = get_lmn_factors(L)
+    for i, (l, m, n) in enumerate(canonical_order(L)):
+        x0 = l / 2
+        x1 = m / 2
+        x2 = n / 2
+        prim_norms[i] *= (
+            2**x0
+            * 2**x1
+            * 2**x2
+            * (1 / (2 * exponent)) ** (-x0 - x1 - x2 - 3 / 4)
+            / (np.pi ** (3 / 4))
+        )
+    return prim_norms
 
 
 def norm_cgto_lmn(coeffs: NDArray[float], exps: NDArray[float], L: int):

@@ -6,7 +6,6 @@
 #     Linear scaling geometry optimisation and transition state search
 #     in hybrid delocalised internal coordinates
 #     Billeter, Turner, Thiel, 2000
-import logging
 from pprint import pprint
 
 import numpy as np
@@ -68,9 +67,6 @@ def get_opt_kwargs(opt_key, layer_ind, thresh):
         except KeyError:
             pass
     return opt_kwargs
-
-
-logger = logging.getLogger("optimizer")
 
 
 class Layers:
@@ -310,10 +306,12 @@ class LayerOpt(Optimizer):
     def model_opt(self):
         """Return the persistent optimizer belonging to the model system.
         We don't have to supply any coordinates to the optimizer of the
-        most expensive layer, as it is persistent, as well as the associated geometry."""
+        most expensive layer, as it is persistent, as well as the associated geometry.
+        """
         return self.layers.opt_getters[-1](None)
 
-    def optimize(self) -> None:
+    def get_step(self, energy, forces, **kwargs) -> None:
+        # TODO: It makes no sense for LayerOpt to take full energy & forces
         coords3d_org = self.geometry.coords3d.copy()
         coords3d_cur = coords3d_org.copy()
         cur_micro_cycles = list()
@@ -361,7 +359,8 @@ class LayerOpt(Optimizer):
 
         # Calculate one step
         opt.cur_cycle = self.cur_cycle
-        int_step = opt.optimize()
+        get_step_kwargs = opt.housekeeping()
+        int_step = opt.get_step(**get_step_kwargs)
         opt.steps.append(int_step)
         try:
             geom.coords = geom.coords + int_step

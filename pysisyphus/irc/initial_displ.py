@@ -6,6 +6,7 @@
 from collections import namedtuple
 
 import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import bisect
 
@@ -21,8 +22,13 @@ def get_curv_vec(H, Gv, v0, w0):
     return v1.flatten()
 
 
-def taylor_closure(H, Gv, v0, v1, w0):
-    """Taylor expansion of energy to 3rd order.
+def taylor_closure(
+    H: np.ndarray, Gv: np.ndarray, v0: np.ndarray, v1: np.ndarray, w0: float
+):
+    """Taylor expansion of the energy to 3rd order w/o gradient.
+
+    It makes no sense to use this function when there is a significant
+    remaining gradient, as it is not taken into account here.
 
     dx(ds) = ds*v0 + ds**2*v1 / 2
     dE(ds) = dx^T H dx / 2 + dx^T [Gv] dx / 6
@@ -32,7 +38,14 @@ def taylor_closure(H, Gv, v0, v1, w0):
     v0 = Transition vector
     v1 = Curvature vector
     w0 = Eigenvalue belonging to v0
-    """
+
+    Revisting the function below three years later I have to admit that I
+    have no idea what is going on here and why I did it this way. Maybe
+    I derived the expression using sympy and/or on paper?! Nonetheless,
+    the Taylor expansion to 3rd order also seems wrong...
+
+    Below, a simple and correct implementation of the Taylor expansion can
+    be found, but it does not support multiple values for ds.
 
     # Precontract some values that will be reused
     v0v1 = v0.dot(v1)
@@ -42,15 +55,28 @@ def taylor_closure(H, Gv, v0, v1, w0):
     v1Gvv1 = v1.dot(Gv).dot(v1)
 
     def dE(ds):
-        ds2 = ds ** 2
+        ds2 = ds**2
         ds3 = ds2 * ds
         ds4 = ds2 * ds2
 
         # Δx^T H Δx / 2
-        quad = (w0 * ds2 + ds3 * w0 ** 2 * v0v1 + (ds4 * v1Hv1) / 4) / 2
+        quad = (w0 * ds2 + ds3 * w0**2 * v0v1 + (ds4 * v1Hv1) / 4) / 2
         # Δx^T [Gv] Δx / 6
         cubic = (ds2 * v0Gvv0 + ds3 * v0Gvv1 + ds4 * v1Gvv1 / 4) / 6
         return quad + cubic
+    """
+
+    def dE(ds: float) -> float:
+        # Eq. (3) in [2]
+        dx = (v0 * ds + 0.5 * v1 * ds * ds)[:, None]
+
+        # Third and fourth terms in eq. (4) in [2]
+        #
+        # Quadratic contribution, Δx^T H Δx / 2
+        quad = 0.5 * dx.T @ H @ dx
+        # Cubic contribution, Δx^T [Gv] Δx / 6
+        cubic = 1.0 / 6.0 * dx.T @ Gv @ dx * ds
+        return float(quad + cubic)
 
     return dE
 
@@ -95,7 +121,7 @@ def third_deriv_fd(geom, vec, ds=0.001):
     return G_vec, third_deriv_res
 
 
-def cubic_displ(H, v0, w0, Gv, dE):
+def cubic_displ(H, v0, w0, Gv, dE, show=False):
     """
     According to Eq. (26) in [2] v1 does not depend on the sign of v0.
         v1 = (F0 - 2v0^T F0 v0 I)⁻¹ x ([G0v0] - v0^T [G0v0] v0 I) v0
@@ -119,6 +145,12 @@ def cubic_displ(H, v0, w0, Gv, dE):
     v1 = get_curv_vec(H, Gv, v0, w0)
     E_taylor = taylor_closure(H, Gv, v0, v1, w0)
 
+    # def E_taylor_exact(ds):
+    #   """Exact for 1d cubic function at the TS with vanishing gradient."""
+    # return 0.5 * ds**2 * H[0, 0] + 1.0 / 6.0 * ds**3 * Gv[0, 0]
+
+    # E_taylor = E_taylor_exact
+
     def func(ds):
         return E_taylor(ds) - dE
 
@@ -134,7 +166,7 @@ def cubic_displ(H, v0, w0, Gv, dE):
         for _ in range(max_cycles):
             dE = func(ds)
             # print(
-                # f"ds={ds:.4f} dE={dE*AU2KJPERMOL:.3f} dE_min={dE_min*AU2KJPERMOL:.3f}"
+            # f"ds={ds:.4f} dE={dE*AU2KJPERMOL:.3f} dE_min={dE_min*AU2KJPERMOL:.3f}"
             # )
 
             if dE <= 0.0:
@@ -166,25 +198,29 @@ def cubic_displ(H, v0, w0, Gv, dE):
     minus_bound = prepare_bisect(-0.1)
     ds_minus = bisect_(minus_bound)
 
-    # import matplotlib.pyplot as plt
-    # dss = np.linspace(-1, 1, num=51)
-    # # dss = np.linspace(-6, 6, num=200)
-    # E0 = E_taylor(0.0)
-    # Es = E_taylor(dss) - E0
-    # Es *= AU2KJPERMOL
-    # Emp = (np.array((E_taylor(ds_minus), E_taylor(ds_plus))) - E0) * AU2KJPERMOL
-    # _, ax = plt.subplots()
-    # ax.plot(dss, Es, "o-")
-    # ax.axvline(0.0, c="k", ls="--")
-    # ax.axhline(dE*AU2KJPERMOL, c="k", ls=":")
-    # ax.scatter((ds_minus, ds_plus), Emp, s=75, marker="x", c="r", zorder=3)
-    # ax.set_xlabel("ds")
-    # ax.set_ylabel("dE / kJ mol⁻¹")
-    # plt.show()
+    if show:
+        dss = np.linspace(-2, 2, num=51)
+        E0 = E_taylor(0.0)
+        Es = np.array([E_taylor(ds) - E0 for ds in dss])
+        Es *= AU2KJPERMOL
+        E_minus = E_taylor(ds_minus)
+        E_plus = E_taylor(ds_plus)
+        Emp = (np.array((E_minus, E_plus)) - E0) * AU2KJPERMOL
+        _, ax = plt.subplots()
+        ax.plot(dss, Es, "o-")
+        ax.axvline(0.0, c="k", ls="--")
+        ax.axhline(dE * AU2KJPERMOL, c="k", ls=":")
+        ax.axhline(ds_minus, c="k", ls=":")
+        ax.axhline(ds_plus, c="k", ls=":")
+        ax.scatter((ds_minus, ds_plus), Emp, s=75, marker="x", c="r", zorder=3)
+        ax.set_xlabel("ds")
+        ax.set_ylabel("dE / kJ mol⁻¹")
+        plt.show()
 
     def step(ds):
-        return ds * v0 + ds ** 2 * v1 / 2
+        return ds * v0 + ds**2 * v1 / 2
 
+    # Returned steps are in projected mass-weighted coordinates
     step_plus = step(ds_plus)
     step_minus = step(ds_minus)
     return step_plus, step_minus
@@ -217,3 +253,18 @@ def cubic_displ_for_geom(geom, dE=-5e-4):
     Gv, third_deriv_res = third_deriv_fd(geom, v0)
     step_plus, step_minus = cubic_displ(H, v0, w0, Gv, dE=dE)
     return step_plus, step_minus, third_deriv_res
+
+
+def taylor_closure_for_geom(geom):
+    H = geom.mw_hessian
+    # Only project for multi-atomic geometries.
+    if geom.coords.size > 3:
+        H = geom.eckart_projection(H)
+    w, v = np.linalg.eigh(H)
+    # Transition vector (imaginary mode) and corresponding eigenvalue
+    v0 = v[:, 0]
+    w0 = w[0]
+    Gv, third_deriv_res = third_deriv_fd(geom, v0)
+    v1 = get_curv_vec(H, Gv, v0, w0)
+    E_taylor = taylor_closure(H, Gv, v0, v1, w0)
+    return E_taylor

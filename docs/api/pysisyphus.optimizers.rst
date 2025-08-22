@@ -68,14 +68,6 @@ pysisyphus.optimizers.LayerOpt module
    :undoc-members:
    :show-inheritance:
 
-pysisyphus.optimizers.MicroOptimizer module
--------------------------------------------
-
-.. automodule:: pysisyphus.optimizers.MicroOptimizer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 pysisyphus.optimizers.NCOptimizer module
 ----------------------------------------
 

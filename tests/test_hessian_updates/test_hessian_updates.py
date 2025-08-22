@@ -71,7 +71,7 @@ def test_ts_hessian_update(this_dir, hessian_update):
         coord_type="redund",
         coord_kwargs={"define_prims": [["BOND", 0, 10]]},
     )
-    calc = XTB(pal=6)
+    calc = XTB(pal=6, acc=0.001)
 
     geom.set_calculator(calc)
 
@@ -79,6 +79,8 @@ def test_ts_hessian_update(this_dir, hessian_update):
         geom,
         hessian_init=this_dir / "tsbfgs_init_hess.h5",
         hessian_update=hessian_update,
+        trust_max=0.2,
+        hessian_recalc=25,
     )
     opt.run()
     assert opt.is_converged

@@ -506,13 +506,14 @@ def test_oniom_microiters():
             "lib:subst_effect/toluene_minus_H_b3lypG_631g.xyz",
             2,
             (0, 7, 8),
-            -270.824806805671,
+            # ORCA 5.0.4
+            -270.8244574,
         ),
     ],
 )
 def test_composite_oniom(fn, mult, high_inds, ref_energy):
     charge = 0
-    pal = 6
+    pal = 2
     run_dict = {
         "geom": {
             "type": "cart",

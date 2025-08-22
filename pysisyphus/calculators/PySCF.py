@@ -1,12 +1,51 @@
 import os
 import shutil
+from typing import Optional
 
 import numpy as np
 import pyscf
-from pyscf import grad, gto, lib, hessian, qmmm, tddft
+from pyscf import gto, lib, qmmm, tddft as tddft, grad as grad, hessian as hessian
 
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
+from pysisyphus.elem_data import ATOMIC_NUMBERS
 from pysisyphus.helpers import geom_loader
+from pysisyphus.wavefunction import Shell, Wavefunction
+from pysisyphus.wavefunction.shells_pyscf import PySCFShells
+from pysisyphus.wavefunction.helpers import BFType
+
+
+def from_pyscf_mol(mol, **kwargs):
+    shells = list()
+    for bas_id in range(mol.nbas):
+        L = mol.bas_angular(bas_id)
+        center = mol.bas_coord(bas_id)
+        coeffs = mol.bas_ctr_coeff(bas_id).flatten()
+        exps = mol.bas_exp(bas_id)
+        assert coeffs.size == exps.size, "General contractions are not yet supported."
+        center_ind = mol.bas_atom(bas_id)
+        atom_symbol = mol.atom_symbol(center_ind)
+        atomic_num = ATOMIC_NUMBERS[atom_symbol.lower()]
+        shell = Shell(L, center, coeffs, exps, center_ind, atomic_num)
+        shells.append(shell)
+    return PySCFShells(shells, **kwargs)
+
+
+def kernel_to_wavefunction(mf):
+    mol = mf.mol
+    shells = from_pyscf_mol(mol)
+    wf = Wavefunction(
+        atoms=tuple(shells.atoms),
+        coords=shells.coords3d,
+        charge=mol.charge,
+        mult=mol.multiplicity,
+        unrestricted=mf.mo_occ.ndim == 2,
+        occ=mol.nelec,
+        C=mf.mo_coeff,
+        bf_type=BFType.CARTESIAN if mol.cart else BFType.PURE_SPHERICAL,
+        shells=shells,
+        mo_ens=mf.mo_energy,
+    )
+    return wf
 
 
 class PySCF(OverlapCalculator):
@@ -22,6 +61,8 @@ class PySCF(OverlapCalculator):
     }
     multisteps = {
         "scf": ("scf",),
+        "tdhf": ("scf", "tddft"),
+        "tdahf": ("scf", "tda"),
         "dft": ("dft",),
         "mp2": ("scf", "mp2"),
         "tddft": ("dft", "tddft"),
@@ -39,15 +80,14 @@ class PySCF(OverlapCalculator):
         basis,
         xc=None,
         method="scf",
-        root=None,
-        nstates=None,
         auxbasis=None,
         keep_chk=True,
-        verbose=0,
-        unrestricted=None,
-        grid_level=3,
+        verbose: int = 0,
+        unrestricted: Optional[bool] = None,
+        grid_level: int = 3,
         pruning="nwchem",
         use_gpu=False,
+        td_triplets=False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -55,33 +95,26 @@ class PySCF(OverlapCalculator):
         self.basis = basis
         self.xc = xc
         self.method = method.lower()
-        if self.method in ("tda", "tddft") and self.xc is None:
-            self.multisteps[self.method] = ("scf", self.method)
-        if self.xc and self.method != "tddft":
+        self.do_es = self.method in ("tda", "tddft", "tdhf", "tdahf")
+        # Set method to DFT when an XC-functional was selected, but DFT wasn't explicitly
+        # enabled. When an ES method was chosen it is kept.
+        if self.xc and self.method not in ("tddft", "tda"):
             self.method = "dft"
-        self.root = root
-        self.nstates = nstates
-        if self.method == "tddft":
-            assert self.nstates, "nstates must be set with method='tddft'!"
-        if self.track:
-            assert self.root <= self.nstates, (
-                "'root' must be smaller " "than 'nstates'!"
-            )
+        if self.do_es:
+            assert self.nroots, f"nroots must be set with method='{self.method}'!"
         self.auxbasis = auxbasis
         self.keep_chk = keep_chk
         self.verbose = int(verbose)
         if unrestricted is None:
-            self.unrestricted = self.mult > 1
-        else:
-            self.unrestricted = unrestricted
+            unrestricted = self.mult > 1
+        self.unrestricted = unrestricted
         self.grid_level = int(grid_level)
         self.pruning = pruning.lower()
+        self.td_triplets = td_triplets
 
         self.chkfile = None
         self.out_fn = "pyscf.out"
-
         self.use_gpu = use_gpu
-
         lib.num_threads(self.pal)
 
     @staticmethod
@@ -106,6 +139,12 @@ class PySCF(OverlapCalculator):
         else:
             return mf
 
+    def configure_td_mf(self, mf):
+        mf.nstates = self.nroots
+        # Whether to calculate spin-adapated triplets from a singlet reference
+        # When triplets are requested, mf.singlet must be set to False.
+        mf.singlet = not self.td_triplets
+
     def get_driver(self, step, mol=None, mf=None):
         def _get_driver():
             return self.drivers[(step, self.unrestricted)]
@@ -127,10 +166,10 @@ class PySCF(OverlapCalculator):
             mf = mp2_mf(mf)
         elif mf and (step == "tddft"):
             mf = pyscf.tddft.TDDFT(mf)
-            mf.nstates = self.nstates
+            self.configure_td_mf(mf)
         elif mf and (step == "tda"):
             mf = pyscf.tddft.TDA(mf)
-            mf.nstates = self.nstates
+            self.configure_td_mf(mf)
         else:
             raise Exception("Unknown method '{step}'!")
         return mf
@@ -177,12 +216,23 @@ class PySCF(OverlapCalculator):
 
         mol = self.prepare_input(atoms, coords)
         mf = self.run(mol, point_charges=point_charges)
+        all_energies = self.parse_all_energies()
+        energy = self.get_energy_from_all_energies(all_energies)
+
         results = {
-            "energy": mf.e_tot,
+            "energy": energy,
         }
         results = self.store_and_track(
             results, self.get_energy, atoms, coords, **prepare_kwargs
         )
+        return results
+
+    def get_all_energies(self, atoms, coords, **prepare_kwargs):
+        results = self.get_energy(atoms, coords, **prepare_kwargs)
+        all_energies = self.parse_all_energies()
+        results["all_energies"] = all_energies
+        _, Xa, Ya, _, Xb, Yb, _ = self.prepare_overlap_data(path=None)
+        results["td_1tdms"] = [Xa, Ya, Xb, Yb]
         return results
 
     def get_forces(self, atoms, coords, **prepare_kwargs):
@@ -191,18 +241,16 @@ class PySCF(OverlapCalculator):
         mol = self.prepare_input(atoms, coords)
         mf = self.run(mol, point_charges=point_charges)
         grad_driver = mf.Gradients()
-        if self.root:
+        if self.root is not None:
             grad_driver.state = self.root
         gradient = grad_driver.kernel()
         self.log("Completed gradient step")
 
-        try:
-            e_tot = mf._scf.e_tot
-        except AttributeError:
-            e_tot = mf.e_tot
+        all_energies = self.parse_all_energies()
+        energy = self.get_energy_from_all_energies(all_energies)
 
         results = {
-            "energy": e_tot,
+            "energy": energy,
             "forces": -gradient.flatten(),
         }
         results = self.store_and_track(
@@ -217,11 +265,14 @@ class PySCF(OverlapCalculator):
         mf = self.run(mol, point_charges=point_charges)
         H = mf.Hessian().kernel()
 
+        all_energies = self.parse_all_energies()
+        energy = self.get_energy_from_all_energies(all_energies)
+
         # The returned hessian is 4d ... ok. This probably serves a purpose
         # that I don't understand. We transform H to a nice, simple 2d array.
         H = np.hstack(np.concatenate(H, axis=1))
         results = {
-            "energy": mf.e_tot,
+            "energy": energy,
             "hessian": H,
         }
         # results = self.store_and_track(
@@ -232,9 +283,35 @@ class PySCF(OverlapCalculator):
     def run_calculation(self, atoms, coords, **prepare_kwargs):
         return self.get_energy(atoms, coords, **prepare_kwargs)
 
-    def run(self, mol, point_charges=None):
-        steps = self.multisteps[self.method]
-        self.log(f"Running steps '{steps}' for method {self.method}")
+    def get_wavefunction(self, atoms, coords, **prepare_kwargs):
+        point_charges = prepare_kwargs.get("point_charges", None)
+
+        method = self.multisteps[self.method][0]
+        mol = self.prepare_input(atoms, coords)
+        mf = self.run(mol, point_charges=point_charges, method=method)
+        all_energies = self.parse_all_energies()
+        energy = all_energies[0]
+        results = {
+            "energy": energy,
+            "wavefunction": kernel_to_wavefunction(mf),
+        }
+        return results
+
+    def get_stored_wavefunction(self, **kwargs):
+        try:
+            gs_mf = self.mf._scf
+        except AttributeError:
+            gs_mf = self.mf
+        wf = kernel_to_wavefunction(gs_mf)
+        return wf
+
+    def run(self, mol, point_charges=None, method=None):
+        lib.num_threads(self.pal)
+
+        if method is None:
+            method = self.method
+        steps = self.multisteps[method]
+        self.log(f"Running steps '{steps}' for method {method}")
         for i, step in enumerate(steps):
             if i == 0:
                 mf = self.get_driver(step, mol=mol)
@@ -257,7 +334,7 @@ class PySCF(OverlapCalculator):
                     mf = qmmm.mm_charge(mf, point_charges[:, :3], point_charges[:, 3])
                     self.log(
                         f"Added {len(point_charges)} point charges with "
-                        f"sum(q)={sum(point_charges[:,3]):.4f}."
+                        f"sum(q)={sum(point_charges[:, 3]):.4f}."
                     )
             else:
                 mf = self.get_driver(step, mf=prev_mf)  # noqa: F821
@@ -297,26 +374,56 @@ class PySCF(OverlapCalculator):
 
         return all_energies
 
-    def prepare_overlap_data(self, path):
+    def get_energy_from_all_energies(self, all_energies):
+        if self.root is not None:
+            energy = all_energies[self.root]
+        else:
+            energy = all_energies[0]
+        return energy
+
+    def prepare_overlap_data(self, path=None):
+        """This method does not use the path variable."""
         gs_mf = self.mf._scf
         exc_mf = self.mf
 
-        C = gs_mf.mo_coeff
-
-        first_Y = exc_mf.xy[0][1]
-        # In TDA calculations Y is just the integer 0.
-        if isinstance(first_Y, int) and (first_Y == 0):
-            X = np.array([state[0] for state in exc_mf.xy])
-            Y = np.zeros_like(X)
-        # In TD-DFT calculations the Y vectors is also present
+        # MO coefficients
+        if self.unrestricted:
+            Ca, Cb = gs_mf.mo_coeff
         else:
-            # Shape = (nstates, 2 (X,Y), occ, virt)
-            ci_coeffs = np.array(exc_mf.xy)
-            X = ci_coeffs[:, 0]
-            Y = ci_coeffs[:, 1]
+            Ca = gs_mf.mo_coeff
+            Cb = Ca.copy()
+
+        xy = exc_mf.xy
+
+        # Transition density matrices may have different shapes,
+        # when different number of alpha and beta electrons are present.
+        if self.unrestricted:
+            shapea = xy[0][0][0].shape
+            shapeb = xy[0][0][1].shape
+            Xa = np.zeros((self.nroots, *shapea))
+            Ya = np.zeros_like(Xa)
+            Xb = np.zeros((self.nroots, *shapeb))
+            Yb = np.zeros_like(Xb)
+            for i, ((Xai, Xbi), (Yai, Ybi)) in enumerate(xy):
+                Xa[i] = Xai
+                Ya[i] = Yai
+                Xb[i] = Xbi
+                Yb[i] = Ybi
+        else:
+            Xa = np.array([x for x, _ in xy])
+            Xb = Xa.copy()
+            Ya = np.array([y for _, y in xy])
+            Yb = Ya.copy()
+
+        # Methods that don't yield a Y-vector (TDA/TDAHF) will only produce a 0
+        # instread of a proper Y vector. Below we fix this by creating appropriate
+        # arrays.
+        if self.method in ("tda", "tdahf"):
+            Ya = np.zeros_like(Xa)
+            Yb = np.zeros_like(Xb)
 
         all_energies = self.parse_all_energies(exc_mf)
-        return C, X, Y, all_energies
+        return Ca, Xa, Ya, Cb, Xb, Yb, all_energies
 
     def parse_charges(self):
         results = self.mf.analyze(with_meta_lowdin=False)

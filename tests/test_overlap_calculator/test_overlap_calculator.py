@@ -6,7 +6,6 @@ import pysisyphus
 from pysisyphus.calculators.OverlapCalculator import OverlapCalculator
 from pysisyphus.calculators.PySCF import PySCF
 from pysisyphus.helpers import geom_loader
-from pysisyphus.helpers_pure import describe
 from pysisyphus.init_logging import init_logging
 from pysisyphus.testing import using
 from pysisyphus.wavefunction.excited_states import norm_ci_coeffs, tden_overlaps
@@ -49,7 +48,7 @@ def water():
         "xc": "pbe0",
         "method": "tddft",
         "basis": "sto3g",
-        "nstates": 2,
+        "nroots": 2,
         "root": 1,
         # OverlapCalculator specific
         "track": True,

@@ -43,6 +43,26 @@ along the tangent is projected out and replaced by an artificial spring force.
 In principle, optimizing NEBs should be easier as there is no reparametrization
 and more sophisticated optimizers beyond SD can and should be employed.
 
+Parallelization
+===============
+Parallel calculation of multiple images is possible using the
+`Dask.distributed <https://distributed.dask.org/en/stable/>`_ package. The easiest
+way is to include `cluster: True` in the `cos:` section (see below). A documented
+example is found below:
+
+.. literalinclude :: ../examples/complex/13_orca_parallel_neb/13_orca_parallel_neb.yaml
+   :language: yaml
+   :caption:
+
+Parallelization via Dask should work for most calculators that are executed via
+the `subprocess` module as external processes, but probably not calculators
+like `PySCF`.
+
+In order to use/watch the nice dashboard provided by dask, please install a
+recent version of bokeh (`python -m pip install bokeh`). By default, the
+dashboard is available under `127.0.0.1:8787  <127.0.0.1:8787>`_ when the cluster
+is started by pysisyphus.
+
 General remarks
 ===============
 
@@ -76,6 +96,10 @@ that the user may want to modify when running a GSM optimization.
      perp_thresh: 0.05                       # Threshold for growing new frontier nodes.
      reparam_every: 2                        # Reparametrize every n-th cycle when NOT fully grown.
      reparam_every_full: 3                   # Reparametrize every n-th cycle when fully grown.
+     cluster: False                          # Parallelize COS calculations using Dask cluster
+     cluster_kwargs: None                    # Dict; additional arguments for LocalCluster,
+                                             # e.g., LocalCluster
+     scheduler: None                         # Address to (external) Dask scheduler
     opt:
      type: string                            # Optimizer for GrowingString
      stop_in_when_full: -1                   # Stop string optimization N cycles after fully grown
@@ -152,7 +176,7 @@ Further examples for COS optimizations from `.yaml` input can be found
 `here <https://github.com/eljost/pysisyphus/tree/dev/examples/complex>`_.
 
 General advice for COS optimizations
-===================================
+====================================
 
 - Start from optimized geometries or use the `preopt:` key in the YAML input.
 - Consider fixing the initial and final images `fix_ends: True`
@@ -211,7 +235,7 @@ Simple Zero-Temperature String
     :show-inheritance:
 
 Growing Chain Of States base class
-==========================
+==================================
 
 Base class for growing chain of state methods
 
@@ -220,7 +244,7 @@ Base class for growing chain of state methods
     :undoc-members:
 
 Growing Chain Of State Methods
-======================
+==============================
 
 Growing String Method
 -------------------------

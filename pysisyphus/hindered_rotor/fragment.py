@@ -1,0 +1,105 @@
+import functools
+
+import networkx as nx
+import numpy as np
+import scipy as sp
+
+from pysisyphus.Geometry import Geometry
+from pysisyphus.intcoords.PrimTypes import PrimTypes as PT
+
+
+def fragment_geom(
+    geom: Geometry, rm_bond: tuple[int, int]
+) -> tuple[list[int], list[int]]:
+    """Split geometry comprising N fragments into N+1 fragments by bond deletion.
+
+    This function is probably not completely general, but should support common cases
+    like an initially bonded molecule that is fragmented by removal of a bond and
+    non-bonded van-der-Waals complexes.
+
+    The method will fail for circular systems where removal of one bond breaks the ring.
+    """
+    geom_bond = geom.copy(
+        coord_type="redund",
+        coord_kwargs={
+            "bonds_only": True,
+            # Here, we explicitly define the bond to be removed to support geometrie,
+            # where the bond is not actually present, as in non-covalently bound strutures.
+            "define_prims": [(PT.BOND, *rm_bond)],
+        },
+    )
+    # Only continue with actual bonds; drop all interfragment bonds etc.
+    act_bonds = [
+        indices for pt, *indices in geom_bond.internal.typed_prims if pt == PT.BOND
+    ]
+    # Create a graph from the bond topology
+    G = nx.from_edgelist(act_bonds)
+    ncomponents_org = len(list(nx.connected_components(G)))
+
+    # Remove the selected bond to fragment the graph
+    G.remove_edge(*rm_bond)
+    components_frag = list(nx.connected_components(G))
+    ncomponents_frag = len(components_frag)
+    # Check, that removal of the bond actually fragmented the system and increased the number
+    # of components by one.
+    assert ncomponents_frag == ncomponents_org + 1
+
+    # When this function is called with transition state geometry it can happen,
+    # that initially already more than one fragment is detected. Subsequent removal
+    # of a bond will then lead to more than two fragments.
+    #
+    # Right now, we merge all subgraphs in sgs_right back into one subgraph.
+    #
+    # TODO: figure out if calculation of moments of inertia is somehow affected by
+    # this; maybe only a subset of the right subgraphs must be taken into account
+    # for the calculation?
+    # Given a two non-covalently bonded fragment (left, right) where we remove
+    # a bond in left, yielding (left1, left2, right), maybe it is enough to only
+    # take left1 and left2 into account?!
+    sg_left, *sgs_right = [G.subgraph(c).copy() for c in components_frag]
+    nodes_left = list(map(int, sg_left))
+    sg_right = functools.reduce(lambda sg1, sg2: nx.compose(sg1, sg2), sgs_right)
+    nodes_right = list(map(int, sg_right))
+    return nodes_left, nodes_right
+
+
+@functools.singledispatch
+def rotate_fragment_around_bond(
+    coords3d: np.ndarray, bond: tuple[int, int], fragment: list[int], deg: float
+) -> np.ndarray:
+    """Rotate fragment bonded to the 2nd atom in bond around said bond."""
+    # Determine unit vector pointing along bond
+    from_, to_ = bond
+    bond_vec = coords3d[from_] - coords3d[to_]
+    bond_vec /= np.linalg.norm(bond_vec)
+
+    # Extract fragment coordiantes
+    frag_coords3d = coords3d[fragment].copy()
+
+    # Degrees of rotation are encoded in the length of the vector
+    Rot = sp.spatial.transform.Rotation.from_rotvec(deg * bond_vec, degrees=True)
+    # Sadly, we can't just use 'Rot.apply(frag_coords3d)' here, as it seems as
+    # if the centroid of all fragment coordinates is shifted to the origin, which
+    # leads to a rotation of the anchor atom. To avoid this, we do it manually.
+    #
+    # For some test cases I considered using Rot.apply seemed to work well, but just
+    # by coincidence. For example, when rotating a CH3 group the carbon will be just
+    # above/below the centroid and won't move, when applying the rotation.
+    rot_mat = Rot.as_matrix()
+    anchor_coords = coords3d[from_]
+    frag_coords3d -= anchor_coords
+    frag_coords3d_rot = frag_coords3d @ rot_mat
+    frag_coords3d_rot += anchor_coords
+
+    # Construct updated coordinates, that contain the rotated fragment
+    coords3d_rot = coords3d.copy()
+    coords3d_rot[fragment] = frag_coords3d_rot
+    return coords3d_rot
+
+
+@rotate_fragment_around_bond.register
+def _(geom: Geometry, bond: tuple[int, int], deg: float) -> np.ndarray:
+    # Note the [1] at the end ... we drop the left frag and only continue with
+    # the right fragment.
+    right_frag = fragment_geom(geom, bond)[1]
+    return rotate_fragment_around_bond(geom.coords3d, bond, right_frag, deg)

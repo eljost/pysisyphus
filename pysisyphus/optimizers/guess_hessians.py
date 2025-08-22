@@ -6,10 +6,14 @@
 #     Swart, Bickelhaupt, 2006
 # [4] http://dx.doi.org/10.1063/1.4952956
 #     Lee-Ping Wang 2016
+# [5] https://doi.org/10.1021/ct400319w
+#      Reliable Transition State Searches Integrated with the Growing String Method
+#      Zimmerman, 2013
 
 from math import exp
 import itertools as it
 from typing import Literal, Optional
+import warnings
 
 import h5py
 import numpy as np
@@ -17,10 +21,16 @@ from numpy.typing import ArrayLike
 from scipy.spatial.distance import pdist, squareform
 
 from pysisyphus.calculators.XTB import XTB
+from pysisyphus.cos.ChainOfStates import ChainOfStates
 from pysisyphus.Geometry import Geometry
 from pysisyphus.intcoords.PrimTypes import PrimTypes as PT, Bonds, Bends, Dihedrals
 from pysisyphus.intcoords.setup import get_pair_covalent_radii
 from pysisyphus.io.hessian import save_hessian
+from pysisyphus.optimizers.hessian_updates import (
+    damped_bfgs_update,
+    curvature_at_image,
+    curvature_tangent_update,
+)
 
 
 HessInit = Literal[
@@ -126,7 +136,7 @@ def fischer_guess(geom):
         r_ab = dist_mat[a, b]
         r_ab_cov = pair_cov_radii_mat[a, b]
         bond_sum = max(tors_atom_bonds[(a, b)], 0)
-        return 0.0015 + 14.0 * bond_sum ** 0.57 / (r_ab * r_ab_cov) ** 4.0 * exp(
+        return 0.0015 + 14.0 * bond_sum**0.57 / (r_ab * r_ab_cov) ** 4.0 * exp(
             -2.85 * (r_ab - r_ab_cov)
         )
 
@@ -182,7 +192,7 @@ def lindh_guess(geom):
     alphas = [get_lindh_alpha(a1, a2) for a1, a2 in it.combinations(atoms, 2)]
     pair_cov_radii = get_pair_covalent_radii(geom.atoms)
     cdm = pdist(geom.coords3d)
-    rhos = squareform(np.exp(alphas * (pair_cov_radii ** 2 - cdm ** 2)))
+    rhos = squareform(np.exp(alphas * (pair_cov_radii**2 - cdm**2)))
 
     ks = {
         2: 0.45,  # Stretches/bonds
@@ -308,3 +318,79 @@ def ts_hessian(hessian, coord_inds, damp=0.25):
         ts_hess[i, j] = f
         ts_hess[j, i] = f
     return ts_hess
+
+
+def damped_bfgs_hessian(all_coords, all_forces, min_diff=1e-6):
+    """Cartesian Hessian via BFGS update.
+
+    Parameters
+    ----------
+    coords
+        2d array of Cartesian coordinates with shape (ncycles, ncoords).
+    all_forces
+        2d array of Cartesian forces with shape(ncycles, ncoords).
+    diff
+        Positive float. Neglect coordinate/gradient pairs when the norm
+        of the coordinate difference is below this threshold.
+
+    Returns
+    -------
+    H
+        Approximated damped BFGS obtained from coordinate and gradient differences.
+    """
+
+    assert min_diff > 0.0
+    _, ncoords = all_coords.shape
+    assert len(all_coords.shape) == 2
+    assert all_coords.shape == all_forces.shape
+
+    coord_diffs = np.diff(all_coords, axis=0)
+    diffs = np.linalg.norm(coord_diffs, axis=1)
+    grad_diffs = -np.diff(all_forces, axis=0)
+    H = np.eye(ncoords)
+    for s, diff, y in zip(coord_diffs, diffs, grad_diffs):
+        if diff <= min_diff:
+            continue
+        # TODO: this function could be generalized to support different Hessian
+        # updates, as several of them have the same api (H, dx (s), dg (y))
+        dH, _ = damped_bfgs_update(H, s, y)
+        H += dH
+    return H
+
+
+def ts_hessian_from_cos(cos: ChainOfStates, ts_image_index: int) -> np.ndarray:
+    """Build approximate TS-Hessian from COS image.
+
+    Based on the approach outlined in [5]. First, a Hessian is build
+    by repeatedly applying multiple damped BFGS updates to an identitiy
+    matrix. Then the curvature along the tangent vector at the chosen
+    COS image is modified."""
+    nimages = cos.nimages
+    full_cycles = cos.get_full_cycles()
+    all_cart_coords = cos.all_cart_coords
+    all_true_forces = cos.all_true_forces
+    all_coords = np.array([all_cart_coords[i] for i in full_cycles])
+    all_forces = np.array([all_true_forces[i] for i in full_cycles])
+    ncycles = all_coords.shape[0]
+    all_coords = all_coords.reshape(ncycles, nimages, -1)
+    all_forces = all_forces.reshape(ncycles, nimages, -1)
+    image_coords = all_coords[:, ts_image_index]
+    image_forces = all_forces[:, ts_image_index]
+    # Estimate positive semi-definite Hessian at selected image index
+    H0 = damped_bfgs_hessian(image_coords, image_forces)
+
+    last_cycle = full_cycles[-1]
+    energies = cos.all_energies[last_cycle]
+    image_coords = all_cart_coords[last_cycle]
+    # Estimate curvature at selected image index
+    C = curvature_at_image(ts_image_index, energies, image_coords)
+    if C >= 0.0:
+        warnings.warn(
+            f"Calculated curvature={C:.6f} image {ts_image_index} is not negative!"
+        )
+
+    tangent = cos.get_tangent(ts_image_index, energies=energies)
+    # Update that introduces transition vector with negative curvature.
+    dH, _ = curvature_tangent_update(H0, C, tangent)
+    H = H0 + dH
+    return H

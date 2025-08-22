@@ -1,26 +1,27 @@
 import argparse
 import copy
 import itertools as it
-from pathlib import Path
 import re
 import sys
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import rmsd as rmsd
+from scipy import interpolate as spi
 
 from pysisyphus.constants import BOHR2ANG, AU2KJPERMOL
 from pysisyphus.cos import *
 from pysisyphus.Geometry import Geometry
-from pysisyphus.intcoords.setup import get_fragments
-from pysisyphus.intcoords.PrimTypes import prim_for_human
 from pysisyphus.drivers.merge import hardsphere_merge as hardsphere_merge_driver
 from pysisyphus.helpers import geom_loader, procrustes, get_coords_diffs, shake_coords
 from pysisyphus.helpers_pure import highlight_text
-from pysisyphus.interpolate import *
 from pysisyphus.intcoords.helpers import form_coordinate_union
-from pysisyphus.intcoords.PrimTypes import normalize_prim_input, PrimMap
+from pysisyphus.intcoords.PrimTypes import prim_for_human, normalize_prim_input, PrimMap
+from pysisyphus.intcoords.setup import get_fragments
+from pysisyphus.interpolate import *
 from pysisyphus.io.pdb import geom_to_pdb_str
+import pysisyphus.linalg_affine3 as aff3
 from pysisyphus.stocastic.align import match_geom_atoms
 
 
@@ -75,6 +76,11 @@ def parse_args(args):
         type=int,
         help="Create new .trj with every N-th geometry. "
         "Always includes the first and last point.",
+    )
+    action_group.add_argument(
+        "--sample",
+        type=int,
+        help="Sample N evenly equally spaced geometries from .trj.",
     )
     action_group.add_argument(
         "--center",
@@ -150,6 +156,14 @@ def parse_args(args):
         "--topdb",
         action="store_true",
         help="Convert given geometry to PDB with automatic fragment detection.",
+    )
+
+    spline_group = parser.add_argument_group()
+    spline_group.add_argument(
+        "--ngeoms",
+        type=int,
+        default=None,
+        help="Number of geometries along the splined path.",
     )
 
     shake_group = parser.add_argument_group()
@@ -229,7 +243,7 @@ def parse_args(args):
         "e.g. [[10,30],[1,2,3],[4,5,6,7]].",
     )
 
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
 def read_geoms(
@@ -240,6 +254,10 @@ def read_geoms(
     if geom_kwargs is None:
         geom_kwargs = {}
 
+    # As geometries can also be named inside pysisyphus we try to construct
+    # the appropriate name lists here. When no names are given empty strings
+    # will be used.
+    #
     # Single filename
     if isinstance(xyz_fns, str):
         xyz_fns = [xyz_fns]
@@ -252,12 +270,11 @@ def read_geoms(
         names = [""] * len(xyz_fns)
 
     geoms = list()
+    # Loop over filenames/inline strings and try to parse them into geometries
     for fn in xyz_fns:
-        # Valid for non-inline coordinates
-        if Path(fn).suffix or fn.startswith("pubchem:"):
-            geoms.extend(
-                geom_loader(fn, coord_type=coord_type, iterable=True, **geom_kwargs)
-            )
+        geoms.extend(
+            geom_loader(fn, coord_type=coord_type, iterable=True, **geom_kwargs)
+        )
 
     # Set names
     for name, geom in zip(names, geoms):
@@ -441,17 +458,51 @@ def align(geoms):
     return [geom for geom in cos.images]
 
 
-def spline_redistribute(geoms):
-    szts = SimpleZTS.SimpleZTS(geoms)
-    pre_diffs = get_coords_diffs([image.coords for image in szts.images])
-    szts.reparametrize()
-    post_diffs = get_coords_diffs([image.coords for image in szts.images])
-    cds_str = lambda cds: " ".join([f"{cd:.2f}" for cd in cds])
+def reparametrize(image_coords, nimages=None):
+    assert image_coords.ndim == 2
+    if nimages is None:
+        nimages = len(image_coords)
+
+    # To use splprep we have to transpose the coords.
+    transp_coords = image_coords.T
+
+    u = None
+    # Use chunks of 9 dimension because splprep can handle at max
+    # 11 dimensions (as of scipy 1.0.0). Every atoms already yields
+    # three dimensions (the coordinates X, Y, Z).
+    #
+    # For dim <= 11 it would go like this:
+    #
+    # tck, u = splprep(transp_coords, u=u, s=0)
+    # uniform_mesh = np.linspace(0, 1, num=len(self.images))
+    # new_points = np.array(splev(uniform_mesh, tck))
+    tcks, us = zip(
+        *[
+            spi.splprep(transp_coords[i : i + 9], u=u, s=0)
+            for i in range(0, len(transp_coords), 9)
+        ]
+    )
+    uniform_mesh = np.linspace(0, 1, num=nimages)
+    # Reparametrize mesh
+    splined_coords = np.vstack([spi.splev(uniform_mesh, tck) for tck in tcks])
+    # Flatten along first dimension.
+    splined_coords = splined_coords.reshape(-1, nimages).T
+    return splined_coords
+
+
+def spline_redistribute(geoms, ngeoms: Optional[int] = None):
+    pre_diffs = get_coords_diffs([image.coords for image in geoms])
+    image_coords = np.array([geom.cart_coords for geom in geoms])
+    splined_coords = reparametrize(image_coords, ngeoms)
+    atoms = geoms[0].atoms
+    splined_images = [Geometry(atoms, coords) for coords in splined_coords]
+    post_diffs = get_coords_diffs([image.coords for image in splined_images])
+    cds_str = lambda cds: " ".join([f"{cd:.3f}" for cd in cds])
     print("Normalized path segments before splining:")
     print(cds_str(pre_diffs))
     print("Normalized path segments after redistribution along spline:")
     print(cds_str(post_diffs))
-    return szts.images
+    return splined_images
 
 
 def every(geoms, every_nth):
@@ -467,6 +518,31 @@ def every(geoms, every_nth):
     # every_nth_geom.append(geoms[-1])
     every_nth_geom = [geoms[i] for i in sampled_indices]
     return every_nth_geom
+
+
+def sample(geoms, samplen):
+    ngeoms = len(geoms)
+    max_ind = ngeoms - 1
+    assert (
+        0 < samplen <= ngeoms
+    ), "Can't sample more geometries as there are in the given path.!"
+    float_indices = np.linspace(0, 1, num=samplen) * max_ind
+    indices = np.empty_like(float_indices, dtype=int)
+    prev_ind = None
+    for i, fi in enumerate(float_indices):
+        ind = round(fi)
+        if prev_ind is not None and ind == prev_ind:
+            ind += 1
+            # Is this condition ever hit?!
+            if ind > max_ind:
+                raise Exception(
+                    "Can't sample {samplen} distinct geometries! "
+                    "Please reduce the number."
+                )
+        indices[i] = ind
+    print(f"Sampling geometries with {indices=}.")
+    sampled_geoms = [geoms[i] for i in indices]
+    return sampled_geoms
 
 
 def center(geoms):
@@ -591,7 +667,7 @@ def print_internals(geoms, filter_atoms=None, add_prims=""):
             inds_str = ", ".join([f"{atoms[i]: >2s}{i: <4d}" for i in inds])
             inds_str = f"[{inds_str}]"
             print(
-                f"{j:04d}: {pt: >20} {prim_counter:03d} {inds_str} {val: >10.4f}"
+                f"{j:04d}: {pt: >24} {prim_counter:04d} {inds_str} {val: >12.6f}"
                 f"{unit}"
             )
             prim_counter += 1
@@ -692,6 +768,24 @@ def frag_sort(geoms):
     return sorted_geoms
 
 
+def align_coords3d_onto_vec(
+    coords3d: np.ndarray, ind1: int, ind2: int, ref_vec: np.ndarray
+) -> np.ndarray:
+    """Get rotated coords, so vec between ind1 and in2 is parallel to ref_vec.
+
+    Can be used to rotate given coordinates in a way, to make a selected
+    bond (distance) vector parallel to a selected axis."""
+    assert ind1 != ind2, "Indices must be different!"
+    coords3d = coords3d.copy()
+    coords1 = coords3d[ind1]
+    coords2 = coords3d[ind2]
+    vec1 = coords2 - coords1
+    vec1 = vec1 / np.linalg.norm(vec1)
+    R = aff3.rotation_matrix_for_vec_align(vec1, ref_vec)
+    coords3d_rot = coords3d @ R.T
+    return coords3d_rot
+
+
 def run():
     args = parse_args(sys.argv[1:])
 
@@ -747,12 +841,16 @@ def run():
         fn_base = "first"
         trj_infix = f"_{args.first}"
     elif args.spline:
-        to_dump = spline_redistribute(geoms)
+        to_dump = spline_redistribute(geoms, args.ngeoms)
         fn_base = "splined"
     elif args.every:
         to_dump = every(geoms, args.every)
         fn_base = "every"
         trj_infix = f"_{args.every}th"
+    elif args.sample:
+        to_dump = sample(geoms, args.sample)
+        fn_base = "sampled"
+        trj_infix = f"_{args.sample}"
     elif args.center:
         to_dump = center(geoms)
         fn_base = "centered"

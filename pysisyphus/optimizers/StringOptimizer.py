@@ -4,6 +4,8 @@
 #     Zimmerman, 2013, Growing string with interpolation and optimization
 #                      in internal coordiantes
 
+import warnings
+
 import numpy as np
 
 from pysisyphus.optimizers.hessian_updates import double_damp
@@ -36,7 +38,10 @@ class StringOptimizer(Optimizer):
         assert self.keep_last >= 0
         self.lbfgs_when_full = lbfgs_when_full
         if self.lbfgs_when_full and (self.keep_last == 0):
-            print("lbfgs_when_full is True, but keep_last is 0!")
+            self.lbfgs_when_full = False
+            warnings.warn(
+                "lbfgs_when_full is True, but keep_last is 0! Disabled LBFGS!"
+            )
         self.gamma_mult = bool(gamma_mult)
         self.double_damp = bool(double_damp)
         self.scale_step = scale_step
@@ -44,14 +49,32 @@ class StringOptimizer(Optimizer):
 
         # Add one as we later subtract 1 before we check if this value is 0.
         self.stop_in = self.stop_in_when_full + 1
-        self.is_cart_opt = self.geometry.coord_type == "cart"
+        # self.is_cart_opt = self.geometry.coord_type == "cart"
         self.s_list = list()
         self.y_list = list()
         self.inds = list()
+        self.procs = list()
 
-    def prepare_opt(self):
-        if self.align and self.is_cart_opt:
-            self.procrustes()
+    @property
+    def new_image_inds(self):
+        try:
+            new_image_inds = self.geometry.new_image_inds
+        except AttributeError:
+            new_image_inds = list()
+        return new_image_inds
+
+    def fit_rigid(self):
+        """For now this mimics the old behaviour, before the fit_rigid-refactoring.
+
+        As the length of the list items differs over the course of the string optimization
+        we can't naively align everything.
+
+        If fully growin, a more elaborate alignment could be carried out, including
+        self.s_list and self.y_list.
+        """
+        string_size_changed = len(self.new_image_inds) > 0
+        if string_size_changed:
+            self._procrustes()
 
     def reset(self):
         pass
@@ -79,23 +102,18 @@ class StringOptimizer(Optimizer):
         # full_stop will take precedence when True.
         return full_stop or (fully_grown and converged), conv_info
 
-    def optimize(self):
-        new_image_inds = self.geometry.new_image_inds
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
+        new_image_inds = self.new_image_inds
         string_size_changed = len(new_image_inds) > 0
-
-        if self.align and string_size_changed and self.is_cart_opt:
-            self.procrustes()
-            self.log("Aligned string.")
-
-        forces = self.geometry.forces
-        self.energies.append(self.geometry.energy)
-        self.forces.append(forces)
 
         cur_size = self.geometry.string_size
         add_to_list = (
-            self.keep_last > 0  # Only add to s_list and y_list if we want to keep
-            and self.cur_cycle
-            > 0  # cycles and if we can actually calculate differences.
+            # Only add to s_list and y_list if we want to keep
+            self.keep_last > 0
+            # cycles and if we can actually calculate differences.
+            and self.cur_cycle > 0
             and (
                 not self.lbfgs_when_full  # Add when LBFGS is allowed before fully grown.
                 or self.lbfgs_when_full

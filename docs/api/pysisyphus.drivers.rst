@@ -28,10 +28,50 @@ pysisyphus.drivers.birkholz module
    :undoc-members:
    :show-inheritance:
 
+pysisyphus.drivers.boltzmann module
+-----------------------------------
+
+.. automodule:: pysisyphus.drivers.boltzmann
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.drivers.calculations module
+--------------------------------------
+
+.. automodule:: pysisyphus.drivers.calculations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.drivers.cluster module
+---------------------------------
+
+.. automodule:: pysisyphus.drivers.cluster
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.drivers.local\_force\_constants module
+-------------------------------------------------
+
+.. automodule:: pysisyphus.drivers.local_force_constants
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 pysisyphus.drivers.merge module
 -------------------------------
 
 .. automodule:: pysisyphus.drivers.merge
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.drivers.merge\_mol2 module
+-------------------------------------
+
+.. automodule:: pysisyphus.drivers.merge_mol2
    :members:
    :undoc-members:
    :show-inheritance:
@@ -88,6 +128,22 @@ pysisyphus.drivers.scan module
 ------------------------------
 
 .. automodule:: pysisyphus.drivers.scan
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.drivers.spectrum module
+----------------------------------
+
+.. automodule:: pysisyphus.drivers.spectrum
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+pysisyphus.drivers.spectrum\_ctnum module
+-----------------------------------------
+
+.. automodule:: pysisyphus.drivers.spectrum_ctnum
    :members:
    :undoc-members:
    :show-inheritance:

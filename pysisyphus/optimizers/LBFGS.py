@@ -121,26 +121,17 @@ class LBFGS(Optimizer):
             logger=self.logger,
         )
 
-    def optimize(self):
-        if self.is_cos and self.align:
-            rot_vecs, rot_vec_lists, _ = self.fit_rigid(
-                vector_lists=(
-                    self.steps,
-                    self.forces,
-                    self.coord_diffs,
-                    self.grad_diffs,
-                ),
-            )
-            rot_steps, rot_forces, rot_coord_diffs, rot_grad_diffs = rot_vec_lists
-            self.steps = rot_steps
-            self.forces = rot_forces
-            self.coord_diffs = rot_coord_diffs
-            self.grad_diffs = rot_grad_diffs
+    def fit_rigid(self):
+        _, rot_vec_lists, _ = super()._fit_rigid(
+            vector_lists=[self.coord_diffs, self.grad_diffs]
+        )
+        rot_coord_diffs, rot_grad_diffs = rot_vec_lists
+        self.coord_diffs = rot_coord_diffs
+        self.grad_diffs = rot_grad_diffs
 
-        forces = self.geometry.forces
-        self.forces.append(forces)
-        energy = self.geometry.energy
-        self.energies.append(energy)
+    def get_step(
+        self, energy, forces, hessian=None, eigvals=None, eigvecs=None, resetted=None
+    ):
         norm = np.linalg.norm(forces)
         if not self.is_cos:
             self.log(f"      Energy={energy: >24.6f} au")

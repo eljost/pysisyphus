@@ -2,15 +2,33 @@
 #     Quantitative wave function analysis for excited states
 #     of transition metal complexes
 #     Mai et al., 2018
+# [2] https://arxiv.org/pdf/2204.10135.pdf
+#     Density Functional Theory for Electronic Excited States
+#     Herbert, 2022
+# [3] https://doi.org/10.1021/acs.jpclett.1c00094
+#     Elucidating the Electronic Structure of a Delayed Fluorescence Emitter
+#     via Orbital Interactions, Excitation Energy Components,
+#     Charge-Transfer Numbers, and Vibrational Reorganization Energies
+#     Pei, Ou, Mao, Yang, Lande, Plasser, Liang, Shuai, Shao, 2021
+# [4] https://doi.org/10.1021/j100039a012
+#     Analysis of Electronic Transitions as the Difference
+#     of Electron Attachment and Detachment Densities
+#     Head-Gordon, Grana, Maurice, White, 1995
+# [5] https://doi.org/10.1039/C9CP03127H
+#     Multistate hybrid time-dependent density functional theory
+#     with surface hopping accurately captures
+#     ultrafast thymine photodeactivation
+#     Parker, Roy, Furche, 2019
 
 import itertools as it
 from functools import partial
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
 
-from pysisyphus.wavefunction.wavefunction import Wavefunction
+if TYPE_CHECKING:
+    from pysisyphus.wavefunction.wavefunction import Wavefunction
 
 
 def norm_ci_coeffs(
@@ -64,6 +82,12 @@ def get_state_to_state_transition_density(
 ) -> NDArray[float]:
     """State-to-state transition density.
 
+    See eq. (17) in [5], which is a simplification of eq. (15) in [5].
+    For TD-DFT with a potentially non-vanishing Y vector this function
+    can be called two times. First with X[a] and X[b], and then Y[a] and Y[b].
+    Finally both matrices can be added to yield the matrix on the RHS of eq. (17)
+    in [5].
+
     Parameters
     ----------
     T_a
@@ -91,6 +115,10 @@ def get_state_to_state_transition_density(
 def ct_numbers(
     C: NDArray[float], occ: int, Ts: NDArray[float], nfrags: int, frag_ao_map: Dict
 ) -> NDArray[float]:
+    """Charge-transfer numbers.
+
+    This function is based on [1]; a different implementation is described in the SI
+    of [3]."""
     frag_inds = list(range(nfrags))
     T_full = np.zeros_like(C)
     u, _, vh = np.linalg.svd(C)
@@ -114,7 +142,7 @@ def ct_numbers(
 
 
 def ct_numbers_for_states(
-    wf: Wavefunction,
+    wf: "Wavefunction",
     frags: List[List[int]],
     Ta: NDArray[float],
     Tb: Optional[NDArray[float]] = None,
@@ -132,17 +160,18 @@ def ct_numbers_for_states(
     Ta
         Alpha-spin transition density matrices of shape (nstates, occ_a, virt_a).
     Tb
-        Beta-spin transition density matrices of shape (nstates, occ_a, virt_a).
+        Beta-spin transition density matrices of shape (nstates, occ_b, virt_b).
 
     Returns
     -------
     omegas
-        Array of shape (nstates, len(frags)**2), containing the charge-transfer
+        Array of shape (nstates, nfrags, nfrags), containing the charge-transfer
         numbers of every state.
     """
     shells = wf.shells
     frag_ao_map = shells.fragment_ao_map(frags)
     nfrags = len(frags)
+    nstates = len(Ta)
 
     occ_a, occ_b = wf.occ
     Ca, Cb = wf.C
@@ -152,9 +181,112 @@ def ct_numbers_for_states(
     if Tb is None:
         om_b = om_a
     else:
+        # Number of states must match
+        assert Ta.shape[0] == Tb.shape[0]
         om_b = ctn(Cb, occ_b, Tb)
     omegas = om_a + om_b
+    omegas = omegas.reshape(nstates, nfrags, nfrags)
     return omegas
+
+
+def make_mo_density_matrix_for_root(
+    X: np.ndarray, Y: np.ndarray, restricted: bool, ov_corr: Optional[np.ndarray] = None
+):
+    """Construct (relaxed) density matrix from X, Y (and occ-virt. correction).
+
+    Parameters
+    ----------
+    X
+        2d-array containing excitation CI-coefficients w/ shape (nocc, nvirt).
+    Y
+        2d-array containing deexcitation CI-coefficients w/ shape (nocc, nvirt).
+    restricted
+        Whether the X and Y vectors were produced from a restricted calculation.
+    ov_corr
+        occ-virt/virt-occ correction, as obtained from ES gradient calculations.
+
+    Returns
+    -------
+    P
+        (Relaxed) density matrix in MO basis.
+    """
+    nocc, nvir = X.shape
+    nmos = nocc + nvir
+    occupations = np.zeros(nmos)
+    # Ground-state occupation. Unrestricted character is taken into account later.
+    occupations[:nocc] = 2.0
+    P = np.diag(occupations)
+
+    XpY = X + Y
+    XmY = X - Y
+    #     +-------------+
+    #     |  oo  |  ov  |
+    # P = |-------------|
+    #     |  vo  |  vv  |
+    #     +-------------+
+    dP_oo = np.einsum("ia,ja->ij", XpY, XpY) + np.einsum("ia,ja->ij", XmY, XmY)
+    dP_vv = np.einsum("ia,ic->ac", XpY, XpY) + np.einsum("ia,ic->ac", XmY, XmY)
+    # Eq. (42b) in [2]
+    P[:nocc, :nocc] -= dP_oo
+    # Eq. (42a) in [2]
+    P[nocc:, nocc:] += dP_vv
+    if not restricted:
+        P /= 2.0
+    # Add contribuation to occ-virt/virt-occ blocks, producing a relaxed
+    # density. At least for Turbomole calculation we have to add it after
+    # dividing by 2.0 in unrestricted calculations.
+    if ov_corr is not None:
+        P[:nocc, nocc:] -= ov_corr
+        P[nocc:, :nocc] -= ov_corr.T
+    return P
+
+
+def make_density_matrices_for_root(
+    rootm1: int,
+    restricted: bool,
+    Xa: np.ndarray,
+    Ya: np.ndarray,
+    Xb: np.ndarray,
+    Yb: np.ndarray,
+    ov_corr_a: Optional[np.ndarray] = None,
+    ov_corr_b: Optional[np.ndarray] = None,
+    Ca: Optional[np.ndarray] = None,
+    Cb: Optional[np.ndarray] = None,
+    renorm: bool = True,
+):
+    """Create relaxed/unrelaxed alpha and beta density matrices for an ES."""
+    assert Xa.shape == Ya.shape
+    assert Xb.shape == Yb.shape
+
+    if ov_corr_a is not None:
+        assert ov_corr_a.ndim == 2
+    if ov_corr_b is not None:
+        assert ov_corr_b.ndim == 2
+
+    # Density matrices are in MO basis
+    if restricted:
+        if renorm:
+            Xa, Ya = norm_ci_coeffs(Xa, Ya)
+        Pexc_a = make_mo_density_matrix_for_root(
+            Xa[rootm1], Ya[rootm1], True, ov_corr_a
+        )
+        Pexc_a /= 2.0
+        Pexc_b = Pexc_a.copy()
+    else:
+        if renorm:
+            Xa, Ya, Xb, Yb = norm_ci_coeffs(Xa, Ya, Xb, Yb)
+        Pexc_a = make_mo_density_matrix_for_root(
+            Xa[rootm1], Ya[rootm1], False, ov_corr_a
+        )
+        Pexc_b = make_mo_density_matrix_for_root(
+            Xb[rootm1], Yb[rootm1], False, ov_corr_b
+        )
+
+    # Transform to AO basis when MO coefficients were supplied
+    if Ca is not None and Cb is not None:
+        Pexc_a = Ca @ Pexc_a @ Ca.T
+        Pexc_b = Cb @ Pexc_b @ Cb.T
+    return Pexc_a, Pexc_b
 
 
 def mo_inds_from_tden(
@@ -396,40 +528,56 @@ def tden_overlaps(
 ###############################
 
 
-"""
-def nto_overlaps(ntos_1, ntos_2, ao_ovlp):
+def nto_overlaps(ntos_1, lambdas_1, ntos_2, lambdas_2, ao_ovlp):
+    """NTOS are expected to be given in columns."""
     states1 = len(ntos_1)
     states2 = len(ntos_2)
     ovlps = np.zeros((states1, states2))
     for i in range(states1):
-        n_i = ntos_1[i]
-        l_i = n_i.lambdas[:, None]
-        ntos_i = l_i * n_i.ntos
+        ntos_i = ntos_1[i]
+        l_i = lambdas_1[i]
         for j in range(states2):
-            n_j = ntos_2[j]
-            l_j = n_j.lambdas[:, None]
-            ntos_j = l_j * n_j.ntos
-            ovlp = np.sum(np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T)))
-            ovlps[i, j] = ovlp
+            ovlp = l_i * lambdas_2[j] * np.abs(ntos_i.T @ ao_ovlp @ ntos_2[j])
+            ovlps[i, j] = ovlp.sum()
     return ovlps
 
-def nto_org_overlaps(ntos_1, ntos_2, ao_ovlp, nto_thresh=0.3):
-    states_1 = len(ntos_1)
-    states_2 = len(ntos_2)
-    ovlps = np.zeros((states_1, states_2))
 
-    for i in range(states_1):
-        n_i = ntos_1[i]
-        l_i = n_i.lambdas[:, None]
-        ntos_i = n_i.ntos[(l_i >= nto_thresh).flatten()]
-        l_i_big = l_i[l_i >= nto_thresh]
-        for j in range(states_2):
-            n_j = ntos_2[j]
-            l_j = n_j.lambdas[:, None]
-            ntos_j = n_j.ntos[(l_j >= nto_thresh).flatten()]
-            ovlp = np.sum(
-                l_i_big[:, None] * np.abs(ntos_i.dot(ao_ovlp).dot(ntos_j.T))
-            )
-            ovlps[i, j] = ovlp
-    return ovlps
-"""
+def detachment_attachment_density(diff_dens: np.ndarray, atol=1e-12, verbose=False):
+    """Calculation of detachment and attachment densities in the MO-basis.
+
+    Based on [4]. As described in the paper, both density-matrices are positive
+    semidefinite.
+
+    Parameters
+    ----------
+    diff_dens
+        2d array containing a difference density in the MO basis w/ shape (nmos, nmos).
+    atol
+        Positive float; absolute tolerance used in the checks.
+
+    Returns
+    -------
+    detach_dens
+        2d array containing the detachment density in the MO basis w/ shape (nmos, nmos).
+    attach_dens
+        2d array containing the attachment density in the MO basis w/ shape (nmos, nmos).
+    """
+    np.testing.assert_allclose(diff_dens, diff_dens.T, atol=atol)
+    # Eq. (2) in [4]
+    w, v = np.linalg.eigh(diff_dens)
+
+    # Detachment density, eqs. (4) and (5) in [4]
+    d = w.copy()
+    d[d > 0.0] = 0.0
+    detach_dens = v @ np.diag(np.abs(d)) @ v.T
+    # Attachment density, eqs. (6) and (7) in [4]
+    a = w.copy()
+    a[a < 0.0] = 0.0
+    attach_dens = v @ np.diag(a) @ v.T
+
+    if verbose:
+        print(f"p={a.sum(): >6.2f}, λ(A)={a.max():.3f}, -λ(D)={d.min():.3f}")
+
+    # Eq. (8) in [4]
+    np.testing.assert_allclose(attach_dens - detach_dens, diff_dens, atol=atol)
+    return detach_dens, attach_dens

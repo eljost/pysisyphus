@@ -123,6 +123,14 @@ class GrowingNT:
         return self.geom.atoms
 
     @property
+    def moving_atoms(self):
+        return self.geom.moving_atoms
+
+    @property
+    def freeze_atoms(self):
+        return self.geom.freeze_atoms
+
+    @property
     def coords(self):
         return self.geom.coords
 
@@ -199,7 +207,7 @@ class GrowingNT:
         self.passed_min = False
         self.passed_ts = False
 
-    def reparametrize(self):
+    def reparametrize(self, image_energies, _forces):
         """Check if GNT can be grown."""
 
         # Real, unprojected, forces of the underlying geometry
@@ -292,7 +300,7 @@ class GrowingNT:
             )
         return converged
 
-    def get_additional_print(self):
+    def get_additional_print(self, energy):
         if self.did_reparametrization:
             img_num = len(self.images)
             str_ = f"Grew Newton trajectory to {img_num} images."

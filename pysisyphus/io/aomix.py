@@ -6,7 +6,7 @@ from pysisyphus.helpers_pure import file_or_str
 from pysisyphus.wavefunction import get_l, Shell, AOMixShells, Wavefunction
 from pysisyphus.wavefunction.helpers import BFType
 
-AOMIX_EXTS = ".in"
+AOMIX_EXTS = (".in", ".aomix")
 
 
 @file_or_str(*AOMIX_EXTS)
@@ -74,7 +74,7 @@ def parse_aomix(text):
     return as_dict
 
 
-def shells_from_aomix_dict(aomix_dict):
+def shells_from_aomix_dict(aomix_dict, **kwargs):
     atom_lines = aomix_dict["atom_lines"]
     center_gtos = aomix_dict["center_gtos"]
     _shells = list()
@@ -98,12 +98,14 @@ def shells_from_aomix_dict(aomix_dict):
                 center_ind=center_ind,
             )
             _shells.append(shell)
-    shells = AOMixShells(_shells)
+    shells = AOMixShells(_shells, **kwargs)
     return shells
 
 
-def wavefunction_from_aomix_dict(aomix_dict, **wf_kwargs):
-    shells = shells_from_aomix_dict(aomix_dict)
+def wavefunction_from_aomix_dict(aomix_dict, **kwargs):
+    kwargs = kwargs.copy()
+    shell_kwargs = kwargs.pop("shell_kwargs", {})
+    shells = shells_from_aomix_dict(aomix_dict, **shell_kwargs)
 
     atoms = list()
     coords3d = list()
@@ -145,7 +147,14 @@ def wavefunction_from_aomix_dict(aomix_dict, **wf_kwargs):
     nuc_charge = nuc_charges_for_atoms(atoms).sum()
     charge = nuc_charge - occ_a - occ_b
     C = np.array((np.transpose(C_a), np.transpose(C_b)))
-    _wf_kwargs = {
+
+    _, nao, _ = C.shape
+    bf_type = {
+        shells.cart_size: BFType.CARTESIAN,
+        shells.sph_size: BFType.PURE_SPHERICAL,
+    }[nao]
+
+    wf_kwargs = {
         "atoms": atoms,
         "coords": coords,
         "charge": charge,
@@ -153,13 +162,13 @@ def wavefunction_from_aomix_dict(aomix_dict, **wf_kwargs):
         "unrestricted": unrestricted,
         "occ": (occ_a, occ_b),
         "C": C,
-        "bf_type": BFType.CARTESIAN,
+        "bf_type": bf_type,
         "shells": shells,
-        **wf_kwargs,
+        **kwargs,
     }
 
-    _wf_kwargs.update(wf_kwargs)
-    return Wavefunction(**_wf_kwargs)
+    # _wf_kwargs.update(wf_kwargs)
+    return Wavefunction(**wf_kwargs)
 
 
 @file_or_str(*AOMIX_EXTS)
@@ -169,10 +178,6 @@ def shells_from_aomix(text):
 
 
 @file_or_str(*AOMIX_EXTS)
-def wavefunction_from_aomix(text, **wf_kwargs):
-    from time import time
-    start = time()
+def wavefunction_from_aomix(text, **kwargs):
     aomix_dict = parse_aomix(text)
-    dur = time() - start
-    print("dur", dur)
-    return wavefunction_from_aomix_dict(aomix_dict, **wf_kwargs)
+    return wavefunction_from_aomix_dict(aomix_dict, **kwargs)

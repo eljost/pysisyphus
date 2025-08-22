@@ -1,0 +1,80 @@
+$title
+$symmetry c1
+$user-defined bonds    file=coord
+$coord    file=coord
+$optimize
+ internal   off
+ redundant  off
+ cartesian  on
+ global     off
+ basis      off
+$atoms
+o  1                                                                           \
+   basis =o def2-SVP
+h  2-3                                                                         \
+   basis =h def2-SVP
+$basis    file=basis
+$scfmo   none
+$closed shells
+ a       1-5                                    ( 2 )
+$scfiterlimit      150
+$scfconv        8
+$thize     0.10000000E-04
+$thime        5
+$scfdamp   start=0.300  step=0.050  min=0.100
+$scfdump
+$scfintunit
+ unit=30       size=0        file=twoint
+$scfdiis maxiter= 9
+$scforbitalshift  automatic=.1
+$drvopt
+   cartesian  on
+   basis      off
+   global     off
+   hessian    on
+   dipole     on
+   nuclear polarizability
+$interconversion  off
+   qconv=1.d-7
+   maxiter=25
+$coordinateupdate
+   dqmax=0.3
+   interpolate  on
+   statistics    5
+$forceupdate
+   ahlrichs numgeo=0  mingeo=3 maxgeo=4 modus=<g|dq> dynamic fail=0.3
+   threig=0.005  reseig=0.005  thrbig=3.0  scale=1.00  damping=0.0
+$forceinit on
+   diag=default
+$forceapprox    file=forceapprox
+$denconv 1d-7
+$rundimensions
+   natoms=3
+   nbf(CAO)=25
+   nbf(AO)=24
+$last SCF energy change = -75.712938
+$charge from dscf
+         -0.000 (not to be modified here)
+$uhfmo_alpha   file=alpha
+$uhfmo_beta   file=beta
+$uhf
+$ssquare from dscf
+          2.006 (not to be modified here)
+$scfinstab urpa
+$soes
+ a            3
+$rpacor      220   in_total
+$maxcor    500 MiB  per_core
+$fermi tmstrt=300.00 tmend= 50.00 tmfac=0.900 hlcrt=1.0E-01 stop=1.0E-03 nue=  2
+$energy    file=energy
+$grad    file=gradient
+$last step     escf
+$alpha shells
+ a       1-6                                    ( 1 )
+$beta shells
+ a       1-4                                    ( 1 )
+$orbital_max_rnorm 0.11929786792100E-05
+$dipole from dscf
+  x    -0.00000000000010    y    -0.23638665639002    z     0.00000000000000    a.u.
+   | dipole | =    0.6008394904  debye
+$end
