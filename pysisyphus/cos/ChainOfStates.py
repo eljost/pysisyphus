@@ -51,6 +51,20 @@ class ChainOfStates:
     ):
         assert len(images) >= 2, "Need at least 2 images!"
         self.images = list(images)
+
+        if len(self.images[0].freeze_atoms) > 0:
+            # Check coherence of frozen positions
+            ref_coords = self.images[0].coords3d[self.images[0].freeze_atoms]
+            for image in self.images[1:]:
+                other_coords = image.coords3d[image.freeze_atoms]
+                diff = ref_coords - other_coords
+
+                # All frozen positions should be mappable to each other with a translation,
+                # so the 3D cartesian position differences should be identical.
+                ref = diff[0, :]
+                for pos in diff[1:, :]:
+                    assert np.allclose(ref, pos), "Frozen positions are not consistent between images!"
+
         self.fix_first = fix_first
         self.fix_last = fix_last
         self.align_fixed = align_fixed
