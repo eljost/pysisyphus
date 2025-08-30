@@ -46,7 +46,7 @@ def test_xtb_hessian(geom):
 def test_run_md(geom):
     T = 298.15
     seed = 20182503
-    energy_ref = -20.47367  # Obtained with xtb 6.7.1 from Nix
+    energy_ref = -20.4961  # Obtained with xtb 6.7.1 from Nix
     velocities = get_mb_velocities_for_geom(geom, T=T, seed=seed)
     calc = geom.calculator
     geoms = calc.run_md(
