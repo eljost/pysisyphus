@@ -37,4 +37,4 @@ Fully internal coordinate transition state search for the famous alanine dipepti
 
 ## Contribute
 
-If any issues arise please open an issue and I'll try to fix it if possible **and my time permits it**. Contributions are welcome, so feel free to submit a PR.
+If any problems arise, please open an issue and I'll see if I can help **if my time permits it**. Contributions are welcome, so feel free to submit a PR.
