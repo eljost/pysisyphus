@@ -60,7 +60,9 @@ def test_h2o2_g16_analytical(this_dir):
     )
     w = result.eigvals
     tunnel_splitting = (w[1] - w[0]) * AU2NU
-    assert tunnel_splitting == pytest.approx(12.76, abs=5e-2)
+    # Interestingly, this test seems flaky and sometimes yields 12.68.
+    # So I relax abs a bit from 5e-2 to 0.1.
+    assert tunnel_splitting == pytest.approx(12.76, abs=0.1)
 
 
 def test_cancel_partfunc(this_dir):
