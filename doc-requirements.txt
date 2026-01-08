@@ -187,7 +187,7 @@ toolz==0.12.1
     #   partd
 tornado==6.5.1
     # via distributed
-urllib3==2.5.0
+urllib3==2.6.3
     # via
     #   distributed
     #   requests
