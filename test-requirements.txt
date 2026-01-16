@@ -42,7 +42,7 @@ decorator==5.1.1
     # via fabric
 deprecated==1.2.14
     # via fabric
-distributed==2024.8.2
+distributed==2026.1.1
     # via pysisyphus (pyproject.toml)
 fabric==3.2.2
     # via pysisyphus (pyproject.toml)
