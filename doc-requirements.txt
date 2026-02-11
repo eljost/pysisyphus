@@ -112,7 +112,7 @@ paramiko==3.4.1
     # via fabric
 partd==1.4.2
     # via dask
-pillow==10.4.0
+pillow==12.1.1
     # via matplotlib
 psutil==6.0.0
     # via
