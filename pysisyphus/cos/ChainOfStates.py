@@ -17,6 +17,7 @@ from pysisyphus.helpers import align_coords, get_coords_diffs
 from pysisyphus.helpers_pure import hash_arr, rms
 from pysisyphus.modefollow import geom_lanczos
 
+from pysisyphus.calculators.Calculator import Calculator
 from pysisyphus.cos.distributed import distributed_calculations
 from pysisyphus.cos import multi_state
 
@@ -549,7 +550,23 @@ class ChainOfStates:
     def calculate_image_forces(self, image_indices=None):
         images_to_calculate, image_indices = self.get_images_to_calculate(image_indices)
 
-        if self.use_dask:
+        # Batched calculator path: preferred when the calculator subclass
+        # overrides get_forces_batch (capability detection via identity check
+        # against the base method). Targets GPU MLIPs that can evaluate all
+        # images in a single forward. All images must share one calculator.
+        if (
+            images_to_calculate
+            and type(images_to_calculate[0].calculator).get_forces_batch
+            is not Calculator.get_forces_batch
+        ):
+            atoms_list = [tuple(img.atoms) for img in images_to_calculate]
+            coords_list = [img.coords for img in images_to_calculate]
+            results_list = images_to_calculate[0].calculator.get_forces_batch(
+                atoms_list, coords_list
+            )
+            for img, results in zip(images_to_calculate, results_list):
+                img.set_results(results)
+        elif self.use_dask:
             self.concurrent_force_calcs(images_to_calculate, image_indices)
         # Serial calculation
         else:

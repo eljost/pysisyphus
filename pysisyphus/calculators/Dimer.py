@@ -401,6 +401,20 @@ class Dimer(Calculator):
         if self.bonds is not None:
             N_raw = get_weighted_bond_mode(self.bonds, coords.reshape(-1, 3))
             msg = "weighted bond mode"
+        elif self.N_hessian == "calc":
+            # Compute the Hessian from the wrapped calculator at the current
+            # coords and seed N_raw from its lowest eigenvector. Cheap for
+            # analytic-Hessian calculators (MLIPs, XTB) — avoids the HDF5
+            # round-trip required by the file-loading branch below.
+            results = self.calculator.get_hessian(self.atoms, coords)
+            hessian = results["hessian"]
+            w, v = np.linalg.eigh(hessian)
+            assert w[0] < -1e-3, (
+                f"N_hessian='calc' requires a TS-like geometry "
+                f"(lowest eigenvalue must be imaginary); got w[0]={w[0]:.4e}"
+            )
+            N_raw = v[:, 0]
+            msg = "first imaginary mode of analytic Hessian"
         elif self.N_hessian is not None:
             N_raw = self.get_N_raw_from_hessian(self.N_hessian)
             msg = "first imaginary mode of HDF5 Hessian"
