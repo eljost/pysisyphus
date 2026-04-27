@@ -198,6 +198,31 @@ class Calculator:
         """Meant to be extended."""
         raise Exception("Not implemented!")
 
+    def get_forces_batch(self, atoms_list, coords_list, **prepare_kwargs):
+        """Optional batched force evaluation for ChainOfStates / NEB.
+
+        Default fallback iterates sequentially via `get_forces`. Calculators
+        with native batch support (e.g. MLIPs that accept a stacked coord
+        tensor) should override this to evaluate all images in a single call.
+
+        Parameters
+        ----------
+        atoms_list : list[tuple[str, ...]]
+            One tuple of atomic symbols per image.
+        coords_list : list[np.ndarray]
+            One flat (3N,) Bohr coordinate array per image.
+
+        Returns
+        -------
+        list[dict]
+            One result dict per image, each with at least 'energy' and
+            'forces' keys, matching the get_forces() contract.
+        """
+        return [
+            self.get_forces(atoms, coords, **prepare_kwargs)
+            for atoms, coords in zip(atoms_list, coords_list)
+        ]
+
     def get_hessian(self, atoms, coords, **prepare_kwargs):
         """Get Hessian matrix. Fall back to numerical Hessian, if not overriden.
 
